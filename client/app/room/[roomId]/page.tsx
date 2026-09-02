@@ -8,6 +8,7 @@ import { useAnimationQueue } from '@/hooks/useAnimationQueue';
 import { GameLayout } from '@/components/game/GameLayout';
 import { GameEndScreen } from '@/components/game/GameEndScreen';
 import { playBgm } from '@/lib/bgm';
+import { startPreload } from '@/lib/preload';
 
 const STORAGE_TEAM = 'cardBattle_team';
 const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 BGM은 절반 볼륨으로
@@ -18,6 +19,12 @@ export default function GamePage() {
   const [myTeam, setMyTeam] = useState<Team | null>(null);
 
   const animState = useAnimationQueue(lastEvents, gameState);
+
+  // 보통은 로비에서 이미 끝나 있지만, 새로고침·재접속으로 이 페이지에 바로
+  // 들어온 경우를 대비해 여기서도 프리로드를 시작한다(이미 시작했으면 무시됨).
+  useEffect(() => {
+    startPreload();
+  }, []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_TEAM) as Team | null;

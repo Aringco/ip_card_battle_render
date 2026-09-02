@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "gen:assets": "node scripts/generateAssetManifest.mjs",
+    "predev": "npm run gen:assets",
     "dev": "next dev",
+    "prebuild": "npm run gen:assets",
     "build": "next build",
     "start": "next start"
   },

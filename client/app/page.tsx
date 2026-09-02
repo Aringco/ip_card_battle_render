@@ -1,16 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { GameSettings, LobbyPlayer, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { playBgm } from '@/lib/bgm';
 import { HowToPlayModal } from '@/components/ui/HowToPlayModal';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function LobbyPage() {
   const router = useRouter();
   const ws = useWebSocket();
+
+  // 효과음·이미지 프리로드가 끝나기 전에는 로딩 화면을 덮어둔다.
+  // (게임 도중 그때그때 받으면 첫 효과음이 안 들리거나 카드 이미지가 늦게 뜬다)
+  const [assetsReady, setAssetsReady] = useState(false);
+  const handleAssetsReady = useCallback(() => setAssetsReady(true), []);
 
   // 로비/대기실 BGM — 입장 즉시부터 게임 시작 전까지 계속 재생
   useEffect(() => {
@@ -61,6 +67,8 @@ export default function LobbyPage() {
     ws.sendReady();
     setIsReady(true);
   };
+
+  if (!assetsReady) return <LoadingScreen onDone={handleAssetsReady} />;
 
   return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-4">
