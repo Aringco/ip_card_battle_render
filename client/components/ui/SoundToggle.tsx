@@ -67,7 +67,7 @@ function VolumeRow({
         value={Math.round(volume * 100)}
         onChange={e => onVolumeChange(Number(e.target.value) / 100)}
         disabled={disabled || !active}
-        className="w-[7.5rem] accent-jungle-600 disabled:opacity-40"
+        className="flex-1 min-w-0 accent-jungle-600 disabled:opacity-40"
       />
       <span className="text-2xs text-gray-400 w-[2.625rem] text-right tabular-nums">
         {Math.round(volume * 100)}
@@ -91,7 +91,7 @@ function FontSizeRow() {
       <span className="w-[5.25rem] shrink-0 py-1.5 rounded-md bg-jungle-700 text-white text-xs font-semibold text-center">
         글씨
       </span>
-      <div className="flex items-center gap-0.5">
+      <div className="flex-1 min-w-0 flex items-center justify-between gap-0.5">
         {FONT_SCALE_STEPS.map((_, i) => {
           const value = i + 1;
           const active = value === step;

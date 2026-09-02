@@ -341,13 +341,13 @@ function GameRulesFields({
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+          <div className="flex flex-col gap-3">
           {RULE_FIELDS.map(({ key, label, suffix, hint }) => {
             const { min, max } = SETTINGS_LIMITS[key];
             return (
               <div key={key} className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between gap-2 text-lg">
-                  <label className="text-gray-500">{label}</label>
+                  <label className="text-gray-500 whitespace-nowrap">{label}</label>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
@@ -362,9 +362,9 @@ function GameRulesFields({
                         const v = Math.min(max, Math.max(min, Math.round(Number(e.target.value) || DEFAULT_SETTINGS[key])));
                         onChange({ ...settings, [key]: v });
                       }}
-                      className="input-base w-20 text-right"
+                      className="input-base w-24 shrink-0 text-right"
                     />
-                    <span className="text-gray-400 w-4">{suffix}</span>
+                    <span className="text-gray-400 w-6 shrink-0">{suffix}</span>
                   </div>
                 </div>
                 {hint && <p className="text-sm text-gray-400 text-right">{hint}</p>}
