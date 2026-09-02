@@ -265,6 +265,7 @@ export default function LobbyPage() {
           outline: none;
         }
         .input-base:focus { box-shadow: 0 0 0 2px #4ade80; border-color: transparent; }
+        .input-rule { width: 6rem; flex: none; text-align: right; }
       `}</style>
     </div>
   );
@@ -346,26 +347,26 @@ function GameRulesFields({
             const { min, max } = SETTINGS_LIMITS[key];
             return (
               <div key={key} className="flex flex-col gap-0.5">
-                <div className="flex items-center justify-between gap-2 text-lg">
+                <div className="flex items-center gap-2 text-lg">
                   <label className="text-gray-500 whitespace-nowrap">{label}</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={min}
-                      max={max}
-                      value={settings[key]}
-                      onChange={e => {
-                        const v = Number(e.target.value);
-                        onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
-                      }}
-                      onBlur={e => {
-                        const v = Math.min(max, Math.max(min, Math.round(Number(e.target.value) || DEFAULT_SETTINGS[key])));
-                        onChange({ ...settings, [key]: v });
-                      }}
-                      className="input-base w-24 shrink-0 text-right"
-                    />
-                    <span className="text-gray-400 w-6 shrink-0">{suffix}</span>
-                  </div>
+                  {/* 라벨과 입력창 사이를 점선으로 이어 어느 값이 어느 항목인지 눈으로 따라가기 쉽게 한다. */}
+                  <span className="flex-1 min-w-4 border-b-2 border-dotted border-gray-300" />
+                  <input
+                    type="number"
+                    min={min}
+                    max={max}
+                    value={settings[key]}
+                    onChange={e => {
+                      const v = Number(e.target.value);
+                      onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
+                    }}
+                    onBlur={e => {
+                      const v = Math.min(max, Math.max(min, Math.round(Number(e.target.value) || DEFAULT_SETTINGS[key])));
+                      onChange({ ...settings, [key]: v });
+                    }}
+                    className="input-base input-rule"
+                  />
+                  <span className="text-gray-400 w-8 shrink-0">{suffix}</span>
                 </div>
                 {hint && <p className="text-sm text-gray-400 text-right">{hint}</p>}
               </div>
