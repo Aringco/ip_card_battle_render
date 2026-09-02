@@ -105,7 +105,7 @@ function FontSizeRow() {
                 active ? 'bg-jungle-600 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
               }`}
               // 단계별 크기를 버튼 자체로 미리 보여준다(버튼 칸 크기는 고정).
-              style={{ fontSize: `${0.6 + i * 0.09}rem` }}
+              style={{ fontSize: `${0.55 + i * 0.07}rem` }}
             >
               가
             </button>

@@ -14,7 +14,7 @@ export const LOSE_HP = 0;
 
 // 축제 시작 턴(기본값) — 방장이 방 생성 시 바꿀 수 있다(GameSettings.festivalTurn) —
 // "축제가 시작되는 첫 턴"이라 turn >= festivalTurn으로 판정한다.
-export const FESTIVAL_TURN = 15;
+export const FESTIVAL_TURN = 10;
 
 // 축제가 열리면 실용신양과 동일한 방식(무작위 장소에서 카드 뽑기)의 "도토리 뽑기"가
 // festivalDrawCount(n)회 발동한다. 이후 festivalDrawIncreaseInterval(k)턴마다

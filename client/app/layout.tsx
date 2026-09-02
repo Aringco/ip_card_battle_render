@@ -34,7 +34,7 @@ export default function RootLayout({
             단계 값은 lib/uiSettings.ts의 FONT_SCALE_STEPS와 같아야 한다. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var s=[0.85,0.92,1,1.12,1.25][(+localStorage.getItem('cardBattle_fontStep')||3)-1];if(s)document.documentElement.style.setProperty('--font-scale',s)}catch(e){}`,
+            __html: `try{var s=[0.85,0.92,1,1.12,1.25,1.4,1.55][(+localStorage.getItem('cardBattle_fontStep')||5)-1];if(s)document.documentElement.style.setProperty('--font-scale',s)}catch(e){}`,
           }}
         />
         {children}

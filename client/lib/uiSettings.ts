@@ -7,8 +7,8 @@
 // 토큰(--text-xs ~ --text-9xl)만 --font-scale 배수로 정의해두고(app/globals.css),
 // 이 값만 바꿔 글자 크기만 비례시킨다.
 
-export const FONT_SCALE_STEPS = [0.85, 0.92, 1, 1.12, 1.25] as const;
-export const DEFAULT_FONT_STEP = 3; // 1~5 중 3단계가 기존 크기
+export const FONT_SCALE_STEPS = [0.85, 0.92, 1, 1.12, 1.25, 1.4, 1.55] as const;
+export const DEFAULT_FONT_STEP = 5; // 1~7 단계. 기본은 5단계(1.25배) — 3단계가 예전 기본 크기다.
 
 const STORAGE_KEY = 'cardBattle_fontStep';
 
