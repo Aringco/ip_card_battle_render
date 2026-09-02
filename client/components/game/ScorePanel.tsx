@@ -107,13 +107,15 @@ function AnimalTable({
         {isTeamB ? levelBadge : face}
 
         <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1">
+          {/* 분자(현재 경험치)와 분모(레벨업 기준)는 같은 크기·굵기로 두고 색으로만
+              구분한다 — 크기까지 다르면 분모가 부가정보처럼 작아져 잘 안 읽힌다. */}
           <p
-            className={`font-extrabold text-jungle-900 tabular-nums leading-tight text-lg ${isPopping ? 'score-pop' : ''}`}
+            className={`font-extrabold text-jungle-900 tabular-nums leading-tight text-xl ${isPopping ? 'score-pop' : ''}`}
             style={isFlashing ? { color: '#22c55e' } : undefined}
           >
-            {expInLevel}<span className="text-xs font-semibold text-jungle-400 ml-0.5">/{threshold}</span>
+            {expInLevel}<span className="text-jungle-400 ml-0.5">/{threshold}</span>
           </p>
-          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-jungle-500 transition-[width] duration-300"
               style={{ width: `${progressPct}%` }}
