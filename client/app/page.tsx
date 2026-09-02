@@ -72,12 +72,12 @@ export default function LobbyPage() {
 
   return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-4">
-      <h1 className="text-4xl mb-2">🐑🐰🧜‍♀️🐯</h1>
-      <h2 className="text-xl font-semibold text-green-800 mb-3">한국특허정보원 카드배틀</h2>
+      <h1 className="text-6xl mb-3">🐑🐰🧜‍♀️🐯</h1>
+      <h2 className="text-3xl font-semibold text-green-800 mb-4">한국특허정보원 카드배틀</h2>
 
       <button
         onClick={() => setShowHowTo(true)}
-        className="text-sm text-green-700 bg-green-100 hover:bg-green-200 px-4 py-1.5 rounded-full mb-6 font-semibold transition"
+        className="text-lg text-green-700 bg-green-100 hover:bg-green-200 px-5 py-2 rounded-full mb-6 font-semibold transition"
       >
         📖 게임 방법
       </button>
@@ -85,37 +85,37 @@ export default function LobbyPage() {
       {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
 
       {!ws.connected && (
-        <p className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-lg mb-4 text-sm">
+        <p className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-lg mb-4 text-lg">
           서버에 연결 중...
         </p>
       )}
 
       {ws.error && (
-        <p className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg mb-4 text-sm">
+        <p className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg mb-4 text-lg">
           {ws.error}
         </p>
       )}
 
       {mode === 'home' && (
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm flex flex-col gap-3">
+        <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-3xl flex flex-col gap-4">
           <button
             onClick={() => setMode('create')}
             disabled={!ws.connected}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             방 만들기
           </button>
           <button
             onClick={() => setMode('join')}
             disabled={!ws.connected}
-            className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+            className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             방 참가하기
           </button>
           <button
             onClick={() => setMode('solo')}
             disabled={!ws.connected}
-            className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+            className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             🤖 싱글 모드 (컴퓨터와 대전)
           </button>
@@ -123,9 +123,9 @@ export default function LobbyPage() {
       )}
 
       {mode === 'solo' && (
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm flex flex-col gap-4">
-          <h3 className="font-semibold text-gray-700">싱글 모드</h3>
-          <p className="text-xs text-gray-400 -mt-2">
+        <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-3xl flex flex-col gap-5">
+          <h3 className="text-2xl font-semibold text-gray-700">싱글 모드</h3>
+          <p className="text-base text-gray-400 -mt-3">
             상대는 컴퓨터예요. 컴퓨터는 자기 차례마다 무작위 장소를 클릭합니다.
           </p>
 
@@ -156,20 +156,20 @@ export default function LobbyPage() {
           <button
             onClick={handleStartSolo}
             disabled={!ws.connected || !nickname.trim()}
-            className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+            className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             컴퓨터와 대전 시작
           </button>
 
-          <button onClick={() => setMode('home')} className="text-sm text-gray-400 hover:text-gray-600">
+          <button onClick={() => setMode('home')} className="text-lg text-gray-400 hover:text-gray-600">
             ← 뒤로
           </button>
         </div>
       )}
 
       {(mode === 'create' || mode === 'join') && (
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm flex flex-col gap-4">
-          <h3 className="font-semibold text-gray-700">
+        <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-3xl flex flex-col gap-5">
+          <h3 className="text-2xl font-semibold text-gray-700">
             {mode === 'create' ? '방 만들기' : '방 참가하기'}
           </h3>
 
@@ -203,7 +203,7 @@ export default function LobbyPage() {
                 <button
                   key={t}
                   onClick={() => setTeam(t)}
-                  className={`flex-1 py-2 rounded-lg font-semibold transition text-sm ${
+                  className={`flex-1 py-3 rounded-lg font-semibold transition text-lg ${
                     team === t ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -232,12 +232,12 @@ export default function LobbyPage() {
           <button
             onClick={mode === 'create' ? handleCreateRoom : handleJoinRoom}
             disabled={!ws.connected || !nickname.trim() || (mode === 'join' && !joinRoomId.trim())}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             {mode === 'create' ? '방 만들기' : '입장하기'}
           </button>
 
-          <button onClick={() => setMode('home')} className="text-sm text-gray-400 hover:text-gray-600">
+          <button onClick={() => setMode('home')} className="text-lg text-gray-400 hover:text-gray-600">
             ← 뒤로
           </button>
         </div>
@@ -259,7 +259,8 @@ export default function LobbyPage() {
           width: 100%;
           border: 1px solid #d1d5db;
           border-radius: 0.5rem;
-          padding: 0.5rem 0.75rem;
+          padding: 0.6rem 0.85rem;
+          font-size: calc(1.125rem * var(--font-scale));
           color: #1f2937;
           outline: none;
         }
@@ -272,7 +273,7 @@ export default function LobbyPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm text-gray-500 mb-1">{label}</label>
+      <label className="block text-lg text-gray-500 mb-1.5">{label}</label>
       {children}
     </div>
   );
@@ -314,22 +315,22 @@ function GameRulesFields({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600"
+        className="w-full flex items-center justify-between px-4 py-3 text-lg font-semibold text-gray-600"
       >
         <span>⚙️ 게임 규칙 (방장이 정해요)</span>
         <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
       {open && (
-        <div className="px-3 pb-3 flex flex-col gap-2 border-t border-gray-100 pt-2">
+        <div className="px-4 pb-4 flex flex-col gap-3 border-t border-gray-100 pt-3">
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-gray-500">선 플레이어(먼저 시작하는 팀)</label>
+            <label className="text-lg text-gray-500">선 플레이어(먼저 시작하는 팀)</label>
             <div className="flex gap-1">
               {FIRST_TEAM_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => onChange({ ...settings, firstTeam: value })}
-                  className={`flex-1 py-1.5 rounded-lg font-semibold transition text-xs ${
+                  className={`flex-1 py-2 rounded-lg font-semibold transition text-base ${
                     settings.firstTeam === value
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -340,11 +341,12 @@ function GameRulesFields({
               ))}
             </div>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
           {RULE_FIELDS.map(({ key, label, suffix, hint }) => {
             const { min, max } = SETTINGS_LIMITS[key];
             return (
               <div key={key} className="flex flex-col gap-0.5">
-                <div className="flex items-center justify-between gap-2 text-sm">
+                <div className="flex items-center justify-between gap-2 text-lg">
                   <label className="text-gray-500">{label}</label>
                   <div className="flex items-center gap-1">
                     <input
@@ -365,10 +367,11 @@ function GameRulesFields({
                     <span className="text-gray-400 w-4">{suffix}</span>
                   </div>
                 </div>
-                {hint && <p className="text-2xs text-gray-400 text-right">{hint}</p>}
+                {hint && <p className="text-sm text-gray-400 text-right">{hint}</p>}
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>
@@ -390,11 +393,11 @@ function WaitingRoom({
   const canStart = players.length >= 2 && players.every(p => p.ready) && teamA.length > 0 && teamB.length > 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md flex flex-col gap-5">
+    <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-4xl flex flex-col gap-6">
       <div className="text-center">
-        <p className="text-sm text-gray-400">방 코드</p>
-        <p className="text-4xl font-mono font-bold text-green-700 tracking-widest">{roomId}</p>
-        <p className="text-xs text-gray-400 mt-1">친구에게 이 코드를 알려주세요</p>
+        <p className="text-lg text-gray-400">방 코드</p>
+        <p className="text-6xl font-mono font-bold text-green-700 tracking-widest">{roomId}</p>
+        <p className="text-base text-gray-400 mt-1.5">친구에게 이 코드를 알려주세요</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -402,7 +405,7 @@ function WaitingRoom({
         <TeamColumn label={`🔵 ${teamNames.B ?? '팀 2 (미정)'}`} players={teamB} />
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1 justify-center">
+      <div className="bg-gray-50 rounded-xl p-4 text-base text-gray-500 flex flex-wrap gap-x-6 gap-y-1.5 justify-center">
         <span>
           🚩 선공{' '}
           {settings.firstTeam === 'random'
@@ -418,12 +421,12 @@ function WaitingRoom({
       </div>
 
       {canStart ? (
-        <p className="text-center text-green-600 font-semibold animate-pulse">게임 시작 중...</p>
+        <p className="text-center text-xl text-green-600 font-semibold animate-pulse">게임 시작 중...</p>
       ) : (
         <button
           onClick={onReady}
           disabled={isReady}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold py-3 rounded-xl transition"
+          className="bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold text-xl py-4 rounded-xl transition"
         >
           {isReady ? '준비 완료 ✓' : '준비'}
         </button>
@@ -434,13 +437,13 @@ function WaitingRoom({
 
 function TeamColumn({ label, players }: { label: string; players: LobbyPlayer[] }) {
   return (
-    <div className="bg-gray-50 rounded-xl p-3 min-h-[80px]">
-      <p className="font-semibold text-gray-700 text-sm mb-2">{label}</p>
+    <div className="bg-gray-50 rounded-xl p-4 min-h-[100px]">
+      <p className="font-semibold text-gray-700 text-lg mb-2">{label}</p>
       {players.length === 0 ? (
-        <p className="text-xs text-gray-400">없음</p>
+        <p className="text-base text-gray-400">없음</p>
       ) : (
         players.map(p => (
-          <div key={p.nickname} className="flex items-center gap-2 text-sm py-0.5">
+          <div key={p.nickname} className="flex items-center gap-2 text-lg py-1">
             <span className={`w-2 h-2 rounded-full shrink-0 ${p.ready ? 'bg-green-500' : 'bg-gray-300'}`} />
             <span className="text-gray-700 truncate">{p.nickname}</span>
           </div>
