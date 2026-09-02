@@ -30,7 +30,7 @@ function ToggleButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-14 shrink-0 py-1 rounded-md text-xs font-semibold text-center transition-colors ${
+      className={`w-[5.25rem] shrink-0 py-1.5 rounded-md text-xs font-semibold text-center transition-colors ${
         active
           ? 'bg-jungle-700 text-white'
           : 'bg-gray-200 text-gray-400 line-through'
@@ -67,9 +67,9 @@ function VolumeRow({
         value={Math.round(volume * 100)}
         onChange={e => onVolumeChange(Number(e.target.value) / 100)}
         disabled={disabled || !active}
-        className="w-20 accent-jungle-600 disabled:opacity-40"
+        className="w-[7.5rem] accent-jungle-600 disabled:opacity-40"
       />
-      <span className="text-2xs text-gray-400 w-7 text-right tabular-nums">
+      <span className="text-2xs text-gray-400 w-[2.625rem] text-right tabular-nums">
         {Math.round(volume * 100)}
       </span>
     </div>
@@ -88,7 +88,7 @@ function FontSizeRow() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 py-1 rounded-md bg-jungle-700 text-white text-xs font-semibold text-center">
+      <span className="w-[5.25rem] shrink-0 py-1.5 rounded-md bg-jungle-700 text-white text-xs font-semibold text-center">
         글씨
       </span>
       <div className="flex items-center gap-0.5">
@@ -101,18 +101,18 @@ function FontSizeRow() {
               onClick={() => setFontStep(value)}
               aria-label={`글씨 크기 ${value}단계`}
               aria-pressed={active}
-              className={`w-5 h-6 rounded-md font-semibold leading-none transition-colors ${
+              className={`w-[1.875rem] h-8 rounded-md font-semibold leading-none transition-colors ${
                 active ? 'bg-jungle-600 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
               }`}
               // 단계별 크기를 버튼 자체로 미리 보여준다(버튼 칸 크기는 고정).
-              style={{ fontSize: `${0.55 + i * 0.07}rem` }}
+              style={{ fontSize: `${0.6 + i * 0.085}rem` }}
             >
               가
             </button>
           );
         })}
       </div>
-      <span className="text-2xs text-gray-400 w-7 text-right tabular-nums">
+      <span className="text-2xs text-gray-400 w-[2.625rem] text-right tabular-nums">
         {step}
       </span>
     </div>
@@ -146,7 +146,11 @@ export function SoundToggle() {
         className="fixed bottom-3 right-3 z-[90] w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg border border-jungle-200 flex items-center justify-center text-lg hover:scale-105 transition-transform"
         aria-label="설정 열기"
       >
-        {settings.muteAll ? '🔇' : '🔊'}
+        ⚙️
+        {/* 톱니바퀴만 있으면 음소거 상태가 안 보이므로 꺼져 있을 때만 작게 겹쳐 표시한다. */}
+        {settings.muteAll && (
+          <span className="absolute -top-0.5 -right-0.5 text-xs leading-none">🔇</span>
+        )}
       </button>
     );
   }
@@ -157,7 +161,7 @@ export function SoundToggle() {
   return (
     <div
       ref={panelRef}
-      className="fixed bottom-3 right-3 z-[90] flex flex-col gap-1.5 bg-white/90 backdrop-blur px-3 py-2.5 rounded-2xl shadow-lg border border-jungle-200"
+      className="fixed bottom-3 right-3 z-[90] flex flex-col gap-2 bg-white/90 backdrop-blur px-[1.125rem] py-3.5 rounded-2xl shadow-lg border border-jungle-200"
     >
       <button
         onClick={() => setExpanded(false)}
