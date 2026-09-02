@@ -1,0 +1,89 @@
+
+> client@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.20.34.171:3000
+✓ Ready in 1017ms
+
+○ Compiling / ...
+ GET / 200 in 9.4s (next.js: 9.1s, application-code: 289ms)
+ GET /room/MFAT 200 in 2.2s (next.js: 2.2s, application-code: 33ms)
+ GET /api/sounds 200 in 1907ms (next.js: 1882ms, application-code: 25ms)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+ GET / 200 in 198ms (next.js: 13ms, application-code: 185ms)
+ GET /room/GVFR 200 in 215ms (next.js: 70ms, application-code: 145ms)
+ GET /api/sounds 200 in 19ms (next.js: 6ms, application-code: 13ms)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+[browser] flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task. 
+    at useAnimationQueue.useLayoutEffect (hooks/useAnimationQueue.ts:411:16)
+  409 |       const { team, playerIndex } = pendingFlipRef.current;
+  410 |       pendingFlipRef.current = null;
+> 411 |       flushSync(() => {
+      |                ^
+  412 |         setDisplayedActiveTeam(team);
+  413 |         setDisplayedActivePlayerIndex(playerIndex);
+  414 |       }); (hooks/useAnimationQueue.ts:411:16)
+ GET / 200 in 174ms (next.js: 22ms, application-code: 152ms)

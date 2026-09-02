@@ -1,0 +1,1546 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f0fdf4;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* 정글 팔레트 */
+  --color-jungle-50:  #f0fdf4;
+  --color-jungle-100: #dcfce7;
+  --color-jungle-200: #bbf7d0;
+  --color-jungle-300: #86efac;
+  --color-jungle-400: #4ade80;
+  --color-jungle-500: #22c55e;
+  --color-jungle-600: #16a34a;
+  --color-jungle-700: #15803d;
+  --color-jungle-800: #166534;
+  --color-jungle-900: #14532d;
+  --color-jungle-950: #052e16;
+
+  /* 나뭇가지 */
+  --color-bark-200: #fde68a;
+  --color-bark-500: #92400e;
+  --color-bark-700: #78350f;
+
+  /* 팀 색상 */
+  --color-team-a: #22c55e;
+  --color-team-b: #3b82f6;
+
+  /* 커스텀 애니메이션 */
+  --animate-glow-pulse: glowPulse 1.4s ease-in-out infinite;
+  --animate-hourglass-shake: hourglassShake 0.45s ease-in-out infinite;
+  --animate-leaf-sway: leafSway 1.2s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #052e16;
+    --foreground: #dcfce7;
+  }
+}
+
+/* 전반적으로 UI가 커서 "브라우저 줌 80%"가 맞는 것처럼 보인다는 피드백 — 대부분의
+   크기(rem 기반 Tailwind 클래스)가 루트 폰트 크기를 기준으로 계산되므로, 루트
+   폰트 크기 자체를 80%로 낮춰 모든 요소(글자·카드·아이콘·여백)를 한 번에
+   비례적으로 줄인다(각 컴포넌트를 일일이 손보는 대신 이 한 줄로 전체를 맞춘다). */
+html {
+  font-size: 80%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
+}
+
+/* ── 현재 플레이어 글로우 펄스 ──────────────────────────────────────── */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  50% {
+    box-shadow:
+      0 0 10px 3px rgba(255, 255, 255, 0.9),
+      0 0 22px 7px rgba(74, 222, 128, 0.55);
+  }
+}
+
+.glow-pulse {
+  animation: var(--animate-glow-pulse);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow-pulse {
+    animation: none;
+    outline: 2px solid white;
+    outline-offset: 1px;
+  }
+}
+
+/* ── 모래시계 흔들림 ────────────────────────────────────────────────── */
+@keyframes hourglassShake {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-18deg); }
+  50%       { transform: rotate(18deg); }
+  80%       { transform: rotate(-10deg); }
+}
+
+.hourglass-shake {
+  display: inline-block;
+  animation: var(--animate-hourglass-shake);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hourglass-shake { animation: none; }
+}
+
+/* ── 잎사귀 흔들림 ──────────────────────────────────────────────────── */
+@keyframes leafSway {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25%       { transform: rotate(-9deg) scale(1.06); }
+  75%       { transform: rotate(9deg) scale(1.06); }
+}
+
+.leaf-sway {
+  transition: transform 0.2s ease;
+  transform-origin: bottom center;
+}
+
+.leaf-sway:hover,
+.leaf-sway-active {
+  animation: var(--animate-leaf-sway);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaf-sway:hover, .leaf-sway-active { animation: none; }
+}
+
+/* ── 카드 공통 그림자 (순서와 무관하게 항상 약하게) ────────────────────────── */
+.card-shadow {
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.18);
+}
+
+/* ── 내 차례 카드 — 코팅된 듯 반짝이는 효과 ────────────────────────────────── */
+@keyframes shinySweep {
+  0%   { transform: translateX(-160%) rotate(20deg); opacity: 0; }
+  12%  { opacity: 0.85; }
+  45%  { transform: translateX(220%) rotate(20deg); opacity: 0; }
+  100% { transform: translateX(220%) rotate(20deg); opacity: 0; }
+}
+@keyframes shinyPulse {
+  0%, 100% { box-shadow: 0 2px 3px rgba(0, 0, 0, 0.18); }
+  50%      { box-shadow: 0 2px 3px rgba(0, 0, 0, 0.18), 0 0 9px 2px rgba(255, 255, 255, 0.65); }
+}
+.card-shiny {
+  position: relative;
+  overflow: hidden;
+  animation: shinyPulse 1.7s ease-in-out infinite;
+}
+.card-shiny::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -20%;
+  width: 35%;
+  height: 220%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  animation: shinySweep 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-shiny { animation: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 2px 3px rgba(0,0,0,0.18); }
+  .card-shiny::after { display: none; }
+}
+
+/* ── 카드 뒷면 — 짙은 녹색 바탕 + 연두색 나뭇잎 ─────────────────────────────── */
+.card-back {
+  background: radial-gradient(circle at 50% 35%, #1a7a42 0%, #14532d 75%);
+  border: 1px solid #0d3820;
+}
+.card-back-active {
+  background: radial-gradient(circle at 50% 35%, #22a355 0%, #166534 75%);
+}
+.card-back-dim {
+  background: radial-gradient(circle at 50% 35%, #143b26 0%, #0d2818 75%);
+  opacity: 0.85;
+}
+.card-back-expanded.card-back-active {
+  background: radial-gradient(circle at 50% 35%, #1d8a4a 0%, #115229 75%);
+}
+.card-back-expanded.card-back-dim {
+  background: radial-gradient(circle at 50% 35%, #102f1e 0%, #081f13 75%);
+}
+
+/* ── 카드 플립 ──────────────────────────────────────────────────────────── */
+@keyframes cardFlipOut {
+  0%   { transform: perspective(500px) rotateY(0deg); }
+  100% { transform: perspective(500px) rotateY(90deg); }
+}
+@keyframes cardFlipIn {
+  0%   { transform: perspective(500px) rotateY(-90deg) scale(1); }
+  70%  { transform: perspective(500px) rotateY(0deg) scale(1); }
+  85%  { transform: perspective(500px) rotateY(0deg) scale(1.12); }
+  100% { transform: perspective(500px) rotateY(0deg) scale(1); }
+}
+
+.card-flip-out {
+  animation: cardFlipOut 125ms ease-in forwards;
+  backface-visibility: hidden;
+}
+.card-flip-in {
+  /* 회전 후 살짝 튀어오르는 펀치 바운스로 "쫀득한" 타격감을 준다 */
+  animation: cardFlipIn 180ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  backface-visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-flip-out, .card-flip-in { animation: none; }
+}
+
+/* ── 이번 액션에서 새로 뒤집힌 카드 강조 (이전 턴 정보는 노출하지 않는다) ───────── */
+@keyframes cardRecentOpen {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+  30%  { box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.85); }
+  100% { box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.55); }
+}
+.card-recent-open {
+  animation: cardRecentOpen 0.6s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-recent-open { animation: none; box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.55); }
+}
+
+/* ── 실용신양 보유량 게이지 — 카드 소모 시 양 한 마리가 "뿅" 사라짐 ───────────── */
+@keyframes sheepPopBurst {
+  0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+  60%  { transform: translate(-50%, -50%) scale(2) translateY(-10px); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.5) translateY(-24px); opacity: 0; }
+}
+.sheep-pop-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 1.8rem;
+  pointer-events: none;
+  animation: sheepPopBurst 500ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-pop-burst { display: none; }
+}
+
+/* 실용신양 연쇄가 실제로 굴러가는 동안 게이지 자체가 은은하게 두근거려 눈에 띈다 */
+@keyframes sheepBarPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.7); }
+  50%      { box-shadow: 0 0 0 6px rgba(163, 230, 53, 0); }
+}
+.sheep-bar-rolling {
+  animation: sheepBarPulse 0.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-bar-rolling { animation: none; }
+}
+
+/* ── 윙크 ───────────────────────────────────────────────────────────────── */
+@keyframes wink {
+  0%, 100% { transform: scaleY(1); }
+  30%, 50%  { transform: scaleY(0.15); }
+}
+.card-wink {
+  animation: wink 0.45s ease-in-out;
+  display: inline-block;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-wink { animation: none; }
+}
+
+/* ── 금빛 플래시 ─────────────────────────────────────────────────────────── */
+@keyframes goldFlash {
+  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); transform: scale(1); }
+  35%  { box-shadow: 0 0 14px 5px rgba(251, 191, 36, 0.85), 0 0 28px 10px rgba(253, 224, 71, 0.4); transform: scale(1.08); }
+  70%  { box-shadow: 0 0 8px 3px rgba(251, 191, 36, 0.5); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); transform: scale(1); }
+}
+.card-gold-flash {
+  animation: goldFlash 0.7s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-gold-flash { animation: none; box-shadow: 0 0 0 3px #fbbf24; }
+}
+
+/* ── 화면 흔들림 (실용신양 콤보마다 발동, --shake-scale로 강도 연속 조절) ──────── */
+@keyframes shakeCombo {
+  0%, 100% { transform: translate(0, 0); }
+  25%       { transform: translate(calc(var(--shake-scale, 1) * -2px), calc(var(--shake-scale, 1) * 1px)); }
+  50%       { transform: translate(calc(var(--shake-scale, 1) * 2px), calc(var(--shake-scale, 1) * -1px)); }
+  75%       { transform: translate(calc(var(--shake-scale, 1) * -1px), calc(var(--shake-scale, 1) * 2px)); }
+}
+.shake-combo { animation: shakeCombo 0.3s ease-in-out; }
+@media (prefers-reduced-motion: reduce) {
+  .shake-combo { animation: none; }
+}
+
+/* ── 카드 들썩임 (sheep level≥8) ────────────────────────────────────────── */
+@keyframes cardJolt {
+  0%, 100% { transform: translateY(0); }
+  30%       { transform: translateY(-5px); }
+  60%       { transform: translateY(2px); }
+}
+.card-jolt {
+  animation: cardJolt 0.35s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-jolt { animation: none; }
+}
+
+/* ── 나뭇잎 낙하 ─────────────────────────────────────────────────────────── */
+@keyframes leafFall {
+  0%   { transform: translateY(-10px) translateX(0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translateY(100vh) translateX(var(--leaf-drift, 40px)) rotate(680deg) scale(0.6); opacity: 0; }
+}
+.leaf-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 50;
+  font-size: 1.4rem;
+  animation: leafFall var(--leaf-dur, 2.2s) ease-in forwards;
+  animation-delay: var(--leaf-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .leaf-particle { display: none; }
+}
+
+/* ── 플로팅 텍스트 ───────────────────────────────────────────────────────── */
+@keyframes floatUp {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  60%  { transform: translateY(-36px) scale(1.15); opacity: 0.9; }
+  100% { transform: translateY(-60px) scale(0.9); opacity: 0; }
+}
+.float-text {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.1rem;
+  font-weight: 800;
+  z-index: 30;
+  white-space: nowrap;
+  animation: floatUp 1.1s ease-out forwards;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+.float-text-bonus  { color: #16a34a; }
+.float-text-penalty { color: #dc2626; }
+
+/* ── 레벨업 — 경험치 표가 짧게 흔들리고 "🔥⬆️ Lv UP!"이 튀어오른다 ─────────────── */
+@keyframes levelUpShake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15%       { transform: translate(-4px, -2px) rotate(-2deg); }
+  30%       { transform: translate(4px, 2px) rotate(2deg); }
+  45%       { transform: translate(-3px, -1px) rotate(-1.5deg); }
+  60%       { transform: translate(3px, 1px) rotate(1.5deg); }
+  75%       { transform: translate(-2px, -1px) rotate(-1deg); }
+}
+.level-up-shake {
+  animation: levelUpShake 0.5s ease-in-out;
+}
+@keyframes levelUpBurst {
+  0%   { transform: scale(0.4) translateY(6px); opacity: 0; }
+  25%  { transform: scale(1.25) translateY(-4px); opacity: 1; }
+  40%  { transform: scale(1) translateY(-2px); opacity: 1; }
+  80%  { transform: scale(1) translateY(-6px); opacity: 1; }
+  100% { transform: scale(0.85) translateY(-16px); opacity: 0; }
+}
+.level-up-text {
+  display: inline-block;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #f97316;
+  background: rgba(20, 83, 45, 0.92);
+  border-radius: 9999px;
+  padding: 0.2rem 0.7rem;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  animation: levelUpBurst 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-up-shake { animation: none; }
+  .level-up-text { animation: none; opacity: 1; }
+}
+
+/* ── 팀 체력 오브 — 아래 0, 위 WIN_HP까지 차오르는 유리구슬 ────────────────────── */
+.hp-orb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), inset 0 2px 3px rgba(255, 255, 255, 0.4);
+}
+.hp-orb-mine {
+  background: linear-gradient(155deg, #f7fee7 0%, #ecfccb 100%);
+  border: 2px solid #4d7c0f;
+}
+.hp-orb-enemy {
+  background: linear-gradient(155deg, #fff1f2 0%, #ffe4e6 100%);
+  border: 2px solid #9f1239;
+}
+.hp-orb-liquid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: height 600ms cubic-bezier(0.34, 1.2, 0.4, 1);
+}
+.hp-orb-mine .hp-orb-liquid { background: linear-gradient(180deg, #a3e635 0%, #4d7c0f 100%); }
+.hp-orb-enemy .hp-orb-liquid { background: linear-gradient(180deg, #fb7185 0%, #9f1239 100%); }
+@keyframes hpOrbWave {
+  0%, 100% { transform: translateX(-4%) scaleY(1); }
+  50%      { transform: translateX(4%) scaleY(1.4); }
+}
+.hp-orb-wave {
+  position: absolute;
+  top: -5px;
+  left: -25%;
+  width: 150%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  animation: hpOrbWave 2.4s ease-in-out infinite;
+}
+.hp-orb-segments {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.hp-orb-segment-line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+.hp-orb-value {
+  position: relative;
+  z-index: 2;
+  font-size: 2.75rem;
+  font-weight: 900;
+  color: #14532d;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.7);
+}
+.hp-orb-enemy .hp-orb-value { color: #7f1d1d; }
+.hp-orb-sheen {
+  position: absolute;
+  top: 8%;
+  left: 14%;
+  width: 26%;
+  height: 16%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0));
+  border-radius: 50%;
+  filter: blur(1px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* 체력 상승 — 연두색 기운이 샤라락 아래에서 위로 훑고 지나간다 */
+@keyframes hpSurge {
+  0%   { opacity: 0; transform: translateY(35%); }
+  30%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-90%); }
+}
+.hp-orb-surge {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(0deg, rgba(163, 230, 53, 0.75) 0%, rgba(163, 230, 53, 0) 70%);
+  animation: hpSurge 700ms ease-out forwards;
+  pointer-events: none;
+}
+
+/* 체력 감소 — 빨갛게 빠직! 금 가는 느낌 + 흔들림 */
+@keyframes hpCrackShake {
+  0%, 100% { transform: translate(0, 0); }
+  15%       { transform: translate(-4px, 2px); }
+  30%       { transform: translate(4px, -2px); }
+  45%       { transform: translate(-3px, 2px); }
+  60%       { transform: translate(3px, -1px); }
+  75%       { transform: translate(-2px, 1px); }
+}
+.hp-orb-crack {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(circle at 50% 40%, rgba(220, 38, 38, 0.6), transparent 70%);
+  animation: hpCrackShake 500ms ease-in-out;
+  pointer-events: none;
+}
+/* 체력 감소 — 붉은 파편이 사방으로 튄다 */
+@keyframes hpShardFly {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--shard-dx)), calc(-50% + var(--shard-dy))) scale(0.3); opacity: 0; }
+}
+.hp-orb-shard {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: #dc2626;
+  border-radius: 2px;
+  z-index: 4;
+  animation: hpShardFly 550ms ease-out forwards;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-orb-wave, .hp-orb-surge, .hp-orb-crack, .hp-orb-shard { animation: none; }
+}
+
+/* ── 체력 즉시 승패 — 결정타! 강조 배너 ──────────────────────────────────────── */
+@keyframes decisiveHitPop {
+  0%   { transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.25) rotate(4deg); opacity: 1; }
+  40%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+}
+.decisive-hit-banner {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  animation: decisiveHitPop 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.decisive-hit-title {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #fbbf24;
+  -webkit-text-stroke: 3px #7c2d12;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.decisive-hit-sub {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.6);
+  margin-top: 0.3rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .decisive-hit-banner { animation: none; opacity: 0; }
+}
+
+/* ── 디자인어 대기 배율 스티커 — 인어 칸 모서리에 크게 붙는 배지 ─────────────── */
+.mermaid-multiplier-sticker {
+  position: absolute;
+  top: -0.4rem;
+  left: -0.4rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 9999px;
+  border: 2.5px solid #fff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(155deg, #60a5fa 0%, #2563eb 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transform: rotate(-12deg);
+  animation: mermaidStickerPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes mermaidStickerPop {
+  0% { transform: rotate(-12deg) scale(0.4); opacity: 0; }
+  100% { transform: rotate(-12deg) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-multiplier-sticker { animation: none; }
+}
+
+/* 실용신양이 예약해둔 다음 턴 추가 뽑기 수 — 인어 배율 스티커와 같은 자리·같은 방식,
+   양 테마 색으로만 다르게 붙인다. */
+.sheep-extra-draws-sticker {
+  position: absolute;
+  top: -0.4rem;
+  left: -0.4rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.6rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 9999px;
+  border: 2.5px solid #fff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(155deg, #a3e635 0%, #4d7c0f 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transform: rotate(-12deg);
+  animation: mermaidStickerPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-extra-draws-sticker { animation: none; }
+}
+
+/* ── 헤더 진행 단계 도식(장소 선택 → 행동 선택) — 그림자로 입체감을 준다 ────────── */
+.step-flow {
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.step-pill-active {
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+  color: #451a03;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.step-pill-inactive {
+  background: rgba(5, 46, 22, 0.55);
+  color: #6b8f7a;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* 두 단계 사이 화살표 — 계속 색이 바뀌며 순서대로 밝아졌다 어두워지길 반복한다 */
+@keyframes stepChevronFlow {
+  0%, 100% { opacity: 0.3; color: #4ade80; transform: translateX(0); }
+  50%      { opacity: 1;   color: #fbbf24; transform: translateX(2px); }
+}
+.step-chevron {
+  display: inline-block;
+  font-weight: 900;
+  font-size: 0.8rem;
+  line-height: 1;
+  animation: stepChevronFlow 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .step-chevron { animation: none; opacity: 0.9; color: #fbbf24; }
+}
+
+/* ── 헤더의 "도토리 축제 진행 중" 배지 — 연노랑↔노랑으로 깜빡인다 ──────────────── */
+@keyframes festivalHeaderBlink {
+  0%, 100% { color: #fef9c3; }
+  50%      { color: #eab308; }
+}
+.festival-header-badge {
+  animation: festivalHeaderBlink 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .festival-header-badge { animation: none; color: #eab308; }
+}
+
+/* ── 점수 팝 ─────────────────────────────────────────────────────────────── */
+@keyframes scorePop {
+  0%   { transform: scale(1); color: inherit; }
+  40%  { transform: scale(1.35); color: #16a34a; }
+  100% { transform: scale(1); color: inherit; }
+}
+.score-pop {
+  animation: scorePop 0.4s ease-out;
+  display: inline-block;
+}
+
+/* ── 점수 패널 이펙트 ────────────────────────────────────────────────────── */
+@keyframes tigerSlash {
+  0%   { opacity: 0; clip-path: polygon(0 50%, 0 50%, 0 50%); }
+  15%  { opacity: 1; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  60%  { opacity: 0.9; }
+  100% { opacity: 0; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+}
+.tiger-slash-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 10;
+  animation: tigerSlash 1.2s ease-out forwards;
+  background:
+    repeating-linear-gradient(
+      -35deg,
+      rgba(239, 68, 68, 0.3) 0px,
+      rgba(239, 68, 68, 0.3) 5px,
+      transparent 5px,
+      transparent 16px
+    ),
+    repeating-linear-gradient(
+      35deg,
+      rgba(153, 27, 27, 0.22) 0px,
+      rgba(153, 27, 27, 0.22) 4px,
+      transparent 4px,
+      transparent 20px
+    );
+  border: 3px solid rgba(239, 68, 68, 0.75);
+  box-shadow: inset 0 0 22px 4px rgba(220, 38, 38, 0.5);
+}
+
+/* ── 특허랑이 발동 임박 경고 (공격력 바) ─────────────────────────────────── */
+@keyframes tigerImminentPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+  50%       { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+}
+.tiger-imminent {
+  animation: tigerImminentPulse 0.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiger-imminent { animation: none; outline: 2px solid #dc2626; }
+}
+
+@keyframes mermaidWave {
+  0%   { transform: translateX(-110%); opacity: 0.9; }
+  100% { transform: translateX(110%); opacity: 0.2; }
+}
+.mermaid-wave-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+.mermaid-wave-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.35), rgba(147, 197, 253, 0.5), rgba(59, 130, 246, 0.35), transparent);
+  animation: mermaidWave 0.8s ease-in-out forwards;
+}
+
+/* ── 보드 확장 숨쉬기 ────────────────────────────────────────────────────── */
+@keyframes boardBreathe {
+  0%, 100% { transform: scale(1); }
+  40%       { transform: scale(0.93); }
+}
+.board-breathe {
+  animation: boardBreathe 0.5s ease-in-out;
+}
+
+/* ── 페어 매칭 글로우 (테두리 회전 그라데이션) ───────────────────────────── */
+@keyframes pairGlowPulse {
+  0%   { box-shadow: 0 0 0 0 transparent; }
+  50%  { box-shadow: 0 0 14px 4px var(--pair-color, #4ade80); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes pairGlowSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.card-pair-glow {
+  animation: pairGlowPulse 0.5s ease-in-out both;
+}
+.card-pair-glow::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 0.7rem;
+  padding: 3px;
+  background: conic-gradient(from 0deg, var(--pair-color, #4ade80), transparent 40%, var(--pair-color, #4ade80));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: pairGlowSpin 0.5s linear both;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-pair-glow, .card-pair-glow::before { animation: none; box-shadow: 0 0 0 3px var(--pair-color, #4ade80); }
+}
+
+/* ── 페어 획득 플로팅 배지 (엄지척 + 동물 + 점수) ─────────────────────────── */
+@keyframes collectBadgeFloat {
+  0%   { transform: translateY(0) scale(0.7); opacity: 0; }
+  20%  { transform: translateY(-4px) scale(1.1); opacity: 1; }
+  100% { transform: translateY(-34px) scale(1); opacity: 0; }
+}
+.collect-badge {
+  position: absolute;
+  pointer-events: none;
+  z-index: 45;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 800;
+  animation: collectBadgeFloat 0.9s ease-out forwards;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .collect-badge { animation: none; opacity: 0; }
+}
+
+/* ── 보드 확장 지각변동 (더 강렬하게) ────────────────────────────────────── */
+@keyframes quakeExpand {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+  6%   { transform: translate(-14px, 4px) scale(1.015) rotate(-0.9deg); }
+  12%  { transform: translate(13px, -6px) scale(1.02) rotate(1deg); }
+  18%  { transform: translate(-15px, 5px) scale(1.015) rotate(-1.1deg); }
+  24%  { transform: translate(14px, -4px) scale(1.01) rotate(0.9deg); }
+  32%  { transform: translate(-11px, 6px) scale(1.01) rotate(-0.7deg); }
+  40%  { transform: translate(10px, -5px) scale(1.005) rotate(0.6deg); }
+  50%  { transform: translate(-8px, 4px) rotate(-0.5deg); }
+  60%  { transform: translate(9px, -3px) rotate(0.7deg); }
+  70%  { transform: translate(-6px, 2px) rotate(-0.4deg); }
+  80%  { transform: translate(5px, -2px) rotate(0.3deg); }
+  90%  { transform: translate(-3px, 1px) rotate(-0.2deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+.quake-expand {
+  animation: quakeExpand 0.9s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .quake-expand { animation: none; }
+}
+
+/* ── 내 차례 — 흰색/연두색이 번갈아가며 카드판 테두리를 두드러지게 강조 ─────────── */
+@keyframes turnBorderPulse {
+  0%, 100% {
+    border-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55), 0 0 18px 4px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    border-color: #4ade80;
+    box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.55), 0 0 18px 4px rgba(74, 222, 128, 0.6);
+  }
+}
+.board-my-turn {
+  animation: turnBorderPulse 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-my-turn { animation: none; border-color: #4ade80; }
+}
+
+@keyframes dustFall {
+  0%   { transform: translateY(-10px) translateX(0) rotate(0deg) scale(1); opacity: 0.95; }
+  100% { transform: translateY(var(--dust-fall, 220px)) translateX(var(--dust-drift, 20px)) rotate(200deg) scale(0.7); opacity: 0; }
+}
+.dust-particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 42;
+  font-size: var(--dust-size, 0.9rem);
+  animation: dustFall var(--dust-dur, 900ms) ease-in forwards;
+  animation-delay: var(--dust-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dust-particle { display: none; }
+}
+
+/* ── 보드 확장 — 섬광 플래시 ─────────────────────────────────────────────── */
+@keyframes expandFlash {
+  0%   { opacity: 0; }
+  8%   { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+.expand-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 48;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, rgba(255,230,150,0.9), rgba(217,119,6,0.35) 45%, transparent 75%);
+  animation: expandFlash 0.5s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .expand-flash { display: none; }
+}
+
+/* ── 보드 확장 — 충격파 링 ───────────────────────────────────────────────── */
+@keyframes expandRing {
+  0%   { transform: translate(-50%, -50%) scale(0.1); opacity: 0.9; border-width: 5px; }
+  100% { transform: translate(-50%, -50%) scale(6); opacity: 0; border-width: 1px; }
+}
+.expand-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: 9999px;
+  border: 4px solid rgba(251, 191, 36, 0.85);
+  pointer-events: none;
+  z-index: 47;
+  animation: expandRing 0.9s cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+  animation-delay: var(--ring-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .expand-ring, .expand-flash { display: none; }
+}
+
+/* ── 종료 화면 ───────────────────────────────────────────────────────────── */
+@keyframes bounceIn {
+  0%   { transform: scale(0); opacity: 0; }
+  55%  { transform: scale(1.22); opacity: 1; }
+  75%  { transform: scale(0.93); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotateZ(0deg) rotateX(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotateZ(var(--cf-rot, 540deg)) rotateX(180deg); opacity: 0.2; }
+}
+.winner-bounce-in {
+  animation: bounceIn 0.7s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 100;
+  border-radius: 2px;
+  animation: confettiFall var(--cf-dur, 2s) ease-in forwards;
+  animation-delay: var(--cf-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .winner-bounce-in { animation: none; opacity: 1; }
+  .confetti-piece   { display: none; }
+}
+
+/* ── 특허랑이 공격 — 공격자 패널 반동+슬램 ─────────────────────────────────── */
+@keyframes panelRecoilA {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-10px); }
+  40%  { transform: translateX(14px); }
+  55%  { transform: translateX(-3px); }
+  70%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+@keyframes panelRecoilB {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(10px); }
+  40%  { transform: translateX(-14px); }
+  55%  { transform: translateX(3px); }
+  70%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+.panel-recoil-a { animation: panelRecoilA 0.5s ease-in-out; }
+.panel-recoil-b { animation: panelRecoilB 0.5s ease-in-out; }
+
+/* ── 특허랑이 공격 — 피격 패널 들썩임 ───────────────────────────────────────── */
+@keyframes panelHitShake {
+  0%, 100% { transform: translate(0, 0); }
+  12%       { transform: translate(-9px, 5px); }
+  26%       { transform: translate(9px, -6px); }
+  40%       { transform: translate(-7px, 5px); }
+  54%       { transform: translate(6px, -4px); }
+  68%       { transform: translate(-4px, 3px); }
+  82%       { transform: translate(2px, -2px); }
+}
+.panel-hit-shake { animation: panelHitShake 0.6s ease-in-out; }
+
+/* ── 특허랑이 강탈 — 화면 전체 비네트 플래시 ─────────────────────────────── */
+@keyframes tigerVignette {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.tiger-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(127, 0, 0, 0.35) 100%);
+  animation: tigerVignette 0.6s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiger-vignette { display: none; }
+}
+
+/* ── 특허랑이 타격 — 화면 전체에 발톱자국 세 개가 슉! 하고 그어졌다 사라진다 ──────── */
+.tiger-claw-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 66;
+  pointer-events: none;
+  overflow: hidden;
+}
+.tiger-claw {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130vmax;
+  height: 8vmax;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));
+  opacity: 0;
+  animation: tigerClawSlash 0.5s ease-out both;
+}
+.tiger-claw-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.tiger-claw-polygon {
+  fill: #ca8a04;
+  stroke: #9a3412;
+  stroke-width: 16;
+  stroke-linejoin: round;
+}
+.tiger-claw-1 { --claw-y: -9vmax; animation-delay: 0ms; }
+.tiger-claw-2 { --claw-y: 0vmax; animation-delay: 70ms; }
+.tiger-claw-3 { --claw-y: 9vmax; animation-delay: 140ms; }
+@keyframes tigerClawSlash {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + var(--claw-y))) rotate(-22deg) scaleX(0.2); }
+  18%  { opacity: 1; transform: translate(-50%, calc(-50% + var(--claw-y))) rotate(-22deg) scaleX(1.08); }
+  30%  { opacity: 1; transform: translate(-50%, calc(-50% + var(--claw-y))) rotate(-22deg) scaleX(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiger-claw { animation: none; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-recoil-a, .panel-recoil-b, .panel-hit-shake { animation: none; }
+}
+
+/* ── 상표토끼 압박 — 상대 팀 패널에 짧은 경고 ────────────────────────────────── */
+@keyframes panelRabbitPressure {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+  35%       { box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.55); }
+}
+.panel-rabbit-pressure {
+  animation: panelRabbitPressure 0.7s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-rabbit-pressure { animation: none; outline: 2px solid rgba(236, 72, 153, 0.6); }
+}
+
+/* ── 특허랑이 공격 — 피격 테이블(실용신양/상표토끼) 들썩임 + 마이너스 플로팅 ──── */
+@keyframes tableHitShake {
+  0%, 100% { transform: translate(0, 0); }
+  20%       { transform: translate(-3px, 2px); }
+  45%       { transform: translate(4px, -2px); }
+  70%       { transform: translate(-2px, 1px); }
+}
+.table-hit {
+  animation: tableHitShake 0.35s ease-in-out;
+  outline: 2px solid rgba(220, 38, 38, 0.6);
+  outline-offset: -1px;
+}
+.table-hit-float {
+  position: absolute;
+  right: 0.5rem;
+  top: -0.6rem;
+  color: #dc2626;
+  font-weight: 800;
+  font-size: 0.9rem;
+  pointer-events: none;
+  animation: floatUp 0.8s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-hit { animation: none; }
+  .table-hit-float { animation: none; opacity: 0; }
+}
+
+/* ── 상표토끼 보너스 — 카드에서 점수판으로 날아가는 토끼 ──────────────────── */
+@keyframes rabbitFlightMove {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(0.3); opacity: 0; }
+}
+.rabbit-flight-inner {
+  display: inline-block;
+  animation: rabbitFlightMove 650ms ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rabbit-flight-inner { display: none; }
+}
+
+/* ── 실용신양 추가 오픈 콤보 텍스트 ───────────────────────────────────────── */
+@keyframes sheepComboFloat {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(0); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-46px); }
+}
+.sheep-combo-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-block;
+  white-space: nowrap;
+  font-weight: 800;
+  background: linear-gradient(160deg, #ca8a04 0%, #c2410c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.6);
+  filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.35));
+  animation: sheepComboFloat 1400ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-combo-text { display: none; }
+}
+
+/* ── 실용신양 연쇄 종료 — 화면 중앙 메인 콤보 배너 ───────────────────────────── */
+@keyframes mainComboPop {
+  0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  18%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  30%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  78%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0; }
+}
+.main-combo-banner {
+  position: fixed;
+  left: 50%;
+  top: 28%;
+  z-index: 70;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 2.6rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  animation: mainComboPop 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.main-combo-base { color: #f8fafc; }
+.main-combo-warm { color: #f97316; font-size: 3rem; }
+.main-combo-hot  { color: #dc2626; font-size: 3.6rem; }
+@media (prefers-reduced-motion: reduce) {
+  .main-combo-banner { animation: none; opacity: 0; }
+}
+
+/* ── 실용신양 발동 예고 — "실용신양의 N번째 힘!" 배너 ────────────────────────── */
+@keyframes sheepLoadedPop {
+  0%   { transform: translate(-50%, -50%) scale(0.5) rotate(-4deg); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.2) rotate(3deg); opacity: 1; }
+  32%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  80%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.85) rotate(0deg); opacity: 0; }
+}
+.sheep-loaded-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 2.2rem;
+  color: #f7fee7;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px #365314;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: sheepLoadedPop 1100ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.festival-loaded-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 2.2rem;
+  color: #fef3c7;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px #78350f;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: sheepLoadedPop 1100ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-loaded-banner, .festival-loaded-banner { animation: none; opacity: 0; }
+}
+
+
+/* ── 카드 오픈/페어/효과 자막 (보드 중앙 오버레이) ───────────────────────────── */
+@keyframes captionPop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  15%  { transform: scale(1.15); opacity: 1; }
+  25%  { transform: scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: scale(0.92) translateY(-8px); opacity: 0; }
+}
+.card-caption {
+  font-weight: 900;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: captionPop cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.card-caption-flip {
+  font-size: 1.35rem;
+  color: #f8fafc;
+  animation-duration: 550ms;
+}
+.card-caption-pair {
+  font-size: 1.7rem;
+  color: #fbbf24;
+  animation-duration: 800ms;
+}
+.card-caption-effect {
+  font-size: 3.3rem;
+  animation-duration: 950ms;
+}
+.card-caption-effect-ally { color: #22c55e; }
+.card-caption-effect-enemy { color: #ef4444; }
+.card-caption-effect-neutral { color: #ca8a04; }
+@media (prefers-reduced-motion: reduce) {
+  .card-caption { animation: none; opacity: 0; }
+}
+
+/* ── 카드 포커스(시선 집중) 연출 — 화면을 어둡게 하지 않고, 클릭된 장소
+   테두리에서 빠르게 연달아 3개의 링이 뻗어나가며 "샤샤샥" 느낌을 준다. ────── */
+@keyframes cardFocusRingFast {
+  0%   { transform: scale(0.5); opacity: 0.95; border-width: 4px; }
+  100% { transform: scale(1.7); opacity: 0; border-width: 1px; }
+}
+.card-focus-burst {
+  pointer-events: none;
+  z-index: 55;
+}
+.card-focus-ring-fast {
+  position: absolute;
+  inset: -6px;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.7);
+  animation: cardFocusRingFast 260ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-focus-burst { display: none; }
+}
+
+/* ── 플레이어 반응 이모티콘 (프로필 옆) ──────────────────────────────────── */
+/* 등장(팝+흔들림) → 유지 → 마지막에 페이드아웃, 총 2000ms (JS 제거 타이밍과 일치) */
+@keyframes emoticonLifecycle {
+  0%   { transform: translateY(var(--stack-offset, 0px)) scale(0.4) rotate(-8deg); opacity: 0; }
+  18%  { transform: translateY(var(--stack-offset, 0px)) scale(1.15) rotate(6deg); opacity: 1; }
+  27%  { transform: translateY(var(--stack-offset, 0px)) scale(0.95) rotate(-4deg); opacity: 1; }
+  36%  { transform: translateY(var(--stack-offset, 0px)) scale(1.05) rotate(2deg); opacity: 1; }
+  45%  { transform: translateY(var(--stack-offset, 0px)) scale(1) rotate(0deg); opacity: 1; }
+  85%  { transform: translateY(var(--stack-offset, 0px)) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(0px) scale(0.85) rotate(0deg); opacity: 0; }
+}
+.player-emoticon {
+  display: block;
+  border: 3px solid rgba(0, 0, 0, 0.85);
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  object-fit: contain;
+  background: #fff;
+  animation: emoticonLifecycle 2000ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-emoticon { animation: none; }
+}
+
+/* ── 디자인어 효과 — 큰 인어 팝업 + 음표 ───────────────────────────────────── */
+@keyframes mermaidPopIn {
+  0%   { transform: scale(0) translateY(20px); opacity: 0; }
+  15%  { transform: scale(1.15) translateY(0); opacity: 1; }
+  25%  { transform: scale(1); opacity: 1; }
+  85%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.7); opacity: 0; }
+}
+@keyframes mermaidShiver {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%       { transform: translateX(-4px) rotate(-3deg); }
+  20%       { transform: translateX(4px) rotate(3deg); }
+  30%       { transform: translateX(-4px) rotate(-3deg); }
+  40%       { transform: translateX(4px) rotate(3deg); }
+  50%       { transform: translateX(-3px) rotate(-2deg); }
+  60%       { transform: translateX(3px) rotate(2deg); }
+}
+.mermaid-popup {
+  position: absolute;
+  bottom: 8px;
+  z-index: 46;
+  pointer-events: none;
+  font-size: 4rem;
+  line-height: 1;
+  animation: mermaidPopIn 2s ease-in-out forwards;
+}
+.mermaid-popup.left  { left: 12px; }
+.mermaid-popup.right { right: 12px; }
+.mermaid-popup-body {
+  display: inline-block;
+  font-size: 6.5rem;
+  animation: mermaidShiver 0.5s ease-in-out 0.35s 3;
+}
+@keyframes notePop {
+  0%   { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--note-x, 20px), var(--note-y, -40px)) scale(1.2) rotate(var(--note-rot, 20deg)); opacity: 0; }
+}
+.mermaid-note {
+  position: absolute;
+  font-size: 2.75rem;
+  animation: notePop 900ms ease-out forwards;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-popup { animation: none; opacity: 1; }
+  .mermaid-popup-body { animation: none; }
+  .mermaid-note { display: none; }
+}
+
+/* ── 장소 타일 — 평소엔 어둡게, 마우스 올리면 밝아짐 ─────────────────────────── */
+.place-tile {
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.55);
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+.place-tile-active:hover {
+  filter: brightness(1);
+  transform: scale(1.015);
+}
+.place-tile-disabled {
+  filter: brightness(0.4) grayscale(30%);
+}
+@keyframes placeTilePress {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.93); }
+  100% { transform: scale(1); }
+}
+.place-tile-pressed {
+  animation: placeTilePress 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-tile-pressed { animation: none; }
+}
+
+/* ── 첫 턴 온보딩 — "여기를 눌러보세요" 손가락 가이드 ────────────────────────── */
+/* 버튼 정중앙을 손으로 가리면 안 보이니, 버튼 위쪽 10% 지점(살짝 위)에 아래를
+   가리키는 손이 위아래로 까딱까딱하며 "여길 누르세요"를 유도한다. */
+@keyframes guideFingerBounce {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50%      { transform: translate(-50%, -50%) translateY(-14px); }
+}
+.place-guide-finger {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4.5rem;
+  z-index: 95;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  animation: guideFingerBounce 0.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-guide-finger { animation: none; }
+}
+
+/* ── 턴 종료 스킬 선택 모달 ─────────────────────────────────────────────── */
+.skill-choice-panel {
+  border: none;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 지금 실제로 고를 수 있는 칸에 마우스를 올리면, 카드 게임에서 손에 쥔 카드를
+   고르듯 살짝 떠오르며 커진다. disabled(레벨 부족/내 차례 아님)에는 걸리지 않는다. */
+.skill-choice-panel:not(:disabled):hover {
+  transform: translateY(-16px) scale(1.06);
+  z-index: 30;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skill-choice-panel { transition: none; }
+  .skill-choice-panel:not(:disabled):hover { transform: none; }
+}
+/* 컷신 이미지를 어둡게 하는 filter는 반드시 이 배경 레이어(자막과 분리된 별도
+   div)에만 걸어야 한다 — 버튼 전체에 filter를 걸면 그 위에 얹은 자막까지 함께
+   어두워져 "레벨 부족"일 때 제목/설명 글자가 거의 안 보이는 문제가 있었다. */
+.skill-choice-bg {
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.55);
+  transition: filter 0.2s ease;
+}
+.skill-choice-panel:hover .skill-choice-bg,
+.skill-choice-panel:focus-visible .skill-choice-bg {
+  filter: brightness(1);
+}
+.skill-choice-bg-disabled,
+.skill-choice-panel:hover .skill-choice-bg-disabled,
+.skill-choice-panel:focus-visible .skill-choice-bg-disabled {
+  filter: brightness(0.18) grayscale(70%);
+}
+
+/* 다른 스킬 패널처럼 배경에 "턴 넘기기" 그림을 깔아준다 — 별도 이미지 파일 없이
+   인라인 SVG로 살짝 기울어진 두꺼운 화살표(+ 잔상 속도선)를 그려 익살스럽게
+   "다음으로 휙~" 넘어가는 느낌을 짙은 초록 그라데이션 위에 얹는다. 사진이 아니라
+   그린 그림이라 기본 dim(0.55)이 과하게 어두워 보여 더 밝은 시작값을 쓴다. */
+.pass-panel-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg stroke='%23a3e635' stroke-width='6' stroke-linecap='round' opacity='0.5'%3E%3Cpath d='M8 78 Q20 78 30 78'/%3E%3Cpath d='M4 100 Q18 100 28 100'/%3E%3Cpath d='M8 122 Q20 122 30 122'/%3E%3C/g%3E%3Cg transform='rotate(-6 100 100)'%3E%3Cpolygon points='35,80 112,80 112,52 178,100 112,148 112,120 35,120' fill='%23fde68a' stroke='%23365314' stroke-width='7' stroke-linejoin='round' opacity='0.85'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(165deg, #1f7a45 0%, #0f3d24 100%);
+  background-repeat: no-repeat;
+  background-position: center 35%, center;
+  background-size: 55% auto, cover;
+  filter: brightness(0.85);
+}
+.skill-choice-panel:hover .pass-panel-bg,
+.skill-choice-panel:focus-visible .pass-panel-bg {
+  filter: brightness(1.08);
+}
+/* 컷신 이미지는 거의 안 보일 만큼 어둡게, 그 위 자막(하얀 글자 + 검정 테두리)만
+   또렷하게 읽히도록 전체적으로 진하게 깐다. */
+.skill-choice-dim {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.31) 55%, rgba(0, 0, 0, 0.24) 100%);
+  pointer-events: none;
+}
+
+/* ── 쓸 수 있는 스킬이 하나도 없을 때 — "아무것도 하지 않음" 강조 ────────────── */
+@keyframes skillChoiceGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(163, 230, 53, 0); filter: brightness(0.85); }
+  50%       { box-shadow: inset 0 0 24px 6px rgba(163, 230, 53, 0.85); filter: brightness(1.15); }
+}
+.skill-choice-glow {
+  animation: skillChoiceGlow 1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skill-choice-glow { animation: none; box-shadow: inset 0 0 0 3px rgba(163, 230, 53, 0.9); }
+}
+.skill-outline-text {
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 3px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* ── 중앙 동물 스택 — 카드 한 장 ──────────────────────────────────────────── */
+/* 카드 크기를 부모(스택 칸) 기준 %로 주면 flex 중첩 구조에서 높이 계산이 꼬여
+   레이아웃이 전체적으로 무너지는 문제가 있었다(보드 두 번째 줄이 화면 밖으로
+   밀려나는 등). 그래서 부모 크기와 무관하게 항상 같은 값으로 계산되는 rem
+   고정 크기로 되돌리되, 원래 88×116px(=5.5rem×7.25rem, 루트 16px 기준)를 그대로
+   rem으로 옮겨서, 루트 폰트 크기를 80%로 낮춘 지금은 자동으로 70.4×92.8px로
+   함께 줄어들도록 한다 — 나머지 rem 기반 UI와 항상 같은 비율을 유지한다. */
+.stack-card {
+  position: relative;
+  width: 5.5rem;
+  height: 7.25rem;
+  border-radius: 14px;
+  background: #fff;
+  border: 2px solid #d1d5db;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+@keyframes stackCardPop {
+  0%   { transform: scale(0.4) translateY(-10px); opacity: 0; }
+  60%  { transform: scale(1.12) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.stack-card-new {
+  animation: stackCardPop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+/* 장소 타일 절반쯤을 지나는 지점까지만 이동한 뒤, 자연스럽게 페이드아웃되며 사라진다
+   (합계 점수판이 화면 아래쪽으로 옮겨졌으므로 아래쪽으로 더 크게 이동한다). */
+/* 카드가 실제로 획득한 팀의 그 동물 칸(--fling-dx/dy, StackCardView가 계산)까지
+   정확히 날아간다 — 대상 칸을 못 찾으면 팀 방향으로만 대략 날아가는 폴백값이 대신 들어온다. */
+@keyframes stackCardFling {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  35%  { opacity: 1; }
+  100% { transform: translate(var(--fling-dx), var(--fling-dy)) scale(0.4) rotate(var(--fling-rot)); opacity: 0; }
+}
+.stack-card-fling { animation: stackCardFling 450ms ease-in forwards; z-index: 20 !important; } /* 원래 750ms의 60% — useAnimationQueue.ts의 COLLECT_FLING_DUR과 일치해야 함 */
+.stack-total-badge {
+  line-height: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stack-card-new, .stack-card-fling { animation: none; }
+}
+
+/* ── 슬롯머신 뽑기 연출 ──────────────────────────────────────────────────── */
+.draw-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 88px;
+  min-height: 128px;
+  background: #fff;
+  border: 3px solid #fbbf24;
+  border-radius: 14px;
+  padding: 8px 14px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+@keyframes drawSlotShake {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  25%       { transform: translate(-50%, -50%) rotate(-6deg) scale(1.05); }
+  50%       { transform: translate(-50%, -50%) rotate(0deg) scale(0.97); }
+  75%       { transform: translate(-50%, -50%) rotate(6deg) scale(1.05); }
+}
+.draw-slot-spin {
+  animation: drawSlotShake 0.13s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-slot-spin { animation: none; }
+}
+
+/* 축제 시작 — 보드 여기저기서 도토리가 폭죽처럼 터진다 */
+@keyframes festivalAcornPop {
+  0%   { transform: translate(-50%, -50%) scale(0.3) rotate(-20deg); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.3) rotate(10deg); opacity: 1; }
+  40%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(0.8) rotate(0deg); opacity: 0; }
+}
+.festival-acorn-burst {
+  font-size: 2.2rem;
+  animation: festivalAcornPop 900ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .festival-acorn-burst { animation: none; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stack-card-bomb-fall { animation: none; opacity: 0; }
+}
+
+/* ── 짝 맞음 확인 흔들기 — 홀수/짝수 번째 카드가 서로 반대 방향으로 흔들린다 ─────── */
+@keyframes stackCardShakeA {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-9px); }
+  50%      { transform: translateX(0); }
+  75%      { transform: translateX(9px); }
+}
+@keyframes stackCardShakeB {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(9px); }
+  50%      { transform: translateX(0); }
+  75%      { transform: translateX(-9px); }
+}
+.stack-card-shake-a { animation: stackCardShakeA 550ms ease-in-out; }
+.stack-card-shake-b { animation: stackCardShakeB 550ms ease-in-out; }
+@media (prefers-reduced-motion: reduce) {
+  .stack-card-shake-a, .stack-card-shake-b { animation: none; }
+}
+
+/* ── 실용신양 예약 뽑기 — 양 이모지가 장소까지 통통 튀며 날아간다 ───────────── */
+@keyframes woolBounce {
+  0%, 100% { translate: 0 0; rotate: -10deg; }
+  50%      { translate: 0 -8px; rotate: 10deg; }
+}
+.wool-ball {
+  font-size: 3.2rem;
+  animation: woolBounce 0.3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.75)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+  .wool-ball { animation: none; }
+}
+
+/* ── 도토리 축제 랜덤 뽑기 — 양 이모지와 같은 자리에서, 도토리답게 살짝 흔들며 날아간다 ── */
+@keyframes acornWobble {
+  0%, 100% { rotate: -12deg; }
+  50%      { rotate: 12deg; }
+}
+.acorn-ball {
+  font-size: 3rem;
+  animation: acornWobble 0.3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(217, 119, 6, 0.85)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+  .acorn-ball { animation: none; }
+}

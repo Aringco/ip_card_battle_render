@@ -1,0 +1,5 @@
+
+> server@1.0.0 dev
+> ts-node index.ts
+
+카드배틀 WebSocket 서버 시작 — ws://localhost:8080

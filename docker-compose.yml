@@ -1,0 +1,10 @@
+services:
+  card-battle:
+    build:
+      context: .
+      args:
+        # 외부 접속 시 wss://<호스트IP 또는 도메인>/ws 로 변경 (Render는 https 도메인이므로 wss)
+        NEXT_PUBLIC_WS_URL: ws://localhost:3000/ws
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

@@ -1,0 +1,8 @@
+{
+  "name": "card-battle",
+  "private": true,
+  "workspaces": ["client", "server", "shared"],
+  "scripts": {
+    "start": "ts-node --transpile-only server.ts"
+  }
+}
