@@ -365,7 +365,7 @@ function GameRulesFields({
                     <span className="text-gray-400 w-4">{suffix}</span>
                   </div>
                 </div>
-                {hint && <p className="text-[0.65rem] text-gray-400 text-right">{hint}</p>}
+                {hint && <p className="text-2xs text-gray-400 text-right">{hint}</p>}
               </div>
             );
           })}

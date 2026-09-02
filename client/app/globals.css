@@ -3,6 +3,8 @@
 :root {
   --background: #f0fdf4;
   --foreground: #171717;
+  /* 글씨 크기 배수(1 = 기본). lib/uiSettings.ts가 런타임에 덮어쓴다. */
+  --font-scale: 1;
 }
 
 @theme inline {
@@ -33,6 +35,24 @@
   --color-team-a: #22c55e;
   --color-team-b: #3b82f6;
 
+  /* 글씨 크기 5단계 (lib/uiSettings.ts) — Tailwind 기본 텍스트 스케일을 --font-scale
+     배수로 다시 정의한다. 텍스트 유틸리티(text-sm 등)만 이 값을 쓰므로 여백·카드
+     크기 같은 레이아웃은 그대로 두고 글자만 커지고 작아진다.
+     (줄 간격 변수 --text-*--line-height는 배수라 폰트 크기에 자동으로 비례한다) */
+  --text-xs:   calc(0.75rem  * var(--font-scale));
+  --text-sm:   calc(0.875rem * var(--font-scale));
+  --text-base: calc(1rem     * var(--font-scale));
+  --text-lg:   calc(1.125rem * var(--font-scale));
+  --text-xl:   calc(1.25rem  * var(--font-scale));
+  --text-2xl:  calc(1.5rem   * var(--font-scale));
+  --text-3xl:  calc(1.875rem * var(--font-scale));
+  --text-4xl:  calc(2.25rem  * var(--font-scale));
+  --text-5xl:  calc(3rem     * var(--font-scale));
+  --text-6xl:  calc(3.75rem  * var(--font-scale));
+  --text-7xl:  calc(4.5rem   * var(--font-scale));
+  --text-8xl:  calc(6rem     * var(--font-scale));
+  --text-9xl:  calc(8rem     * var(--font-scale));
+
   /* 커스텀 애니메이션 */
   --animate-glow-pulse: glowPulse 1.4s ease-in-out infinite;
   --animate-hourglass-shake: hourglassShake 0.45s ease-in-out infinite;
@@ -52,6 +72,13 @@
    비례적으로 줄인다(각 컴포넌트를 일일이 손보는 대신 이 한 줄로 전체를 맞춘다). */
 html {
   font-size: 80%;
+}
+
+/* text-xs보다 한 단계 작은 라벨용 크기 — 다른 텍스트와 똑같이 글씨 크기 설정을 따른다.
+   (임의값 text-[...] 로는 --font-scale 계산식이 유틸리티로 생성되지 않아 여기서 정의한다) */
+@utility text-2xs {
+  font-size: calc(0.65rem * var(--font-scale));
+  line-height: 1.4;
 }
 
 body {

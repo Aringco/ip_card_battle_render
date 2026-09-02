@@ -7,6 +7,13 @@ import {
   subscribeAudioSettings,
   type AudioSettings,
 } from '@/lib/audioSettings';
+import {
+  DEFAULT_FONT_STEP,
+  FONT_SCALE_STEPS,
+  getFontStep,
+  setFontStep,
+  subscribeUiSettings,
+} from '@/lib/uiSettings';
 
 function ToggleButton({
   label,
@@ -62,8 +69,51 @@ function VolumeRow({
         disabled={disabled || !active}
         className="w-20 accent-jungle-600 disabled:opacity-40"
       />
-      <span className="text-[0.65rem] text-gray-400 w-7 text-right tabular-nums">
+      <span className="text-2xs text-gray-400 w-7 text-right tabular-nums">
         {Math.round(volume * 100)}
+      </span>
+    </div>
+  );
+}
+
+/** 글씨 크기 5단계 — 레이아웃은 그대로 두고 글자 크기만 조절한다. */
+function FontSizeRow() {
+  const [step, setStep] = useState(DEFAULT_FONT_STEP);
+
+  // 저장된 값은 클라이언트에서만 읽을 수 있으므로(서버 렌더와 어긋나지 않게) 마운트 후 맞춘다.
+  useEffect(() => {
+    setStep(getFontStep());
+    return subscribeUiSettings(() => setStep(getFontStep()));
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-14 shrink-0 py-1 rounded-md bg-jungle-700 text-white text-xs font-semibold text-center">
+        글씨
+      </span>
+      <div className="flex items-center gap-0.5">
+        {FONT_SCALE_STEPS.map((_, i) => {
+          const value = i + 1;
+          const active = value === step;
+          return (
+            <button
+              key={value}
+              onClick={() => setFontStep(value)}
+              aria-label={`글씨 크기 ${value}단계`}
+              aria-pressed={active}
+              className={`w-5 h-6 rounded-md font-semibold leading-none transition-colors ${
+                active ? 'bg-jungle-600 text-white' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+              }`}
+              // 단계별 크기를 버튼 자체로 미리 보여준다(버튼 칸 크기는 고정).
+              style={{ fontSize: `${0.6 + i * 0.09}rem` }}
+            >
+              가
+            </button>
+          );
+        })}
+      </div>
+      <span className="text-2xs text-gray-400 w-7 text-right tabular-nums">
+        {step}
       </span>
     </div>
   );
@@ -94,7 +144,7 @@ export function SoundToggle() {
       <button
         onClick={() => setExpanded(true)}
         className="fixed bottom-3 right-3 z-[90] w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg border border-jungle-200 flex items-center justify-center text-lg hover:scale-105 transition-transform"
-        aria-label="사운드 설정 열기"
+        aria-label="설정 열기"
       >
         {settings.muteAll ? '🔇' : '🔊'}
       </button>
@@ -112,10 +162,10 @@ export function SoundToggle() {
       <button
         onClick={() => setExpanded(false)}
         className="flex items-center gap-1.5 mb-0.5"
-        aria-label="사운드 설정 접기"
+        aria-label="설정 접기"
       >
         <span className="text-sm">{settings.muteAll ? '🔇' : '🔊'}</span>
-        <span className="text-[0.65rem] font-semibold text-gray-400">사운드</span>
+        <span className="text-2xs font-semibold text-gray-400">설정</span>
       </button>
       <VolumeRow
         label="전체"
@@ -140,6 +190,8 @@ export function SoundToggle() {
         onToggle={() => setAudioSettings({ muteBgm: !settings.muteBgm })}
         onVolumeChange={v => setAudioSettings({ volumeBgm: v })}
       />
+      <div className="h-px bg-jungle-100 my-0.5" />
+      <FontSizeRow />
     </div>
   );
 }

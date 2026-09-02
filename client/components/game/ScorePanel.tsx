@@ -69,7 +69,7 @@ function AnimalTable({
   // 옅게 다른 색으로 채워, 얼굴/경험치와 시각적으로 확실히 구분되는 하나의 구역처럼 보이게 한다.
   const levelBadge = (
     <div className="self-stretch shrink-0 flex flex-col items-center justify-center gap-0 px-2.5 bg-jungle-100 rounded-md">
-      <span className="text-[0.65rem] font-bold text-jungle-500 leading-none">Lv.</span>
+      <span className="text-2xs font-bold text-jungle-500 leading-none">Lv.</span>
       <span className="text-2xl font-black text-jungle-700 leading-none tabular-nums">{level}</span>
     </div>
   );
