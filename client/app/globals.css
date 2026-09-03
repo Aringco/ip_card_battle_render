@@ -1177,6 +1177,91 @@ body {
   .sheep-loaded-banner, .festival-loaded-banner { animation: none; opacity: 0; }
 }
 
+/* ── 축제 진입 순간 딱 한 번, "이제부터 K턴마다 N회!" 규칙 안내(두 줄) ──────────── */
+.festival-start-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  animation: sheepLoadedPop 2600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.festival-start-banner-line1 {
+  font-weight: 900;
+  font-size: 2.3rem;
+  color: #fef3c7;
+  -webkit-text-stroke: 2px #78350f;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.festival-start-banner-line2 {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: #fffbeb;
+  -webkit-text-stroke: 1.5px #78350f;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .festival-start-banner { animation: none; opacity: 0; }
+}
+
+/* ── 턴 시작 알림 — "내 차례"/"우리팀 차례"/"상대 차례" ──────────────────────────
+   다른 배너들(테두리 없이 두꺼운 글자만 둥둥 떠 있는 스타일)과 달리, 흰 알약 배경
+   위에 이중 테두리(border+outline)와 그림자를 얹어 게임판 위에서 확실히 도드라지게
+   한다. 강조 정도는 굵기가 아니라(사이트 전체가 이미 font-weight:900 일색이라
+   굵기 차이는 잘 안 보인다) 크기·색 채도로 나눈다 — 내 차례가 가장 크고 선명한 초록,
+   우리팀 차례는 더 작고 옅은 초록, 상대 차례는 검붉은색. ────────────────────── */
+@keyframes turnAnnouncePop {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  18%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  28%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  78%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.94); opacity: 0; }
+}
+.turn-announce-banner {
+  position: fixed;
+  left: 50%;
+  top: 30%;
+  z-index: 68;
+  pointer-events: none;
+  padding: 0.8rem 2.4rem;
+  border-radius: 9999px;
+  font-weight: 900;
+  white-space: nowrap;
+  background: #ffffff;
+  animation: turnAnnouncePop 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.turn-announce-mine {
+  font-size: 2.1rem;
+  color: #16a34a;
+  border: 3px solid #22c55e;
+  outline: 3px solid #dcfce7;
+  outline-offset: 3px;
+  box-shadow: 0 14px 34px rgba(22, 163, 74, 0.4);
+}
+.turn-announce-ally {
+  font-size: 1.55rem;
+  color: #65a30d;
+  border: 3px solid #a3e635;
+  outline: 3px solid #ecfccb;
+  outline-offset: 3px;
+  box-shadow: 0 10px 26px rgba(101, 163, 13, 0.28);
+}
+.turn-announce-enemy {
+  font-size: 1.8rem;
+  color: #7f1d1d;
+  border: 3px solid #991b1b;
+  outline: 3px solid #fecaca;
+  outline-offset: 3px;
+  box-shadow: 0 12px 30px rgba(69, 10, 10, 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-announce-banner { animation: none; opacity: 0; }
+}
 
 /* ── 카드 오픈/페어/효과 자막 (보드 중앙 오버레이) ───────────────────────────── */
 @keyframes captionPop {

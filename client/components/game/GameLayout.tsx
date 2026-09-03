@@ -9,9 +9,11 @@ import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { MainComboBanner } from '@/components/effects/MainComboBanner';
 import { SheepLoadedBanner } from '@/components/effects/SheepLoadedBanner';
 import { FestivalLoadedBanner } from '@/components/effects/FestivalLoadedBanner';
+import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { DecisiveHitBanner } from '@/components/effects/DecisiveHitBanner';
+import { TurnAnnounceBanner } from '@/components/effects/TurnAnnounceBanner';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { GameHeader } from './GameHeader';
 import { TeamPanel } from './TeamPanel';
@@ -212,6 +214,7 @@ export function GameLayout({
 
       {/* 도토리 축제 랜덤 뽑기 발동 예고 — "도토리 축제 효과! 랜덤 뽑기 N회!" */}
       <FestivalLoadedBanner loaded={animState.festivalLoaded} />
+      <FestivalStartBanner info={animState.festivalStartInfo} />
 
       {/* 예약된 추가 뽑기 콤보 텍스트 (fixed, 화면 전역) */}
       <SheepComboLayer combos={animState.sheepCombos} />
@@ -237,6 +240,13 @@ export function GameLayout({
 
       {/* 체력 즉시 승패 — 결정타! 강조 */}
       <DecisiveHitBanner hit={animState.decisiveHit} />
+      <TurnAnnounceBanner
+        activeTeam={animState.displayedActiveTeam}
+        activePlayerIndex={animState.displayedActivePlayerIndex}
+        memberIds={gameState.memberIds}
+        myTeam={myTeam}
+        playerId={playerId}
+      />
     </div>
   );
 }

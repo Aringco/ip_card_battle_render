@@ -125,6 +125,12 @@ export interface FestivalLoaded {
   count: number; // 도토리 축제 랜덤 뽑기가 이번에 몇 회 발동했는지
 }
 
+export interface FestivalStartInfo {
+  id: number;
+  drawCount: number;       // settings.festivalDrawCount(n) — 이 방의 실제 설정값
+  increaseInterval: number; // settings.festivalDrawIncreaseInterval(k)
+}
+
 export interface ShakingPile {
   id: number;
   animal: Animal; // 짝이 맞아 정산되기 직전, 그 동물 스택 전체가 "확인하듯" 흔들리는 연출
@@ -159,6 +165,7 @@ export interface AnimationState {
   hpPulse: ReadonlyMap<Team, HpPulse>; // 체력 오브가 지금 상승/감소 연출 중인지
   festivalFlash: boolean; // 축제 진입 순간 보드 전체 섬광
   festivalBurst: boolean; // 축제 진입 순간 보드 여기저기 도토리 폭죽(15발)
+  festivalStartInfo: FestivalStartInfo | null; // 축제 진입 순간 "이제부터 K턴마다 N회!" 규칙 안내 배너
   commentary: CommentaryLine[];
   captions: CaptionItem[];
   emoticons: PlayerEmoticon[];
@@ -176,9 +183,6 @@ export interface AnimationState {
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
   decisiveHit: { winner: Team } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
 }
-
-// 수동으로 "다음 기회를 노리기"를 골랐을 때 화면에 뜨는 문구 — 매번 무작위로 하나 고른다.
-const PASS_CAPTIONS = ['다음 기회를 노려봅니다.', '큰그림 그리는 중..', '(레벨 올려서 한 번에 몰아칠 예정)'];
 
 const EMPTY_SCORE_MAP = new Map<string, number>() as ReadonlyMap<string, number>;
 const EMPTY_HP_PULSE_MAP = new Map<Team, HpPulse>() as ReadonlyMap<Team, HpPulse>;
@@ -210,6 +214,7 @@ const MERMAID_POPUP_DUR = 2000;
 const RABBIT_FLIGHT_DUR = 1100; // 최대 출발 지연(400ms) + 비행 애니메이션(650ms)보다 여유 있게
 const RABBIT_PRESSURE_DUR = 700;
 const FESTIVAL_BURST_DUR = 2000;
+const FESTIVAL_START_INFO_DUR = 2600; // "이제부터 K턴마다 N회!" 규칙 안내 배너 — 두 줄이라 다른 배너보다 조금 더 오래 보여준다
 const DECISIVE_HIT_DUR = 1800;
 
 let floatIdCounter = 0;
@@ -236,6 +241,7 @@ export function useAnimationQueue(
   const [hpPulse, setHpPulse] = useState<ReadonlyMap<Team, HpPulse>>(EMPTY_HP_PULSE_MAP);
   const [festivalFlash, setFestivalFlash] = useState(false);
   const [festivalBurst, setFestivalBurst] = useState(false);
+  const [festivalStartInfo, setFestivalStartInfo] = useState<FestivalStartInfo | null>(null);
   const [commentary, setCommentary] = useState<CommentaryLine[]>([]);
   const [captions, setCaptions] = useState<CaptionItem[]>([]);
   const [emoticons, setEmoticons] = useState<PlayerEmoticon[]>([]);
@@ -456,6 +462,7 @@ export function useAnimationQueue(
     setHpPulse(EMPTY_HP_PULSE_MAP);
     setFestivalFlash(false);
     setFestivalBurst(false);
+    setFestivalStartInfo(null);
     setCaptions([]);
     setDrawSlots([]);
     setWoolBalls([]);
@@ -908,18 +915,28 @@ export function useAnimationQueue(
       }
     }
 
-    // ── Pass 1.6: 행동 발동(skillApplied)/패스(skillPassed) — 정산과는 별개
-    // 액션(선택 응답)에서 온다. 동물마다 원래 있었던 전용 연출을 그대로 재생한다.
+    // ── Pass 1.6: 행동 발동(skillApplied) — 정산과는 별개 액션(선택 응답)에서 온다.
+    // 동물마다 원래 있었던 전용 연출을 그대로 재생한다. "다음 기회를 노리기"(수동 패스,
+    // skillPassed)는 더 이상 큰 캡션으로 알리지 않는다 — 스킬을 안 썼을 때는 화면에
+    // 아무것도 안 뜨는 편이 낫다는 판단(해설판 로그 줄만 남는다).
     {
       const skillEv = lastEvents.find((e): e is Extract<ClientGameEvent, { type: 'skillApplied' }> => e.type === 'skillApplied');
-      const passEv = lastEvents.find((e): e is Extract<ClientGameEvent, { type: 'skillPassed' }> => e.type === 'skillPassed');
 
       if (skillEv && skillEv.level > 0) {
-        const { team, animal, myHpDelta, oppHpDelta, multiplierAfter } = skillEv;
+        const { team, animal, myHpDelta, oppHpDelta, multiplierAfter, extraDrawsQueued } = skillEv;
         const opp: Team = team === 'A' ? 'B' : 'A';
         const at = cursor;
 
-        addCaption(randomActionPhrase(animal), 'effect', at, { team });
+        // 큰 캡션은 이제 캐치프레이즈("실용신양의 힘!" 류) 대신, 스킬 선택 패널
+        // (SkillChoiceBar)의 노란 글씨와 같은 내용을 그대로 보여준다 — "무슨 효과인지"를
+        // 바로 알 수 있게 하기 위함. SkillChoiceBar의 effectParts 조합과 반드시 같은
+        // 문구를 써야 한다(다른 곳에서 문구를 바꾸면 여기도 맞춰야 함).
+        const effectParts: string[] = [];
+        if (extraDrawsQueued > 0) effectParts.push(`다음 턴 카드 +${extraDrawsQueued}회`);
+        if (myHpDelta > 0) effectParts.push(`내 체력 +${myHpDelta}`);
+        if (oppHpDelta < 0) effectParts.push(`상대 체력 ${oppHpDelta}`);
+        if (animal === 'mermaid') effectParts.push(`다음 행동 ×${multiplierAfter}`);
+        addCaption(effectParts.join(', '), 'effect', at, { team });
 
         sched(() => {
           const gs = gameStateRef.current;
@@ -974,11 +991,6 @@ export function useAnimationQueue(
         cursor = animal === 'tiger'
           ? at + TIGER_RECOIL_DUR + TIGER_HIT_DUR + 80
           : at + EFFECT_DUR;
-      } else if (passEv && !passEv.auto) {
-        const at = cursor;
-        const text = PASS_CAPTIONS[Math.floor(Math.random() * PASS_CAPTIONS.length)];
-        addCaption(text, 'effect', at, { team: passEv.team });
-        cursor = at + 700;
       }
     }
 
@@ -986,15 +998,26 @@ export function useAnimationQueue(
     const festivalEv = lastEvents.find(e => e.type === 'festival');
     if (festivalEv) {
       const at = cursor;
-      addCaption('🌰 축제 시작!!', 'effect', at);
       sched(() => {
         setFestivalFlash(true);
         setFestivalBurst(true);
         playRandomSoundSequence('bomb', 3);
         sched(() => setFestivalFlash(false), 600);
         sched(() => setFestivalBurst(false), FESTIVAL_BURST_DUR);
+
+        // "이제부터 K턴마다 N회!" — 이 방에 실제로 적용되는 규칙(방장이 정한 설정값)을
+        // 그대로 보여준다. 참고용 상수가 아니라 항상 gameState.settings에서 읽는다.
+        if (gameState) {
+          const infoId = ++floatIdCounter;
+          setFestivalStartInfo({
+            id: infoId,
+            drawCount: gameState.settings.festivalDrawCount,
+            increaseInterval: gameState.settings.festivalDrawIncreaseInterval,
+          });
+          sched(() => setFestivalStartInfo(prev => (prev?.id === infoId ? null : prev)), FESTIVAL_START_INFO_DUR);
+        }
       }, at);
-      cursor = at + 700;
+      cursor = at + 900;
     }
 
     // ── 체력 즉시 승패(gameEnd, reason=knockout)는 마지막에 "결정타!" 강조와 함께 재생한다. ──
@@ -1100,6 +1123,7 @@ export function useAnimationQueue(
     hpPulse,
     festivalFlash,
     festivalBurst,
+    festivalStartInfo,
     commentary,
     captions,
     emoticons,
