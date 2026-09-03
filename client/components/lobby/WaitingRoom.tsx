@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { GameSettings, LobbyChatMessage, LobbyPlayer, Team } from 'shared';
-import { TEAM_NAME_MAX_LEN } from 'shared';
+import { TEAM_NAME_MAX_LEN, randomTeamName } from 'shared';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
 
@@ -85,7 +85,9 @@ export function WaitingRoom({
         ? '양 팀에 각각 한 명 이상 있어야 해요.'
         : players.some(p => !p.ready)
           ? '아직 준비하지 않은 참가자가 있어요.'
-          : null;
+          : teamNames.A !== null && teamNames.A === teamNames.B
+            ? '양 팀 이름이 같아요. 한쪽 이름을 바꿔주세요.'
+            : null;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-10 w-full max-w-4xl flex flex-col gap-6">
@@ -97,6 +99,7 @@ export function WaitingRoom({
             key={team}
             team={team}
             name={teamNames[team]}
+            otherName={teamNames[team === 'A' ? 'B' : 'A']}
             players={team === 'A' ? teamA : teamB}
             myMemberId={myMemberId}
             hostMemberId={hostMemberId}
@@ -116,12 +119,8 @@ export function WaitingRoom({
         onSend={onSendChat}
       />
 
-      {isHost ? (
-        <HostRulesPanel settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
-      ) : (
-        <RuleSummary settings={settings} teamNames={teamNames} />
-      )}
-
+      {/* 준비/시작 버튼이 규칙 패널보다 먼저 온다 — 대화창이 생기면서 화면이 길어진 뒤로,
+          규칙을 아래에 두지 않으면 정작 가장 자주 누르는 버튼이 스크롤 밖으로 밀려난다. */}
       {isHost ? (
         <div className="flex flex-col gap-2">
           <button
@@ -134,20 +133,25 @@ export function WaitingRoom({
           {blockReason && <p className="text-center text-base text-gray-400">{blockReason}</p>}
         </div>
       ) : (
-        <button
-          onClick={() => onReady(!me?.ready)}
-          className={`font-semibold text-xl py-4 rounded-xl transition text-white ${
-            me?.ready ? 'bg-green-300 hover:bg-green-400' : 'bg-green-600 hover:bg-green-700'
-          }`}
-        >
-          {me?.ready ? '준비 완료 ✓ (누르면 취소)' : '준비'}
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => onReady(!me?.ready)}
+            className={`font-semibold text-xl py-4 rounded-xl transition text-white ${
+              me?.ready ? 'bg-green-300 hover:bg-green-400' : 'bg-green-600 hover:bg-green-700'
+            }`}
+          >
+            {me?.ready ? '준비 완료 ✓ (누르면 취소)' : '준비'}
+          </button>
+          <p className="text-center text-base text-gray-400">
+            방장이 시작 버튼을 누르면 게임이 시작돼요.
+          </p>
+        </div>
       )}
 
-      {!isHost && (
-        <p className="text-center text-base text-gray-400 -mt-3">
-          방장이 시작 버튼을 누르면 게임이 시작돼요.
-        </p>
+      {isHost ? (
+        <HostRulesPanel settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
+      ) : (
+        <RuleSummary settings={settings} teamNames={teamNames} />
       )}
 
       <button onClick={onLeave} className="text-lg text-gray-400 hover:text-gray-600">
@@ -207,11 +211,12 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
 // ─── 팀 목록 ─────────────────────────────────────────────────────────────────
 
 function TeamColumn({
-  team, name, players, myMemberId, hostMemberId, isHost,
+  team, name, otherName, players, myMemberId, hostMemberId, isHost,
   onMove, onKick, onTransferHost, onRenameTeam,
 }: {
   team: Team;
   name: string | null;
+  otherName: string | null;
   players: LobbyPlayer[];
   myMemberId: string | null;
   hostMemberId: string | null;
@@ -229,6 +234,7 @@ function TeamColumn({
       <TeamNameRow
         team={team}
         name={name}
+        otherName={otherName}
         canEdit={isHost}
         onRename={onRenameTeam}
       />
@@ -257,10 +263,11 @@ function TeamColumn({
 }
 
 function TeamNameRow({
-  team, name, canEdit, onRename,
+  team, name, otherName, canEdit, onRename,
 }: {
   team: Team;
   name: string | null;
+  otherName: string | null;
   canEdit: boolean;
   onRename: (team: Team, name: string) => void;
 }) {
@@ -279,6 +286,9 @@ function TeamNameRow({
     setEditing(false);
   };
 
+  // 상대 팀 이름과 겹치는 이름은 서버가 거절하므로, 주사위도 그 이름은 피해서 뽑는다.
+  const clash = draft.trim().length > 0 && draft.trim() === otherName;
+
   if (editing) {
     return (
       <div className="flex items-center gap-1.5">
@@ -289,16 +299,26 @@ function TeamNameRow({
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
-            if (e.key === 'Enter') submit();
+            if (e.key === 'Enter' && !clash) submit();
             if (e.key === 'Escape') setEditing(false);
           }}
           maxLength={TEAM_NAME_MAX_LEN}
           placeholder="비우면 무작위"
-          className="input-base flex-1 min-w-0 !py-1.5"
+          className={`input-base flex-1 min-w-0 !py-1.5 ${clash ? '!border-red-300' : ''}`}
         />
         <button
+          onClick={() => setDraft(randomTeamName(otherName))}
+          title="팀 이름 무작위로 뽑기"
+          aria-label="팀 이름 무작위로 뽑기"
+          className="text-base px-2 py-1.5 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 active:scale-95 transition shrink-0"
+        >
+          🎲
+        </button>
+        <button
           onClick={submit}
-          className="text-base font-semibold text-white bg-green-600 hover:bg-green-700 px-2.5 py-1.5 rounded-lg shrink-0"
+          disabled={clash}
+          title={clash ? '상대 팀과 같은 이름은 쓸 수 없어요' : undefined}
+          className="text-base font-semibold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 px-2.5 py-1.5 rounded-lg shrink-0"
         >
           저장
         </button>

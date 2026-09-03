@@ -8,7 +8,9 @@ import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
   SHEEP_TIMER_EXTRA_DRAW_CAP,
   PLACES,
-  TEAM_NAME_POOL,
+  randomNickname,
+  randomTeamName,
+  NICKNAME_MAX_LEN,
   TEAM_NAME_MAX_LEN,
   CHAT_MAX_LEN,
   CHAT_HISTORY_MAX,
@@ -27,6 +29,16 @@ const CPU_TEAM_NAME = '컴퓨터';
 // 가장 긴 연출보다 여유 있게 최소 대기 시간을 잡아 그런 일이 최대한 드물게 한다.
 const CPU_THINK_MIN_MS = 2200;
 const CPU_THINK_MAX_MS = 3200;
+
+/**
+ * 닉네임 정리 — 클라이언트가 이미 12자로 자르고 빈 이름을 막지만, 서버도 같은 기준을
+ * 다시 세운다(직접 만든 WS 클라이언트나 옛 버전 화면이 보낸 값이 그대로 팀 패널·채팅에
+ * 박히면 레이아웃이 깨지거나 이름 없는 참가자가 생긴다). 비어 있으면 클라이언트가
+ * 입력창에 보여주던 것과 같은 방식으로 무작위 이름을 지어준다.
+ */
+function normalizeNickname(nickname: string): string {
+  return nickname.trim().slice(0, NICKNAME_MAX_LEN) || randomNickname();
+}
 // ─── 연출 유예(settle grace) ──────────────────────────────────────────────
 // 서버는 액션을 처리하는 즉시 다음 턴 타이머를 시작하지만, 클라이언트는 그 액션의
 // 연출(슬롯 → 카드 등장 → 페어 정산 → 행동 효과)이 다 끝나야 비로소 조작을 받는다.
@@ -247,9 +259,7 @@ export class Room {
       this.teamNames[team] = trimmed;
       return;
     }
-    const pool = TEAM_NAME_POOL.filter(n => n !== other);
-    const name = pool[Math.floor(Math.random() * pool.length)] ?? (team === 'A' ? 'A팀' : 'B팀');
-    this.teamNames[team] = name;
+    this.teamNames[team] = randomTeamName(other);
   }
 
   addPlayer(
@@ -259,12 +269,12 @@ export class Room {
     team: Team,
     teamName?: string,
     settings?: Partial<GameSettings>,
-    // 방을 처음 만드는 사람만 넘겨준다 — 아직 아무도 들어오지 않은 반대편 팀의 이름을
-    // 미리 정해둔다(비어 있으면 실제로 그 팀에 참가하는 사람이 나중에 자기 이름을 정한다).
+    // 방을 처음 만드는 사람만 넘겨준다 — 아직 아무도 들어오지 않은 반대편 팀의 이름.
     otherTeamName?: string,
   ): 'ok' | 'game_started' | 'nickname_taken' {
     if (this.state !== null) return 'game_started';
 
+    nickname = normalizeNickname(nickname);
     for (const p of this.players.values()) {
       if (p.nickname === nickname) return 'nickname_taken';
     }
@@ -287,12 +297,11 @@ export class Room {
     this.pushSystem(`${nickname} 님이 들어왔어요`);
     this.teamPlayerIds[team].push(playerId);
     this.assignTeamName(team, teamName);
-    // 방장만 반대편 팀 이름도 미리 정할 수 있다 — 나중에 참가자가 joinRoom으로 보내는
-    // teamName은 assignTeamName이 "이미 정해져 있으면 무시"하므로 이 값이 우선한다.
-    // 방장이 비워뒀으면(otherTeamName 없음) 여기서 미리 확정 짓지 않는다 — 그래야 실제로
-    // 그 팀에 참가하는 사람이 자기 팀 이름을 직접 고를 기회가 그대로 남는다(정해지지
-    // 않은 이름은 게임 시작 시점(tryStartGame)에야 비로소 무작위로 채워진다).
-    if (isRoomCreator && otherTeamName?.trim()) {
+    // 방을 만드는 순간 양 팀 이름을 모두 확정한다 — 방장이 상대 팀 이름을 비워뒀더라도
+    // 무작위로 채운다. 예전에는 "그 팀에 실제로 참가하는 사람이 직접 고를 기회"를 남기려고
+    // 비워뒀지만, 참가 화면에는 팀 이름 입력칸이 아예 없어서 그 기회는 쓰이지 못하고
+    // 대기실에 "팀 2 (미정)"만 덩그러니 남았다.
+    if (isRoomCreator) {
       this.assignTeamName(team === 'A' ? 'B' : 'A', otherTeamName);
     }
     this.broadcastLobbyState();
@@ -309,7 +318,7 @@ export class Room {
     this.vsComputer = true;
     if (settings) this.settings = clampSettings(settings);
     this.players.set(playerId, {
-      ws, playerId, memberId: this.nextMemberId(), nickname, team: 'A',
+      ws, playerId, memberId: this.nextMemberId(), nickname: normalizeNickname(nickname), team: 'A',
       ready: true, connected: true, lastChatAt: 0,
     });
     this.hostPlayerId = playerId;
@@ -353,8 +362,7 @@ export class Room {
     if (idx !== -1) from.splice(idx, 1);
     target.team = team;
     this.teamPlayerIds[team].push(target.playerId);
-    // 아직 아무도 없던 팀으로 옮겨간 경우, 그 팀 이름이 비어 있으면 여기서 정하지 않는다 —
-    // 방장이 setTeamName으로 직접 짓거나, 시작 시점(tryStartGame)에 무작위로 채워진다.
+    // 팀 이름은 방을 만드는 순간 양쪽 다 정해지므로(addPlayer) 여기서 손댈 것이 없다.
     this.pushSystem(
       target.playerId === playerId
         ? `${target.nickname} 님이 ${this.teamLabel(team)} 팀으로 옮겼어요`
@@ -398,15 +406,17 @@ export class Room {
   /** 팀 이름 변경 — 무작위로 배정됐던 이름도 게임 시작 전이면 방장이 다시 지을 수 있다. */
   setTeamName(playerId: string, team: Team, name: string): void {
     if (!this.requireHost(playerId)) return;
+    const other = this.teamNames[team === 'A' ? 'B' : 'A'];
     const trimmed = name.trim().slice(0, TEAM_NAME_MAX_LEN);
     if (!trimmed) {
-      // 빈 이름은 "미정으로 되돌리기"로 취급한다 — 시작 시점에 무작위로 채워진다.
-      this.pushSystem(`${this.teamLabel(team)} 팀 이름이 미정으로 돌아갔어요`);
-      this.teamNames[team] = null;
+      // 빈 이름은 "다시 무작위로"로 취급한다 — 이름 없는 팀을 남기지 않는다.
+      const next = randomTeamName(other);
+      this.pushSystem(`${this.teamLabel(team)} 팀 이름이 "${next}"(으)로 다시 정해졌어요`);
+      this.teamNames[team] = next;
       this.broadcastLobbyState();
       return;
     }
-    if (trimmed === this.teamNames[team === 'A' ? 'B' : 'A']) {
+    if (trimmed === other) {
       this.sendTo(playerId, { type: 'error', code: 'TEAM_NAME_TAKEN', message: '상대 팀과 같은 이름은 쓸 수 없습니다.' });
       return;
     }
@@ -443,6 +453,11 @@ export class Room {
       return '양 팀에 각각 한 명 이상 있어야 합니다.';
     }
     if (!all.every(p => p.ready)) return '아직 준비하지 않은 참가자가 있습니다.';
+    // setTeamName이 겹치는 이름을 이미 막지만, 게임에 들어가고 나면 두 팀을 구분할 방법이
+    // 이름밖에 없으므로 시작 직전에 한 번 더 확인한다.
+    if (this.teamNames.A !== null && this.teamNames.A === this.teamNames.B) {
+      return '양 팀의 이름이 같아 시작할 수 없습니다. 한쪽 이름을 바꿔주세요.';
+    }
     return null;
   }
 

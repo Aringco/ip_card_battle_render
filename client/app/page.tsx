@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { GameSettings, Team } from 'shared';
-import { DEFAULT_SETTINGS } from 'shared';
+import { DEFAULT_SETTINGS, NICKNAME_MAX_LEN, TEAM_NAME_MAX_LEN, randomNickname, randomTeamName } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { playBgm } from '@/lib/bgm';
 import { HowToPlayModal } from '@/components/ui/HowToPlayModal';
@@ -26,6 +26,12 @@ export default function LobbyPage() {
   }, []);
 
   const [nickname, setNickname] = useState('');
+  // 닉네임을 비워두고 시작하는 사람에게 그대로 쓰이는 무작위 이름(placeholder에도 보인다).
+  // 마운트 뒤에 만드는 이유는 이 값이 서버 프리렌더와 클라이언트에서 서로 달라 hydration
+  // 경고를 내기 때문 — 첫 렌더에는 빈 문자열이라 placeholder가 고정 문구로 폴백된다.
+  const [nicknameHint, setNicknameHint] = useState('');
+  useEffect(() => setNicknameHint(randomNickname()), []);
+
   const [team, setTeam] = useState<Team>('A');
   const [teamName, setTeamName] = useState('');
   // 방을 만드는 쪽만 입력할 수 있다 — 아직 아무도 들어오지 않은 반대편 팀의 이름까지
@@ -77,22 +83,32 @@ export default function LobbyPage() {
     if (meInLobby) sessionStorage.setItem('cardBattle_team', meInLobby.team);
   }, [ws.lobbyPlayers, ws.memberId]);
 
+  // 닉네임을 비워두면 placeholder로 보여주던 무작위 이름을 그대로 쓴다 — 아무것도
+  // 입력하지 않고 바로 시작하려는 사람이 가장 많은 흐름이라, 보이는 것과 실제로 들어가는
+  // 이름이 어긋나지 않게 한다.
+  const effectiveNickname = nickname.trim() || nicknameHint;
+  const canSubmitName = effectiveNickname.length > 0;
+
+  // 두 팀 이름이 같으면 게임 화면에서 어느 쪽이 우리 팀인지 구분할 방법이 사라진다
+  // (서버도 startBlockReason에서 같은 조건을 막는다).
+  const teamNamesClash = teamName.trim().length > 0 && teamName.trim() === otherTeamName.trim();
+
   const handleCreateRoom = () => {
-    if (!nickname.trim()) return;
+    if (!canSubmitName || teamNamesClash) return;
     sessionStorage.setItem('cardBattle_team', team);
-    ws.createRoom(nickname.trim(), team, teamName.trim() || undefined, settings, otherTeamName.trim() || undefined);
+    ws.createRoom(effectiveNickname, team, teamName.trim() || undefined, settings, otherTeamName.trim() || undefined);
   };
 
   const handleJoinRoom = () => {
-    if (!nickname.trim() || !joinRoomId.trim()) return;
+    if (!canSubmitName || !joinRoomId.trim()) return;
     sessionStorage.setItem('cardBattle_team', team);
-    ws.joinRoom(joinRoomId.trim().toUpperCase(), nickname.trim(), team);
+    ws.joinRoom(joinRoomId.trim().toUpperCase(), effectiveNickname, team);
   };
 
   const handleStartSolo = () => {
-    if (!nickname.trim()) return;
+    if (!canSubmitName) return;
     sessionStorage.setItem('cardBattle_team', 'A');
-    ws.createSoloRoom(nickname.trim(), teamName.trim() || undefined, settings);
+    ws.createSoloRoom(effectiveNickname, teamName.trim() || undefined, settings);
   };
 
   // 준비 상태는 서버가 로비 목록(LobbyPlayer.ready)으로 알려주므로 화면이 따로
@@ -173,33 +189,20 @@ export default function LobbyPage() {
             상대는 컴퓨터예요. 컴퓨터는 자기 차례마다 무작위 장소를 클릭합니다.
           </p>
 
-          <Field label="닉네임">
-            <input
-              type="text"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              placeholder="닉네임 입력"
-              maxLength={12}
-              className="input-base"
-            />
-          </Field>
+          <NicknameField nickname={nickname} onChange={setNickname} hint={nicknameHint} />
 
-          <Field label="우리 팀 이름 (선택, 비워두면 무작위 배정)">
-            <input
-              type="text"
-              value={teamName}
-              onChange={e => setTeamName(e.target.value)}
-              placeholder="예: 특허"
-              maxLength={12}
-              className="input-base"
-            />
-          </Field>
+          <TeamNameField
+            label="우리 팀 이름 (선택, 비워두면 무작위 배정)"
+            value={teamName}
+            onChange={setTeamName}
+            avoid={otherTeamName}
+          />
 
           <GameRulesFields settings={settings} onChange={setSettings} />
 
           <button
             onClick={handleStartSolo}
-            disabled={!ws.connected || !nickname.trim()}
+            disabled={!ws.connected || !canSubmitName}
             className="bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             컴퓨터와 대전 시작
@@ -223,16 +226,7 @@ export default function LobbyPage() {
             </p>
           )}
 
-          <Field label="닉네임">
-            <input
-              type="text"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              placeholder="닉네임 입력"
-              maxLength={12}
-              className="input-base"
-            />
-          </Field>
+          <NicknameField nickname={nickname} onChange={setNickname} hint={nicknameHint} />
 
           {mode === 'join' && (
             <Field label="방 코드">
@@ -265,33 +259,35 @@ export default function LobbyPage() {
 
           {mode === 'create' && (
             <>
-              <Field label="우리 팀 이름 (선택, 비워두면 무작위 배정)">
-                <input
-                  type="text"
-                  value={teamName}
-                  onChange={e => setTeamName(e.target.value)}
-                  placeholder="예: 상표"
-                  maxLength={12}
-                  className="input-base"
-                />
-              </Field>
-              <Field label="상대 팀 이름 (선택, 비워두면 무작위 배정)">
-                <input
-                  type="text"
-                  value={otherTeamName}
-                  onChange={e => setOtherTeamName(e.target.value)}
-                  placeholder="예: 디자인"
-                  maxLength={12}
-                  className="input-base"
-                />
-              </Field>
+              <TeamNameField
+                label="우리 팀 이름 (선택, 비워두면 무작위 배정)"
+                value={teamName}
+                onChange={setTeamName}
+                avoid={otherTeamName}
+              />
+              <TeamNameField
+                label="상대 팀 이름 (선택, 비워두면 무작위 배정)"
+                value={otherTeamName}
+                onChange={setOtherTeamName}
+                avoid={teamName}
+              />
+              {teamNamesClash && (
+                <p className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-base -mt-2">
+                  두 팀 이름이 같아요. 게임 중에 어느 쪽이 우리 팀인지 알 수 없으니 한쪽을 바꿔주세요.
+                </p>
+              )}
               <GameRulesFields settings={settings} onChange={setSettings} />
             </>
           )}
 
           <button
             onClick={mode === 'create' ? handleCreateRoom : handleJoinRoom}
-            disabled={!ws.connected || !nickname.trim() || (mode === 'join' && !joinRoomId.trim())}
+            disabled={
+              !ws.connected ||
+              !canSubmitName ||
+              (mode === 'create' && teamNamesClash) ||
+              (mode === 'join' && !joinRoomId.trim())
+            }
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
             {mode === 'create' ? '방 만들기' : '입장하기'}
@@ -345,6 +341,78 @@ export default function LobbyPage() {
         .input-rule { width: 6rem; flex: none; text-align: right; }
       `}</style>
     </div>
+  );
+}
+
+/**
+ * 무작위 이름 뽑기 버튼 — 누르면 입력창에 새 이름을 바로 써넣는다(이미 입력한 글자가
+ * 있어도 덮어쓴다. "다시 뽑는다"는 뜻이 그쪽이 자연스러워서다).
+ */
+function DiceButton({ onClick, title }: { onClick: () => void; title: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="shrink-0 text-xl px-3 py-2.5 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 active:scale-95 transition"
+    >
+      🎲
+    </button>
+  );
+}
+
+/** 닉네임 입력창 — 비워두면 placeholder에 떠 있는 무작위 이름이 그대로 쓰인다. */
+function NicknameField({
+  nickname, onChange, hint,
+}: {
+  nickname: string;
+  onChange: (v: string) => void;
+  hint: string;
+}) {
+  return (
+    <Field label="닉네임 (비워두면 무작위 이름으로 참가해요)">
+      <div className="flex gap-2 items-center">
+        <input
+          type="text"
+          value={nickname}
+          onChange={e => onChange(e.target.value)}
+          placeholder={hint || '닉네임 입력'}
+          maxLength={NICKNAME_MAX_LEN}
+          className="input-base"
+        />
+        <DiceButton onClick={() => onChange(randomNickname())} title="닉네임 무작위로 뽑기" />
+      </div>
+    </Field>
+  );
+}
+
+/**
+ * 팀 이름 입력창. `avoid`(상대 팀에 적힌 이름)와 겹치지 않는 이름만 뽑아주므로,
+ * 주사위를 눌러서 두 팀 이름이 같아지는 일은 생기지 않는다.
+ */
+function TeamNameField({
+  label, value, onChange, avoid,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  avoid: string;
+}) {
+  return (
+    <Field label={label}>
+      <div className="flex gap-2 items-center">
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="비워두면 무작위 배정"
+          maxLength={TEAM_NAME_MAX_LEN}
+          className="input-base"
+        />
+        <DiceButton onClick={() => onChange(randomTeamName(avoid.trim() || null))} title="팀 이름 무작위로 뽑기" />
+      </div>
+    </Field>
   );
 }
 
