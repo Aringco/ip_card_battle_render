@@ -7,6 +7,7 @@ import type {
   ClientGameState,
   ClientMessage,
   GameSettings,
+  LobbyChatMessage,
   LobbyPlayer,
   Place,
   ServerMessage,
@@ -46,6 +47,8 @@ export interface UseWebSocketReturn {
   // 추방당했거나 스스로 나가서 방을 벗어났을 때의 안내문(없으면 null)
   roomNotice: string | null;
   clearRoomNotice: () => void;
+  // 대기실 채팅 기록 — 사람이 친 말과 방에서 일어난 일(시스템 안내)이 시간순으로 섞여 있다.
+  chatLog: LobbyChatMessage[];
   gameState: ClientGameState | null;
   // 턴 제한시간이 끝나는 시각 — 내 브라우저 시계(Date.now()) 기준이다. 서버는 절대
   // 시각이 아니라 "직렬화 순간부터 남은 ms"(state.turnRemainingMs)를 보내오고, 그 값을
@@ -67,6 +70,7 @@ export interface UseWebSocketReturn {
   setTeamName: (team: Team, name: string) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
   startGame: () => void;
+  sendChat: (text: string) => void;
   drawCard: (place: Place) => void;
   chooseSkill: (animal: Animal) => void;
   passSkill: () => void;
@@ -87,6 +91,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [lobbySettings, setLobbySettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [hostMemberId, setHostMemberId] = useState<string | null>(null);
   const [roomNotice, setRoomNotice] = useState<string | null>(null);
+  const [chatLog, setChatLog] = useState<LobbyChatMessage[]>([]);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [turnDeadline, setTurnDeadline] = useState(0);
   const [lastEvents, setLastEvents] = useState<ClientGameEvent[]>([]);
@@ -152,6 +157,18 @@ export function useWebSocket(): UseWebSocketReturn {
           setHostMemberId(msg.hostMemberId);
           break;
 
+        case 'chatHistory':
+          setChatLog(msg.messages);
+          break;
+
+        case 'chatMessage': {
+          // id는 방 안에서 단조 증가하므로, 이미 가진 것보다 새 것일 때만 붙인다.
+          // (입장 직후 chatHistory와 chatMessage가 겹쳐 도착해도 같은 줄이 두 번 뜨지 않게)
+          const incoming = msg.message;
+          setChatLog(prev => (prev.length > 0 && prev[prev.length - 1].id >= incoming.id ? prev : [...prev, incoming]));
+          break;
+        }
+
         // 추방/자진 퇴장 — 저장된 세션을 지워 죽은 방으로 재접속을 반복하지 않게 하고,
         // roomId를 비워 화면이 대기실에서 홈으로 자연스럽게 돌아가게 한다.
         case 'kicked':
@@ -165,6 +182,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setLobbyPlayers([]);
           setLobbyTeamNames({ A: null, B: null });
           setHostMemberId(null);
+          setChatLog([]);
           setRoomNotice(msg.type === 'kicked' ? msg.message : null);
           break;
 
@@ -172,6 +190,7 @@ export function useWebSocket(): UseWebSocketReturn {
         case 'gameSnapshot':
           applyState(msg.state);
           setLobbyPlayers([]);
+          setChatLog([]); // 채팅은 대기실 전용 — 게임에 들어가면 기록을 들고 있지 않는다
           break;
 
         case 'actionResult':
@@ -244,6 +263,10 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'startGame' });
   }, [send]);
 
+  const sendChat = useCallback((text: string) => {
+    send({ type: 'chat', text });
+  }, [send]);
+
   const clearRoomNotice = useCallback(() => setRoomNotice(null), []);
 
   const drawCard = useCallback((place: Place) => {
@@ -260,10 +283,10 @@ export function useWebSocket(): UseWebSocketReturn {
     connected, roomId, playerId, memberId,
     lobbyPlayers, lobbyTeamNames, lobbySettings, hostMemberId,
     isHost: memberId !== null && memberId === hostMemberId,
-    roomNotice, clearRoomNotice,
+    roomNotice, clearRoomNotice, chatLog,
     gameState, turnDeadline, lastEvents, error,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
-    movePlayer, kickPlayer, transferHost, setTeamName, updateSettings, startGame,
+    movePlayer, kickPlayer, transferHost, setTeamName, updateSettings, startGame, sendChat,
     drawCard, chooseSkill, passSkill,
   };
 }

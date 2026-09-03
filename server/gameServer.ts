@@ -120,6 +120,12 @@ export function createConnectionHandler(roomManager: RoomManager) {
           break;
         }
 
+        case 'chat': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.handleChat(currentPlayerId, msg.text);
+          break;
+        }
+
         case 'drawCard': {
           if (!currentRoomId || !currentPlayerId) return;
           roomManager.getRoom(currentRoomId)?.handleDrawCard(currentPlayerId, msg.place);

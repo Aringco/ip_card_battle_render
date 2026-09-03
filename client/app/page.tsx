@@ -312,6 +312,9 @@ export default function LobbyPage() {
           myMemberId={ws.memberId}
           hostMemberId={ws.hostMemberId}
           isHost={ws.isHost}
+          chatLog={ws.chatLog}
+          connected={ws.connected}
+          onSendChat={ws.sendChat}
           onReady={handleReady}
           onStart={ws.startGame}
           onLeave={ws.leaveRoom}

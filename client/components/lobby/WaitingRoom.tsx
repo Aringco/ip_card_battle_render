@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { GameSettings, LobbyPlayer, Team } from 'shared';
+import type { GameSettings, LobbyChatMessage, LobbyPlayer, Team } from 'shared';
 import { TEAM_NAME_MAX_LEN } from 'shared';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
+import { ChatPanel } from './ChatPanel';
 
 const TEAM_META: Record<Team, { badge: string; fallback: string; ring: string }> = {
   A: { badge: '🟢', fallback: '팀 1', ring: 'border-green-200' },
@@ -53,6 +54,9 @@ export interface WaitingRoomProps {
   myMemberId: string | null;
   hostMemberId: string | null;
   isHost: boolean;
+  chatLog: LobbyChatMessage[];
+  connected: boolean;
+  onSendChat: (text: string) => void;
   onReady: (ready: boolean) => void;
   onStart: () => void;
   onLeave: () => void;
@@ -65,7 +69,7 @@ export interface WaitingRoomProps {
 
 export function WaitingRoom({
   roomId, players, teamNames, settings,
-  myMemberId, hostMemberId, isHost,
+  myMemberId, hostMemberId, isHost, chatLog, connected, onSendChat,
   onReady, onStart, onLeave, onMove, onKick, onTransferHost, onRenameTeam, onUpdateSettings,
 }: WaitingRoomProps) {
   const me = players.find(p => p.memberId === myMemberId) ?? null;
@@ -104,6 +108,13 @@ export function WaitingRoom({
           />
         ))}
       </div>
+
+      <ChatPanel
+        messages={chatLog}
+        myMemberId={myMemberId}
+        connected={connected}
+        onSend={onSendChat}
+      />
 
       {isHost ? (
         <HostRulesPanel settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />

@@ -3,13 +3,16 @@ import type { Animal, Place, Team } from 'shared';
 import type { ServerMessage } from 'shared';
 import { processPlayerAction, processSkillChoice, processPass, processTimeout, initGame } from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
-import type { GameEvent, GameSettings, GameState } from 'shared';
+import type { GameEvent, GameSettings, GameState, LobbyChatMessage } from 'shared';
 import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
   SHEEP_TIMER_EXTRA_DRAW_CAP,
   PLACES,
   TEAM_NAME_POOL,
   TEAM_NAME_MAX_LEN,
+  CHAT_MAX_LEN,
+  CHAT_HISTORY_MAX,
+  CHAT_MIN_INTERVAL_MS,
   DEFAULT_SETTINGS,
   clampSettings,
 } from 'shared';
@@ -109,6 +112,8 @@ interface PlayerConnection {
   team: Team;
   ready: boolean;
   connected: boolean;
+  // 마지막으로 채팅을 보낸 시각 — 과속 전송을 걸러내는 데만 쓴다.
+  lastChatAt: number;
 }
 
 export class Room {
@@ -118,6 +123,9 @@ export class Room {
   // 방장 = 방을 처음 만든 사람. 로비에서 이 사람이 나가면 남아 있는 다음 사람에게 넘어간다.
   private hostPlayerId: string | null = null;
   private memberIdSeq = 0;
+  // 대기실 채팅 기록(링 버퍼) — 나중에 들어오거나 재접속한 사람에게 그대로 넘겨준다.
+  private chatLog: LobbyChatMessage[] = [];
+  private chatSeq = 0;
   // 방장(방을 만든 쪽)이 정한 게임 규칙 — 로비에서는 방장이 계속 바꿀 수 있고, 게임이
   // 시작되면(state !== null) 불변이다.
   private settings: GameSettings = DEFAULT_SETTINGS;
@@ -176,6 +184,60 @@ export class Room {
     return true;
   }
 
+  // ─── 대기실 채팅 ─────────────────────────────────────────────────────────
+
+  /** 채팅 한 줄을 기록에 남기고 방 전체에 중계한다. */
+  private pushChat(msg: Omit<LobbyChatMessage, 'id'>): void {
+    this.chatSeq += 1;
+    const message: LobbyChatMessage = { ...msg, id: this.chatSeq };
+    this.chatLog.push(message);
+    if (this.chatLog.length > CHAT_HISTORY_MAX) this.chatLog.shift();
+    this.broadcast({ type: 'chatMessage', message });
+  }
+
+  /** 방에서 일어난 일(입장·퇴장·팀 변경 등)을 채팅창에 안내줄로 남긴다. */
+  private pushSystem(text: string): void {
+    this.pushChat({ kind: 'system', memberId: null, nickname: '', team: null, wasHost: false, text });
+  }
+
+  /** 지금까지의 대화 기록을 한 사람에게만 보낸다(입장·재접속 직후). */
+  private sendChatHistory(playerId: string): void {
+    this.sendTo(playerId, { type: 'chatHistory', messages: this.chatLog });
+  }
+
+  /** 팀 이름을 화면 표기용으로 — 아직 정해지지 않았으면 "팀 1"/"팀 2". */
+  private teamLabel(team: Team): string {
+    return this.teamNames[team] ?? (team === 'A' ? '팀 1' : '팀 2');
+  }
+
+  /**
+   * 대기실 채팅 전송. 거절 사유는 모두 조용히 버린다 — 실사용자는 클라이언트 쪽 억제에
+   * 먼저 걸려 여기까지 오지 않으므로, 빨간 에러 배너를 띄우면 소음만 된다.
+   */
+  handleChat(playerId: string, text: string): void {
+    if (this.started) return;
+    const p = this.players.get(playerId);
+    if (!p) return;
+
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const now = Date.now();
+    if (now - p.lastChatAt < CHAT_MIN_INTERVAL_MS) return;
+    p.lastChatAt = now;
+
+    this.pushChat({
+      kind: 'chat',
+      memberId: p.memberId,
+      nickname: p.nickname,
+      team: p.team,
+      // 보낸 그 순간의 방장 여부를 박아둔다 — 나중에 방장이 바뀌어도 지난 대화의
+      // 왕관은 말했던 사람에게 그대로 남는다.
+      wasHost: this.isHost(playerId),
+      text: trimmed.slice(0, CHAT_MAX_LEN),
+    });
+  }
+
   /** 팀 이름을 확정한다. 이미 정해져 있으면 무시하고, 요청한 이름이 상대 팀과 겹치면 무작위로 대체한다. */
   private assignTeamName(team: Team, requested?: string): void {
     if (this.teamNames[team]) return;
@@ -216,9 +278,13 @@ export class Room {
     // 방장은 따로 "준비"를 누르지 않는다 — 준비 버튼 대신 "게임 시작" 버튼을 쥔다.
     this.players.set(playerId, {
       ws, playerId, memberId: this.nextMemberId(), nickname, team,
-      ready: isRoomCreator, connected: true,
+      ready: isRoomCreator, connected: true, lastChatAt: 0,
     });
     if (isRoomCreator) this.hostPlayerId = playerId;
+    // 이전 대화를 먼저 넘겨준 뒤에 입장 안내를 방송한다 — 순서가 뒤바뀌면 새로 들어온
+    // 사람이 자기 입장 메시지를 chatMessage로 한 번, chatHistory로 또 한 번 받게 된다.
+    this.sendChatHistory(playerId);
+    this.pushSystem(`${nickname} 님이 들어왔어요`);
     this.teamPlayerIds[team].push(playerId);
     this.assignTeamName(team, teamName);
     // 방장만 반대편 팀 이름도 미리 정할 수 있다 — 나중에 참가자가 joinRoom으로 보내는
@@ -244,7 +310,7 @@ export class Room {
     if (settings) this.settings = clampSettings(settings);
     this.players.set(playerId, {
       ws, playerId, memberId: this.nextMemberId(), nickname, team: 'A',
-      ready: true, connected: true,
+      ready: true, connected: true, lastChatAt: 0,
     });
     this.hostPlayerId = playerId;
     this.teamPlayerIds.A.push(playerId);
@@ -289,6 +355,11 @@ export class Room {
     this.teamPlayerIds[team].push(target.playerId);
     // 아직 아무도 없던 팀으로 옮겨간 경우, 그 팀 이름이 비어 있으면 여기서 정하지 않는다 —
     // 방장이 setTeamName으로 직접 짓거나, 시작 시점(tryStartGame)에 무작위로 채워진다.
+    this.pushSystem(
+      target.playerId === playerId
+        ? `${target.nickname} 님이 ${this.teamLabel(team)} 팀으로 옮겼어요`
+        : `방장이 ${target.nickname} 님을 ${this.teamLabel(team)} 팀으로 옮겼어요`,
+    );
     this.broadcastLobbyState();
   }
 
@@ -303,7 +374,7 @@ export class Room {
     if (target.playerId === playerId) return; // 방장은 자기 자신을 추방할 수 없다
 
     this.sendTo(target.playerId, { type: 'kicked', message: '방장이 당신을 방에서 내보냈습니다.' });
-    this.removePlayer(target.playerId);
+    this.removePlayer(target.playerId, 'kicked');
   }
 
   /** 방장 자리를 다른 참가자에게 넘긴다. 넘긴 사람은 일반 참가자(준비 완료 상태)가 된다. */
@@ -320,6 +391,7 @@ export class Room {
     if (prev) prev.ready = true; // 방장에서 내려온 사람은 이미 참가 의사를 밝힌 상태로 둔다
     this.hostPlayerId = target.playerId;
     target.ready = true;
+    this.pushSystem(`이제 ${target.nickname} 님이 방장이에요`);
     this.broadcastLobbyState();
   }
 
@@ -329,6 +401,7 @@ export class Room {
     const trimmed = name.trim().slice(0, TEAM_NAME_MAX_LEN);
     if (!trimmed) {
       // 빈 이름은 "미정으로 되돌리기"로 취급한다 — 시작 시점에 무작위로 채워진다.
+      this.pushSystem(`${this.teamLabel(team)} 팀 이름이 미정으로 돌아갔어요`);
       this.teamNames[team] = null;
       this.broadcastLobbyState();
       return;
@@ -337,6 +410,8 @@ export class Room {
       this.sendTo(playerId, { type: 'error', code: 'TEAM_NAME_TAKEN', message: '상대 팀과 같은 이름은 쓸 수 없습니다.' });
       return;
     }
+    // 안내문에는 바뀌기 "전" 이름을 써야 어느 팀 얘기인지 알아볼 수 있다.
+    this.pushSystem(`${this.teamLabel(team)} 팀 이름이 "${trimmed}"(으)로 바뀌었어요`);
     this.teamNames[team] = trimmed;
     this.broadcastLobbyState();
   }
@@ -345,6 +420,7 @@ export class Room {
   updateSettings(playerId: string, settings: Partial<GameSettings>): void {
     if (!this.requireHost(playerId)) return;
     this.settings = clampSettings({ ...this.settings, ...settings });
+    this.pushSystem('방장이 게임 규칙을 바꿨어요');
     this.broadcastLobbyState();
   }
 
@@ -370,20 +446,32 @@ export class Room {
     return null;
   }
 
-  /** 로비에서 플레이어를 완전히 제거하고(팀 목록 포함) 필요하면 방장을 넘긴다. */
-  private removePlayer(playerId: string): void {
+  /**
+   * 로비에서 플레이어를 완전히 제거하고(팀 목록 포함) 필요하면 방장을 넘긴다.
+   * reason은 채팅창 안내 문구만 가른다 — 'left'는 자진 퇴장·연결 끊김, 'kicked'는 추방.
+   */
+  private removePlayer(playerId: string, reason: 'left' | 'kicked'): void {
     const p = this.players.get(playerId);
     if (!p) return;
     this.players.delete(playerId);
     const idx = this.teamPlayerIds[p.team].indexOf(playerId);
     if (idx !== -1) this.teamPlayerIds[p.team].splice(idx, 1);
 
+    this.pushSystem(
+      reason === 'kicked'
+        ? `방장이 ${p.nickname} 님을 내보냈어요`
+        : `${p.nickname} 님이 나갔어요`,
+    );
+
     if (this.hostPlayerId === playerId) {
       // 방장이 빠지면 남아 있는 사람 중 가장 먼저 들어온 사람이 이어받는다 — 안 그러면
       // 아무도 시작 버튼을 누를 수 없어 방이 통째로 멈춘다.
       const next = this.players.values().next().value as PlayerConnection | undefined;
       this.hostPlayerId = next?.playerId ?? null;
-      if (next) next.ready = true;
+      if (next) {
+        next.ready = true;
+        this.pushSystem(`방장이 나가서 ${next.nickname} 님이 방장이 되었어요`);
+      }
     }
 
     if (this.players.size === 0) {
@@ -403,7 +491,7 @@ export class Room {
     if (this.started) return false;
     if (!this.players.has(playerId)) return false;
     this.sendTo(playerId, { type: 'leftRoom' });
-    this.removePlayer(playerId);
+    this.removePlayer(playerId, 'left');
     return true;
   }
 
@@ -647,7 +735,7 @@ export class Room {
 
     if (this.state === null) {
       // 로비에서 나가면 플레이어 제거(방장이었다면 남은 사람에게 넘긴다)
-      this.removePlayer(playerId);
+      this.removePlayer(playerId, 'left');
     }
     // 게임 중 이탈: 차례가 오면 타이머 만료로 자동 강제진행
   }
@@ -661,8 +749,10 @@ export class Room {
 
     if (this.state === null) {
       // 대기실 화면이 "내가 누구인지"(memberId)와 방장 여부를 다시 알 수 있도록,
-      // 처음 입장 때와 똑같이 roomJoined → lobbyState 순서로 보낸다.
+      // 처음 입장 때와 똑같이 roomJoined → lobbyState 순서로 보내고, 끊긴 사이의 대화도
+      // 함께 복구해준다.
       this.sendTo(playerId, { type: 'roomJoined', roomId: this.roomId, playerId, memberId: p.memberId });
+      this.sendChatHistory(playerId);
       this.broadcastLobbyState();
     } else {
       const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
