@@ -42,6 +42,38 @@ function ToggleButton({
   );
 }
 
+/** iOS 스타일 ON/OFF 스위치 — 텍스트 버튼(ToggleButton)과 달리 손잡이가 좌우로
+    미끄러지는 슬라이더 모양이라, 눌러야 하는 대상이 "글자"가 아니라 "스위치"임이
+    한눈에 보인다. */
+function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className={`relative w-11 h-6 shrink-0 rounded-full transition-colors ${
+        checked ? 'bg-jungle-600' : 'bg-gray-300'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  );
+}
+
 function VolumeRow({
   label,
   active,
@@ -120,13 +152,18 @@ function FontSizeRow() {
   );
 }
 
-/** 내 턴마다 뜨는 장소·행동 손가락 가이드 on/off — 게임을 오래 한 사람은 거슬릴 수 있어 끌 수 있게 했다. */
+/** 내 턴마다 뜨는 장소·행동 손가락 가이드 on/off — 게임을 오래 한 사람은 거슬릴 수 있어 끌 수 있게 했다.
+    "가이드"라는 글자 자체를 눌러야 하는 ToggleButton 대신, 켜짐/꺼짐이 한눈에 보이는
+    슬라이더 스위치를 쓴다(FontSizeRow의 "글씨"처럼 라벨은 누르는 대상이 아니다). */
 function GuideToggleRow() {
   const guideEnabled = useGuideEnabled();
   return (
     <div className="flex items-center gap-2">
-      <ToggleButton label="가이드" active={guideEnabled} onClick={() => setGuideEnabled(!guideEnabled)} />
+      <span className="w-[5.25rem] shrink-0 py-1.5 rounded-md bg-jungle-700 text-white text-xs font-semibold text-center">
+        가이드
+      </span>
       <span className="text-2xs text-gray-400 flex-1">내 턴마다 손가락 안내를 보여줘요</span>
+      <Switch checked={guideEnabled} onChange={() => setGuideEnabled(!guideEnabled)} label="턴 가이드 표시 켜기/끄기" />
     </div>
   );
 }

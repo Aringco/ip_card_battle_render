@@ -15,6 +15,7 @@ import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { DecisiveHitBanner } from '@/components/effects/DecisiveHitBanner';
 import { TurnAnnounceBanner } from '@/components/effects/TurnAnnounceBanner';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
+import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { GameHeader } from './GameHeader';
 import { TeamPanel } from './TeamPanel';
 import { GameBoard } from './GameBoard';
@@ -247,6 +248,7 @@ export function GameLayout({
         myTeam={myTeam}
         playerId={playerId}
       />
+      <SettingsHintPopup />
     </div>
   );
 }

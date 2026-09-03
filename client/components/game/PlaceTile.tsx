@@ -10,11 +10,15 @@ export function PlaceTile({
   disabled,
   onClick,
   showGuide,
+  guideClipsAtTop,
 }: {
   place: Place;
   disabled: boolean;
   onClick: (place: Place) => void;
   showGuide?: boolean; // 내가 장소를 고를 수 있는 턴마다 "여길 눌러보세요" 손가락 가이드를 보여준다(설정에서 끌 수 있음)
+  // 보드 맨 윗줄(오두막·부둣가)처럼 타일 바로 위가 화면 자체의 위쪽 경계라 손가락을
+  // 타일 밖으로 내밀면 잘리는 자리는, 손가락을 타일 안쪽에 그린다(globals.css 참고).
+  guideClipsAtTop?: boolean;
 }) {
   const [pressed, setPressed] = useState(false);
 
@@ -55,7 +59,7 @@ export function PlaceTile({
       </button>
 
       {showGuide && (
-        <span className="place-guide-finger" aria-hidden>
+        <span className={guideClipsAtTop ? 'place-guide-finger-inside' : 'place-guide-finger'} aria-hidden>
           👇
         </span>
       )}

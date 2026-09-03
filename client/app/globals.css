@@ -1228,7 +1228,7 @@ body {
   top: 30%;
   z-index: 68;
   pointer-events: none;
-  padding: 0.8rem 2.4rem;
+  padding: 1.1rem 3.2rem;
   border-radius: 9999px;
   font-weight: 900;
   white-space: nowrap;
@@ -1236,31 +1236,80 @@ body {
   animation: turnAnnouncePop 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 .turn-announce-mine {
-  font-size: 2.1rem;
+  font-size: 2.9rem;
   color: #16a34a;
-  border: 3px solid #22c55e;
-  outline: 3px solid #dcfce7;
-  outline-offset: 3px;
-  box-shadow: 0 14px 34px rgba(22, 163, 74, 0.4);
+  border: 4px solid #22c55e;
+  outline: 4px solid #dcfce7;
+  outline-offset: 4px;
+  box-shadow: 0 16px 40px rgba(22, 163, 74, 0.45);
 }
 .turn-announce-ally {
-  font-size: 1.55rem;
+  font-size: 2.1rem;
   color: #65a30d;
-  border: 3px solid #a3e635;
-  outline: 3px solid #ecfccb;
-  outline-offset: 3px;
-  box-shadow: 0 10px 26px rgba(101, 163, 13, 0.28);
+  border: 4px solid #a3e635;
+  outline: 4px solid #ecfccb;
+  outline-offset: 4px;
+  box-shadow: 0 12px 30px rgba(101, 163, 13, 0.32);
 }
 .turn-announce-enemy {
-  font-size: 1.8rem;
+  font-size: 2.4rem;
   color: #7f1d1d;
-  border: 3px solid #991b1b;
-  outline: 3px solid #fecaca;
-  outline-offset: 3px;
-  box-shadow: 0 12px 30px rgba(69, 10, 10, 0.35);
+  border: 4px solid #991b1b;
+  outline: 4px solid #fecaca;
+  outline-offset: 4px;
+  box-shadow: 0 14px 34px rgba(69, 10, 10, 0.4);
 }
 @media (prefers-reduced-motion: reduce) {
   .turn-announce-banner { animation: none; opacity: 0; }
+}
+
+/* ── 설정(⚙️) 버튼 발견 안내 — 게임 시작 시 딱 한 번, 30초 ───────────────────── */
+@keyframes settingsHintPop {
+  0%   { transform: translateY(8px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.settings-hint-popup {
+  position: fixed;
+  bottom: 4.75rem;
+  right: 0.75rem;
+  z-index: 95;
+  max-width: 15rem;
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 0.85rem 1.75rem 0.85rem 1rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  border: 2px solid #16a34a;
+  animation: settingsHintPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.settings-hint-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #14532d;
+  line-height: 1.4;
+}
+.settings-hint-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: #9ca3af;
+  padding: 0.2rem;
+}
+.settings-hint-close:hover { color: #4b5563; }
+.settings-hint-arrow {
+  position: absolute;
+  bottom: -7px;
+  right: 1.15rem;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-right: 2px solid #16a34a;
+  border-bottom: 2px solid #16a34a;
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-hint-popup { animation: none; }
 }
 
 /* ── 카드 오픈/페어/효과 자막 (보드 중앙 오버레이) ───────────────────────────── */
@@ -1421,7 +1470,7 @@ body {
   .place-tile-pressed { animation: none; }
 }
 
-/* ── 첫 턴 온보딩 — "여기를 눌러보세요" 손가락 가이드 ────────────────────────── */
+/* ── "여기를 눌러보세요" 손가락 가이드(내 턴마다) ────────────────────────────── */
 /* 버튼 정중앙을 손으로 가리면 안 보이니, 버튼 위쪽 10% 지점(살짝 위)에 아래를
    가리키는 손이 위아래로 까딱까딱하며 "여길 누르세요"를 유도한다. */
 @keyframes guideFingerBounce {
@@ -1439,8 +1488,27 @@ body {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
   animation: guideFingerBounce 0.8s ease-in-out infinite;
 }
+/* 보드 맨 윗줄 장소(오두막·부둣가)는 타일 위쪽 경계가 곧 게임 화면 자체의 위쪽
+   경계(헤더 바로 아래)라, 위 .place-guide-finger처럼 절반을 타일 밖으로 내밀면
+   main 그리드의 overflow-hidden에 잘려 손가락 끝이 잘려 보인다. 이 변형은 손을
+   타일 안쪽에서 시작해(밖으로 내밀지 않고) 튀는 폭도 위로 넘치지 않게 줄였다. */
+@keyframes guideFingerBounceInside {
+  0%, 100% { transform: translate(-50%, 0) translateY(0); }
+  50%      { transform: translate(-50%, 0) translateY(-8px); }
+}
+.place-guide-finger-inside {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  transform: translate(-50%, 0);
+  font-size: 4.5rem;
+  z-index: 95;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  animation: guideFingerBounceInside 0.8s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .place-guide-finger { animation: none; }
+  .place-guide-finger, .place-guide-finger-inside { animation: none; }
 }
 
 /* ── 턴 종료 스킬 선택 모달 ─────────────────────────────────────────────── */
