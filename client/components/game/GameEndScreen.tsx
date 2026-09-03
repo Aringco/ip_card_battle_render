@@ -80,7 +80,11 @@ export function GameEndScreen({
   const flavorAnimal = useMemo(() => pickFlavorAnimal(gameState, winner), [gameState, winner]);
 
   return (
-    <div className="min-h-screen bg-jungle-50 flex flex-col items-center justify-center gap-6 p-8 overflow-hidden relative">
+    <div className="min-h-screen bg-jungle-50 flex flex-col items-center p-8 overflow-hidden relative">
+      {/* 아래 콘텐츠 묶음은 그대로 세로 중앙 정렬하고, 그 밖에 화면 맨 밑에 붙는 푸터
+          안내를 별도로 둔다 — 바깥 div를 justify-center로 두면 푸터까지 그 중앙 정렬
+          묶음에 끼어버려 화면 아래쪽에 붙지 않는다. */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full">
       {/* 컨페티 */}
       {confetti.map(c => (
         <span
@@ -198,6 +202,11 @@ export function GameEndScreen({
       >
         로비로 돌아가기
       </button>
+      </div>
+
+      <p className="text-sm text-jungle-400 text-center pt-4">
+        게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
+      </p>
     </div>
   );
 }

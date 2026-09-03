@@ -71,7 +71,11 @@ export default function LobbyPage() {
   if (!assetsReady) return <LoadingScreen onDone={handleAssetsReady} />;
 
   return (
-    <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-green-50 flex flex-col items-center p-4">
+      {/* 로비 콘텐츠는 그대로 세로 중앙 정렬하되, 그 아래에 항상 화면 맨 밑까지 붙는
+          푸터 안내를 별도로 둔다 — 바깥 div를 justify-center로 두면 이 푸터까지
+          그 중앙 정렬 묶음에 끼어버려 화면 아래쪽에 붙지 않는다. */}
+      <div className="flex-1 flex flex-col items-center justify-center w-full">
       <h1 className="text-6xl mb-3">🐑🐰🧜‍♀️🐯</h1>
       <h2 className="text-3xl font-semibold text-green-800 mb-4">한국특허정보원 카드배틀</h2>
 
@@ -253,6 +257,11 @@ export default function LobbyPage() {
           onReady={handleReady}
         />
       )}
+      </div>
+
+      <p className="text-sm text-gray-400 text-center py-4">
+        게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
+      </p>
 
       <style>{`
         .input-base {
