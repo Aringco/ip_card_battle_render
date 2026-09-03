@@ -14,6 +14,10 @@ export function Field({ label, children }: { label: string; children: React.Reac
  *
  * 뒤로가기는 스테이지 아래 전용 버튼(BackButton)이 담당하므로 카드 안에는 두지 않는다.
  * 스테이지 높이가 고정이라 내용이 길어지면 감싸는 .stage-form이 안에서 스크롤한다.
+ *
+ * description이 문자열이 아니라 ReactNode인 이유 — 폼은 세로로 늘어날 수 없어서
+ * (position:absolute), 경고를 새 줄로 덧붙이는 대신 **이 한 줄을 갈아끼워** 쓴다.
+ * 방 만들기의 팀 이름 충돌 경고가 그 예다.
  */
 export function FormCard({
   title,
@@ -21,7 +25,7 @@ export function FormCard({
   children,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (

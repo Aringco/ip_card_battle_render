@@ -73,7 +73,19 @@ npm run build
 | tiger(특허랑이) | 20 | 상대 체력에서 `레벨×배율`만큼 강탈(보존형 — 상대가 가진 만큼만, 오버킬 없음) |
 
 ### 방(Room) 상태 머신 — `server/room.ts`
-방 하나 = `Room` 인스턴스 하나. 로비(플레이어 join/ready) → `initGame`으로 `GameState` 생성 → 이후 모든 WS 메시지(`drawCard`/`chooseSkill`/`passSkill`)를 검증(현재 턴/대기 상태와 일치하는 플레이어인지)한 뒤 `gameEngine` 진입점을 호출하고 결과를 브로드캐스트하는 흐름. 턴 타이머(`resetTimer`)는 대기 상태(장소 선택 vs 행동 선택)에 따라 `settings.drawTimeSec`/`actionTimeSec`을 쓰고, 실용신양 예약 뽑기 수만큼 `SHEEP_EXTRA_TIME_PER_DRAW_SEC`를 더 준다. 싱글 모드(`addSoloPlayer`)는 B팀을 CPU로 채우고 `performComputerAction`이 일정 딜레이 후 무작위(또는 즉시 승리 가능한 수 우선) 행동을 대신 수행한다. 재접속은 `sessionStorage`에 저장된 `playerId`로 `reconnect` 메시지를 보내 `gameSnapshot`을 다시 받는 방식.
+방 하나 = `Room` 인스턴스 하나. 로비(플레이어 join/ready → 방장이 `startGame`) → `initGame`으로 `GameState` 생성 → 이후 모든 WS 메시지(`drawCard`/`chooseSkill`/`passSkill`)를 검증(현재 턴/대기 상태와 일치하는 플레이어인지)한 뒤 `gameEngine` 진입점을 호출하고 결과를 브로드캐스트하는 흐름.
+
+**방장(host)** — 방을 만든 사람이 `hostPlayerId`가 되고, 로비에서만 쓸 수 있는 명령(`movePlayer`/`kickPlayer`/`transferHost`/`setTeamName`/`updateSettings`/`startGame`)을 갖는다. 모든 명령은 `requireHost`가 "게임 시작 전인지 + 방장인지"를 함께 검사한다(`movePlayer`만 예외 — 자기 자신을 옮길 때는 누구나 가능). 방장이 로비에서 빠지면 `removePlayer`가 남아 있는 첫 번째 사람에게 자리를 넘긴다 — 안 그러면 아무도 `startGame`을 부를 수 없어 방이 통째로 멈춘다. 이전에는 전원이 ready가 되는 순간 자동으로 시작했지만, 지금은 방장이 명시적으로 시작 버튼을 눌러야 한다(방장 본인은 ready 개념이 없어 항상 `ready: true`).
+
+**이름은 항상 채워져 있다** — 닉네임과 팀 이름의 무작위 생성은 `shared/names.ts`(`randomNickname`/`randomTeamName`) 한 곳에 있고 클라이언트·서버가 같이 쓴다. **팀 이름에 "미정(null)" 상태를 되살리지 말 것** — `addPlayer`는 방을 만드는 순간 양 팀 이름을 모두 확정하고(방장이 상대 팀 이름을 비워뒀으면 무작위), `setTeamName`에 빈 이름이 오면 미정으로 되돌리는 게 아니라 무작위로 다시 뽑는다. 예전엔 "그 팀에 실제로 참가하는 사람이 직접 정할 기회"를 남기려고 비워뒀지만 참가 화면에는 팀 이름 입력칸이 아예 없어서, 대기실에 "팀 2 (미정)"만 남는 버그로만 드러났다. 서버는 닉네임도 `normalizeNickname`으로 다시 정리한다(길이 컷 + 빈 이름이면 무작위) — 클라이언트 검증만 믿지 않는다. 양 팀 이름이 같아지는 경로는 `setTeamName`·`startBlockReason`·클라이언트 방 만들기 화면 세 곳에서 함께 막는다(게임에 들어가면 두 팀을 가리는 단서가 이름뿐이다).
+
+**대기실 채팅** — `Room.chatLog`는 `CHAT_HISTORY_MAX`(50)개짜리 링 버퍼이고, 사람이 친 말(`kind: 'chat'`)과 방에서 일어난 일(`kind: 'system'`, `pushSystem`)이 한 줄기로 섞여 있다. 게임 화면에는 채팅이 없다 — `handleChat`은 `started`면 곧바로 return하고, 클라이언트도 `gameStart`에서 `chatLog`를 비운다. 과속·빈 메시지는 **에러를 보내지 않고 조용히 버린다**(실사용자는 클라이언트 쪽 억제에 먼저 걸리므로 빨간 배너는 소음일 뿐이다).
+
+주의할 순서 두 가지 — 어기면 곧바로 눈에 보이는 버그가 된다.
+1. `addPlayer`는 `sendChatHistory` → `pushSystem('… 들어왔어요')` 순서여야 한다. 뒤바뀌면 새로 들어온 사람이 자기 입장 줄을 `chatMessage`로 한 번, `chatHistory`로 또 한 번 받아 두 줄로 보인다(클라이언트의 id 비교 방어선이 있지만 그 방어선에 기대지 말 것).
+2. `removePlayer(playerId, reason)`는 퇴장 안내 → 방장 승계 안내 순으로 push하고, 둘 다 `players.size === 0 → onEmpty()` 검사 **앞**에 와야 한다. `reason`은 자진 퇴장·연결 끊김(`'left'`)과 추방(`'kicked'`)의 문구를 가른다.
+
+**`memberId` vs `playerId`** — `playerId`(UUID)는 사실상 재접속 자격증명이라(`handleReconnect`가 이 값만으로 통과시킨다) 로비 목록에 실으면 남의 세션을 가로챌 수 있다. 그래서 방장 명령의 대상 지정과 로비 목록에는 방 안에서만 통하는 짧은 공개 식별자 `memberId`(`m1`, `m2`, …)를 쓰고, `playerId`는 오직 그 소유자에게만 `roomCreated`/`roomJoined`로 보낸다. 새 로비 기능을 추가할 때도 이 구분을 유지할 것. 턴 타이머(`resetTimer`)는 대기 상태(장소 선택 vs 행동 선택)에 따라 `settings.drawTimeSec`/`actionTimeSec`을 쓰고, 실용신양 예약 뽑기 수만큼 `SHEEP_EXTRA_TIME_PER_DRAW_SEC`를 더 준다. 싱글 모드(`addSoloPlayer`)는 B팀을 CPU로 채우고 `performComputerAction`이 일정 딜레이 후 무작위(또는 즉시 승리 가능한 수 우선) 행동을 대신 수행한다. 재접속은 `sessionStorage`에 저장된 `playerId`로 `reconnect` 메시지를 보내 `gameSnapshot`을 다시 받는 방식.
 
 `RoomManager`(`server/roomManager.ts`)는 4글자 방 코드(`O`/`I` 제외)로 `Room` 인스턴스를 생성·조회·정리하는 순수 관리 계층이고, `createConnectionHandler`(`server/gameServer.ts`)가 `ClientMessage` 타입별 분기(WS 연결 하나당 `currentRoomId`/`currentPlayerId` 클로저 유지)를 맡는다. 이 핸들러를 분리해둔 이유는 독립 실행(`server/index.ts`, 로컬 개발용 8080 포트에 자체 `WebSocketServer` 생성)과 통합 실행(루트 `server.ts`, Next.js와 같은 포트를 쓰는 배포용) 양쪽이 동일한 연결 처리 로직을 공유하기 위해서다.
 
@@ -117,6 +129,12 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 **바깥으로 뻗는 그림자는 패널이 아니라 열에 건다.** `.stage-col`은 슬라이드 아웃을 위해 `overflow: hidden`이고 패널은 열을 정확히 채우므로, **패널에 건 바깥 box-shadow는 한 번도 그려지지 않는다**(예전 코드에 죽은 선언이 남아 있었고, hover 강조를 안쪽 링으로 그리던 것도 이 때문이다). 반면 열 **자신의** box-shadow는 자기 overflow에 잘리지 않으므로, `.stage-col:has(> .stage-panel…:hover)`에 걸면 버튼 테두리에서 빛이 퍼지는 그림이 정확히 나온다(`:has(> …)`로 직계 자식만 보는 이유는 멀티 열 안에 방 만들기/참가하기 열이 중첩돼 있어서다). 다만 그 중첩된 두 열은 자르개가 두 겹(`.stage-col-multi`의 overflow + `.multi-inner`의 clip-path)이라 그냥 두면 글로우가 열 사이 간격 쪽으로만 새어 나온다 — 멀티 단계에 한해 두 겹을 `--glow-reach`만큼 연다(`overflow-clip-margin`, 음수 `inset()`). **바깥 멀티 열은 hover 중일 때만 열어야 한다** — 늘 열어두면 싱글을 골라 그 열이 폭 0으로 줄 때 패널 조각이 화면 오른쪽에 띠처럼 남는다. 같은 빛을 뒤로가기 버튼(`.lobby-back`)의 원형 배지에도 걸었는데, 값은 일부러 다르다(12px/0.65) — 지름 36px 배지에 패널과 같은 14px/0.45를 쓰면 번짐이 배지보다 커져 형체 없는 얼룩이 된다. 글로우 폭 변수 `--glow-reach`는 `.lobby-safe`에 있다(뒤로가기 버튼이 `.lobby-stage`의 형제라 스테이지에 두면 닿지 않는다).
 
 **멀티 패널은 "다 커진 뒤에" 녹아 없어진다.** `.stage-panel-multi`는 조건부 렌더링을 하지 않는 구조상 create/join 단계에서도 계속 마운트돼 있는데, 그대로 두면 테두리·그림자가 바깥 윤곽을 그리고 두 열 사이 간격으로 멀티 그림이 비쳐 **두 버튼을 감싼 액자**처럼 보인다. 그래서 `box-shadow: none` + `border-color: transparent` + 배경 `opacity: 0`으로 지우는데(`border: none`이 아닌 이유는 1px이 사라지면 안쪽 배치가 그만큼 밀리고 투명도를 따라 옅어지지도 못하기 때문), **누르는 즉시가 아니라 확장이 끝난 뒤**여야 한다 — 즉시 지우면 확장이 시작되기도 전에 방금 누른 패널이 증발하고 넓어지는 빈 공간만 남는다. `transition-delay: var(--t-expand)` + `var(--t-reveal)` 길이로 바로 아래 `.multi-inner`의 clip-path·opacity와 지연·속도를 **일부러 똑같이** 맞춰, 사라지는 양과 두 버튼이 나타나는 양의 합이 매 순간 1이 되는 크로스페이드가 된다(한쪽 값만 바꾸면 교대가 어긋나 한 프레임씩 겹치거나 빈다). 되돌아올 때는 이 규칙이 통째로 떨어져 나가 지연 없이 기본 transition이 맡으므로, 패널이 먼저 제 모습으로 돌아온 뒤 열이 줄어드는 정확한 역재생이 된다 — 이때 테두리가 뚝 끊기지 않도록 `.lobby-panel`의 기본 transition에 `border-color`가 들어가 있다. `public/`에 이미지를 추가하면 `client/scripts/generateAssetManifest.mjs`의 `IMAGE_DIRS`에 그 폴더가 있어야 `LoadingScreen`이 프리로드한다 — 빠뜨리면 로딩 화면이 끝난 뒤에야 받아와 배경이 늦게 뜬다.
+
+**경고·안내는 새 줄로 덧붙이지 말고 있는 줄을 갈아끼운다.** 폼이 `position: absolute`라 한 줄만 늘어도 좁은 화면에서 스크롤바가 생긴다 — 실제로 방 만들기의 팀 이름 충돌 경고를 별도 `<p>`로 덧붙였더니 390×844에서 카드가 517→545px가 되며 폼이 스크롤했다. 그래서 `FormCard`의 `description`을 `ReactNode`로 받아 **평소 설명 줄을 경고로 교체**하고(높이 증가 0), 어느 칸이 문제인지는 `TeamNameField`의 `invalid`가 붉은 링으로 가리킨다. 이때 링은 반드시 `ring`이어야 한다 — `border-width`를 키우면 입력창이 2px 높아져 같은 문제가 그대로 재현된다. 새 안내를 넣을 자리가 정 없다면 먼저 `client/scripts/measureLobby.mjs`로 재보고 판단할 것(이 스크립트는 충돌 경고·초대 링크 상태까지 함께 잰다).
+
+**게임 규칙 입력은 레이아웃이 둘인데 필드 목록은 하나다.** `GameRulesFields`(로비 폼)는 안전영역에 갇혀 2열로 눌러 담고, `GameRulesInputs`(대기실에서 방장이 규칙 수정)는 폭이 넉넉해 한 항목씩 세로로 둔다. 두 배치가 같은 `RULE_FIELDS`를 쓰되 `label`(축약)과 `title`(전체)을 나눠 갖는다 — 항목을 추가할 때 한 곳만 고치면 다른 배치가 조용히 빠진다.
+
+**대기실만 안전영역 밖으로 나간다.** 안전영역은 *배경 위에 얹히는 반투명 UI*가 캐릭터·카드더미를 가리지 않게 하려는 장치인데, 대기실은 불투명한 흰 카드 하나라 그 제약이 무의미하고 오히려 참가자 목록·채팅·방장 조작·규칙까지 들어가 로비 폼보다 훨씬 길다. 그래서 `.lobby-safe[data-stage="waiting"]`에서만 좌우/상하 제약을 풀고 화면을 세로로 꽉 쓴다(가로는 카드 자신의 `max-w-4xl`에 맞춘다). 로고 슬롯은 폼이 열릴 때와 같은 방식으로 함께 접힌다. 이 단계 값을 되돌리면 대기실 윗부분만 보이고 시작 버튼이 스크롤 밖으로 밀려난다.
 
 ### 테스트 작성 시 참고
 `server/__tests__/effects.test.ts`는 결정론적 RNG(`rng0`=항상 0번째 선택, `rngLast`=항상 마지막 선택)로 `initGame`부터 각 엔진 함수를 직접 호출하는 패턴을 쓴다. `simulation.test.ts`는 봇 대전을 다회 시뮬레이션해 게임이 항상 유한 턴 내에 끝나는지 등 불변조건을 검증한다.

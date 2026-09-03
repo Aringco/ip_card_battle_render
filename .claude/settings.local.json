@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -i \"ts-node\\\\|next$\")"
+      "Bash(grep -i \"ts-node\\\\|next$\")",
+      "Bash(npx tsc *)"
     ]
   }
 }

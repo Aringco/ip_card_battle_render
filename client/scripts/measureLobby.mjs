@@ -68,6 +68,22 @@ async function openRules(page, formSel) {
   }
 }
 
+/**
+ * 두 팀 이름 칸에 같은 값을 넣어 충돌 경고를 띄운다 — 이 경고가 폼에서 가장 키가 큰
+ * 상태를 만든다(방 만들기 + 규칙 펼침 + 경고 한 줄). 경고가 실제로 떴는지까지 확인하는
+ * 이유는, 안 뜬 채로 재면 "문제 없음"으로 보이지만 아무것도 재지 못한 것이기 때문이다.
+ */
+async function makeTeamNamesClash(page) {
+  const inputs = await page.$$('.stage-form-create input[type="text"]');
+  // [0]=닉네임 [1]=우리 팀 이름 [2]=상대 팀 이름
+  for (const idx of [1, 2]) {
+    await inputs[idx].click({ clickCount: 3 });
+    await inputs[idx].type('특허나라');
+  }
+  return page.evaluate(() =>
+    [...document.querySelectorAll('.stage-form-create p')].some(p => p.textContent.includes('두 팀 이름이 같아요')));
+}
+
 const { default: puppeteer } = await import('puppeteer-core');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -99,22 +115,41 @@ for (const vp of VIEWPORTS) {
   await openRules(page, '.stage-form-create');        await sleep(500);
   results.push(await measure(page, `create+rules@${tag}`));       await shot('4-create-rules');
 
+  // 폼이 가장 높아지는 상태 — 위 create+rules에 팀 이름 충돌 경고 한 줄이 더 얹힌다
+  const clashShown = await makeTeamNamesClash(page);  await sleep(400);
+  const clash = await measure(page, `create+clash@${tag}`);
+  clash.note = clashShown ? '' : '*** 경고 안 뜸';
+  results.push(clash);                                            await shot('5-create-clash');
+
+  // 초대 링크로 들어온 참가 폼 — 안내 배너가 한 덩어리 더 붙는다.
+  // 새로 열어야 한다(page.tsx의 ?room= 처리는 마운트 직후 한 번뿐이다).
+  await page.goto(`${URL_BASE}?room=ABCD`, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('.lobby-safe', { timeout: 60000 });
+  await sleep(1000 + SETTLE);
+  const invite = await measure(page, `join+invite@${tag}`);
+  const inviteOk = await page.evaluate(() =>
+    [...document.querySelectorAll('.stage-form-join p')].some(p => p.textContent.includes('초대 링크로 들어왔어요'))
+    && document.querySelector('.stage-form-join input.font-mono')?.value === 'ABCD');
+  invite.note = inviteOk ? '' : '*** 안내/코드 채움 실패';
+  results.push(invite);                                           await shot('6-join-invite');
+
   await page.close();
 }
 await browser.close();
 
 let bad = 0;
-console.log('label                   안전영역     카드         폼스크롤  페이지스크롤  화면밖');
+console.log('label                   안전영역     카드         폼스크롤  페이지스크롤  화면밖   비고');
 for (const r of results) {
   const b = o => (o ? `${o.w}x${o.h}` : '-');
-  if (r.formScroll?.v || r.pageScroll || r.offscreen) bad++;
+  if (r.formScroll?.v || r.pageScroll || r.offscreen || r.note) bad++;
   console.log(
     r.label.padEnd(23),
     b(r.safe).padEnd(12),
     b(r.card).padEnd(12),
     (r.formScroll ? (r.formScroll.v ? '*** YES' : 'no') : '-').padEnd(9),
     (r.pageScroll ? '*** YES' : 'no').padEnd(13),
-    r.offscreen ? '*** YES' : 'no',
+    (r.offscreen ? '*** YES' : 'no').padEnd(8),
+    r.note ?? '',
   );
 }
 console.log(`\n문제: ${bad === 0 ? '없음' : bad + '건'}`);

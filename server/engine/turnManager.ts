@@ -179,6 +179,7 @@ export function initGame(
     activeTeam: startingTeam,
     activePlayerIndex: 0,
     stacks: initStacks(),
+    lastPlace: null,
     festival: false,
     pendingChoice: null,
     teams: {

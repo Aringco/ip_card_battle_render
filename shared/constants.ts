@@ -90,10 +90,23 @@ export const SHEEP_SAFETY_CAP = 40;
 
 export const ANIMALS = ['sheep', 'rabbit', 'mermaid', 'tiger'] as const;
 
-// 방을 만들 때 팀 이름을 정하지 않으면 이 중 서로 겹치지 않게 무작위로 배정된다.
-export const TEAM_NAME_POOL = [
-  '상표', '디자인', '실용신안', '특허', '영업비밀', '저작권', '무단도용', '불법복제',
-] as const;
+// 팀 이름 최대 글자 수 — 게임 화면 팀 패널이 감당할 수 있는 길이(서버도 이 값으로 자른다).
+export const TEAM_NAME_MAX_LEN = 12;
+// 닉네임 최대 글자 수 — 입력창(maxLength)과 서버 정리(normalizeNickname)가 같은 값을 쓴다.
+export const NICKNAME_MAX_LEN = 12;
+
+// ─── 대기실 채팅 ─────────────────────────────────────────────────────────────
+// 한 메시지 최대 길이 — 넘치면 서버가 잘라서 브로드캐스트한다.
+export const CHAT_MAX_LEN = 200;
+// 방이 보관하는 최근 메시지 수(링 버퍼) — 나중에 들어온 사람이 받는 대화 기록의 길이이자,
+// 방 하나가 붙들고 있는 메모리의 상한이다.
+export const CHAT_HISTORY_MAX = 50;
+// 같은 사람의 연속 전송 최소 간격(ms) — 클라이언트가 먼저 억제하고, 서버는 안전망으로
+// 이 간격 안에 도착한 메시지를 조용히 버린다.
+export const CHAT_MIN_INTERVAL_MS = 400;
+
+// 방을 만들 때 팀 이름을 정하지 않으면 `shared/names.ts`의 randomTeamName이 상대 팀과
+// 겹치지 않는 이름을 무작위로 배정한다(닉네임 무작위 생성도 같은 파일에 있다).
 
 // 실용신양 스킬로 예약된 추가 뽑기 1회당 턴 제한시간 연장(초) — 30초 + 10×n
 export const SHEEP_EXTRA_TIME_PER_DRAW_SEC = 10;

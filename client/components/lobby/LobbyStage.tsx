@@ -28,6 +28,10 @@ export interface LobbyStageProps {
 
   nickname: string;
   onNickname: (v: string) => void;
+  /** 닉네임을 비워둔 채 시작하는 사람에게 그대로 쓰이는 무작위 이름(placeholder에도 보인다) */
+  nicknameHint: string;
+  /** 닉네임 입력 + 무작위 이름을 합쳐 "제출 가능한 이름이 있는가" — page.tsx가 계산한다 */
+  canSubmitName: boolean;
   team: Team;
   onTeam: (t: Team) => void;
   teamName: string;
@@ -35,8 +39,12 @@ export interface LobbyStageProps {
   /** 방을 만드는 쪽만 입력 — 아직 아무도 없는 반대편 팀 이름까지 미리 정해둔다 */
   otherTeamName: string;
   onOtherTeamName: (v: string) => void;
+  /** 두 팀 이름이 같음 — 서버도 같은 조건으로 시작을 막는다 */
+  teamNamesClash: boolean;
   roomCode: string;
   onRoomCode: (v: string) => void;
+  /** 초대 링크(`/?room=ABCD`)로 들어와 방 코드가 미리 채워진 상태인지 */
+  arrivedByInvite: boolean;
   settings: GameSettings;
   onSettings: (next: GameSettings) => void;
 
@@ -122,11 +130,12 @@ export function LobbyStage(props: LobbyStageProps) {
             firstFieldRef={soloFirstRef}
             nickname={props.nickname}
             onNickname={props.onNickname}
+            nicknameHint={props.nicknameHint}
             teamName={props.teamName}
             onTeamName={props.onTeamName}
             settings={props.settings}
             onSettings={props.onSettings}
-            canSubmit={!blocked && !!props.nickname.trim()}
+            canSubmit={!blocked && props.canSubmitName}
             onSubmit={props.onStartSolo}
           />
         </div>
@@ -163,15 +172,17 @@ export function LobbyStage(props: LobbyStageProps) {
                 firstFieldRef={createFirstRef}
                 nickname={props.nickname}
                 onNickname={props.onNickname}
+                nicknameHint={props.nicknameHint}
                 team={props.team}
                 onTeam={props.onTeam}
                 teamName={props.teamName}
                 onTeamName={props.onTeamName}
                 otherTeamName={props.otherTeamName}
                 onOtherTeamName={props.onOtherTeamName}
+                teamNamesClash={props.teamNamesClash}
                 settings={props.settings}
                 onSettings={props.onSettings}
-                canSubmit={!blocked && !!props.nickname.trim()}
+                canSubmit={!blocked && props.canSubmitName && !props.teamNamesClash}
                 onSubmit={props.onCreateRoom}
               />
             </div>
@@ -193,11 +204,13 @@ export function LobbyStage(props: LobbyStageProps) {
                 firstFieldRef={joinFirstRef}
                 nickname={props.nickname}
                 onNickname={props.onNickname}
+                nicknameHint={props.nicknameHint}
                 roomCode={props.roomCode}
                 onRoomCode={props.onRoomCode}
+                arrivedByInvite={props.arrivedByInvite}
                 team={props.team}
                 onTeam={props.onTeam}
-                canSubmit={!blocked && !!props.nickname.trim() && !!props.roomCode.trim()}
+                canSubmit={!blocked && props.canSubmitName && !!props.roomCode.trim()}
                 onSubmit={props.onJoinRoom}
               />
             </div>

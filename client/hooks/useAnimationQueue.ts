@@ -93,7 +93,9 @@ export interface PlayerEmoticon {
   team: Team;
   playerIndex: number; // 팀 내 이 플레이어의 인덱스 (프로필 목록 앵커용)
   file: string;         // /emoticon/{file}.png
-  stackIndex: number;   // 같은 앵커에 몇 번째로 겹쳐 쌓였는지 (크기/z-index 산출용)
+  // 화면상의 자리(몇 칸 아래인지)는 여기 담지 않는다 — 같은 앵커에 뜬 것들이 큐처럼
+  // 위로 당겨져야 해서, PlayerEmoticonLayer가 매 렌더마다 목록 순서로 다시 센다.
+  persist?: boolean;    // 게임 종료 좌절 연출 — 저절로 사라지지 않고 종료 화면으로 넘어갈 때까지 그대로 남는다
 }
 
 export interface PlaceFocusItem {
@@ -141,8 +143,15 @@ export interface HpPulse {
   direction: 'gain' | 'loss';
 }
 
-function emoticonFile(animal: Animal, mood: 'happy' | 'cry'): string {
+// client/public/emoticon/{animal}_{mood}.png — burn/cry/focus/happy/stone 다섯 종이 있다.
+function emoticonFile(animal: Animal, mood: 'happy' | 'cry' | 'stone'): string {
   return `${animal}_${mood}`;
+}
+
+// 결정타를 맞은 팀이 짓는 표정 — 네 동물 각각 이 둘 중 하나를 무작위로 고른다.
+const DESPAIR_MOODS = ['cry', 'stone'] as const;
+function randomDespairMood(): (typeof DESPAIR_MOODS)[number] {
+  return DESPAIR_MOODS[Math.floor(Math.random() * DESPAIR_MOODS.length)];
 }
 
 export interface AnimationState {
@@ -216,6 +225,13 @@ const RABBIT_PRESSURE_DUR = 700;
 const FESTIVAL_BURST_DUR = 2000;
 const FESTIVAL_START_INFO_DUR = 2600; // "이제부터 K턴마다 N회!" 규칙 안내 배너 — 두 줄이라 다른 배너보다 조금 더 오래 보여준다
 const DECISIVE_HIT_DUR = 1800;
+// ── 결정타를 맞은 팀의 좌절 연출 ───────────────────────────────────────────
+const DESPAIR_LEAD_MS = 300;  // 화면이 흔들린 직후 첫 마리가 뜨기까지
+const DESPAIR_STEP_MS = 240;  // 네 마리가 "주루룩" 이어서 뜨는 간격
+const DESPAIR_ENTER_MS = 900; // globals.css의 emoticonEnter 길이와 일치해야 한다
+// 네 마리가 다 뜬 뒤, 종료 화면으로 넘어가기 전에 그 망연자실한 얼굴을 보여주는 여운.
+// 이 이모티콘들은 스스로 사라지지 않으므로(persist), 여기까지 계속 떠 있는다.
+const DESPAIR_LINGER_MS = 800;
 
 let floatIdCounter = 0;
 
@@ -397,11 +413,25 @@ export function useAnimationQueue(
     }, atMs);
   };
 
-  const addEmoticon = (team: Team, playerIndex: number, file: string, stackIndex: number, atMs: number) => {
+  /**
+   * persist를 주면 제거 타이머를 아예 걸지 않는다 — 게임 종료 좌절 연출은 저절로
+   * 사라지지 않고, 화면이 종료 화면으로 넘어갈 때 GameLayout과 함께 사라진다.
+   * (그때까지 남은 것들은 새 액션이 도착하면 위 리셋 블록이 직접 걷어낸다.)
+   */
+  const addEmoticon = (
+    team: Team,
+    playerIndex: number,
+    file: string,
+    atMs: number,
+    opts?: { persist?: boolean },
+  ) => {
     const id = ++floatIdCounter;
+    const persist = opts?.persist ?? false;
     sched(() => {
-      setEmoticons(prev => [...prev, { id, team, playerIndex, file, stackIndex }]);
-      schedPersistent(() => setEmoticons(prev => prev.filter(e => e.id !== id)), EMOTICON_DUR);
+      setEmoticons(prev => [...prev, { id, team, playerIndex, file, persist }]);
+      if (!persist) {
+        schedPersistent(() => setEmoticons(prev => prev.filter(e => e.id !== id)), EMOTICON_DUR);
+      }
     }, atMs);
   };
 
@@ -445,6 +475,9 @@ export function useAnimationQueue(
     // 두는 컴퓨터 상대), 켜진 채로 방치되면 화면에 영원히 남는 연출들을 여기서
     // 전부 끈다. 반대로 emoticons/placeFocusBursts/sheepLoaded는 schedPersistent로
     // 이미 timersRef 취소의 영향을 받지 않도록 설계되어 있으므로 건드리지 않는다.
+    // 단 하나의 예외가 persist 이모티콘(게임 종료 좌절 연출)이다 — 제거 타이머 자체가
+    // 없어서, 새 액션이 와도 그냥 두면 화면에 영영 남는다. 여기서 직접 걷어낸다.
+    setEmoticons(prev => (prev.some(e => e.persist) ? prev.filter(e => !e.persist) : prev));
     setScreenShakeLevel(0);
     setLeafParticleCount(0);
     setFloatingTexts([]);
@@ -941,7 +974,7 @@ export function useAnimationQueue(
         sched(() => {
           const gs = gameStateRef.current;
           if (gs) {
-            addEmoticon(team, gs.teams[team].playerIndex, emoticonFile(animal, 'happy'), 0, at);
+            addEmoticon(team, gs.teams[team].playerIndex, emoticonFile(animal, 'happy'), at);
           }
 
           if (animal === 'rabbit') {
@@ -1025,13 +1058,35 @@ export function useAnimationQueue(
     if (gameEndEv && gameEndEv.reason === 'knockout' && gameEndEv.winner !== 'draw') {
       const at = cursor;
       const winner = gameEndEv.winner;
+      const loser: Team = winner === 'A' ? 'B' : 'A';
       sched(() => {
         setScreenShakeLevel(3);
         sched(() => setScreenShakeLevel(0), SHAKE_PULSE_DUR);
         setDecisiveHit({ winner });
         sched(() => setDecisiveHit(null), DECISIVE_HIT_DUR);
       }, at);
-      cursor = at + DECISIVE_HIT_DUR;
+
+      // 진 팀 프로필 옆으로 네 동물이 차례차례 좌절하는 얼굴을 띄운다 — 결정타 한 방에
+      // 무너졌다는 게 한눈에 보이도록. 겹치지 않게 아래로 한 칸씩 쭈루룩 쌓인다.
+      // 다른 이모티콘과 달리 persist라 저절로 사라지지 않는다 — 이긴 쪽이 그 망연자실한
+      // 네 얼굴을 그대로 보면서 종료 화면으로 넘어가도록.
+      // 앵커는 진 팀의 현재 차례 플레이어(방금 수를 둔 건 이긴 쪽이다). 게임이 이미
+      // 끝나 이 값이 더 바뀌지 않으므로, gameStateRef 대신 이 이펙트의 gameState를 쓴다.
+      const loserPlayerIndex = gameState?.teams[loser].playerIndex ?? 0;
+      ANIMALS.forEach((animal, i) => {
+        addEmoticon(
+          loser,
+          loserPlayerIndex,
+          emoticonFile(animal, randomDespairMood()),
+          at + DESPAIR_LEAD_MS + i * DESPAIR_STEP_MS,
+          { persist: true },
+        );
+      });
+
+      // 마지막 한 마리가 다 뜨고 여운까지 지나기 전에는 종료 화면으로 넘어가지 않는다.
+      const despairEndsAt =
+        DESPAIR_LEAD_MS + (ANIMALS.length - 1) * DESPAIR_STEP_MS + DESPAIR_ENTER_MS + DESPAIR_LINGER_MS;
+      cursor = at + Math.max(DECISIVE_HIT_DUR, despairEndsAt);
     }
 
     // ── 정산 연출이 여기서 끝난다 — 이 시점에야 비로소 화면상의 턴을 실제 서버 상태로 넘긴다. ──

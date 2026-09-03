@@ -1,13 +1,15 @@
 'use client';
 
 import type { GameSettings } from 'shared';
-import { Field, FormCard } from './Field';
+import { FormCard } from './Field';
 import { GameRulesFields } from './GameRulesFields';
+import { NicknameField, TeamNameField } from './NameFields';
 
 export function SoloForm({
   firstFieldRef,
   nickname,
   onNickname,
+  nicknameHint,
   teamName,
   onTeamName,
   settings,
@@ -18,6 +20,7 @@ export function SoloForm({
   firstFieldRef?: React.Ref<HTMLInputElement>;
   nickname: string;
   onNickname: (v: string) => void;
+  nicknameHint: string;
   teamName: string;
   onTeamName: (v: string) => void;
   settings: GameSettings;
@@ -27,31 +30,23 @@ export function SoloForm({
 }) {
   return (
     <FormCard
-      title="🤖 싱글플레이"
+      title="🤖 혼자 놀기"
       description="상대는 컴퓨터예요. 컴퓨터는 자기 차례마다 무작위 장소를 클릭합니다."
     >
-      <Field label="닉네임">
-        <input
-          ref={firstFieldRef}
-          type="text"
-          value={nickname}
-          onChange={e => onNickname(e.target.value)}
-          placeholder="닉네임 입력"
-          maxLength={12}
-          className="input-base"
-        />
-      </Field>
+      <NicknameField
+        inputRef={firstFieldRef}
+        nickname={nickname}
+        onChange={onNickname}
+        hint={nicknameHint}
+      />
 
-      <Field label="우리 팀 이름 (선택, 비워두면 무작위 배정)">
-        <input
-          type="text"
-          value={teamName}
-          onChange={e => onTeamName(e.target.value)}
-          placeholder="예: 특허"
-          maxLength={12}
-          className="input-base"
-        />
-      </Field>
+      {/* 싱글은 상대가 컴퓨터라 피해야 할 이름이 없다 — avoid는 빈 문자열 */}
+      <TeamNameField
+        label="우리 팀 이름 (선택)"
+        value={teamName}
+        onChange={onTeamName}
+        avoid=""
+      />
 
       <GameRulesFields settings={settings} onChange={onSettings} />
 

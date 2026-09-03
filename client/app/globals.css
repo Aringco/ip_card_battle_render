@@ -1373,15 +1373,28 @@ body {
 }
 
 /* ── 플레이어 반응 이모티콘 (프로필 옆) ──────────────────────────────────── */
-/* 등장(팝+흔들림) → 유지 → 마지막에 페이드아웃, 총 2000ms (JS 제거 타이밍과 일치) */
+/* 등장(팝+흔들림) → 유지 → 마지막에 페이드아웃, 총 2000ms (JS 제거 타이밍과 일치)
+   세로 위치(큐에서의 자리)는 바깥 span의 transform + transition이 맡는다 — 예전엔 이
+   키프레임 안에 자리 오프셋을 같이 넣었는데, 그러면 앞엣것이 사라져도 뒤엣것이 제자리에
+   붙박여 위로 딸려 올라오질 못한다. */
 @keyframes emoticonLifecycle {
-  0%   { transform: translateY(var(--stack-offset, 0px)) scale(0.4) rotate(-8deg); opacity: 0; }
-  18%  { transform: translateY(var(--stack-offset, 0px)) scale(1.15) rotate(6deg); opacity: 1; }
-  27%  { transform: translateY(var(--stack-offset, 0px)) scale(0.95) rotate(-4deg); opacity: 1; }
-  36%  { transform: translateY(var(--stack-offset, 0px)) scale(1.05) rotate(2deg); opacity: 1; }
-  45%  { transform: translateY(var(--stack-offset, 0px)) scale(1) rotate(0deg); opacity: 1; }
-  85%  { transform: translateY(var(--stack-offset, 0px)) scale(1) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(0px) scale(0.85) rotate(0deg); opacity: 0; }
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  18%  { transform: scale(1.15) rotate(6deg); opacity: 1; }
+  27%  { transform: scale(0.95) rotate(-4deg); opacity: 1; }
+  36%  { transform: scale(1.05) rotate(2deg); opacity: 1; }
+  45%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  85%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(0.85) rotate(0deg); opacity: 0; }
+}
+/* 게임 종료 좌절 연출용 — 등장까지만 재생하고 그 자리에 그대로 멈춘다(페이드아웃 없음).
+   위 emoticonLifecycle이 45%(=900ms) 지점에서 정지 자세에 도달하므로, 같은 동작을
+   0~100%로 펴서 900ms에 끝나게 맞춘 것이다. */
+@keyframes emoticonEnter {
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  40%  { transform: scale(1.15) rotate(6deg); opacity: 1; }
+  60%  { transform: scale(0.95) rotate(-4deg); opacity: 1; }
+  80%  { transform: scale(1.05) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 .player-emoticon {
   display: block;
@@ -1392,8 +1405,16 @@ body {
   background: #fff;
   animation: emoticonLifecycle 2000ms ease-out both;
 }
+/* 클래스를 둘 다 단 선택자라 위 .player-emoticon보다 우선한다 — 상자 모양은 그대로 두고
+   애니메이션만 "떠서 멈추는" 쪽으로 바꾼다. JS 쪽에 제거 타이머가 없는 이모티콘 전용. */
+.player-emoticon.is-staying {
+  animation: emoticonEnter 900ms ease-out both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .player-emoticon { animation: none; }
+  /* is-staying 쪽도 함께 적어야 한다 — .player-emoticon 한 줄만으로는 위의 두 클래스
+     선택자를 못 이겨서 애니메이션이 그대로 재생된다. */
+  .player-emoticon,
+  .player-emoticon.is-staying { animation: none; }
 }
 
 /* ── 디자인어 효과 — 큰 인어 팝업 + 음표 ───────────────────────────────────── */
@@ -1467,6 +1488,17 @@ body {
 }
 .place-tile-pressed {
   animation: placeTilePress 180ms ease-out;
+}
+/* 직전 턴에 쓴 장소 — 50% 검은 배경 위에 80% 흰색 금지 마크(원 + 대각선). */
+.place-forbidden-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 5;
+}
+.place-forbidden-mark {
+  width: 34%;
+  height: 34%;
+  opacity: 0.8;
 }
 @media (prefers-reduced-motion: reduce) {
   .place-tile-pressed { animation: none; }
@@ -1735,6 +1767,15 @@ body {
   padding: 0.2rem 0.4rem;
   font-size: 0.8rem;
 }
+/* 대기실의 규칙 입력(GameRulesInputs) — 라벨과 점선으로 이어진 오른쪽 끝 숫자칸.
+   로비 폼과 달리 폭이 넉넉해 고정 너비를 주고 flex 늘어남을 끈다.
+   (upstream이 page.tsx 인라인 <style>에 두었던 것을 이관 — 그 블록은 로비 개편 때
+   globals.css로 옮기면서 사라졌다) */
+.input-rule {
+  width: 6rem;
+  flex: none;
+  text-align: right;
+}
 
 /* ── 로비 — 모드 선택 패널 ───────────────────────────────────────────────
    게임 화면의 장소 타일(.place-tile)과 같은 인터랙션 문법을 쓴다: 평소엔 어둡게
@@ -1950,10 +1991,31 @@ body {
 }
 .lobby-safe[data-stage="solo"] .lobby-hero-slot,
 .lobby-safe[data-stage="create"] .lobby-hero-slot,
-.lobby-safe[data-stage="join"] .lobby-hero-slot {
+.lobby-safe[data-stage="join"] .lobby-hero-slot,
+.lobby-safe[data-stage="waiting"] .lobby-hero-slot {
   height: 0;
   opacity: 0;
   margin-bottom: -0.75rem;   /* 접힌 만큼 gap도 회수 */
+}
+
+/* 대기실은 안전영역 제약이 필요 없다.
+   안전영역은 **배경 위에 얹히는 반투명 UI**가 캐릭터·카드더미를 가리지 않게 하려는
+   장치인데, 대기실은 불투명한 흰 카드 하나라 어차피 그 아래가 보이지 않는다. 반대로
+   대기실은 참가자 목록·채팅·방장 조작·규칙까지 들어가 로비 폼보다 훨씬 길어서, 좁은
+   안전영역에 가두면 카드 윗부분만 보이고 나머지는 스크롤해야 닿는다.
+   그래서 이 단계에서만 좌우/상하 제약을 풀고 화면을 세로로 꽉 쓴다(가로는 카드 자신의
+   max-w-4xl = 56rem에 맞춘다). 로고도 위에서 함께 접혀 그만큼을 대기실에 내준다. */
+.lobby-safe[data-stage="waiting"] {
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: min(56rem, 100vw - 1.5rem);
+  height: calc(100vh - 3rem);
+  max-width: none;
+  max-height: none;
+  margin: 0;
 }
 
 .lobby-stage {

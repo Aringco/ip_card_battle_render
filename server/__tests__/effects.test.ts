@@ -1,6 +1,6 @@
 import { initGame, advanceTurn } from '../engine/turnManager';
 import { drawCard } from '../engine/drawCard';
-import { processPlayerAction, processSkillChoice, processPass } from '../engine/gameEngine';
+import { processPlayerAction, processSkillChoice, processPass, processTimeout } from '../engine/gameEngine';
 import { applySkillChoice, applyPass, levelOf } from '../engine/skills';
 import type { Animal, CardNum, StackedCard } from 'shared';
 import { MAX_TURN, SHEEP_SAFETY_CAP, THRESHOLDS, FESTIVAL_TURN, INITIAL_HP, WIN_HP } from 'shared';
@@ -552,5 +552,51 @@ describe('장소 클릭 후에는 행동을 고를 때까지 턴이 넘어가지
     expect(s2.pendingChoice).toBeNull();
     expect(s2.activeTeam).toBe('B');
     expect(events.some(e => e.type === 'skillApplied')).toBe(true);
+  });
+});
+
+// ─── 직전 장소 금지 ────────────────────────────────────────────────────────────
+describe('직전 장소 금지 — 같은 장소만 계속 노리는 걸 막는다', () => {
+  it('장소를 클릭하면 lastPlace가 그 장소로 기록된다', () => {
+    const state = initGame(['A1'], ['B1'], rng0);
+    expect(state.lastPlace).toBeNull();
+    const { state: s1 } = processPlayerAction(state, 'house', rng0);
+    expect(s1.lastPlace).toBe('house');
+  });
+
+  it('직전에 쓴 장소를 다시 클릭하면 아무 일도 일어나지 않는다(뽑기 없음, 턴도 그대로)', () => {
+    const state = initGame(['A1'], ['B1'], rng0);
+    const { state: s1 } = processPlayerAction(state, 'house', rng0);
+    // house는 행동 없이 넘겼다고 가정하고 바로 다음 팀 차례로 만든다.
+    const { state: s2 } = processPass(s1);
+    expect(s2.activeTeam).toBe('B');
+    expect(s2.lastPlace).toBe('house'); // B팀 차례가 되어도 직전 장소 기록은 유지된다
+
+    const stackSizeBefore = s2.stacks.rabbit.length; // s1에서 이미 house 클릭으로 1장 쌓여 있다
+    const { state: s3, events } = processPlayerAction(s2, 'house', rng0);
+    expect(events).toHaveLength(0); // 거부됨 — draw 이벤트조차 없다
+    expect(s3.pendingChoice).toBeNull(); // 턴이 전혀 진행되지 않았다
+    expect(s3.stacks.rabbit).toHaveLength(stackSizeBefore); // 새로 뽑힌 카드가 없다
+  });
+
+  it('직전 장소가 아닌 다른 장소는 정상적으로 뽑힌다', () => {
+    const state = initGame(['A1'], ['B1'], rng0);
+    const { state: s1 } = processPlayerAction(state, 'house', rng0);
+    const { state: s2 } = processPass(s1);
+
+    const { state: s3, events } = processPlayerAction(s2, 'dock', rng0);
+    expect(events.some(e => e.type === 'draw')).toBe(true);
+    expect(s3.lastPlace).toBe('dock'); // 새로 클릭한 장소로 갱신된다
+  });
+
+  it('제한시간 초과로 서버가 대신 장소를 고를 때도 직전 장소는 후보에서 빠진다', () => {
+    const state = initGame(['A1'], ['B1'], rng0);
+    state.lastPlace = 'house'; // house가 금지된 상태를 직접 세팅
+    // rng0는 항상 배열의 0번째를 고르는데, house를 제외한 후보(forest_road, dock,
+    // river_road) 중 0번째는 forest_road다 — house가 아니어야 통과한다.
+    const { state: s1, events } = processTimeout(state, rng0);
+    const drawEv = events.find(e => e.type === 'draw');
+    expect(drawEv && drawEv.type === 'draw' ? drawEv.place : null).not.toBe('house');
+    expect(s1.lastPlace).not.toBe('house');
   });
 });

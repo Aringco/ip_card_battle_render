@@ -12,6 +12,10 @@ export { initGame } from './turnManager';
  * 뽑기+정산까지 끝난 뒤에는 고를 수 있는 스킬이 있든 없든 항상 그 팀의 스킬 선택 대기
  * 상태로 들어간다 — 쓸 수 있는 스킬이 없더라도 반드시 "아무것도 하지 않음"을 직접 눌러야
  * 턴이 넘어간다(자동 패스 없음). 30초 타이머가 끝나면 processTimeout이 대신 패스한다.
+ *
+ * 직전에(어느 팀이든) 실제로 클릭했던 장소는 이번엔 고를 수 없다(state.lastPlace) — 한
+ * 장소만 계속 노리는 게 너무 유리해서 넣은 제약이다. 정상적인 클라이언트라면 그 장소를
+ * 아예 클릭 못 하게 막혀 있지만(금지 표시), 방어적으로 서버에서도 무시한다.
  */
 export function processPlayerAction(
   state: GameState,
@@ -19,9 +23,11 @@ export function processPlayerAction(
   rng: RNG = Math.random,
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice !== null) return { state, events: [] };
+  if (place === state.lastPlace) return { state, events: [] };
 
   const events: GameEvent[] = [];
   events.push(...drawCard(state, place, rng));
+  state.lastPlace = place;
 
   if (state.phase === 'playing') {
     state.pendingChoice = state.activeTeam;
@@ -85,5 +91,5 @@ export function processTimeout(
     return { state: result.state, events: [{ type: 'timeoutChoice', animal }, ...result.events] };
   }
 
-  return processPlayerAction(state, randomPlace(rng), rng);
+  return processPlayerAction(state, randomPlace(rng, state.lastPlace), rng);
 }

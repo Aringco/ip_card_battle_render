@@ -1,20 +1,23 @@
 'use client';
 
 import type { GameSettings, Team } from 'shared';
-import { Field, FormCard } from './Field';
 import { GameRulesFields } from './GameRulesFields';
+import { FormCard } from './Field';
+import { NicknameField, TeamNameField } from './NameFields';
 import { TeamSelect } from './TeamSelect';
 
 export function CreateRoomForm({
   firstFieldRef,
   nickname,
   onNickname,
+  nicknameHint,
   team,
   onTeam,
   teamName,
   onTeamName,
   otherTeamName,
   onOtherTeamName,
+  teamNamesClash,
   settings,
   onSettings,
   canSubmit,
@@ -23,58 +26,60 @@ export function CreateRoomForm({
   firstFieldRef?: React.Ref<HTMLInputElement>;
   nickname: string;
   onNickname: (v: string) => void;
+  nicknameHint: string;
   team: Team;
   onTeam: (t: Team) => void;
   teamName: string;
   onTeamName: (v: string) => void;
   otherTeamName: string;
   onOtherTeamName: (v: string) => void;
+  teamNamesClash: boolean;
   settings: GameSettings;
   onSettings: (next: GameSettings) => void;
   canSubmit: boolean;
   onSubmit: () => void;
 }) {
   return (
-    <FormCard title="🏠 방 만들기" description="방장이 되어 규칙을 정해요.">
-      {/* 방 만들기는 입력이 가장 많은 폼이라, 짧은 두 필드를 한 줄에 묶어 세로 길이를 줄인다 */}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="닉네임">
-          <input
-            ref={firstFieldRef}
-            type="text"
-            value={nickname}
-            onChange={e => onNickname(e.target.value)}
-            placeholder="닉네임 입력"
-            maxLength={12}
-            className="input-base"
-          />
-        </Field>
+    // 충돌 경고를 새 줄로 덧붙이지 않고 설명 줄을 갈아끼운다 — 폼이 절대배치라 한 줄만
+    // 늘어도 좁은 화면(390×844)에서 스크롤바가 생긴다(LOBBY_REDESIGN.md §12 실측 참고).
+    <FormCard
+      title="🏠 방 만들기"
+      description={
+        teamNamesClash ? (
+          <span className="text-red-600 font-semibold">두 팀 이름이 같아요. 한쪽을 바꿔주세요.</span>
+        ) : (
+          '방장이 되어 규칙을 정해요.'
+        )
+      }
+    >
+      <NicknameField
+        inputRef={firstFieldRef}
+        nickname={nickname}
+        onChange={onNickname}
+        hint={nicknameHint}
+      />
 
-        <Field label="우리 팀 이름 (선택)">
-          <input
-            type="text"
-            value={teamName}
-            onChange={e => onTeamName(e.target.value)}
-            placeholder="비우면 무작위"
-            maxLength={12}
-            className="input-base"
-          />
-        </Field>
+      {/* 두 팀 이름은 한 줄에 나란히 둔다 — 같은 이름을 넣으면 안 된다는 규칙이 있어서,
+          서로 떨어져 있으면 무엇과 겹쳤는지 눈으로 확인하기 어렵다. 주사위는 상대 칸에
+          적힌 이름을 피해서 뽑으므로 주사위만 눌러서는 충돌이 나지 않는다. */}
+      <div className="grid grid-cols-2 gap-3">
+        <TeamNameField
+          label="우리 팀 이름 (선택)"
+          value={teamName}
+          onChange={onTeamName}
+          avoid={otherTeamName}
+          invalid={teamNamesClash}
+        />
+        <TeamNameField
+          label="상대 팀 이름 (선택)"
+          value={otherTeamName}
+          onChange={onOtherTeamName}
+          avoid={teamName}
+          invalid={teamNamesClash}
+        />
       </div>
 
       <TeamSelect team={team} onChange={onTeam} />
-
-      {/* 아직 아무도 들어오지 않은 반대편 팀 이름도 방장이 미리 정할 수 있다 */}
-      <Field label="상대 팀 이름 (선택)">
-        <input
-          type="text"
-          value={otherTeamName}
-          onChange={e => onOtherTeamName(e.target.value)}
-          placeholder="비우면 무작위 · 참가자가 직접 정함"
-          maxLength={12}
-          className="input-base"
-        />
-      </Field>
 
       <GameRulesFields settings={settings} onChange={onSettings} />
 

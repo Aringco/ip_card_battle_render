@@ -31,6 +31,7 @@ const GRID_AREA: Record<Place, string> = {
 export function GameBoard({
   gameState,
   myTeam,
+  canAct,
   onPlaceClick,
   captions,
   placeFocusBursts,
@@ -42,13 +43,19 @@ export function GameBoard({
   newCardId,
   stackCards,
   displayedActiveTeam,
-  isSettling,
   festivalFlash,
   festivalBurst,
   mermaidPopup,
 }: {
   gameState: ClientGameState;
   myTeam: Team | null;
+  // 지금 이 자리에서 정확히 나 자신이 장소를 고를 수 있는지(GameLayout.isMyDrawTurn을
+  // 그대로 받는다) — 팀만 맞는 게 아니라 N:N일 때 그 팀 안에서도 지금 차례인 그
+  // 플레이어 본인이어야 한다. 정산 연출이 완전히 끝났는지도 이미 반영돼 있다: 서버는
+  // 행동 선택/효과 반영이 끝나는 즉시 activeTeam을 넘기지만, 그 순간 곧바로 조작
+  // 가능해지면 아직 상대의 정산·효과 애니메이션이 재생 중인데도 내 턴처럼 장소가
+  // 호버·클릭되어 버려 플레이 감성을 해친다.
+  canAct: boolean;
   onPlaceClick: (place: Place) => void;
   captions: CaptionItem[];
   placeFocusBursts: PlaceFocusItem[];
@@ -60,17 +67,10 @@ export function GameBoard({
   newCardId: number | null;
   stackCards: Record<Animal, StackedCard[]>;
   displayedActiveTeam: Team;
-  isSettling: boolean;
   festivalFlash: boolean;
   festivalBurst: boolean;
   mermaidPopup: { team: Team } | null;
 }) {
-  // 장소 클릭 가능 여부는 "화면상" 턴(displayedActiveTeam)과 정산 연출이 완전히 끝났는지를
-  // 함께 따른다 — 서버는 행동 선택/효과 반영이 끝나는 즉시 activeTeam을 넘기지만, 그 순간
-  // 곧바로 조작 가능해지면 아직 상대의 정산·효과 애니메이션이 재생 중인데도 내 턴처럼
-  // 장소가 호버·클릭되어 버려 플레이 감성을 해친다. 반드시 정산 연출(행동 효과 또는
-  // "다음을 노리기" 캡션)까지 전부 끝난 뒤에만 조작을 허용한다.
-  const canAct = myTeam !== null && !isSettling && displayedActiveTeam === myTeam;
   // 예전엔 게임당 첫 턴에만 손가락 가이드를 잠깐 보여줬는데, 그 순간을 놓친 사람은
   // 규칙을 다시 확인할 방법이 없었다("규칙을 모르겠다" 피드백의 원인). 이제는 내가
   // 실제로 장소를 고를 수 있는 턴마다 매번 띄우고, 설정 패널(⚙️)에서 끄고 켤 수 있게
@@ -94,16 +94,25 @@ export function GameBoard({
         gridTemplateRows: '1fr 1fr',
       }}
     >
-      {PLACES.map(place => (
-        <div key={place} style={{ gridArea: GRID_AREA[place] }}>
-          <PlaceTile
-            place={place}
-            disabled={!canAct}
-            onClick={onPlaceClick}
-            showGuide={showPlaceGuide}
-          />
-        </div>
-      ))}
+      {PLACES.map(place => {
+        // 직전에(어느 팀이든) 실제로 클릭했던 장소는 다음 차례엔 못 고른다. 이 표시는
+        // canAct(내가 지금 장소를 고를 수 있는지)와 무관하게 항상 보여준다 — "지금 이
+        // 장소가 금지 상태"라는 사실 자체는 누구 턴이든, 어느 단계(장소 선택/행동 선택)
+        // 든 항상 같아야 하는 정보이기 때문이다. 예전엔 canAct에 묶여 있어서 상대
+        // 턴에는 안 보이고, 내 턴 안에서도 행동 선택 단계로 넘어가면 사라졌다.
+        const isForbidden = place === gameState.lastPlace;
+        return (
+          <div key={place} style={{ gridArea: GRID_AREA[place] }}>
+            <PlaceTile
+              place={place}
+              disabled={!canAct}
+              forbidden={isForbidden}
+              onClick={onPlaceClick}
+              showGuide={showPlaceGuide && !isForbidden}
+            />
+          </div>
+        );
+      })}
 
       <div style={{ gridArea: 'center' }}>
         <AnimalStackArea
