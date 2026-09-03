@@ -18,7 +18,15 @@ const TIPS = [
  */
 export function LoadingScreen({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState<PreloadProgress>({ loaded: 0, total: 0, ratio: 0, done: false });
-  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)]);
+  // 서버 렌더링과 클라이언트 첫 렌더가 항상 같은 값(TIPS[0])으로 시작해야 hydration
+  // mismatch가 안 생긴다 — Math.random()을 렌더 중에 바로 쓰면 서버·클라이언트가 각자
+  // 다른 값을 뽑아 경고가 뜨고, 운 나쁘면 문구가 잠깐 바뀌는 게 눈에 보인다. 무작위
+  // 선택은 마운트 후 이 effect에서만 한다(React가 공식 권장하는 방식).
+  const [tip, setTip] = useState<string>(TIPS[0]);
+
+  useEffect(() => {
+    setTip(TIPS[Math.floor(Math.random() * TIPS.length)]);
+  }, []);
 
   useEffect(() => {
     startPreload();
