@@ -56,7 +56,14 @@ export function TeamPanel({
       <div className="relative z-[1] h-full min-h-0 p-4 flex flex-col gap-3 overflow-y-auto">
         <div className={`text-base font-bold ${teamColor} flex items-center gap-1.5 flex-wrap`}>
           {label}
-          {isMine && <span className="text-rose-500">우리팀♥</span>}
+          {/* 그냥 색 있는 글자로 "우리팀♥"라고 붙여두던 걸, 다른 곳(GameHeader의
+              StepPill 등)과 같은 알약 배지 모양으로 바꿨다 — 배경 없이 튀는 색 글자만
+              둥둥 떠 있던 것보다 하나의 "표식"처럼 보이게 하기 위함. */}
+          {isMine && (
+            <span className="inline-flex items-center gap-1 bg-white/80 text-amber-600 text-2xs font-bold px-2 py-0.5 rounded-full shadow-sm border border-amber-200">
+              <span aria-hidden>⭐</span> 내 팀
+            </span>
+          )}
         </div>
 
         <PlayerList
