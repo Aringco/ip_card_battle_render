@@ -61,6 +61,11 @@ export interface GameState {
   activeTeam: Team;
   activePlayerIndex: number;
   stacks: Record<Animal, StackedCard[]>;      // 동물별 중앙 카드 스택 (수집된 카드도 기록으로 남음)
+  // 직전에(어느 팀이든) 실제로 클릭해서 뽑은 장소 — 같은 장소만 계속 노리는 게 너무
+  // 유리해서, 바로 다음 차례에는 이 장소를 고를 수 없다(server/engine/gameEngine.ts의
+  // processPlayerAction 참고). 실용신양/도토리 축제로 예약된 추가 뽑기는 무작위 장소에서
+  // 알아서 일어나는 것이라 여기에 영향을 주지 않는다 — 오직 "직접 클릭한" 장소만 기억한다.
+  lastPlace: Place | null;
   festival: boolean;                          // settings.festivalTurn 이후 여부 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
   pendingChoice: Team | null;                 // 턴을 마친 팀이 5가지 선택지(행동 4종 + 패스) 중 하나를 고르길 기다리는 중
   teams: Record<Team, TeamState>;

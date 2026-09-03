@@ -36,6 +36,7 @@ export function serializeState(
       mermaid: [...state.stacks.mermaid],
       tiger: [...state.stacks.tiger],
     },
+    lastPlace: state.lastPlace,
     festival: state.festival,
     pendingChoice: state.pendingChoice,
     teams: {

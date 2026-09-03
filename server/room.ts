@@ -323,7 +323,10 @@ export class Room {
       const animal = pickComputerSkill(this.state, 'B');
       result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
     } else if (this.state.activeTeam === 'B' && this.state.pendingChoice === null) {
-      const place = PLACES[Math.floor(Math.random() * PLACES.length)];
+      // 컴퓨터도 "직전 장소 금지" 규칙을 지켜야 한다 — 안 그러면 거부당한 뒤 다시
+      // 무작위로 고르느라 한 텀을 허비한다(화면엔 아무 변화 없이 몇 초가 그냥 지나감).
+      const options = PLACES.filter(p => p !== this.state!.lastPlace);
+      const place = options[Math.floor(Math.random() * options.length)];
       result = processPlayerAction(this.state, place);
     } else {
       return;

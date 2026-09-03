@@ -9,8 +9,14 @@ export function initStacks(): Record<Animal, StackedCard[]> {
   return { sheep: [], rabbit: [], mermaid: [], tiger: [] };
 }
 
-export function randomPlace(rng: RNG = Math.random): Place {
-  return PLACES[Math.floor(rng() * PLACES.length)];
+/**
+ * 무작위 장소 하나. exclude를 주면 그 장소는 후보에서 뺀다 — 시간 초과로 서버가
+ * 대신 장소를 골라줄 때(processTimeout)도 "직전 장소 금지" 규칙을 지키기 위해서다.
+ * 실용신양/도토리 축제의 예약 뽑기는 이 규칙과 무관하므로 exclude 없이 그대로 쓴다.
+ */
+export function randomPlace(rng: RNG = Math.random, exclude?: Place | null): Place {
+  const options = exclude ? PLACES.filter(p => p !== exclude) : PLACES;
+  return options[Math.floor(rng() * options.length)];
 }
 
 /**

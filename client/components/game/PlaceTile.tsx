@@ -8,18 +8,24 @@ const PRESS_DUR = 180;
 export function PlaceTile({
   place,
   disabled,
+  forbidden = false,
   onClick,
   showGuide,
 }: {
   place: Place;
   disabled: boolean;
+  // 직전 턴에 이미 이 장소에서 뽑아서, 이번 턴엔 규칙상 고를 수 없다(50% 검은 배경 +
+  // 흰색 금지 마크). disabled(내 차례가 아님)와는 별개 이유라 시각 표현도 다르게 둔다 —
+  // disabled는 4칸 전부 흐리게, forbidden은 이 한 칸만 검게 덮고 금지 마크를 얹는다.
+  forbidden?: boolean;
   onClick: (place: Place) => void;
   showGuide?: boolean; // 내가 장소를 고를 수 있는 턴마다 "여길 눌러보세요" 손가락 가이드를 보여준다(설정에서 끌 수 있음)
 }) {
   const [pressed, setPressed] = useState(false);
+  const blocked = disabled || forbidden;
 
   const handleClick = () => {
-    if (disabled) return;
+    if (blocked) return;
     setPressed(true);
     setTimeout(() => setPressed(false), PRESS_DUR);
     onClick(place);
@@ -33,14 +39,15 @@ export function PlaceTile({
       <button
         data-place-key={place}
         onClick={handleClick}
-        disabled={disabled}
+        disabled={blocked}
         className={`relative w-full h-full rounded-2xl overflow-hidden select-none ${
-          disabled ? 'pointer-events-none' : 'cursor-pointer'
+          blocked ? 'pointer-events-none' : 'cursor-pointer'
         } ${pressed ? 'place-tile-pressed' : ''}`}
       >
         {/* 배경을 어둡게/밝게 하는 filter는 이 배경 레이어에만 걸어야 한다 — 버튼 전체에
             걸면 그 위의 장소 라벨까지 함께 어두워져 거의 안 보인다(스킬 선택 패널에서
-            겪었던 것과 같은 문제). */}
+            겪었던 것과 같은 문제). forbidden은 disabled 취급하지 않는다 — 아래 검은
+            오버레이 하나로 충분해서, 배경 이미지 자체를 또 흐리게 하면 이중으로 탁해진다. */}
         <div
           className={`place-tile absolute inset-0 ${disabled ? 'place-tile-disabled' : 'place-tile-active'}`}
           style={{ backgroundImage: `url(/places/${place}.png)` }}
@@ -52,6 +59,15 @@ export function PlaceTile({
           alt=""
           className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
         />
+
+        {forbidden && (
+          <div className="place-forbidden-overlay absolute inset-0 flex items-center justify-center" aria-hidden>
+            <svg viewBox="0 0 100 100" className="place-forbidden-mark">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#ffffff" strokeWidth="11" />
+              <line x1="21" y1="21" x2="79" y2="79" stroke="#ffffff" strokeWidth="11" strokeLinecap="round" />
+            </svg>
+          </div>
+        )}
       </button>
 
       {showGuide && (

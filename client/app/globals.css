@@ -1468,6 +1468,17 @@ body {
 .place-tile-pressed {
   animation: placeTilePress 180ms ease-out;
 }
+/* 직전 턴에 쓴 장소 — 50% 검은 배경 위에 80% 흰색 금지 마크(원 + 대각선). */
+.place-forbidden-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 5;
+}
+.place-forbidden-mark {
+  width: 34%;
+  height: 34%;
+  opacity: 0.8;
+}
 @media (prefers-reduced-motion: reduce) {
   .place-tile-pressed { animation: none; }
 }

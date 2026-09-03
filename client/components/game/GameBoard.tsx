@@ -94,16 +94,25 @@ export function GameBoard({
         gridTemplateRows: '1fr 1fr',
       }}
     >
-      {PLACES.map(place => (
-        <div key={place} style={{ gridArea: GRID_AREA[place] }}>
-          <PlaceTile
-            place={place}
-            disabled={!canAct}
-            onClick={onPlaceClick}
-            showGuide={showPlaceGuide}
-          />
-        </div>
-      ))}
+      {PLACES.map(place => {
+        // 직전에(어느 팀이든) 실제로 클릭했던 장소는 다음 차례엔 못 고른다. 이 표시는
+        // canAct(내가 지금 장소를 고를 수 있는지)와 무관하게 항상 보여준다 — "지금 이
+        // 장소가 금지 상태"라는 사실 자체는 누구 턴이든, 어느 단계(장소 선택/행동 선택)
+        // 든 항상 같아야 하는 정보이기 때문이다. 예전엔 canAct에 묶여 있어서 상대
+        // 턴에는 안 보이고, 내 턴 안에서도 행동 선택 단계로 넘어가면 사라졌다.
+        const isForbidden = place === gameState.lastPlace;
+        return (
+          <div key={place} style={{ gridArea: GRID_AREA[place] }}>
+            <PlaceTile
+              place={place}
+              disabled={!canAct}
+              forbidden={isForbidden}
+              onClick={onPlaceClick}
+              showGuide={showPlaceGuide && !isForbidden}
+            />
+          </div>
+        );
+      })}
 
       <div style={{ gridArea: 'center' }}>
         <AnimalStackArea
