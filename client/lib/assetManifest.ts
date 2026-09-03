@@ -85,12 +85,12 @@ export const IMAGE_FILES: string[] = [
   "/howto/how_IPs.png",
   "/howto/how_places.png",
   "/howto/how_skills.png",
-  "/lobby/table_bg.webp",
-  "/tmp/logo.png",
-  "/tmp/panel_create_bg.svg",
-  "/tmp/panel_join_bg.svg",
-  "/tmp/panel_multi_bg.svg",
-  "/tmp/panel_solo_bg.svg"
+  "/lobby/logo.png",
+  "/lobby/panel_create.webp",
+  "/lobby/panel_join.webp",
+  "/lobby/panel_multi.webp",
+  "/lobby/panel_solo.webp",
+  "/lobby/table_bg.webp"
 ];
 
 /** 프리로드 대상 전체(효과음 + 이미지) */

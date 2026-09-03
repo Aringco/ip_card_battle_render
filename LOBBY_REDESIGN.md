@@ -454,6 +454,11 @@ useEffect(() => {
 | `app/globals.css` | `.lobby-split-in*` 블록 삭제 → §5 CSS 추가. `.lobby-panel*`·`.input-base`는 유지 |
 | `lib/lobbyAssets.ts`, `public/tmp/*` | **변경 없음**. 패널 배경 비율만 달라짐(세로 5:6 → 스테이지 높이에 맞는 가변) — 임시 SVG는 `preserveAspectRatio="slice"`라 그대로 동작. `tmp/README.md`의 비율 표기만 "가변(≈ 5:6 ~ 10:6)"으로 수정 |
 
+> **2026-09-03 후속:** 위 표의 마지막 줄은 그 뒤 뒤집혔다. 임시 SVG의 placeholder 표식
+> (점선 테두리·해치)이 완성된 카드테이블 배경 위에서 "웬 점선 사각형"으로 보여, `public/tmp/`를
+> 통째로 지우고 그림이 담고 있던 초록 그라디언트만 `globals.css`의 `.lobby-panel-{tone}`으로
+> 옮겼다. `ModePanel`의 `bgSrc` prop도 `tone`으로 바뀌었다. 자세한 경위는 `HANDOVER.md` §5.
+
 ---
 
 ## 10. 확정된 결정 사항

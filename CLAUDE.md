@@ -2,7 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **먼저 읽을 것 — [`HANDOVER.md`](HANDOVER.md)**
+> **먼저 읽을 것 — [`NEXT_SESSION.md`](NEXT_SESSION.md)**
+> 새 PC에서 환경을 구성하는 법, 지금 상태, 다음에 할 일, 그리고 **모르고 건드리면 조용히
+> 깨지는 곳**들이 정리돼 있다. 작업을 시작하기 전 이 파일부터 볼 것.
+>
+> **그 다음 — [`HANDOVER.md`](HANDOVER.md)**
 > 진행 중인 작업(로비 화면 개편)의 현재 상태, 남은 일, 로비를 고칠 때 지켜야 할 절차가 있다.
 > 특히 **로비 폼에 항목을 추가하면 `client/scripts/measureLobby.mjs`로 반드시 다시 재야 한다** —
 > 폼이 `position: absolute`라 스테이지 박스를 밀어낼 수 없어, 조용히 잘리거나 스크롤바가
@@ -39,6 +43,8 @@ cd client
 npm run dev
 npm run build
 ```
+
+**`server/tsconfig.json`의 `types` 목록을 지우지 말 것.** 이 서버는 Node 전용이라 `lib`에 DOM이 없는데, `types`를 비워두면 TypeScript가 `node_modules/@types/*`를 **전부** 자동으로 끌어온다. 워크스페이스 루트에는 클라이언트용 `@types/react-dom`이 함께 설치돼 있어서, 그 순간 `npm run build`(tsc)가 DOM 전역(`ReferrerPolicy`·`RequestDestination`)을 못 찾고 실패한다 — 서버 코드는 한 줄도 안 건드렸는데 갑자기 터지므로 원인을 찾기 어렵다. 서버가 새 전역 타입 패키지를 쓰게 되면 그 목록에 이름을 더한다(`ws`처럼 import 경로로 해석되는 모듈 타입은 목록과 무관하니 더할 필요 없다). `ts-node`(`npm run dev`)와 `ts-jest`(`npm test`)는 타입 검사를 그렇게까지 하지 않아 멀쩡히 돌아간다 — **이 증상은 `npm run build`에서만 드러난다.**
 
 두 서버(WS 8080 + Next 3000)를 각각 별도 터미널로 띄워야 브라우저에서 실제 플레이가 가능하다. 클라이언트가 바라보는 WS 주소는 `NEXT_PUBLIC_WS_URL`(기본 `ws://localhost:8080`)로 바꿀 수 있다. lint 스크립트/설정은 아직 없다.
 
@@ -102,7 +108,15 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 
 **폼은 스테이지 박스를 넘으면 안 된다.** 폼(`.stage-form`)은 `position: absolute`라 박스를 밀어낼 수 없다. 그래서 폼이 열리면 로고 슬롯이 접혀 공간을 내주고, 게임 규칙은 2열 배치 + 라벨 축약으로 눌러 담았다. 폼에 항목을 추가할 때는 **반드시 스크롤바가 생기지 않는지 실제로 재볼 것** — `LOBBY_REDESIGN.md` §12에 헤드리스 Chrome 실측 방법과 기준값이 있다.
 
-**에셋은 `client/lib/lobbyAssets.ts` 한 곳에서만 참조한다.** 배경·로고·패널 경로가 모두 여기 모여 있어 교체는 상수 한 줄이다. `public/`에 이미지를 추가하면 `client/scripts/generateAssetManifest.mjs`의 `IMAGE_DIRS`에 그 폴더가 있어야 `LoadingScreen`이 프리로드한다 — 빠뜨리면 로딩 화면이 끝난 뒤에야 받아와 배경이 늦게 뜬다.
+**에셋은 `client/lib/lobbyAssets.ts` 한 곳에서만 참조한다.** 배경·로고 경로가 여기 모여 있어 교체는 상수 한 줄이다. **모드 선택 패널 넷은 모두 일러스트를 깐다.** `ModePanel`에 `artSrc`를 넘기면 그림이, 안 넘기면 `globals.css`의 `.lobby-panel-{tone}`이 `--panel-a/b`로 넘기는 그라디언트만 그려진다(지금은 후자가 이미지 도착 전 한 프레임의 바탕 역할만 한다). 경로는 CSS가 아니라 `lobbyAssets.ts`에 두고 `--panel-art` 커스텀 속성으로 흘려보내, 에셋 경로가 한 곳에 모인다는 원칙을 지킨다. 아이콘 이모지는 그림과 겹쳐 중복이 되므로 아트 패널에서는 넘기지 않는다(`emoji`는 선택 prop).
+
+**아트 패널(`.lobby-panel-art`)은 톤 패널과 처리가 반대다.** 그라디언트는 반투명하게 깔아 테이블이 비치게 두면 됐지만, 그림을 반투명하게 만들면 펠트 무늬와 섞여 무엇을 그린 것인지 알아볼 수 없게 된다. 그래서 불투명하게 깔되 어둡게 눌러 글자를 읽히게 하고, hover하면 흐림이 풀리며 제 색으로 밝아진다. `blur`에는 `scale(1.05)`가 반드시 딸려야 한다 — `filter: blur()`는 요소 가장자리 **바깥의 투명까지** 번지게 해서 패널 테두리에 희끄무레한 띠를 만들기 때문이고, 그래서 `prefers-reduced-motion`에서도 `transform: none`이 아니라 양쪽 상태를 같은 배율로 고정한다.
+
+**문구 위치는 그림이 정한다.** 방 만들기·방 참가하기는 주인공(양·셋)이 그림 **아래쪽**에 있어 라벨을 가운데에 두면 정확히 그들을 가린다 — `.lobby-panel-create/join .stage-panel-label`에서 `justify-content: flex-start`로 위(초가지붕)로 올리고, 어둠 띠도 같이 위로 옮긴다. 혼자·다같이 놀기는 인물이 고루 퍼져 있어 가운데가 맞다. 그림을 갈아끼울 때 이 대응을 함께 확인할 것.
+
+**바깥으로 뻗는 그림자는 패널이 아니라 열에 건다.** `.stage-col`은 슬라이드 아웃을 위해 `overflow: hidden`이고 패널은 열을 정확히 채우므로, **패널에 건 바깥 box-shadow는 한 번도 그려지지 않는다**(예전 코드에 죽은 선언이 남아 있었고, hover 강조를 안쪽 링으로 그리던 것도 이 때문이다). 반면 열 **자신의** box-shadow는 자기 overflow에 잘리지 않으므로, `.stage-col:has(> .stage-panel…:hover)`에 걸면 버튼 테두리에서 빛이 퍼지는 그림이 정확히 나온다(`:has(> …)`로 직계 자식만 보는 이유는 멀티 열 안에 방 만들기/참가하기 열이 중첩돼 있어서다). 다만 그 중첩된 두 열은 자르개가 두 겹(`.stage-col-multi`의 overflow + `.multi-inner`의 clip-path)이라 그냥 두면 글로우가 열 사이 간격 쪽으로만 새어 나온다 — 멀티 단계에 한해 두 겹을 `--glow-reach`만큼 연다(`overflow-clip-margin`, 음수 `inset()`). **바깥 멀티 열은 hover 중일 때만 열어야 한다** — 늘 열어두면 싱글을 골라 그 열이 폭 0으로 줄 때 패널 조각이 화면 오른쪽에 띠처럼 남는다. 같은 빛을 뒤로가기 버튼(`.lobby-back`)의 원형 배지에도 걸었는데, 값은 일부러 다르다(12px/0.65) — 지름 36px 배지에 패널과 같은 14px/0.45를 쓰면 번짐이 배지보다 커져 형체 없는 얼룩이 된다. 글로우 폭 변수 `--glow-reach`는 `.lobby-safe`에 있다(뒤로가기 버튼이 `.lobby-stage`의 형제라 스테이지에 두면 닿지 않는다).
+
+**멀티 패널은 "다 커진 뒤에" 녹아 없어진다.** `.stage-panel-multi`는 조건부 렌더링을 하지 않는 구조상 create/join 단계에서도 계속 마운트돼 있는데, 그대로 두면 테두리·그림자가 바깥 윤곽을 그리고 두 열 사이 간격으로 멀티 그림이 비쳐 **두 버튼을 감싼 액자**처럼 보인다. 그래서 `box-shadow: none` + `border-color: transparent` + 배경 `opacity: 0`으로 지우는데(`border: none`이 아닌 이유는 1px이 사라지면 안쪽 배치가 그만큼 밀리고 투명도를 따라 옅어지지도 못하기 때문), **누르는 즉시가 아니라 확장이 끝난 뒤**여야 한다 — 즉시 지우면 확장이 시작되기도 전에 방금 누른 패널이 증발하고 넓어지는 빈 공간만 남는다. `transition-delay: var(--t-expand)` + `var(--t-reveal)` 길이로 바로 아래 `.multi-inner`의 clip-path·opacity와 지연·속도를 **일부러 똑같이** 맞춰, 사라지는 양과 두 버튼이 나타나는 양의 합이 매 순간 1이 되는 크로스페이드가 된다(한쪽 값만 바꾸면 교대가 어긋나 한 프레임씩 겹치거나 빈다). 되돌아올 때는 이 규칙이 통째로 떨어져 나가 지연 없이 기본 transition이 맡으므로, 패널이 먼저 제 모습으로 돌아온 뒤 열이 줄어드는 정확한 역재생이 된다 — 이때 테두리가 뚝 끊기지 않도록 `.lobby-panel`의 기본 transition에 `border-color`가 들어가 있다. `public/`에 이미지를 추가하면 `client/scripts/generateAssetManifest.mjs`의 `IMAGE_DIRS`에 그 폴더가 있어야 `LoadingScreen`이 프리로드한다 — 빠뜨리면 로딩 화면이 끝난 뒤에야 받아와 배경이 늦게 뜬다.
 
 ### 테스트 작성 시 참고
 `server/__tests__/effects.test.ts`는 결정론적 RNG(`rng0`=항상 0번째 선택, `rngLast`=항상 마지막 선택)로 `initGame`부터 각 엔진 함수를 직접 호출하는 패턴을 쓴다. `simulation.test.ts`는 봇 대전을 다회 시뮬레이션해 게임이 항상 유한 턴 내에 끝나는지 등 불변조건을 검증한다.

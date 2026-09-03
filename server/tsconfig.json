@@ -5,6 +5,14 @@
     "lib": ["ES2020"],
     "strict": true,
     "esModuleInterop": true,
+    // 이 서버가 쓰는 전역 타입 패키지만 골라 넣는다.
+    // 비워두면 TypeScript가 node_modules/@types/* 를 **전부** 자동으로 끌어오는데,
+    // 워크스페이스 루트에 클라이언트용 @types/react-dom이 함께 설치돼 있어
+    // `npm run build`가 DOM 전역(ReferrerPolicy, RequestDestination)을 못 찾고 실패했다.
+    // lib에 DOM을 더해 덮는 방법도 있지만, Node 서버 코드에서 document/window가
+    // 실수로 컴파일을 통과하게 되므로 여기서는 목록을 좁히는 쪽을 택했다.
+    // ws 타입은 여기 없어도 된다 — import 경로로 해석되는 모듈 타입이라 이 목록과 무관하다.
+    "types": ["node", "jest"],
     "outDir": "dist",
     "rootDir": "..",
     "paths": {

@@ -1740,32 +1740,111 @@ body {
    게임 화면의 장소 타일(.place-tile)과 같은 인터랙션 문법을 쓴다: 평소엔 어둡게
    깔려 있다가 hover/focus 시 밝아지며 살짝 떠오르고, 누르면 눌린다. */
 .lobby-panel {
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  /* border-color가 여기 있는 이유는 멀티 패널 하나 때문이다 — 안쪽 2열이 접히며
+     되돌아올 때 테두리가 뚝 하고 다시 나타나면 그림자·배경만 부드럽게 돌아오는 것과 어긋난다.
+     다른 패널은 border-color가 바뀌지 않으니 아무 영향이 없다. */
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   border: none;
 }
 /* 배경이 카드테이블 일러스트가 되면서, 패널이 그림을 통째로 가리지 않도록 반투명하게 둔다 —
-   테이블 위에 얹힌 명패처럼 보이게 하는 것이 목적이다. */
+   테이블 위에 얹힌 명패처럼 보이게 하는 것이 목적이다.
+
+   색은 패널마다 다르고 .lobby-panel-{tone}이 --panel-a/b로 실어준다. 예전에는 이 자리에
+   패널별 배경 SVG를 깔았는데, 그 그림에 담긴 정보가 사실 이 그라디언트 한 줄뿐이어서
+   파일을 지우고 CSS로 옮겼다(경위는 lib/lobbyAssets.ts의 PanelTone 주석).
+   확정 일러스트가 들어오면 여기에 background-image: url(...)을 얹으면 된다 —
+   cover/center와 밝기·투명도 전환은 그대로 재사용된다. */
 .lobby-panel-bg {
   position: absolute;
   inset: 0;
+  /* 일러스트가 있으면 그 위에, 없으면(var 기본값 none) 톤 그라디언트만 그려진다.
+     그라디언트는 이미지가 도착하기 전 한 프레임의 바탕 역할도 겸한다. */
+  background-image: var(--panel-art, none), linear-gradient(160deg, var(--panel-a), var(--panel-b));
   background-size: cover;
   background-position: center;
   filter: brightness(0.62);
   opacity: 0.55;
   transition: filter 0.2s ease, opacity 0.2s ease;
 }
+/* 싱글만 한 단계 밝은 초록인 것은 의도다 — 첫 화면의 두 선택지가 같은 색이면 구분이 안 된다. */
+.lobby-panel-solo   { --panel-a: #22c55e; --panel-b: #14532d; }
+.lobby-panel-multi  { --panel-a: #166534; --panel-b: #031c0d; }
+.lobby-panel-create { --panel-a: #166534; --panel-b: #052e16; }
+.lobby-panel-join   { --panel-a: #15803d; --panel-b: #031c0d; }
 .lobby-panel-active:hover .lobby-panel-bg,
 .lobby-panel-active:focus-visible .lobby-panel-bg {
   opacity: 0.8;
 }
+/* 그림자를 여기 걸지 않는다 — 패널은 열을 정확히 채우고 열은 overflow: hidden이라
+   패널이 바깥으로 뻗는 그림자는 한 번도 그려진 적이 없다(예전 코드에 남아 있던 죽은 선언).
+   버튼을 감싸는 빛은 아래 hover 규칙에서 **열**에 걸어 그린다. */
 .stage-panel {
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.7);
 }
 .lobby-panel-active:hover .lobby-panel-bg,
 .lobby-panel-active:focus-visible .lobby-panel-bg {
   filter: brightness(1);
 }
+/* ── 일러스트가 깔린 패널(싱글/멀티) ──────────────────────────────────────
+   톤 그라디언트와는 처리가 달라야 한다. 그라디언트는 반투명하게 깔아 테이블이 비치게
+   두면 됐지만, 그림은 반투명하게 만들면 펠트 무늬와 섞여 무엇을 그린 것인지 알아볼 수
+   없게 된다. 그래서 불투명하게 깔되 **눌러서** 어둡게 두고(글자가 읽혀야 한다),
+   hover하면 흐림이 풀리며 제 색으로 밝아지는 쪽으로 뒤집었다.
+
+   scale(1.05)는 blur 때문이다 — filter: blur()는 요소 가장자리 바깥의 투명을 함께
+   번지게 해서 패널 테두리에 희끄무레한 띠를 만든다. 살짝 키워 그 띠를 잘라낸다. */
+.lobby-panel-art .lobby-panel-bg {
+  opacity: 1;
+  filter: brightness(0.5) saturate(0.85) blur(2px);
+  transform: scale(1.05);
+  transition: filter 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
+}
+.lobby-panel-art.lobby-panel-active:hover .lobby-panel-bg,
+.lobby-panel-art.lobby-panel-active:focus-visible .lobby-panel-bg {
+  opacity: 1;
+  filter: brightness(1) saturate(1.05) blur(0);
+  transform: scale(1);
+}
+.lobby-panel-art.lobby-panel-disabled .lobby-panel-bg {
+  filter: brightness(0.32) grayscale(45%) blur(2px);
+}
+/* 글자 뒤에만 어둠을 깐다 — 배경 전체를 더 어둡게 하는 대신 이렇게 해야
+   hover로 그림이 밝아진 뒤에도 가운데 문구가 계속 읽힌다.
+
+   타원이 아니라 가로 띠인 이유: 두 그림 모두 인물이 위아래로 꽉 차 있어서, 가운데를
+   원형으로 파내면 띠 바깥으로 삐져나온 자막 끝이 시끄러운 그림 위에 그대로 얹힌다.
+   가로로 완전히 가로지르는 띠는 문구 줄 전체를 균일하게 덮으면서 위아래 주인공은
+   그대로 드러낸다. 라벨 블록(이모지+제목+부제)이 패널 높이의 대략 3~7할을 차지하므로
+   띠도 그 구간에 맞춰져 있다. */
+/* 방 만들기·방 참가하기는 문구를 위로 올린다 — 두 그림 모두 아래쪽에 주인공(양·셋)이
+   있어서, 가운데에 두면 정확히 그들을 가린다. 위쪽은 초가지붕이라 덮어도 잃을 게 없다.
+   (혼자/다같이 놀기는 인물이 위아래로 고루 퍼져 있어 가운데가 맞다.) */
+.lobby-panel-create .stage-panel-label,
+.lobby-panel-join   .stage-panel-label {
+  justify-content: flex-start;
+  padding-top: 1.1rem;
+}
+/* 어둠도 문구를 따라 위로 — 아래쪽 동물들은 그대로 밝게 남는다 */
+.lobby-panel-art.lobby-panel-create .stage-panel-label,
+.lobby-panel-art.lobby-panel-join   .stage-panel-label {
+  background: linear-gradient(to bottom,
+              rgba(3, 18, 10, 0.80) 0%,
+              rgba(3, 18, 10, 0.76) 32%,
+              rgba(3, 18, 10, 0.34) 52%,
+              rgba(3, 18, 10, 0) 74%);
+}
+
+.lobby-panel-art .stage-panel-label {
+  background: linear-gradient(to bottom,
+              rgba(3, 18, 10, 0) 0%,
+              rgba(3, 18, 10, 0.32) 20%,
+              rgba(3, 18, 10, 0.78) 38%,
+              rgba(3, 18, 10, 0.78) 70%,
+              rgba(3, 18, 10, 0.32) 86%,
+              rgba(3, 18, 10, 0) 100%);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
 .lobby-panel-active:hover,
 .lobby-panel-active:focus-visible {
   transform: translateY(-2px);
@@ -1831,6 +1910,9 @@ body {
 }
 /* 캐릭터·카드더미·램프를 피한 테이블 중앙 영역 — 콘텐츠는 전부 이 안에만 놓인다 */
 .lobby-safe {
+  /* hover 글로우가 버튼 밖으로 번지는 폭. 자르개를 여는 폭과 같아야 해서 변수로 묶었다.
+     뒤로가기 버튼은 .lobby-stage의 형제라 여기(공통 조상)에 둬야 함께 닿는다. */
+  --glow-reach: 14px;
   position: absolute;
   left: var(--safe-left);
   right: var(--safe-right);
@@ -1917,7 +1999,7 @@ body {
   overflow: hidden;
   display: flex;
   border-radius: 1rem;
-  transition: opacity var(--t-expand) ease;
+  transition: opacity var(--t-expand) ease, box-shadow 0.2s ease;
 }
 .stage-col-solo   { justify-content: flex-end; }   /* 멀티 선택 시 왼쪽으로 슬라이드 아웃 */
 .stage-col-multi  { justify-content: flex-start; } /* 싱글 선택 시 오른쪽으로 슬라이드 아웃 */
@@ -1942,12 +2024,37 @@ body {
   height: 100%;
   min-width: calc((100cqw - var(--stage-gap)) / 2);
 }
-/* 열이 overflow:hidden이라 바깥으로 나가는 강조는 잘린다 —
-   떠오름/외곽선 대신 안쪽으로 그리는 링으로 대체한다 */
+/* hover 강조 — 흰 빛이 버튼 주변으로 살짝 번진다.
+   그림자를 패널이 아니라 **열**에 거는 것이 요령이다: 열은 overflow: hidden이라 그 안의
+   패널이 바깥으로 뻗는 그림자는 잘라버리지만, 열 **자신의** box-shadow는 자기 overflow에
+   잘리지 않는다. 열과 패널은 크기가 정확히 같으므로 결과적으로 버튼 테두리에서 빛이 퍼진다.
+   :has(> ...)로 직계 자식만 보는 이유는, 멀티 열 안에 방 만들기/방 참가하기 열이
+   중첩돼 있어서 안쪽 버튼에 hover할 때 바깥 멀티 열까지 같이 빛나면 안 되기 때문이다. */
 .stage-panel.lobby-panel-active:hover,
 .stage-panel.lobby-panel-active:focus-visible {
   transform: none;
-  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+.stage-col:has(> .stage-panel.lobby-panel-active:hover),
+.stage-col:has(> .stage-panel.lobby-panel-active:focus-visible) {
+  box-shadow: 0 0 var(--glow-reach) 4px rgba(255, 255, 255, 0.45);
+}
+
+/* 멀티 안쪽 두 버튼(방 만들기·방 참가하기)은 자르개가 두 겹이라 그냥 두면 글로우가
+   열 사이 간격 쪽으로만 새어 나오고 나머지 세 방향은 잘린다. 그 두 겹을 글로우 폭만큼만
+   연다 — 멀티 단계에서는 어느 열도 줄어들지 않으므로 새어 나갈 것이 글로우밖에 없다.
+
+   바깥 멀티 열만 hover 중일 때 여는 이유: 이 열은 싱글을 고르면 폭 0으로 줄면서 안의
+   패널을 잘라내야 하는데, 늘 열어두면 그때 패널 조각이 화면 오른쪽에 띠처럼 남는다.
+   overflow는 애니메이션 대상이 아니라 hover에 맞춰 즉시 켜지고 꺼진다. */
+.lobby-stage[data-stage="multi"] .stage-col-create,
+.lobby-stage[data-stage="multi"] .stage-col-join {
+  overflow: clip;
+  overflow-clip-margin: var(--glow-reach);
+}
+.lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:hover),
+.lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:focus-visible) {
+  overflow: clip;
+  overflow-clip-margin: var(--glow-reach);
 }
 .stage-panel.lobby-panel-active:focus-visible {
   outline: 3px solid #4ade80;
@@ -1979,6 +2086,45 @@ body {
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg {
   filter: brightness(0.8);
 }
+/* 아트 패널은 폼이 열려도 흐림을 풀지 않는다 — 그림이 선명해지면 그 위에 뜬 폼 카드의
+   글자와 경쟁한다. 밝기만 조금 올려 "열려 있다"는 신호를 준다. */
+.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel.lobby-panel-art .lobby-panel-bg {
+  filter: brightness(0.62) saturate(0.85) blur(4px);
+}
+
+/* ── 멀티 패널은 "다 커진 뒤에" 녹아 없어진다 ────────────────────────────────
+   남겨두면 "방 만들기 / 방 참가하기" 두 버튼을 감싼 액자처럼 보인다 — 테두리·그림자가
+   바깥 윤곽을 그리고, 두 열 사이 간격(gap)으로는 멀티 그림이 비쳐 얼룩진 띠가 된다.
+
+   그렇다고 누르는 즉시 지워버리면 안 된다. 그러면 확장이 시작되기도 전에 눌린 패널이
+   사라져, 방금 무엇을 눌렀는지가 화면에서 증발한다(넓어지는 빈 공간만 남는다).
+   그래서 **확장이 끝나는 시점까지 기다렸다가**(transition-delay: var(--t-expand))
+   안쪽 2열이 드러나는 것과 같은 속도(--t-reveal)로 함께 사라진다. 바로 아래
+   .multi-inner의 clip-path·opacity가 쓰는 지연·길이와 일부러 똑같이 맞춰둔 값이라,
+   "패널이 커진다 → 그 자리에서 갈라지며 두 버튼이 나온다"는 인과가 그대로 보인다.
+   이 둘 중 한쪽 값만 바꾸면 교대가 어긋나 한 프레임씩 겹치거나 빈다.
+
+   돌아올 때는 지연이 없다 — 이 규칙이 통째로 떨어져 나가고 .lobby-panel/.lobby-panel-art의
+   기본 transition이 맡으므로, 안쪽 열이 접히는 동안 곧바로 제 모습으로 돌아온다. */
+.lobby-stage[data-stage="multi"]  .stage-panel-multi,
+.lobby-stage[data-stage="create"] .stage-panel-multi,
+.lobby-stage[data-stage="join"]   .stage-panel-multi {
+  box-shadow: none;
+  /* none이 아니라 transparent — 1px이 사라지면 그만큼 안쪽 배치가 밀리고,
+     투명도를 따라 서서히 옅어지지도 못한다 */
+  border-color: transparent;
+  transition:
+    box-shadow   var(--t-reveal) ease var(--t-expand),
+    border-color var(--t-reveal) ease var(--t-expand);
+}
+.lobby-stage[data-stage="multi"]  .stage-panel-multi .lobby-panel-bg,
+.lobby-stage[data-stage="create"] .stage-panel-multi .lobby-panel-bg,
+.lobby-stage[data-stage="join"]   .stage-panel-multi .lobby-panel-bg {
+  opacity: 0;
+  transition: opacity var(--t-reveal) ease var(--t-expand);
+}
 
 /* 멀티 내부 2열 — 멀티 패널 위에 겹쳐 있다가 오른쪽에서 왼쪽으로 드러난다 */
 .multi-inner {
@@ -1997,7 +2143,9 @@ body {
     gap var(--t-expand) ease;
 }
 .lobby-stage[data-stage="multi"] .multi-inner {
-  clip-path: inset(0 0 0 0);
+  /* 0이 아니라 음수 — 안쪽 두 버튼의 hover 글로우가 이 상자 밖으로 나갈 수 있어야 한다.
+     드러나는 연출 중에는 아직 hover가 없으므로 이 여유로 새어 나갈 것이 없다. */
+  clip-path: inset(calc(-1 * var(--glow-reach)));
   opacity: 1;
   /* 들어올 때: 열 확장이 끝난 뒤 드러난다 / create·join에서 돌아올 때: 폼이 사라진 뒤 열이 되돌아간다 */
   transition-delay: var(--t-expand), var(--t-expand), var(--t-form), var(--t-form);
@@ -2034,6 +2182,17 @@ body {
 .lobby-back {
   transition: opacity var(--t-form) ease, transform var(--t-form) ease;
 }
+/* 모드 패널과 같은 문법의 hover 강조 — 다만 이 버튼은 아이콘+글자 한 줄이라
+   전체를 감싸는 사각 글로우는 어색하다. 원형 배지에만 건다. */
+.lobby-back > span:first-child {
+  transition: box-shadow 0.2s ease;
+}
+.lobby-back:hover > span:first-child,
+.lobby-back:focus-visible > span:first-child {
+  /* 패널과 같은 빛이지만 조금 더 조였다 — 지름 36px 배지에서 패널과 똑같은 값(14px/0.45)을
+     쓰면 번짐이 배지보다 커져 형체 없는 얼룩이 된다. 밝기를 올리고 반경을 줄여 맞춘다. */
+  box-shadow: 0 0 12px 3px rgba(255, 255, 255, 0.65);
+}
 .lobby-back-hidden {
   opacity: 0;
   transform: translateX(-8px);
@@ -2044,6 +2203,12 @@ body {
   .lobby-panel-active:hover,
   .lobby-panel-active:focus-visible { transform: none; }
   .lobby-panel-pressed { animation: none; }
+  /* 밝아지는 것까지 막지는 않는다 — 어느 패널을 가리키고 있는지 알려주는 유일한 신호다.
+     확대를 0으로 되돌리는 대신 양쪽 상태를 같은 배율로 고정한다: transform: none으로 두면
+     blur가 다시 가장자리 바깥으로 번져 패널 테두리에 흰 띠가 생긴다. */
+  .lobby-panel-art .lobby-panel-bg,
+  .lobby-panel-art.lobby-panel-active:hover .lobby-panel-bg,
+  .lobby-panel-art.lobby-panel-active:focus-visible .lobby-panel-bg { transform: scale(1.05); }
   .lobby-stage, .stage-col, .stage-panel, .stage-panel-label,
   .multi-inner, .stage-form, .lobby-back { transition: none !important; }
 }

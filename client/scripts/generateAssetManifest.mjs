@@ -17,9 +17,10 @@ const publicDir = path.join(root, 'public');
 const outFile = path.join(root, 'lib', 'assetManifest.ts');
 
 const SFX_PREFIXES = ['sheep', 'mermaid', 'tiger', 'rabbit', 'card', 'bomb'];
-// lobby/tmp는 로비 화면(배경 일러스트·로고·패널)이 쓴다 — 첫 화면에 바로 보이므로
+// lobby는 로비 화면(배경 일러스트·로고)이 쓴다 — 첫 화면에 바로 보이므로
 // 프리로드 대상에 넣지 않으면 로딩 화면이 끝난 뒤에야 받아와 배경이 늦게 뜬다.
-const IMAGE_DIRS = ['places', 'skills', 'emoticon', 'howto', 'lobby', 'tmp'];
+// (모드 선택 패널 배경은 이미지가 아니라 CSS 그라디언트라 받을 것이 없다.)
+const IMAGE_DIRS = ['places', 'skills', 'emoticon', 'howto', 'lobby'];
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg']);
 
 function listDir(dir) {

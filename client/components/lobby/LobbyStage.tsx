@@ -110,9 +110,9 @@ export function LobbyStage(props: LobbyStageProps) {
         <ModePanel
           panelRef={soloPanelRef}
           className="stage-panel"
-          bgSrc={LOBBY_ASSETS.solo}
-          emoji="🤖"
-          title="싱글플레이"
+          tone="solo"
+          artSrc={LOBBY_ASSETS.panelSolo}
+          title="혼자 놀기"
           subtitle="컴퓨터와 대전 — 지금 바로 시작할 수 있어요"
           disabled={blocked}
           onClick={() => onGo('solo')}
@@ -137,9 +137,9 @@ export function LobbyStage(props: LobbyStageProps) {
         <ModePanel
           panelRef={multiPanelRef}
           className="stage-panel stage-panel-multi"
-          bgSrc={LOBBY_ASSETS.multi}
-          emoji="👥"
-          title="멀티플레이"
+          tone="multi"
+          artSrc={LOBBY_ASSETS.panelMulti}
+          title="다같이 놀기"
           subtitle="친구와 팀 대전 — 방을 만들거나 코드로 참가해요"
           disabled={blocked}
           onClick={() => onGo('multi')}
@@ -151,8 +151,8 @@ export function LobbyStage(props: LobbyStageProps) {
             <ModePanel
               panelRef={createPanelRef}
               className="stage-panel"
-              bgSrc={LOBBY_ASSETS.create}
-              emoji="🏠"
+              tone="create"
+              artSrc={LOBBY_ASSETS.panelCreate}
               title="방 만들기"
               subtitle="방장이 되어 규칙을 정해요"
               disabled={blocked}
@@ -181,8 +181,8 @@ export function LobbyStage(props: LobbyStageProps) {
             <ModePanel
               panelRef={joinPanelRef}
               className="stage-panel"
-              bgSrc={LOBBY_ASSETS.join}
-              emoji="🔑"
+              tone="join"
+              artSrc={LOBBY_ASSETS.panelJoin}
               title="방 참가하기"
               subtitle="친구가 알려준 4자리 코드로 입장"
               disabled={blocked}
