@@ -149,6 +149,9 @@ export class Room {
     team: Team,
     teamName?: string,
     settings?: Partial<GameSettings>,
+    // 방을 처음 만드는 사람만 넘겨준다 — 아직 아무도 들어오지 않은 반대편 팀의 이름을
+    // 미리 정해둔다(비어 있으면 실제로 그 팀에 참가하는 사람이 나중에 자기 이름을 정한다).
+    otherTeamName?: string,
   ): 'ok' | 'game_started' | 'nickname_taken' {
     if (this.state !== null) return 'game_started';
 
@@ -157,13 +160,22 @@ export class Room {
     }
 
     // 방을 처음 만드는 쪽(=이 방에 아직 아무도 없을 때)만 규칙을 정할 수 있다.
-    if (this.players.size === 0 && settings) {
+    const isRoomCreator = this.players.size === 0;
+    if (isRoomCreator && settings) {
       this.settings = clampSettings(settings);
     }
 
     this.players.set(playerId, { ws, playerId, nickname, team, ready: false, connected: true });
     this.teamPlayerIds[team].push(playerId);
     this.assignTeamName(team, teamName);
+    // 방장만 반대편 팀 이름도 미리 정할 수 있다 — 나중에 참가자가 joinRoom으로 보내는
+    // teamName은 assignTeamName이 "이미 정해져 있으면 무시"하므로 이 값이 우선한다.
+    // 방장이 비워뒀으면(otherTeamName 없음) 여기서 미리 확정 짓지 않는다 — 그래야 실제로
+    // 그 팀에 참가하는 사람이 자기 팀 이름을 직접 고를 기회가 그대로 남는다(정해지지
+    // 않은 이름은 게임 시작 시점(tryStartGame)에야 비로소 무작위로 채워진다).
+    if (isRoomCreator && otherTeamName?.trim()) {
+      this.assignTeamName(team === 'A' ? 'B' : 'A', otherTeamName);
+    }
     this.broadcastLobbyState();
     return 'ok';
   }

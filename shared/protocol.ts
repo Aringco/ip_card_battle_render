@@ -4,7 +4,11 @@ import type { Animal, GameEvent, GameSettings, GameState, Place, Team } from './
 
 export type ClientMessage =
   // settings는 방장(방을 만드는 쪽)만 보낸다 — 값을 정하지 않은 항목은 기본값으로 채워진다.
-  | { type: 'createRoom'; nickname: string; team: Team; teamName?: string; settings?: Partial<GameSettings> }
+  // otherTeamName은 방장이 아직 아무도 들어오지 않은 "상대 팀"의 이름까지 미리 정해두는
+  // 값이다(팀 이름 짓기가 방장 한쪽에만 있던 걸 보완) — 나중에 그 팀으로 실제 참가하는
+  // 사람이 joinRoom에 teamName을 보내도, 이미 정해진 이름이 있으면 그쪽이 우선한다
+  // (Room.assignTeamName 참고).
+  | { type: 'createRoom'; nickname: string; team: Team; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings> }
   | { type: 'joinRoom'; roomId: string; nickname: string; team: Team; teamName?: string }
   | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings> } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전
   | { type: 'ready' }

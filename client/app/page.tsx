@@ -26,6 +26,9 @@ export default function LobbyPage() {
   const [nickname, setNickname] = useState('');
   const [team, setTeam] = useState<Team>('A');
   const [teamName, setTeamName] = useState('');
+  // 방을 만드는 쪽만 입력할 수 있다 — 아직 아무도 들어오지 않은 반대편 팀의 이름까지
+  // 미리 정해둔다(비워두면 기존처럼 실제 참가자가 자기 팀 이름을 직접 고른다).
+  const [otherTeamName, setOtherTeamName] = useState('');
   const [joinRoomId, setJoinRoomId] = useState('');
   const [mode, setMode] = useState<'home' | 'create' | 'join' | 'solo' | 'waiting'>('home');
   const [isReady, setIsReady] = useState(false);
@@ -48,7 +51,7 @@ export default function LobbyPage() {
   const handleCreateRoom = () => {
     if (!nickname.trim()) return;
     sessionStorage.setItem('cardBattle_team', team);
-    ws.createRoom(nickname.trim(), team, teamName.trim() || undefined, settings);
+    ws.createRoom(nickname.trim(), team, teamName.trim() || undefined, settings, otherTeamName.trim() || undefined);
   };
 
   const handleJoinRoom = () => {
@@ -225,6 +228,16 @@ export default function LobbyPage() {
                   value={teamName}
                   onChange={e => setTeamName(e.target.value)}
                   placeholder="예: 상표"
+                  maxLength={12}
+                  className="input-base"
+                />
+              </Field>
+              <Field label="상대 팀 이름 (선택, 비워두면 상대가 직접 정해요)">
+                <input
+                  type="text"
+                  value={otherTeamName}
+                  onChange={e => setOtherTeamName(e.target.value)}
+                  placeholder="예: 디자인"
                   maxLength={12}
                   className="input-base"
                 />

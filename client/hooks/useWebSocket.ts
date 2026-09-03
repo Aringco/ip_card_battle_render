@@ -46,7 +46,7 @@ export interface UseWebSocketReturn {
   turnDeadline: number;
   lastEvents: ClientGameEvent[];
   error: string | null;
-  createRoom: (nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>) => void;
+  createRoom: (nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string) => void;
   joinRoom: (roomId: string, nickname: string, team: Team, teamName?: string) => void;
   createSoloRoom: (nickname: string, teamName?: string, settings?: Partial<GameSettings>) => void;
   sendReady: () => void;
@@ -158,9 +158,9 @@ export function useWebSocket(): UseWebSocketReturn {
     return () => ws.close();
   }, [applyState]);
 
-  const createRoom = useCallback((nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>) => {
+  const createRoom = useCallback((nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string) => {
     setError(null);
-    send({ type: 'createRoom', nickname, team, teamName, settings });
+    send({ type: 'createRoom', nickname, team, teamName, settings, otherTeamName });
   }, [send]);
 
   const joinRoom = useCallback((rid: string, nickname: string, team: Team, teamName?: string) => {
