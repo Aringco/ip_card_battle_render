@@ -28,6 +28,17 @@ export const LOBBY_ASSETS = {
   panelMulti: '/lobby/panel_multi.webp',
   panelCreate: '/lobby/panel_create.webp',
   panelJoin: '/lobby/panel_join.webp',
+  /**
+   * 폼(혼자 놀기·방 만들기·방 참가하기) 뒤에 깔리는 나무 액자 백보드.
+   * 1024² WebP 67KB — 원본은 알파가 있는 PNG(1MB)였고, 팔레트 PNG로 줄여도 364KB라
+   * table_bg와 같은 이유로 WebP를 골랐다(로비 프리로드 대상이라 용량이 곧 진입 대기시간).
+   *
+   * 통째로 늘리지 않고 `border-image`로 9분할해 쓴다 — 모서리 잎 덩어리가 찌그러지지
+   * 않아야 하기 때문. 슬라이스 값의 근거는 globals.css의 .lobby-form-board 주석 참조.
+   */
+  formBoard: '/ui/back_board.webp',
+  /** 가로형 백보드 — 점수판용. 아직 어디에도 쓰이지 않는다. */
+  scoreBoard: '/ui/score_board.webp',
 } as const;
 
 /**

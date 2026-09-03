@@ -2222,6 +2222,46 @@ body {
 .lobby-stage[data-stage="create"] .multi-inner { grid-template-columns: 1fr 0fr; }
 .lobby-stage[data-stage="join"]   .multi-inner { grid-template-columns: 0fr 1fr; }
 
+/* ── 폼 백보드 — 나무 액자 ───────────────────────────────────────────────
+   통짜로 늘리지 않고 border-image로 9분할해 그린다. 폼은 뷰포트마다 세로로 길쭉한
+   비율(대략 0.7:1)인데 그림은 정사각형이라, 통째로 늘리면 모서리 잎 덩어리가
+   가로로 눌린다. 9분할하면 네 모서리는 배율 그대로 두고 변만 늘어난다.
+
+   슬라이스 215는 실측값이다 — 그림에서 모서리 잎 덩어리가 안쪽으로 약 215px까지
+   뻗는다(프레임 나무막대 자체의 두께는 좌우 104px, 상하 77/66px). 잎 덩어리 전체가
+   모서리 조각 안에 들어가야 잘리지 않으므로 그 바깥값을 쓴다.
+   fill이 있어야 가운데 양피지가 배경으로 함께 그려진다.
+
+   border-width가 곧 화면상 액자 두께다. 슬라이스(215)가 이 값으로 축소되므로,
+   나무막대는 그중 104/215 ≈ 48%인 약 15px로 보인다. 나머지는 양피지라 안쪽 여백 역할을
+   겸한다 — 그래서 padding을 따로 크게 줄 필요가 없다.
+
+   ⚠️ border-width를 키우면 위아래로 그만큼 두꺼워져 폼이 넘친다. 32px는 실측으로 정한
+   상한에 가까운 값이다 — 40px로 올려봤더니 1280×900의 "방 만들기+규칙"에서 카드가
+   552 → 568px가 되어 스크롤바가 생겼다. 이 값을 바꿨다면
+   client/scripts/measureLobby.mjs로 반드시 다시 잴 것. */
+.lobby-form-board {
+  --board-edge: 32px;
+  border: var(--board-edge) solid transparent;
+  border-image: var(--form-board) 215 fill stretch;
+  padding: 0 0.25rem 0.25rem;
+}
+/* 양피지(크림색) 위 글자 — 예전 흰 카드용 회색은 여기서 흐리게 뜬다.
+   나무·잎 색과 같은 계열의 갈색으로 맞춰 액자 안에 인쇄된 것처럼 보이게 한다. */
+.text-board-ink   { color: #4a3728; }
+.text-board-muted { color: #7d6a55; }
+
+.lobby-form-wrap { padding: 1rem; }
+
+/* 좁은 화면(390×844)에서는 액자와 바깥 여백을 함께 줄인다.
+   실측 근거 — 바깥 여백이 1rem일 때 액자 24px는 폼이 정확히 10px 넘쳐 스크롤바가 생겼다.
+   여백을 0.5rem으로 줄여 되찾은 만큼을 액자에 돌려주어 20px로 맞췄다(여유 약 10px).
+   이 두 값을 다시 키울 때는 measureLobby.mjs의 390×844 행을 반드시 확인할 것. */
+@media (max-width: 767px) {
+  .lobby-form-board { --board-edge: 20px; }
+  .lobby-form-wrap { padding: 0.5rem; }
+}
+
 /* 폼 — 확장된 패널 위에 겹쳐서 페이드 인/아웃. 높이는 고정이라 넘치면 안에서 스크롤한다 */
 .stage-form {
   position: absolute;

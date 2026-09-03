@@ -90,7 +90,9 @@ export const IMAGE_FILES: string[] = [
   "/lobby/panel_join.webp",
   "/lobby/panel_multi.webp",
   "/lobby/panel_solo.webp",
-  "/lobby/table_bg.webp"
+  "/lobby/table_bg.webp",
+  "/ui/back_board.webp",
+  "/ui/score_board.webp"
 ];
 
 /** 프리로드 대상 전체(효과음 + 이미지) */

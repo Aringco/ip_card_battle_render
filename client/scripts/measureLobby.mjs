@@ -42,7 +42,9 @@ async function measure(page, label) {
       const el = q(sel);
       if (el && getComputedStyle(el).opacity === '1') openForm = el;
     }
-    const card = openForm?.querySelector('[class*="bg-white"]');
+    // 폼 카드는 흰 배경에서 나무 액자 백보드(.lobby-form-board)로 바뀌었다.
+    // 예전 [class*="bg-white"] 선택자는 이제 아무것도 못 찾아 "카드" 칸이 늘 '-'로 나온다.
+    const card = openForm?.querySelector('.lobby-form-board');
     const safe = box(q('.lobby-safe'));
     return {
       label,
