@@ -29,11 +29,13 @@ const SKILL_POS: Record<Animal, string> = {
   tiger: '100% 50%',
 };
 
-const ANIMAL_NAME: Record<Animal, string> = {
-  sheep: '실용신양',
-  rabbit: '상표토끼',
-  mermaid: '디자인어',
-  tiger: '특허랑이',
+// 카드 칸이 좁아 한 줄로는 글씨가 잘려서, 의미 단위가 아니라 브라우저가 임의로
+// 줄바꿈하는 대신 항상 이 지점에서 줄바꿈되도록 직접 2줄로 나눠 넣는다.
+const ANIMAL_NAME_LINES: Record<Animal, [string, string]> = {
+  sheep: ['실용', '신양'],
+  rabbit: ['상표', '토끼'],
+  mermaid: ['디자', '인어'],
+  tiger: ['특허', '랑이'],
 };
 
 // 포스터용 한 줄 요약 — 레벨·배율 같은 용어를 빼고 "무슨 일이 일어나는지"만 남긴다.
@@ -185,7 +187,11 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
                         className="text-sm font-black leading-tight"
                         style={{ color: SKILL_COLOR[animal] }}
                       >
-                        {ANIMAL_NAME[animal]}
+                        {ANIMAL_NAME_LINES[animal].map(line => (
+                          <span key={line} className="block">
+                            {line}
+                          </span>
+                        ))}
                       </p>
                       <p className="text-sm text-gray-700 font-black leading-tight mt-0.5 whitespace-nowrap">
                         {SKILL_LINE[animal].map(line => (
@@ -199,10 +205,11 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
               <p className="text-base text-gray-700 font-bold text-center mt-3 leading-relaxed">
-                경험치는 <b className="text-jungle-800">실용신안과 상표의 {THRESHOLDS.sheep}년</b>,
+                <b className="text-jungle-800">실용신안·상표 {THRESHOLDS.sheep}년!</b>
                 <br />
-                <b className="text-jungle-800">디자인과 특허의 {THRESHOLDS.mermaid}년</b>을 기억해
-                주세요!
+                <b className="text-jungle-800">디자인·특허 {THRESHOLDS.mermaid}년!</b>
+                <br />
+                존속 기간만큼 경험치 모으기!
               </p>
             </Step>
           </div>
