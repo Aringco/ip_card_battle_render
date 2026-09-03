@@ -232,7 +232,7 @@ export default function LobbyPage() {
                   className="input-base"
                 />
               </Field>
-              <Field label="상대 팀 이름 (선택, 비워두면 상대가 직접 정해요)">
+              <Field label="상대 팀 이름 (선택, 비워두면 무작위 배정)">
                 <input
                   type="text"
                   value={otherTeamName}
