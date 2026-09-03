@@ -1713,3 +1713,390 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .acorn-ball { animation: none; }
 }
+
+/* ── 로비 — 폼 입력 공통 (page.tsx의 인라인 <style>에서 이관) ─────────────── */
+.input-base {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  /* 글씨 크기 설정(--font-scale)을 입력창도 함께 따라간다 — 로비 폼은 테이블 안전영역
+     안에 들어가야 해서 기준값은 1rem으로 두되, 배율은 그대로 적용한다. */
+  font-size: calc(1rem * var(--font-scale, 1));
+  color: #1f2937;
+  outline: none;
+}
+.input-base:focus {
+  box-shadow: 0 0 0 2px #4ade80;
+  border-color: transparent;
+}
+/* 게임 규칙처럼 항목이 여러 개라 세로 길이를 아껴야 하는 곳 */
+.input-compact {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+/* ── 로비 — 모드 선택 패널 ───────────────────────────────────────────────
+   게임 화면의 장소 타일(.place-tile)과 같은 인터랙션 문법을 쓴다: 평소엔 어둡게
+   깔려 있다가 hover/focus 시 밝아지며 살짝 떠오르고, 누르면 눌린다. */
+.lobby-panel {
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  border: none;
+}
+/* 배경이 카드테이블 일러스트가 되면서, 패널이 그림을 통째로 가리지 않도록 반투명하게 둔다 —
+   테이블 위에 얹힌 명패처럼 보이게 하는 것이 목적이다. */
+.lobby-panel-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.62);
+  opacity: 0.55;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+.lobby-panel-active:hover .lobby-panel-bg,
+.lobby-panel-active:focus-visible .lobby-panel-bg {
+  opacity: 0.8;
+}
+.stage-panel {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.lobby-panel-active:hover .lobby-panel-bg,
+.lobby-panel-active:focus-visible .lobby-panel-bg {
+  filter: brightness(1);
+}
+.lobby-panel-active:hover,
+.lobby-panel-active:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(5, 46, 22, 0.25);
+}
+.lobby-panel-active:focus-visible {
+  outline: 3px solid #4ade80;
+  outline-offset: 2px;
+}
+.lobby-panel-disabled .lobby-panel-bg {
+  filter: brightness(0.4) grayscale(35%);
+}
+.lobby-panel-disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+@keyframes lobbyPanelPress {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.lobby-panel-pressed {
+  animation: lobbyPanelPress 180ms ease-out;
+}
+
+
+/* ── 로비 스테이지 — 슬라이드 인/아웃 전환 ────────────────────────────────
+   모든 패널·폼을 항상 마운트해 두고 .lobby-stage[data-stage]만 바꾼다.
+   선택한 쪽 열은 넓어지고, 반대쪽 열은 폭이 0으로 줄면서 그 안의 패널이
+   원래 크기를 유지한 채(min-width) 화면 밖으로 밀려나가 잘린다 — "슬라이드 아웃".
+   뒤로가기는 data-stage를 이전 값으로 되돌리기만 하면 transition이 현재
+   위치에서 원래 위치로 보간하므로 정확한 역방향 재생이 공짜로 나온다. */
+/* ── 로비 배경 — 카드테이블 일러스트 위에 콘텐츠를 얹는다 ──────────────────
+   .lobby-table을 "cover"와 같은 기하로 직접 만들어 두면, 그 안의 퍼센트 좌표가
+   곧 이미지 좌표가 된다 → 화면 비율이 어떻게 바뀌어도 버튼이 항상 테이블 위에 붙는다.
+   좌표값은 실제 이미지에 맞춰 여기서만 조정하면 된다(public/lobby/README.md). */
+.lobby-root {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #241710;   /* 이미지가 닿지 않는 여백 — 테이블 나무색 계열 */
+}
+.lobby-table {
+  /* client/public/lobby/table_bg.webp 의 실제 픽셀 크기 */
+  --table-w: 3072;
+  --table-h: 1649;
+  --safe-left: 26.4%;
+  --safe-right: 29.6%;
+  --safe-top: 15.9%;
+  --safe-bottom: 14.3%;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* background-size: cover 와 동일한 계산을 요소 크기로 옮긴 것 */
+  width: max(100vw, calc(100vh * var(--table-w) / var(--table-h)));
+  height: max(100vh, calc(100vw * var(--table-h) / var(--table-w)));
+  background-image: var(--lobby-table-bg);
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* 캐릭터·카드더미·램프를 피한 테이블 중앙 영역 — 콘텐츠는 전부 이 안에만 놓인다 */
+.lobby-safe {
+  position: absolute;
+  left: var(--safe-left);
+  right: var(--safe-right);
+  top: var(--safe-top);
+  bottom: var(--safe-bottom);
+  /* 세로로 긴 화면에서는 테이블이 cover로 크게 확대돼 안전영역이 화면 밖까지 뻗는다.
+     뷰포트 안으로 잘라내고 margin:auto로 다시 가운데 맞춘다. */
+  max-width: calc(100vw - 1.5rem);
+  max-height: calc(100vh - 1.5rem);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+/* 로고 — 폼이 열리면 접혀서 스테이지에 공간을 내준다 */
+/* 로고 슬롯 — 레이아웃이 차지하는 높이는 여기까지지만, 로고 자체는 이보다 크게 그려
+   위쪽 빈 펠트로 넘치게 둔다(아래는 버튼이 있어 넘칠 수 없다).
+   덕분에 스테이지 높이를 거의 그대로 두면서 엠블럼만 키울 수 있다.
+   폼이 열리면 height가 0이 되고 로고 높이도 %라 함께 0으로 줄어 스필이 없다. */
+.lobby-hero-slot {
+  flex: none;
+  height: 46%;
+  overflow: visible;
+  opacity: 1;
+  display: flex;
+  align-items: flex-end;      /* 아래를 기준으로 정렬 → 커질 때 위로만 자란다 */
+  justify-content: center;
+  transition: height 300ms ease, opacity 200ms ease, margin 300ms ease;
+}
+.lobby-hero-logo {
+  height: 130%;               /* 슬롯 높이의 1.3배 — 실측 기준 엠블럼이 약 1.6배가 된다 */
+  max-width: 100%;
+  width: auto;
+}
+.lobby-safe[data-stage="solo"] .lobby-hero-slot,
+.lobby-safe[data-stage="create"] .lobby-hero-slot,
+.lobby-safe[data-stage="join"] .lobby-hero-slot {
+  height: 0;
+  opacity: 0;
+  margin-bottom: -0.75rem;   /* 접힌 만큼 gap도 회수 */
+}
+
+.lobby-stage {
+  --stage-gap: 1rem;
+  --t-expand: 300ms;
+  --t-reveal: 250ms;
+  --t-form: 200ms;
+
+  /* 자식이 100cqw/100cqh로 스테이지 크기를 참조한다 — 줄어드는 열 안에서도
+     패널이 원래 크기를 지키게 하는 데 쓴다. 높이는 flex로 확정되므로 size 컨테인이 안전하다. */
+  container-type: size;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--stage-gap);
+  /* 높이는 안전영역이 정한다 — 남는 공간을 그대로 채운다 */
+  flex: 1;
+  min-height: 0;
+  transition:
+    grid-template-columns var(--t-expand) ease,
+    gap var(--t-expand) ease;
+  /* home으로 돌아올 때는 폼이 먼저 사라진 뒤 열이 되돌아간다 */
+  transition-delay: var(--t-form);
+}
+.lobby-stage[data-stage="solo"] {
+  grid-template-columns: 1fr 0fr;
+  gap: 0;
+  transition-delay: 0s;
+}
+.lobby-stage[data-stage="multi"],
+.lobby-stage[data-stage="create"],
+.lobby-stage[data-stage="join"] {
+  grid-template-columns: 0fr 1fr;
+  gap: 0;
+  transition-delay: 0s;
+}
+
+/* 열 — 줄어들 때 내용을 잘라낸다. 안의 패널을 어느 쪽에 붙이느냐가 밀려나갈 방향을 정한다:
+   flex-end  → 열이 줄면 패널이 왼쪽으로 빠져나간다
+   flex-start → 열이 줄면 패널이 오른쪽으로 빠져나간다 */
+.stage-col {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  border-radius: 1rem;
+  transition: opacity var(--t-expand) ease;
+}
+.stage-col-solo   { justify-content: flex-end; }   /* 멀티 선택 시 왼쪽으로 슬라이드 아웃 */
+.stage-col-multi  { justify-content: flex-start; } /* 싱글 선택 시 오른쪽으로 슬라이드 아웃 */
+.stage-col-create { justify-content: flex-end; }   /* 방 참가 선택 시 왼쪽으로 슬라이드 아웃 */
+.stage-col-join   { justify-content: flex-start; } /* 방 만들기 선택 시 오른쪽으로 슬라이드 아웃 */
+
+/* 밀려나가는 열은 함께 옅어진다 */
+.lobby-stage[data-stage="solo"]   .stage-col-multi,
+.lobby-stage[data-stage="multi"]  .stage-col-solo,
+.lobby-stage[data-stage="create"] .stage-col-solo,
+.lobby-stage[data-stage="join"]   .stage-col-solo,
+.lobby-stage[data-stage="create"] .stage-col-join,
+.lobby-stage[data-stage="join"]   .stage-col-create {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 패널 — 줄어드는 열 안에서도 원래 폭(컨테이너의 절반)을 지켜야 찌그러지지 않고 밀려난다 */
+.stage-panel {
+  flex: none;
+  width: 100%;
+  height: 100%;
+  min-width: calc((100cqw - var(--stage-gap)) / 2);
+}
+/* 열이 overflow:hidden이라 바깥으로 나가는 강조는 잘린다 —
+   떠오름/외곽선 대신 안쪽으로 그리는 링으로 대체한다 */
+.stage-panel.lobby-panel-active:hover,
+.stage-panel.lobby-panel-active:focus-visible {
+  transform: none;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+.stage-panel.lobby-panel-active:focus-visible {
+  outline: 3px solid #4ade80;
+  outline-offset: -3px;
+}
+
+/* 폼이 열린 패널: 라벨은 사라지고 배경은 살짝 밝아지며 클릭은 막힌다 */
+.stage-panel-label {
+  transition: opacity var(--t-form) ease;
+}
+.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel,
+.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel,
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel,
+.lobby-stage[data-stage="multi"]  .stage-panel-multi,
+.lobby-stage[data-stage="create"] .stage-panel-multi,
+.lobby-stage[data-stage="join"]   .stage-panel-multi {
+  pointer-events: none;
+}
+.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="multi"]  .stage-panel-multi .stage-panel-label,
+.lobby-stage[data-stage="create"] .stage-panel-multi .stage-panel-label,
+.lobby-stage[data-stage="join"]   .stage-panel-multi .stage-panel-label {
+  opacity: 0;
+}
+.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg {
+  filter: brightness(0.8);
+}
+
+/* 멀티 내부 2열 — 멀티 패널 위에 겹쳐 있다가 오른쪽에서 왼쪽으로 드러난다 */
+.multi-inner {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--stage-gap);
+  clip-path: inset(0 0 0 100%);
+  opacity: 0;
+  transition:
+    clip-path var(--t-reveal) ease,
+    opacity   var(--t-reveal) ease,
+    grid-template-columns var(--t-expand) ease,
+    gap var(--t-expand) ease;
+}
+.lobby-stage[data-stage="multi"] .multi-inner {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+  /* 들어올 때: 열 확장이 끝난 뒤 드러난다 / create·join에서 돌아올 때: 폼이 사라진 뒤 열이 되돌아간다 */
+  transition-delay: var(--t-expand), var(--t-expand), var(--t-form), var(--t-form);
+}
+.lobby-stage[data-stage="create"] .multi-inner,
+.lobby-stage[data-stage="join"]   .multi-inner {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+  gap: 0;
+  transition-delay: 0s;
+}
+.lobby-stage[data-stage="create"] .multi-inner { grid-template-columns: 1fr 0fr; }
+.lobby-stage[data-stage="join"]   .multi-inner { grid-template-columns: 0fr 1fr; }
+
+/* 폼 — 확장된 패널 위에 겹쳐서 페이드 인/아웃. 높이는 고정이라 넘치면 안에서 스크롤한다 */
+.stage-form {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-form) ease;
+}
+.lobby-stage[data-stage="solo"]   .stage-form-solo,
+.lobby-stage[data-stage="create"] .stage-form-create,
+.lobby-stage[data-stage="join"]   .stage-form-join {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: var(--t-expand);   /* 확장이 끝난 뒤 나타난다 */
+}
+
+/* 뒤로가기 버튼 — home에서는 자리를 지키며 사라진다(레이아웃 점프 방지) */
+.lobby-back {
+  transition: opacity var(--t-form) ease, transform var(--t-form) ease;
+}
+.lobby-back-hidden {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lobby-panel-active:hover,
+  .lobby-panel-active:focus-visible { transform: none; }
+  .lobby-panel-pressed { animation: none; }
+  .lobby-stage, .stage-col, .stage-panel, .stage-panel-label,
+  .multi-inner, .stage-form, .lobby-back { transition: none !important; }
+}
+
+/* ── 로비 스테이지 — 모바일: 같은 메커니즘을 세로축으로 ──────────────────── */
+@media (max-width: 767px) {
+  /* 세로로 긴 화면에서는 테이블이 크게 확대돼 화면에 펠트 가운데만 보인다 —
+     캐릭터를 피하려고 좌우를 비대칭으로 둘 이유가 없고, 오히려 그 1.6% 차이가
+     확대 배율만큼 벌어져 안전영역을 화면 밖으로 밀어낸다. 좁은 화면에선 대칭으로 둔다. */
+  .lobby-table {
+    --safe-left: 30%;
+    --safe-right: 30%;
+  }
+
+  /* 좁은 화면에서는 로고가 가로 폭에 먼저 걸려 더 커지지 못한다 —
+     슬롯을 넓게 잡아봐야 빈 공간만 생기고 아래 버튼만 눌리므로 낮춰 잡는다. */
+  .lobby-hero-slot { height: 28%; }
+
+  .lobby-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    transition: grid-template-rows var(--t-expand) ease, gap var(--t-expand) ease;
+    transition-delay: var(--t-form);
+  }
+  .lobby-stage[data-stage="solo"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 0fr;
+  }
+  .lobby-stage[data-stage="multi"],
+  .lobby-stage[data-stage="create"],
+  .lobby-stage[data-stage="join"] {
+    grid-template-columns: 1fr;
+    grid-template-rows: 0fr 1fr;
+  }
+
+  .stage-col { min-height: 0; flex-direction: column; }
+
+  .stage-panel {
+    min-width: 0;
+    min-height: calc((100cqh - var(--stage-gap)) / 2);
+  }
+
+  .multi-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    clip-path: inset(100% 0 0 0);
+  }
+  .lobby-stage[data-stage="create"] .multi-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 0fr;
+  }
+  .lobby-stage[data-stage="join"] .multi-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 0fr 1fr;
+  }
+}
