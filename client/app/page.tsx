@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { GameSettings, LobbyPlayer, Team } from 'shared';
-import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
+import type { GameSettings, Team } from 'shared';
+import { DEFAULT_SETTINGS } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { playBgm } from '@/lib/bgm';
 import { HowToPlayModal } from '@/components/ui/HowToPlayModal';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { GameRulesFields } from '@/components/lobby/GameRulesFields';
+import { WaitingRoom } from '@/components/lobby/WaitingRoom';
 
 export default function LobbyPage() {
   const router = useRouter();
@@ -30,16 +32,35 @@ export default function LobbyPage() {
   // 미리 정해둔다(비워두면 기존처럼 실제 참가자가 자기 팀 이름을 직접 고른다).
   const [otherTeamName, setOtherTeamName] = useState('');
   const [joinRoomId, setJoinRoomId] = useState('');
+  // 초대 링크로 들어왔는지 — 참가 화면에 "방 코드는 이미 채워뒀다"는 안내를 띄우는 용도
+  const [arrivedByInvite, setArrivedByInvite] = useState(false);
   const [mode, setMode] = useState<'home' | 'create' | 'join' | 'solo' | 'waiting'>('home');
-  const [isReady, setIsReady] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
   // 방장(방을 만드는 쪽)만 정하는 게임 규칙 — 방 생성/싱글 모드 시작 화면에서 함께 입력받는다.
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
 
-  // 방 입장 감지
+  // 초대 링크(`/?room=ABCD`)로 들어온 경우 — 참가 화면을 열고 방 코드를 미리 채운다.
+  // useSearchParams 대신 window.location을 읽는 이유: 이 페이지는 전부 클라이언트
+  // 컴포넌트라 Suspense 경계를 추가로 두지 않아도 되고, 값이 필요한 시점도 마운트
+  // 직후 한 번뿐이다.
   useEffect(() => {
-    if (ws.roomId && mode !== 'waiting') setMode('waiting');
-  }, [ws.roomId, mode]);
+    const code = new URLSearchParams(window.location.search).get('room');
+    if (!code) return;
+    setJoinRoomId(code.trim().toUpperCase().slice(0, 4));
+    setArrivedByInvite(true);
+    setMode(m => (m === 'home' ? 'join' : m));
+    // 주소창에서 쿼리를 지워, 나중에 새로고침하거나 방을 나갔을 때 다시 끌려가지 않게 한다.
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []);
+
+  // 방 입장/이탈 감지 — 추방당하거나 스스로 나가면 roomId가 비워지므로 홈으로 돌아간다.
+  useEffect(() => {
+    if (ws.roomId) {
+      setMode('waiting');
+    } else {
+      setMode(m => (m === 'waiting' ? 'home' : m));
+    }
+  }, [ws.roomId]);
 
   // 게임 시작 감지 → 게임 화면으로 이동
   useEffect(() => {
@@ -47,6 +68,14 @@ export default function LobbyPage() {
       router.push(`/room/${ws.roomId}`);
     }
   }, [ws.gameState, ws.roomId, router]);
+
+  // 게임 화면은 내 팀을 sessionStorage에서 읽어온다(`cardBattle_team`). 방장이 나를 다른
+  // 팀으로 옮겼거나 내가 대기실에서 팀을 바꿨다면 그 값도 함께 따라가야, 게임에 들어갔을 때
+  // 엉뚱한 팀 시점으로 보이지 않는다.
+  useEffect(() => {
+    const meInLobby = ws.lobbyPlayers.find(p => p.memberId === ws.memberId);
+    if (meInLobby) sessionStorage.setItem('cardBattle_team', meInLobby.team);
+  }, [ws.lobbyPlayers, ws.memberId]);
 
   const handleCreateRoom = () => {
     if (!nickname.trim()) return;
@@ -66,10 +95,9 @@ export default function LobbyPage() {
     ws.createSoloRoom(nickname.trim(), teamName.trim() || undefined, settings);
   };
 
-  const handleReady = () => {
-    ws.sendReady();
-    setIsReady(true);
-  };
+  // 준비 상태는 서버가 로비 목록(LobbyPlayer.ready)으로 알려주므로 화면이 따로
+  // 기억하지 않는다 — 방장이 나를 다른 팀으로 옮기거나 방장 자리를 넘겨줘도 표시가 어긋나지 않는다.
+  const handleReady = (ready: boolean) => ws.sendReady(ready);
 
   if (!assetsReady) return <LoadingScreen onDone={handleAssetsReady} />;
 
@@ -101,6 +129,15 @@ export default function LobbyPage() {
         <p className="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded-lg mb-4 text-lg">
           {ws.error}
         </p>
+      )}
+
+      {ws.roomNotice && (
+        <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-2 rounded-lg mb-4 text-lg flex items-center gap-3">
+          <span>{ws.roomNotice}</span>
+          <button onClick={ws.clearRoomNotice} className="text-orange-400 hover:text-orange-600 font-bold">
+            ✕
+          </button>
+        </div>
       )}
 
       {mode === 'home' && (
@@ -179,6 +216,12 @@ export default function LobbyPage() {
           <h3 className="text-2xl font-semibold text-gray-700">
             {mode === 'create' ? '방 만들기' : '방 참가하기'}
           </h3>
+
+          {mode === 'join' && arrivedByInvite && (
+            <p className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-base -mt-2">
+              초대 링크로 들어왔어요. 방 코드는 이미 채워뒀으니 닉네임과 팀만 정하면 됩니다.
+            </p>
+          )}
 
           <Field label="닉네임">
             <input
@@ -266,8 +309,17 @@ export default function LobbyPage() {
           players={ws.lobbyPlayers}
           teamNames={ws.lobbyTeamNames}
           settings={ws.lobbySettings}
-          isReady={isReady}
+          myMemberId={ws.memberId}
+          hostMemberId={ws.hostMemberId}
+          isHost={ws.isHost}
           onReady={handleReady}
+          onStart={ws.startGame}
+          onLeave={ws.leaveRoom}
+          onMove={ws.movePlayer}
+          onKick={ws.kickPlayer}
+          onTransferHost={ws.transferHost}
+          onRenameTeam={ws.setTeamName}
+          onUpdateSettings={ws.updateSettings}
         />
       )}
       </div>
@@ -298,180 +350,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <label className="block text-lg text-gray-500 mb-1.5">{label}</label>
       {children}
-    </div>
-  );
-}
-
-const FIRST_TEAM_OPTIONS: { value: GameSettings['firstTeam']; label: string }[] = [
-  { value: 'A', label: '🟢 팀 1 먼저' },
-  { value: 'B', label: '🔵 팀 2 먼저' },
-  { value: 'random', label: '🎲 무작위' },
-];
-
-const RULE_FIELDS: {
-  key: keyof Omit<GameSettings, 'firstTeam'>;
-  label: string;
-  suffix: string;
-  hint?: string;
-}[] = [
-  { key: 'targetScore', label: '목표 점수', suffix: '점' },
-  { key: 'festivalTurn', label: '도토리 축제 시작 턴', suffix: '턴' },
-  { key: 'festivalDrawCount', label: '도토리 뽑기 횟수', suffix: '회' },
-  { key: 'festivalDrawIncreaseInterval', label: '뽑기 증가 주기', suffix: '턴', hint: '999 = 재발동 없음' },
-  { key: 'drawTimeSec', label: '동물 뽑기 제한시간', suffix: '초' },
-  { key: 'actionTimeSec', label: '행동 선택 제한시간', suffix: '초' },
-  { key: 'noActionTimeSec', label: '행동할 게 없을 때 제한시간', suffix: '초' },
-];
-
-// 방장(방을 만드는 쪽)만 보는 게임 규칙 입력 — 값을 비워두면 기본값 그대로 방을 만든다.
-function GameRulesFields({
-  settings,
-  onChange,
-}: {
-  settings: GameSettings;
-  onChange: (next: GameSettings) => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="border border-gray-200 rounded-lg">
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-lg font-semibold text-gray-600"
-      >
-        <span>⚙️ 게임 규칙 (방장이 정해요)</span>
-        <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
-      </button>
-      {open && (
-        <div className="px-4 pb-4 flex flex-col gap-3 border-t border-gray-100 pt-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-lg text-gray-500">선 플레이어(먼저 시작하는 팀)</label>
-            <div className="flex gap-1">
-              {FIRST_TEAM_OPTIONS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => onChange({ ...settings, firstTeam: value })}
-                  className={`flex-1 py-2 rounded-lg font-semibold transition text-base ${
-                    settings.firstTeam === value
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col gap-3">
-          {RULE_FIELDS.map(({ key, label, suffix, hint }) => {
-            const { min, max } = SETTINGS_LIMITS[key];
-            return (
-              <div key={key} className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2 text-lg">
-                  <label className="text-gray-500 whitespace-nowrap">{label}</label>
-                  {/* 라벨과 입력창 사이를 점선으로 이어 어느 값이 어느 항목인지 눈으로 따라가기 쉽게 한다. */}
-                  <span className="flex-1 min-w-4 border-b-2 border-dotted border-gray-300" />
-                  <input
-                    type="number"
-                    min={min}
-                    max={max}
-                    value={settings[key]}
-                    onChange={e => {
-                      const v = Number(e.target.value);
-                      onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
-                    }}
-                    onBlur={e => {
-                      const v = Math.min(max, Math.max(min, Math.round(Number(e.target.value) || DEFAULT_SETTINGS[key])));
-                      onChange({ ...settings, [key]: v });
-                    }}
-                    className="input-base input-rule"
-                  />
-                  <span className="text-gray-400 w-8 shrink-0">{suffix}</span>
-                </div>
-                {hint && <p className="text-sm text-gray-400 text-right">{hint}</p>}
-              </div>
-            );
-          })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function WaitingRoom({
-  roomId, players, teamNames, settings, isReady, onReady,
-}: {
-  roomId: string;
-  players: LobbyPlayer[];
-  teamNames: Record<Team, string | null>;
-  settings: GameSettings;
-  isReady: boolean;
-  onReady: () => void;
-}) {
-  const teamA = players.filter(p => p.team === 'A');
-  const teamB = players.filter(p => p.team === 'B');
-  const canStart = players.length >= 2 && players.every(p => p.ready) && teamA.length > 0 && teamB.length > 0;
-
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-4xl flex flex-col gap-6">
-      <div className="text-center">
-        <p className="text-lg text-gray-400">방 코드</p>
-        <p className="text-6xl font-mono font-bold text-green-700 tracking-widest">{roomId}</p>
-        <p className="text-base text-gray-400 mt-1.5">친구에게 이 코드를 알려주세요</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <TeamColumn label={`🟢 ${teamNames.A ?? '팀 1 (미정)'}`} players={teamA} />
-        <TeamColumn label={`🔵 ${teamNames.B ?? '팀 2 (미정)'}`} players={teamB} />
-      </div>
-
-      <div className="bg-gray-50 rounded-xl p-4 text-base text-gray-500 flex flex-wrap gap-x-6 gap-y-1.5 justify-center">
-        <span>
-          🚩 선공{' '}
-          {settings.firstTeam === 'random'
-            ? '무작위 추첨'
-            : settings.firstTeam === 'A'
-              ? (teamNames.A ?? '팀 1')
-              : (teamNames.B ?? '팀 2')}
-        </span>
-        <span>🎯 목표 {settings.targetScore}점</span>
-        <span>🌰 축제 {settings.festivalTurn}턴부터 (뽑기 {settings.festivalDrawCount}회)</span>
-        <span>⏳ 뽑기 {settings.drawTimeSec}초</span>
-        <span>⏳ 행동 {settings.actionTimeSec}초</span>
-      </div>
-
-      {canStart ? (
-        <p className="text-center text-xl text-green-600 font-semibold animate-pulse">게임 시작 중...</p>
-      ) : (
-        <button
-          onClick={onReady}
-          disabled={isReady}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold text-xl py-4 rounded-xl transition"
-        >
-          {isReady ? '준비 완료 ✓' : '준비'}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function TeamColumn({ label, players }: { label: string; players: LobbyPlayer[] }) {
-  return (
-    <div className="bg-gray-50 rounded-xl p-4 min-h-[100px]">
-      <p className="font-semibold text-gray-700 text-lg mb-2">{label}</p>
-      {players.length === 0 ? (
-        <p className="text-base text-gray-400">없음</p>
-      ) : (
-        players.map(p => (
-          <div key={p.nickname} className="flex items-center gap-2 text-lg py-1">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${p.ready ? 'bg-green-500' : 'bg-gray-300'}`} />
-            <span className="text-gray-700 truncate">{p.nickname}</span>
-          </div>
-        ))
-      )}
     </div>
   );
 }

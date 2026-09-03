@@ -11,7 +11,18 @@ export type ClientMessage =
   | { type: 'createRoom'; nickname: string; team: Team; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings> }
   | { type: 'joinRoom'; roomId: string; nickname: string; team: Team; teamName?: string }
   | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings> } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전
-  | { type: 'ready' }
+  // ready는 토글이다 — 값을 생략하면 "준비 완료"로 본다(옛 클라이언트 호환).
+  | { type: 'ready'; ready?: boolean }
+  | { type: 'leaveRoom' } // 대기실에서 스스로 나가기(연결은 유지한 채 방만 벗어난다)
+  // ─ 아래는 방장 전용 명령 (단, movePlayer는 자기 자신을 옮길 때만 누구나 쓸 수 있다) ─
+  // 대상 지정에는 playerId가 아니라 방 안에서만 통하는 공개 식별자(memberId)를 쓴다 —
+  // playerId는 재접속 자격증명이라 다른 참가자에게 노출하면 세션을 가로챌 수 있다.
+  | { type: 'movePlayer'; targetMemberId: string; team: Team }
+  | { type: 'kickPlayer'; targetMemberId: string }
+  | { type: 'transferHost'; targetMemberId: string }
+  | { type: 'setTeamName'; team: Team; name: string }
+  | { type: 'updateSettings'; settings: Partial<GameSettings> }
+  | { type: 'startGame' } // 방장이 직접 시작(모두 준비 완료 + 양 팀에 한 명 이상일 때만)
   | { type: 'drawCard'; place: Place }
   | { type: 'chooseSkill'; animal: Animal } // 턴 종료 시 4가지 스킬 중 하나 선택
   | { type: 'passSkill' } // 턴 종료 시 "아무것도 하지 않음" 선택
@@ -20,10 +31,19 @@ export type ClientMessage =
 // ─── 서버 → 클라이언트 ──────────────────────────────────────────────────────
 
 export type ServerMessage =
-  // 로비
-  | { type: 'roomCreated'; roomId: string; playerId: string }
-  | { type: 'roomJoined'; roomId: string; playerId: string }
-  | { type: 'lobbyState'; players: LobbyPlayer[]; teamNames: Record<Team, string | null>; settings: GameSettings }
+  // 로비 — memberId는 이 방 안에서 나를 가리키는 공개 식별자다(playerId는 재접속
+  // 자격증명이라 남에게 보이면 안 되므로, 방장 명령의 대상 지정에는 이 값을 쓴다).
+  | { type: 'roomCreated'; roomId: string; playerId: string; memberId: string }
+  | { type: 'roomJoined'; roomId: string; playerId: string; memberId: string }
+  | {
+      type: 'lobbyState';
+      players: LobbyPlayer[];
+      teamNames: Record<Team, string | null>;
+      settings: GameSettings;
+      hostMemberId: string | null;
+    }
+  | { type: 'kicked'; message: string }   // 방장에게 추방당해 방에서 나갔음
+  | { type: 'leftRoom' }                  // 스스로 나가기(leaveRoom) 완료
   | { type: 'error'; code: ErrorCode; message: string }
   // 게임
   | { type: 'gameStart'; state: ClientGameState }
@@ -31,9 +51,11 @@ export type ServerMessage =
   | { type: 'actionResult'; events: ClientGameEvent[]; state: ClientGameState };
 
 export interface LobbyPlayer {
+  memberId: string;
   nickname: string;
   team: Team;
   ready: boolean;
+  connected: boolean;
 }
 
 export type ErrorCode =
@@ -45,7 +67,11 @@ export type ErrorCode =
   | 'GAME_NOT_STARTED'
   | 'GAME_ALREADY_STARTED'
   | 'INVALID_RECONNECT'
-  | 'NO_PENDING_CHOICE';
+  | 'NO_PENDING_CHOICE'
+  | 'NOT_HOST'          // 방장만 쓸 수 있는 명령을 방장이 아닌 사람이 보냈다
+  | 'PLAYER_NOT_FOUND'  // 방장 명령의 대상(memberId)이 방에 없다
+  | 'TEAM_NAME_TAKEN'   // 바꾸려는 팀 이름이 상대 팀과 겹친다
+  | 'CANNOT_START';     // 아직 시작 조건(양 팀 한 명 이상 + 전원 준비)을 못 채웠다
 
 // ─── 클라이언트 게임 상태 ─────────────────────────────────────────────────────
 // 카드가 뽑히는 즉시 공개되므로(숨겨진 카드 상태가 없음) 서버 GameState를 그대로

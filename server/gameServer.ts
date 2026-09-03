@@ -30,7 +30,7 @@ export function createConnectionHandler(roomManager: RoomManager) {
           }
           currentRoomId = roomId;
           currentPlayerId = playerId;
-          ws.send(JSON.stringify({ type: 'roomCreated', roomId, playerId }));
+          ws.send(JSON.stringify({ type: 'roomCreated', roomId, playerId, memberId: room.memberIdOf(playerId) }));
           break;
         }
 
@@ -40,7 +40,7 @@ export function createConnectionHandler(roomManager: RoomManager) {
           room.addSoloPlayer(ws, playerId, msg.nickname, msg.teamName, msg.settings);
           currentRoomId = roomId;
           currentPlayerId = playerId;
-          ws.send(JSON.stringify({ type: 'roomCreated', roomId, playerId }));
+          ws.send(JSON.stringify({ type: 'roomCreated', roomId, playerId, memberId: room.memberIdOf(playerId) }));
           break;
         }
 
@@ -62,13 +62,61 @@ export function createConnectionHandler(roomManager: RoomManager) {
           }
           currentRoomId = msg.roomId;
           currentPlayerId = playerId;
-          ws.send(JSON.stringify({ type: 'roomJoined', roomId: msg.roomId, playerId }));
+          ws.send(JSON.stringify({ type: 'roomJoined', roomId: msg.roomId, playerId, memberId: room.memberIdOf(playerId) }));
           break;
         }
 
         case 'ready': {
           if (!currentRoomId || !currentPlayerId) return;
-          roomManager.getRoom(currentRoomId)?.setReady(currentPlayerId);
+          roomManager.getRoom(currentRoomId)?.setReady(currentPlayerId, msg.ready ?? true);
+          break;
+        }
+
+        case 'leaveRoom': {
+          if (!currentRoomId || !currentPlayerId) return;
+          // 실제로 방에서 빠졌을 때만 연결의 방 정보를 지운다 — 게임이 이미 시작된 방은
+          // 나가기가 거부되는데, 그때도 지워버리면 이후 조작이 전부 무시된다.
+          const left = roomManager.getRoom(currentRoomId)?.leaveRoom(currentPlayerId) ?? false;
+          if (left) {
+            currentRoomId = null;
+            currentPlayerId = null;
+          }
+          break;
+        }
+
+        case 'movePlayer': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.movePlayer(currentPlayerId, msg.targetMemberId, msg.team);
+          break;
+        }
+
+        case 'kickPlayer': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.kickPlayer(currentPlayerId, msg.targetMemberId);
+          break;
+        }
+
+        case 'transferHost': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.transferHost(currentPlayerId, msg.targetMemberId);
+          break;
+        }
+
+        case 'setTeamName': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.setTeamName(currentPlayerId, msg.team, msg.name);
+          break;
+        }
+
+        case 'updateSettings': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.updateSettings(currentPlayerId, msg.settings);
+          break;
+        }
+
+        case 'startGame': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.startGame(currentPlayerId);
           break;
         }
 

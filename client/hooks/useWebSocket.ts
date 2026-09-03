@@ -19,6 +19,7 @@ type LobbyTeamNames = Record<Team, string | null>;
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080';
 const STORAGE_ROOM_ID = 'cardBattle_roomId';
 const STORAGE_PLAYER_ID = 'cardBattle_playerId';
+const STORAGE_MEMBER_ID = 'cardBattle_memberId';
 
 // localStorage는 같은 브라우저의 모든 탭이 공유해, 한 브라우저로 두 탭을 열어
 // 1:1 테스트를 하면 두 탭이 서로의 방/플레이어 세션을 덮어써 버린다.
@@ -34,9 +35,17 @@ export interface UseWebSocketReturn {
   connected: boolean;
   roomId: string | null;
   playerId: string | null;
+  // 이 방 안에서 나를 가리키는 공개 식별자 — 방장 명령의 대상 지정과 "이 줄이 나인지"
+  // 판별에 쓴다(playerId는 재접속 자격증명이라 로비 목록에 실리지 않는다).
+  memberId: string | null;
   lobbyPlayers: LobbyPlayer[];
   lobbyTeamNames: LobbyTeamNames;
   lobbySettings: GameSettings;
+  hostMemberId: string | null;
+  isHost: boolean;
+  // 추방당했거나 스스로 나가서 방을 벗어났을 때의 안내문(없으면 null)
+  roomNotice: string | null;
+  clearRoomNotice: () => void;
   gameState: ClientGameState | null;
   // 턴 제한시간이 끝나는 시각 — 내 브라우저 시계(Date.now()) 기준이다. 서버는 절대
   // 시각이 아니라 "직렬화 순간부터 남은 ms"(state.turnRemainingMs)를 보내오고, 그 값을
@@ -49,7 +58,15 @@ export interface UseWebSocketReturn {
   createRoom: (nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string) => void;
   joinRoom: (roomId: string, nickname: string, team: Team, teamName?: string) => void;
   createSoloRoom: (nickname: string, teamName?: string, settings?: Partial<GameSettings>) => void;
-  sendReady: () => void;
+  sendReady: (ready?: boolean) => void;
+  leaveRoom: () => void;
+  // 방장 명령 (movePlayer만 "나 자신"을 대상으로 할 땐 누구나 쓸 수 있다)
+  movePlayer: (targetMemberId: string, team: Team) => void;
+  kickPlayer: (targetMemberId: string) => void;
+  transferHost: (targetMemberId: string) => void;
+  setTeamName: (team: Team, name: string) => void;
+  updateSettings: (settings: Partial<GameSettings>) => void;
+  startGame: () => void;
   drawCard: (place: Place) => void;
   chooseSkill: (animal: Animal) => void;
   passSkill: () => void;
@@ -64,9 +81,12 @@ export function useWebSocket(): UseWebSocketReturn {
   // 마운트될 때(페이지 이동으로 새 useWebSocket 인스턴스가 생길 때)도 이 값을
   // 그대로 물려받아야 "지금 활성 플레이어가 나인지" 같은 판별이 끊기지 않는다.
   const [playerId, setPlayerId] = useState<string | null>(() => sessionStore.get(STORAGE_PLAYER_ID));
+  const [memberId, setMemberId] = useState<string | null>(() => sessionStore.get(STORAGE_MEMBER_ID));
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([]);
   const [lobbyTeamNames, setLobbyTeamNames] = useState<LobbyTeamNames>({ A: null, B: null });
   const [lobbySettings, setLobbySettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [hostMemberId, setHostMemberId] = useState<string | null>(null);
+  const [roomNotice, setRoomNotice] = useState<string | null>(null);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [turnDeadline, setTurnDeadline] = useState(0);
   const [lastEvents, setLastEvents] = useState<ClientGameEvent[]>([]);
@@ -118,14 +138,34 @@ export function useWebSocket(): UseWebSocketReturn {
         case 'roomJoined':
           setRoomId(msg.roomId);
           setPlayerId(msg.playerId);
+          setMemberId(msg.memberId);
+          setRoomNotice(null);
           sessionStore.set(STORAGE_ROOM_ID, msg.roomId);
           sessionStore.set(STORAGE_PLAYER_ID, msg.playerId);
+          sessionStore.set(STORAGE_MEMBER_ID, msg.memberId);
           break;
 
         case 'lobbyState':
           setLobbyPlayers(msg.players);
           setLobbyTeamNames(msg.teamNames);
           setLobbySettings(msg.settings);
+          setHostMemberId(msg.hostMemberId);
+          break;
+
+        // 추방/자진 퇴장 — 저장된 세션을 지워 죽은 방으로 재접속을 반복하지 않게 하고,
+        // roomId를 비워 화면이 대기실에서 홈으로 자연스럽게 돌아가게 한다.
+        case 'kicked':
+        case 'leftRoom':
+          sessionStore.remove(STORAGE_ROOM_ID);
+          sessionStore.remove(STORAGE_PLAYER_ID);
+          sessionStore.remove(STORAGE_MEMBER_ID);
+          setRoomId(null);
+          setPlayerId(null);
+          setMemberId(null);
+          setLobbyPlayers([]);
+          setLobbyTeamNames({ A: null, B: null });
+          setHostMemberId(null);
+          setRoomNotice(msg.type === 'kicked' ? msg.message : null);
           break;
 
         case 'gameStart':
@@ -145,6 +185,7 @@ export function useWebSocket(): UseWebSocketReturn {
             // 다음 접속부터는 죽은 방으로 재접속을 반복 시도하지 않게 한다.
             sessionStore.remove(STORAGE_ROOM_ID);
             sessionStore.remove(STORAGE_PLAYER_ID);
+            sessionStore.remove(STORAGE_MEMBER_ID);
           }
           // "지금은 행동을 선택할 차례입니다" 류는 화면 전환 타이밍에 늦게 도착한
           // 클릭이 원인인 무해한 안내라, 화면 위에 빨간 배너로 띄울 필요가 없다
@@ -173,7 +214,37 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'createSoloRoom', nickname, teamName, settings });
   }, [send]);
 
-  const sendReady = useCallback(() => send({ type: 'ready' }), [send]);
+  const sendReady = useCallback((ready = true) => send({ type: 'ready', ready }), [send]);
+
+  const leaveRoom = useCallback(() => send({ type: 'leaveRoom' }), [send]);
+
+  const movePlayer = useCallback((targetMemberId: string, team: Team) => {
+    send({ type: 'movePlayer', targetMemberId, team });
+  }, [send]);
+
+  const kickPlayer = useCallback((targetMemberId: string) => {
+    send({ type: 'kickPlayer', targetMemberId });
+  }, [send]);
+
+  const transferHost = useCallback((targetMemberId: string) => {
+    send({ type: 'transferHost', targetMemberId });
+  }, [send]);
+
+  const setTeamName = useCallback((team: Team, name: string) => {
+    setError(null);
+    send({ type: 'setTeamName', team, name });
+  }, [send]);
+
+  const updateSettings = useCallback((settings: Partial<GameSettings>) => {
+    send({ type: 'updateSettings', settings });
+  }, [send]);
+
+  const startGame = useCallback(() => {
+    setError(null);
+    send({ type: 'startGame' });
+  }, [send]);
+
+  const clearRoomNotice = useCallback(() => setRoomNotice(null), []);
 
   const drawCard = useCallback((place: Place) => {
     send({ type: 'drawCard', place });
@@ -186,8 +257,13 @@ export function useWebSocket(): UseWebSocketReturn {
   const passSkill = useCallback(() => send({ type: 'passSkill' }), [send]);
 
   return {
-    connected, roomId, playerId,
-    lobbyPlayers, lobbyTeamNames, lobbySettings, gameState, turnDeadline, lastEvents, error,
-    createRoom, joinRoom, createSoloRoom, sendReady, drawCard, chooseSkill, passSkill,
+    connected, roomId, playerId, memberId,
+    lobbyPlayers, lobbyTeamNames, lobbySettings, hostMemberId,
+    isHost: memberId !== null && memberId === hostMemberId,
+    roomNotice, clearRoomNotice,
+    gameState, turnDeadline, lastEvents, error,
+    createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
+    movePlayer, kickPlayer, transferHost, setTeamName, updateSettings, startGame,
+    drawCard, chooseSkill, passSkill,
   };
 }

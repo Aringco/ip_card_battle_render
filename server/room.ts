@@ -9,6 +9,7 @@ import {
   SHEEP_TIMER_EXTRA_DRAW_CAP,
   PLACES,
   TEAM_NAME_POOL,
+  TEAM_NAME_MAX_LEN,
   DEFAULT_SETTINGS,
   clampSettings,
 } from 'shared';
@@ -100,6 +101,10 @@ function pickComputerSkill(state: GameState, team: Team): Animal | null {
 interface PlayerConnection {
   ws: WebSocket;
   playerId: string;
+  // 방 안에서만 통하는 공개 식별자 — 방장 명령(이동/추방/위임)의 대상 지정에 쓴다.
+  // playerId를 그대로 노출하면 그 값만으로 reconnect가 통과해(handleReconnect 참고)
+  // 남의 세션을 가로챌 수 있으므로, 로비 목록에는 이 값만 싣는다.
+  memberId: string;
   nickname: string;
   team: Team;
   ready: boolean;
@@ -110,7 +115,11 @@ export class Room {
   private players = new Map<string, PlayerConnection>();  // playerId → PlayerConnection
   private teamPlayerIds: Record<Team, string[]> = { A: [], B: [] };
   private teamNames: Record<Team, string | null> = { A: null, B: null };
-  // 방장(방을 만든 쪽)이 정한 게임 규칙 — 방 생성 시 한 번만 설정되고 게임 중 불변이다.
+  // 방장 = 방을 처음 만든 사람. 로비에서 이 사람이 나가면 남아 있는 다음 사람에게 넘어간다.
+  private hostPlayerId: string | null = null;
+  private memberIdSeq = 0;
+  // 방장(방을 만든 쪽)이 정한 게임 규칙 — 로비에서는 방장이 계속 바꿀 수 있고, 게임이
+  // 시작되면(state !== null) 불변이다.
   private settings: GameSettings = DEFAULT_SETTINGS;
   private state: GameState | null = null;
   private turnDeadline = 0;
@@ -128,11 +137,50 @@ export class Room {
 
   // ─── 로비 ────────────────────────────────────────────────────────────────
 
+  /** 이 방의 방장인지. */
+  isHost(playerId: string): boolean {
+    return this.hostPlayerId !== null && this.hostPlayerId === playerId;
+  }
+
+  /** 로비 목록에 실리는 공개 식별자 — 없는 플레이어면 null. */
+  memberIdOf(playerId: string): string | null {
+    return this.players.get(playerId)?.memberId ?? null;
+  }
+
+  /** 공개 식별자로 플레이어를 찾는다(방장 명령의 대상 조회). */
+  private findByMemberId(memberId: string): PlayerConnection | undefined {
+    for (const p of this.players.values()) {
+      if (p.memberId === memberId) return p;
+    }
+    return undefined;
+  }
+
+  /** 게임이 이미 시작됐는지 — 로비 전용 명령은 모두 이걸로 먼저 막는다. */
+  private get started(): boolean {
+    return this.state !== null;
+  }
+
+  /**
+   * 방장 전용 명령의 공통 관문. 통과하지 못하면 요청자에게 에러를 보내고 false를 준다.
+   * 로비 상태가 아닐 때(게임 시작 후)도 함께 막는다.
+   */
+  private requireHost(playerId: string): boolean {
+    if (this.started) {
+      this.sendTo(playerId, { type: 'error', code: 'GAME_ALREADY_STARTED', message: '이미 게임이 시작되어 대기실 설정을 바꿀 수 없습니다.' });
+      return false;
+    }
+    if (!this.isHost(playerId)) {
+      this.sendTo(playerId, { type: 'error', code: 'NOT_HOST', message: '방장만 할 수 있는 동작입니다.' });
+      return false;
+    }
+    return true;
+  }
+
   /** 팀 이름을 확정한다. 이미 정해져 있으면 무시하고, 요청한 이름이 상대 팀과 겹치면 무작위로 대체한다. */
   private assignTeamName(team: Team, requested?: string): void {
     if (this.teamNames[team]) return;
     const other = this.teamNames[team === 'A' ? 'B' : 'A'];
-    const trimmed = requested?.trim().slice(0, 12);
+    const trimmed = requested?.trim().slice(0, TEAM_NAME_MAX_LEN);
     if (trimmed && trimmed !== other) {
       this.teamNames[team] = trimmed;
       return;
@@ -165,7 +213,12 @@ export class Room {
       this.settings = clampSettings(settings);
     }
 
-    this.players.set(playerId, { ws, playerId, nickname, team, ready: false, connected: true });
+    // 방장은 따로 "준비"를 누르지 않는다 — 준비 버튼 대신 "게임 시작" 버튼을 쥔다.
+    this.players.set(playerId, {
+      ws, playerId, memberId: this.nextMemberId(), nickname, team,
+      ready: isRoomCreator, connected: true,
+    });
+    if (isRoomCreator) this.hostPlayerId = playerId;
     this.teamPlayerIds[team].push(playerId);
     this.assignTeamName(team, teamName);
     // 방장만 반대편 팀 이름도 미리 정할 수 있다 — 나중에 참가자가 joinRoom으로 보내는
@@ -180,11 +233,20 @@ export class Room {
     return 'ok';
   }
 
+  private nextMemberId(): string {
+    this.memberIdSeq += 1;
+    return `m${this.memberIdSeq}`;
+  }
+
   /** 싱글 모드 — 사람은 A팀에 즉시 참가시키고, B팀은 컴퓨터(랜덤 클릭)로 채워 곧바로 게임을 시작한다. */
   addSoloPlayer(ws: WebSocket, playerId: string, nickname: string, teamName?: string, settings?: Partial<GameSettings>): void {
     this.vsComputer = true;
     if (settings) this.settings = clampSettings(settings);
-    this.players.set(playerId, { ws, playerId, nickname, team: 'A', ready: true, connected: true });
+    this.players.set(playerId, {
+      ws, playerId, memberId: this.nextMemberId(), nickname, team: 'A',
+      ready: true, connected: true,
+    });
+    this.hostPlayerId = playerId;
     this.teamPlayerIds.A.push(playerId);
     this.teamPlayerIds.B.push(CPU_PLAYER_ID);
     this.assignTeamName('A', teamName);
@@ -192,12 +254,157 @@ export class Room {
     this.tryStartGame();
   }
 
-  setReady(playerId: string): void {
+  setReady(playerId: string, ready = true): void {
+    const p = this.players.get(playerId);
+    if (!p || this.started) return;
+    // 방장은 준비 상태를 내릴 수 없다(시작 버튼을 쥔 쪽이라 준비 개념 자체가 없다).
+    if (this.isHost(playerId)) return;
+    p.ready = ready;
+    this.broadcastLobbyState();
+  }
+
+  // ─── 방장 명령 ───────────────────────────────────────────────────────────
+
+  /** 참가자를 다른 팀으로 옮긴다. 방장은 누구든, 그 외에는 자기 자신만 옮길 수 있다. */
+  movePlayer(playerId: string, targetMemberId: string, team: Team): void {
+    if (this.started) {
+      this.sendTo(playerId, { type: 'error', code: 'GAME_ALREADY_STARTED', message: '이미 게임이 시작되어 팀을 바꿀 수 없습니다.' });
+      return;
+    }
+    const target = this.findByMemberId(targetMemberId);
+    if (!target) {
+      this.sendTo(playerId, { type: 'error', code: 'PLAYER_NOT_FOUND', message: '대상 참가자를 찾을 수 없습니다.' });
+      return;
+    }
+    if (target.playerId !== playerId && !this.isHost(playerId)) {
+      this.sendTo(playerId, { type: 'error', code: 'NOT_HOST', message: '다른 참가자의 팀은 방장만 바꿀 수 있습니다.' });
+      return;
+    }
+    if (target.team === team) return;
+
+    const from = this.teamPlayerIds[target.team];
+    const idx = from.indexOf(target.playerId);
+    if (idx !== -1) from.splice(idx, 1);
+    target.team = team;
+    this.teamPlayerIds[team].push(target.playerId);
+    // 아직 아무도 없던 팀으로 옮겨간 경우, 그 팀 이름이 비어 있으면 여기서 정하지 않는다 —
+    // 방장이 setTeamName으로 직접 짓거나, 시작 시점(tryStartGame)에 무작위로 채워진다.
+    this.broadcastLobbyState();
+  }
+
+  /** 참가자를 방에서 내보낸다. 대상에게는 kicked를 보내 클라이언트가 홈으로 돌아가게 한다. */
+  kickPlayer(playerId: string, targetMemberId: string): void {
+    if (!this.requireHost(playerId)) return;
+    const target = this.findByMemberId(targetMemberId);
+    if (!target) {
+      this.sendTo(playerId, { type: 'error', code: 'PLAYER_NOT_FOUND', message: '대상 참가자를 찾을 수 없습니다.' });
+      return;
+    }
+    if (target.playerId === playerId) return; // 방장은 자기 자신을 추방할 수 없다
+
+    this.sendTo(target.playerId, { type: 'kicked', message: '방장이 당신을 방에서 내보냈습니다.' });
+    this.removePlayer(target.playerId);
+  }
+
+  /** 방장 자리를 다른 참가자에게 넘긴다. 넘긴 사람은 일반 참가자(준비 완료 상태)가 된다. */
+  transferHost(playerId: string, targetMemberId: string): void {
+    if (!this.requireHost(playerId)) return;
+    const target = this.findByMemberId(targetMemberId);
+    if (!target) {
+      this.sendTo(playerId, { type: 'error', code: 'PLAYER_NOT_FOUND', message: '대상 참가자를 찾을 수 없습니다.' });
+      return;
+    }
+    if (target.playerId === playerId) return;
+
+    const prev = this.players.get(playerId);
+    if (prev) prev.ready = true; // 방장에서 내려온 사람은 이미 참가 의사를 밝힌 상태로 둔다
+    this.hostPlayerId = target.playerId;
+    target.ready = true;
+    this.broadcastLobbyState();
+  }
+
+  /** 팀 이름 변경 — 무작위로 배정됐던 이름도 게임 시작 전이면 방장이 다시 지을 수 있다. */
+  setTeamName(playerId: string, team: Team, name: string): void {
+    if (!this.requireHost(playerId)) return;
+    const trimmed = name.trim().slice(0, TEAM_NAME_MAX_LEN);
+    if (!trimmed) {
+      // 빈 이름은 "미정으로 되돌리기"로 취급한다 — 시작 시점에 무작위로 채워진다.
+      this.teamNames[team] = null;
+      this.broadcastLobbyState();
+      return;
+    }
+    if (trimmed === this.teamNames[team === 'A' ? 'B' : 'A']) {
+      this.sendTo(playerId, { type: 'error', code: 'TEAM_NAME_TAKEN', message: '상대 팀과 같은 이름은 쓸 수 없습니다.' });
+      return;
+    }
+    this.teamNames[team] = trimmed;
+    this.broadcastLobbyState();
+  }
+
+  /** 게임 규칙 변경 — 로비에서만 가능하고, 게임이 시작되면 state.settings로 굳는다. */
+  updateSettings(playerId: string, settings: Partial<GameSettings>): void {
+    if (!this.requireHost(playerId)) return;
+    this.settings = clampSettings({ ...this.settings, ...settings });
+    this.broadcastLobbyState();
+  }
+
+  /** 방장이 누르는 시작 버튼. 조건을 못 채우면 이유를 방장에게만 알려준다. */
+  startGame(playerId: string): void {
+    if (!this.requireHost(playerId)) return;
+    const blocked = this.startBlockReason();
+    if (blocked) {
+      this.sendTo(playerId, { type: 'error', code: 'CANNOT_START', message: blocked });
+      return;
+    }
+    this.tryStartGame();
+  }
+
+  /** 지금 게임을 시작할 수 없는 이유(없으면 null). */
+  private startBlockReason(): string | null {
+    const all = [...this.players.values()];
+    if (all.length < 2) return '두 명 이상 모여야 시작할 수 있습니다.';
+    if (this.teamPlayerIds.A.length === 0 || this.teamPlayerIds.B.length === 0) {
+      return '양 팀에 각각 한 명 이상 있어야 합니다.';
+    }
+    if (!all.every(p => p.ready)) return '아직 준비하지 않은 참가자가 있습니다.';
+    return null;
+  }
+
+  /** 로비에서 플레이어를 완전히 제거하고(팀 목록 포함) 필요하면 방장을 넘긴다. */
+  private removePlayer(playerId: string): void {
     const p = this.players.get(playerId);
     if (!p) return;
-    p.ready = true;
+    this.players.delete(playerId);
+    const idx = this.teamPlayerIds[p.team].indexOf(playerId);
+    if (idx !== -1) this.teamPlayerIds[p.team].splice(idx, 1);
+
+    if (this.hostPlayerId === playerId) {
+      // 방장이 빠지면 남아 있는 사람 중 가장 먼저 들어온 사람이 이어받는다 — 안 그러면
+      // 아무도 시작 버튼을 누를 수 없어 방이 통째로 멈춘다.
+      const next = this.players.values().next().value as PlayerConnection | undefined;
+      this.hostPlayerId = next?.playerId ?? null;
+      if (next) next.ready = true;
+    }
+
+    if (this.players.size === 0) {
+      this.onEmpty();
+      return;
+    }
     this.broadcastLobbyState();
-    this.tryStartGame();
+  }
+
+  /**
+   * 대기실에서 스스로 나가기 — 연결은 유지한 채 방에서만 빠진다.
+   * 실제로 나갔을 때만 true. 게임이 이미 시작됐다면 나가지 않는다(false) — 호출한 쪽이
+   * 이 값을 보고 연결의 방 정보를 지우므로, 여기서 거짓말을 하면 게임 중인 플레이어의
+   * 조작이 통째로 먹통이 된다.
+   */
+  leaveRoom(playerId: string): boolean {
+    if (this.started) return false;
+    if (!this.players.has(playerId)) return false;
+    this.sendTo(playerId, { type: 'leftRoom' });
+    this.removePlayer(playerId);
+    return true;
   }
 
   private tryStartGame(): void {
@@ -439,13 +646,8 @@ export class Room {
     p.connected = false;
 
     if (this.state === null) {
-      // 로비에서 나가면 플레이어 제거
-      this.players.delete(playerId);
-      const idx = this.teamPlayerIds[p.team].indexOf(playerId);
-      if (idx !== -1) this.teamPlayerIds[p.team].splice(idx, 1);
-      this.broadcastLobbyState();
-
-      if (this.players.size === 0) this.onEmpty();
+      // 로비에서 나가면 플레이어 제거(방장이었다면 남은 사람에게 넘긴다)
+      this.removePlayer(playerId);
     }
     // 게임 중 이탈: 차례가 오면 타이머 만료로 자동 강제진행
   }
@@ -458,7 +660,10 @@ export class Room {
     p.connected = true;
 
     if (this.state === null) {
-      this.sendTo(playerId, { type: 'lobbyState', players: this.buildLobbyPlayers(), teamNames: this.teamNames, settings: this.settings });
+      // 대기실 화면이 "내가 누구인지"(memberId)와 방장 여부를 다시 알 수 있도록,
+      // 처음 입장 때와 똑같이 roomJoined → lobbyState 순서로 보낸다.
+      this.sendTo(playerId, { type: 'roomJoined', roomId: this.roomId, playerId, memberId: p.memberId });
+      this.broadcastLobbyState();
     } else {
       const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
       this.sendTo(playerId, { type: 'gameSnapshot', state: clientState });
@@ -485,14 +690,22 @@ export class Room {
   }
 
   private broadcastLobbyState(): void {
-    this.broadcast({ type: 'lobbyState', players: this.buildLobbyPlayers(), teamNames: this.teamNames, settings: this.settings });
+    this.broadcast({
+      type: 'lobbyState',
+      players: this.buildLobbyPlayers(),
+      teamNames: this.teamNames,
+      settings: this.settings,
+      hostMemberId: this.hostPlayerId ? this.memberIdOf(this.hostPlayerId) : null,
+    });
   }
 
   private buildLobbyPlayers() {
     return [...this.players.values()].map(p => ({
+      memberId: p.memberId,
       nickname: p.nickname,
       team: p.team,
       ready: p.ready,
+      connected: p.connected,
     }));
   }
 }
