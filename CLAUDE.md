@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **먼저 읽을 것 — [`HANDOVER.md`](HANDOVER.md)**
+> 진행 중인 작업(로비 화면 개편)의 현재 상태, 남은 일, 로비를 고칠 때 지켜야 할 절차가 있다.
+> 특히 **로비 폼에 항목을 추가하면 `client/scripts/measureLobby.mjs`로 반드시 다시 재야 한다** —
+> 폼이 `position: absolute`라 스테이지 박스를 밀어낼 수 없어, 조용히 잘리거나 스크롤바가
+> 생기는데 눈으로는 잘 안 보인다.
+
 ## 프로젝트 개요
 
 **한국특허정보원 카드배틀** — 맵 네 모서리 장소에서 카드를 뽑아 중앙 동물 스택에 쌓고, 짝수 장이 모이는 순간 획득하는 할리갈리/고스톱류 실시간 N:N 팀 대전 웹 게임. 4대 지식재산권(실용신안·상표·디자인·특허)을 의인화한 아기 동물 카드 4종(🐑실용신양·🐰상표토끼·🧜‍♀️디자인어·🐯특허랑이)이 등장한다.
