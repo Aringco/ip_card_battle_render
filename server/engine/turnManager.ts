@@ -62,7 +62,11 @@ export function finishTurn(state: GameState): GameEvent[] {
  * 이후 매 턴 계속 발동하는 것 자체는 기본 설정에서도 그대로 적용된다).
  */
 function festivalDrawCountAt(turn: number, settings: GameSettings): number {
-  const { festivalTurn, festivalDrawCount, festivalDrawIncreaseInterval } = settings;
+  const { festivalDrawCount, festivalDrawIncreaseInterval } = settings;
+  // advanceTurn이 festival 진입 여부를 판정할 때와 같은 방식으로, MAX_TURN을 넘는
+  // festivalTurn은 암묵적으로 MAX_TURN 그 자체로 취급한다(그렇지 않으면 state.festival이
+  // true인데도 여기 원본 festivalTurn과 비교해 매번 0회로 잘못 계산될 수 있다).
+  const festivalTurn = Math.min(settings.festivalTurn, MAX_TURN);
   if (turn < festivalTurn) return 0;
   const stage = Math.floor((turn - festivalTurn) / festivalDrawIncreaseInterval) + 1;
   return festivalDrawCount * stage;
@@ -95,8 +99,12 @@ export function advanceTurn(state: GameState): GameEvent[] {
   if (currentTeam === secondTeamOfRound) {
     state.turn++;
 
-    // settings.festivalTurn 도달 시점부터 축제가 시작된다
-    if (!state.festival && state.turn >= state.settings.festivalTurn) {
+    // settings.festivalTurn 도달 시점부터 축제가 시작된다. festivalTurn이 MAX_TURN보다
+    // 크게 설정돼 있으면(입력 자체는 막지 않는다 — SETTINGS_LIMITS 참고) 그 턴엔 아예
+    // 도달할 수 없어 축제가 영영 안 열리므로, MAX_TURN을 넘는 값은 암묵적으로 MAX_TURN
+    // 그 자체로 취급한다 — 마지막 턴에라도 축제가 열리게 하는 것이다.
+    const effectiveFestivalTurn = Math.min(state.settings.festivalTurn, MAX_TURN);
+    if (!state.festival && state.turn >= effectiveFestivalTurn) {
       state.festival = true;
       events.push({ type: 'festival' });
     }

@@ -424,6 +424,31 @@ describe('도토리 축제 랜덤 뽑기', () => {
     expect(state.teams.A.pendingFestivalDraws).toBe(5); // MAX_TURN 근처에서도 여전히 n×1
   });
 
+  it('festivalTurn이 MAX_TURN보다 크면 암묵적으로 MAX_TURN 그 자체로 취급되어, 마지막 턴에는 축제가 열린다', () => {
+    // festivalTurn을 그대로 썼다면(MAX_TURN + 50) turn이 그 값에 절대 도달할 수 없어
+    // 게임이 끝날 때까지 축제가 영영 안 열려야 하지만, 암묵적으로 MAX_TURN까지 clamp되므로
+    // 실제로는 마지막 턴(MAX_TURN)에 열린다.
+    const state = initGame(['A1'], ['B1'], rng0, { festivalTurn: MAX_TURN + 50, festivalDrawCount: 4 });
+    const advanceAsB = () => {
+      state.activeTeam = 'B';
+      return advanceTurn(state);
+    };
+
+    // 마지막 턴 직전까지는 아직 축제가 열리지 않는다
+    state.turn = MAX_TURN - 2;
+    const beforeLast = advanceAsB();
+    expect(state.turn).toBe(MAX_TURN - 1);
+    expect(state.festival).toBe(false);
+    expect(beforeLast.some(e => e.type === 'festival')).toBe(false);
+
+    // 마지막 턴(MAX_TURN)에 도달하는 순간 열린다
+    const atLast = advanceAsB();
+    expect(state.turn).toBe(MAX_TURN);
+    expect(state.festival).toBe(true);
+    expect(atLast.some(e => e.type === 'festival')).toBe(true);
+    expect(state.teams.A.pendingFestivalDraws).toBe(4); // n×1단계, 다음 팀(A)에게 예약
+  });
+
   it('예약된 도토리 뽑기는 실용신양(pendingExtraDraws)과 별도로 쌓이고, 다음 장소 클릭에서 실용신양보다 나중에 소모된다', () => {
     const state = initGame(['A1'], ['B1'], rng0);
     state.teams.A.pendingFestivalDraws = 2;
