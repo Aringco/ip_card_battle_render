@@ -43,7 +43,7 @@ export function describeSkillShort(animal: Animal, level: number): string {
     case 'rabbit':
       return `${level}만큼 체력을 획득합니다.`;
     case 'mermaid':
-      return `${level}만큼 (중첩가능) 다음 행동이 증폭됩니다.`;
+      return `${level}만큼 다음 행동이 증폭됩니다. (중첩가능)`;
     case 'tiger':
       return `${level}만큼 체력을 강탈해옵니다.`;
   }
