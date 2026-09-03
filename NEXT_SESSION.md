@@ -85,7 +85,7 @@ cd client && npx next build && npx next start -p 3200
 cd client && node scripts/measureLobby.mjs
 ```
 
-`puppeteer-core`가 없다면 `npm i -D puppeteer-core`.
+`puppeteer-core`는 루트 devDependency라 `npm install`로 함께 들어옵니다(2026-09-04부터).
 
 ---
 

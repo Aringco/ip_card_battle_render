@@ -1,8 +1,15 @@
 {
   "name": "card-battle",
   "private": true,
-  "workspaces": ["client", "server", "shared"],
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
   "scripts": {
     "start": "ts-node --transpile-only server.ts"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.10.0"
   }
 }
