@@ -18,6 +18,11 @@
 
 > `ROADMAP.md`는 초기 설계 문서로 실제 코드와 많이 다릅니다. 참고만 하세요.
 
+> ⚠️ **작업을 시작하기 전에 §5-0(upstream과 갈라져 있음)을 먼저 읽으세요.**
+> upstream에 대기실 채팅·방장 기능 등 7개 커밋이 쌓여 있고, `WaitingRoom.tsx`를
+> 양쪽이 독립적으로 만들어 충돌합니다. 새 기능을 얹기 전에 이 재조정 방향부터
+> 정하는 편이 낫습니다.
+
 ---
 
 ## 1. 새 PC 환경 구성
@@ -294,6 +299,54 @@ sharp(src).resize(768, 768, { fit: 'cover' }).webp({ quality: 82 }).toFile(dst)
 
 ## 5. 앞으로 할 일
 
+### 5-0. ⚠️ 가장 먼저 — upstream과 갈라져 있다
+
+**이것부터 처리 방향을 정하고 다른 작업을 시작하라.** 두 갈래가 오래 갈라져 있을수록
+재조정 비용이 커진다.
+
+```
+origin    https://github.com/Aringco/ip_card_battle_render.git   (내 fork, push 가능)
+upstream  https://github.com/HanJaeseok/ip_card_battle_render.git (권한 READ, push URL DISABLED)
+```
+
+`origin`은 `upstream`의 정식 GitHub fork이고 공통 조상(`d92c238`)이 있다.
+**upstream에는 직접 push할 수 없다** — 권한이 READ뿐이고 push URL도 의도적으로
+`DISABLED`로 막혀 있다. 반영하려면 **Pull Request**가 유일한 경로다.
+
+2026-09-03 커밋(`1b51670`) 시점의 갈라진 정도:
+
+| | 커밋 수 | 내용 |
+| --- | --- | --- |
+| 내 쪽(origin/main) | 4 | 로비 화면 개편 |
+| upstream/main | 7 | 무작위 닉네임·팀이름, 좌절 연출, **대기실 채팅**, **방장 기능 강화**(팀 이동·추방·위임·규칙 수정·초대 링크), N:N 보드 비활성화, 직전 턴 장소 제한, TODO.md |
+
+**충돌 3건이고 기계적 해결이 안 된다:**
+
+| 파일 | 내 쪽 | upstream | 성격 |
+| --- | --- | --- | --- |
+| `client/components/lobby/WaitingRoom.tsx` | 109줄 | **510줄** | add/add — 양쪽이 독립적으로 만듦 |
+| `client/components/lobby/GameRulesFields.tsx` | 118줄 | 151줄 | add/add — 양쪽이 독립적으로 만듦 |
+| `client/app/page.tsx` | 198줄 | 426줄 | content |
+
+upstream에만 있는 파일: `client/components/lobby/ChatPanel.tsx`, `shared/names.ts`, `TODO.md`
+
+`WaitingRoom.tsx`가 핵심이다. 내 쪽 109줄은 **로비를 쪼개면서 만든 것**이고,
+upstream 510줄은 **채팅·방장 기능이 붙은 것**이다. 이름만 같을 뿐 다른 파일이므로,
+"어느 쪽을 살릴지"가 아니라 **upstream 기능을 내 구조 위에 얹는 재조정**이 필요하다.
+
+> 참고 — `HANDOVER.md`에 "옛 저장소와 공통 git 이력이 전혀 없다"고 적힌 것은
+> **다른 저장소**(`Aringco/ip_card_battle`) 이야기다. 지금 이 `_render` 저장소는
+> upstream과 공통 조상이 있는 정상적인 fork이므로 혼동하지 말 것.
+
+충돌 규모를 다시 확인하는 법:
+
+```bash
+git fetch upstream
+git log --oneline upstream/main..HEAD    # 내게만 있는 커밋
+git log --oneline HEAD..upstream/main    # upstream에만 있는 커밋
+git merge-tree --write-tree upstream/main HEAD | grep '^CONFLICT'
+```
+
 ### 5-1. 바로 손댈 수 있는 것
 
 | 우선도 | 항목 | 내용 |
@@ -345,11 +398,21 @@ sharp(src).resize(768, 768, { fit: 'cover' }).webp({ quality: 82 }).toFile(dst)
 ## 7. 저장소 정보
 
 ```
-저장소   https://github.com/Aringco/ip_card_battle_render.git
-브랜치   main (기본)
-구조     npm workspaces — client / server / shared
-         루트 package.json에는 실행 스크립트가 없고(배포용 start만),
-         각 워크스페이스 디렉토리에서 직접 명령을 실행합니다
+origin    https://github.com/Aringco/ip_card_battle_render.git   (내 fork — push 가능)
+upstream  https://github.com/HanJaeseok/ip_card_battle_render.git (READ only, push DISABLED)
+브랜치    main (기본)
+구조      npm workspaces — client / server / shared
+          루트 package.json에는 실행 스크립트가 없고(배포용 start만),
+          각 워크스페이스 디렉토리에서 직접 명령을 실행합니다
+```
+
+새 PC에서 clone하면 `upstream` remote는 따라오지 않습니다. 필요하면 다시 추가하세요
+(push URL을 DISABLED로 막아두는 것까지 같이 하는 것을 권합니다 — 실수로 push를
+시도해도 권한이 없어 실패하지만, 명시적으로 막아두면 의도가 드러납니다):
+
+```bash
+git remote add upstream https://github.com/HanJaeseok/ip_card_battle_render.git
+git remote set-url --push upstream DISABLED
 ```
 
 `.gitignore` 대상: `node_modules/`, `dist/`, `.next/`, `*.tsbuildinfo`, `.env*`,
