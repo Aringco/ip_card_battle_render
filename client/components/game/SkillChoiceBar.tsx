@@ -53,6 +53,13 @@ export function SkillChoiceBar({
         const eligible = preview.level > 0;
         const clickable = interactive && eligible;
         const desc = describeSkill(animal, preview.level);
+        // 특허랑이처럼 효과가 둘 이상인 행동은 문구가 그냥 이어 붙어 "체력 +4상대 체력 -4"처럼
+        // 읽히므로, 각 효과를 조각으로 모아 쉼표로 이어 붙인다.
+        const effectParts: string[] = [];
+        if (preview.extraDraws > 0) effectParts.push(`다음 턴 카드 +${preview.extraDraws}회`);
+        if (preview.myHpDelta > 0) effectParts.push(`내 체력 +${preview.myHpDelta}`);
+        if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpDelta}`);
+        if (animal === 'mermaid') effectParts.push(`다음 행동 ×${preview.multiplierAfter}`);
 
         // 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
@@ -83,16 +90,7 @@ export function SkillChoiceBar({
                   eligible ? 'text-amber-300' : 'text-white'
                 }`}
               >
-                {eligible ? (
-                  <>
-                    {preview.extraDraws > 0 && `다음 턴 카드 +${preview.extraDraws}회`}
-                    {preview.myHpDelta > 0 && `체력 +${preview.myHpDelta}`}
-                    {preview.oppHpDelta < 0 && `상대 체력 ${preview.oppHpDelta}`}
-                    {animal === 'mermaid' && `다음 행동 ×${preview.multiplierAfter}`}
-                  </>
-                ) : (
-                  '레벨 부족'
-                )}
+                {eligible ? effectParts.join(', ') : '레벨 부족'}
               </span>
               <div className="relative z-10 flex flex-col gap-2 p-3 min-h-[9rem]">
                 <h3
