@@ -101,7 +101,6 @@ export function GameBoard({
             disabled={!canAct}
             onClick={onPlaceClick}
             showGuide={showPlaceGuide}
-            guideClipsAtTop={place === 'house' || place === 'dock'}
           />
         </div>
       ))}

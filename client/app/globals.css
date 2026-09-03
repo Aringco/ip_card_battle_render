@@ -1472,7 +1472,10 @@ body {
 
 /* ── "여기를 눌러보세요" 손가락 가이드(내 턴마다) ────────────────────────────── */
 /* 버튼 정중앙을 손으로 가리면 안 보이니, 버튼 위쪽 10% 지점(살짝 위)에 아래를
-   가리키는 손이 위아래로 까딱까딱하며 "여길 누르세요"를 유도한다. */
+   가리키는 손이 위아래로 까딱까딱하며 "여길 누르세요"를 유도한다. 보드 맨 윗줄
+   장소(오두막·부둣가)는 타일 바로 위가 곧 게임 화면 자체의 위쪽 경계라, 이 손가락이
+   튀어나오는 만큼의 여유 공간을 GameLayout.tsx의 <main> 위쪽 패딩(pt-12)에서
+   미리 확보해둔다 — 그 패딩이 부족해지면 이 손가락 끝이 다시 잘려 보인다. */
 @keyframes guideFingerBounce {
   0%, 100% { transform: translate(-50%, -50%) translateY(0); }
   50%      { transform: translate(-50%, -50%) translateY(-14px); }
@@ -1488,27 +1491,8 @@ body {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
   animation: guideFingerBounce 0.8s ease-in-out infinite;
 }
-/* 보드 맨 윗줄 장소(오두막·부둣가)는 타일 위쪽 경계가 곧 게임 화면 자체의 위쪽
-   경계(헤더 바로 아래)라, 위 .place-guide-finger처럼 절반을 타일 밖으로 내밀면
-   main 그리드의 overflow-hidden에 잘려 손가락 끝이 잘려 보인다. 이 변형은 손을
-   타일 안쪽에서 시작해(밖으로 내밀지 않고) 튀는 폭도 위로 넘치지 않게 줄였다. */
-@keyframes guideFingerBounceInside {
-  0%, 100% { transform: translate(-50%, 0) translateY(0); }
-  50%      { transform: translate(-50%, 0) translateY(-8px); }
-}
-.place-guide-finger-inside {
-  position: absolute;
-  top: 4%;
-  left: 50%;
-  transform: translate(-50%, 0);
-  font-size: 4.5rem;
-  z-index: 95;
-  pointer-events: none;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
-  animation: guideFingerBounceInside 0.8s ease-in-out infinite;
-}
 @media (prefers-reduced-motion: reduce) {
-  .place-guide-finger, .place-guide-finger-inside { animation: none; }
+  .place-guide-finger { animation: none; }
 }
 
 /* ── 턴 종료 스킬 선택 모달 ─────────────────────────────────────────────── */
