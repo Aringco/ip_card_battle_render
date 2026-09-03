@@ -82,5 +82,21 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 
 **진짜 해법은 이펙트 자체를 쓰지 않는 것**: React가 공식 지원하는 "렌더 도중 상태 보정" 패턴(prop 변화를 ref로 감지해 그 조건 블록 안에서 곧바로 `setState` 호출)으로, `gameState`/`lastEvents`가 바뀐 그 렌더 안에서 마스킹 상태도 함께 동기 반영해버린다(`client/hooks/useAnimationQueue.ts`의 `lastEventsForCreditRef` 블록 참고). 이러면 "부풀려진" 중간 렌더 자체가 커밋되지 않으므로, 그 어떤 하위 `useEffect`/`useLayoutEffect`도 잘못된 값을 관측할 기회가 없다. **교훈: 서버 진실과 그 진실을 가리는 마스킹이 반드시 같은 커밋에서 함께 나타나야 하는 경우, `useLayoutEffect`도 충분하지 않을 수 있다 — 렌더 도중 동기 보정을 우선 고려할 것.**
 
+### 로비 화면 — `client/app/page.tsx` + `client/components/lobby/`
+
+게임 화면과는 완전히 다른 원리로 돌아가므로 따로 이해해야 한다. 설계 배경과 실측값은 `LOBBY_REDESIGN.md`에 있다.
+
+**단계 전환은 `data-stage` 속성 하나로만 한다.** `page.tsx`가 `stage`(`home`/`solo`/`multi`/`create`/`join`)를 들고 있고, `LobbyStage`는 **패널 4개와 폼 3개를 항상 마운트한 채** `.lobby-stage[data-stage=...]`만 바꾼다. 조건부 렌더링을 하지 않는 것이 핵심이다 — 전환을 전부 CSS transition이 맡으므로 **뒤로가기는 `data-stage`를 이전 값으로 되돌리기만 하면 정확한 역방향으로 재생된다**(exit 애니메이션용 타이머·`onAnimationEnd`·상태 복제가 전혀 필요 없다). 화면에 보이지 않는 영역은 `inert`로 막아 Tab 포커스와 클릭이 새지 않게 한다.
+
+밀려나는 방향은 `justify-content` 한 줄이 정한다. 열이 줄어들 때 패널이 어느 쪽 모서리에 붙어 있느냐의 문제다 — `flex-end`면 왼쪽으로, `flex-start`면 오른쪽으로 빠져나간다. 줄어드는 열은 `overflow: hidden`이고 안의 패널은 `min-width: calc((100cqw - gap) / 2)`로 **원래 크기를 유지**하므로, 찌그러지지 않고 잘려 나가며 슬라이드처럼 보인다.
+
+**배경 위 좌표계 — `.lobby-table`.** `background-size: cover`는 이미지가 어디에 얼마로 그려지는지 CSS가 알 수 없어 그 위에 좌표를 얹을 수 없다. 그래서 **cover와 똑같은 계산을 요소 크기로 옮겼다**(`width: max(100vw, 100vh * --table-w / --table-h)`). 이렇게 하면 `.lobby-table`의 퍼센트 좌표가 곧 이미지 좌표가 되어, 안전영역(`.lobby-safe`)이 캐릭터·카드더미·램프를 피한 자리를 화면 비율과 무관하게 항상 정확히 잡는다. 배경을 다른 구도로 교체하면 `globals.css`의 `--table-w/h`와 `--safe-*` 6개 값만 고치면 되고 컴포넌트는 손댈 필요가 없다(`client/public/lobby/README.md` 참조).
+
+좁은 화면(≤767px)에서는 테이블이 크게 확대돼 좌우 비대칭(26.4%/29.6%)이 그 배율만큼 벌어져 안전영역을 화면 밖으로 밀어낸다 — 미디어쿼리에서 `--safe-left/right`를 `30%`로 대칭 처리하는 이유다.
+
+**폼은 스테이지 박스를 넘으면 안 된다.** 폼(`.stage-form`)은 `position: absolute`라 박스를 밀어낼 수 없다. 그래서 폼이 열리면 로고 슬롯이 접혀 공간을 내주고, 게임 규칙은 2열 배치 + 라벨 축약으로 눌러 담았다. 폼에 항목을 추가할 때는 **반드시 스크롤바가 생기지 않는지 실제로 재볼 것** — `LOBBY_REDESIGN.md` §12에 헤드리스 Chrome 실측 방법과 기준값이 있다.
+
+**에셋은 `client/lib/lobbyAssets.ts` 한 곳에서만 참조한다.** 배경·로고·패널 경로가 모두 여기 모여 있어 교체는 상수 한 줄이다. `public/`에 이미지를 추가하면 `client/scripts/generateAssetManifest.mjs`의 `IMAGE_DIRS`에 그 폴더가 있어야 `LoadingScreen`이 프리로드한다 — 빠뜨리면 로딩 화면이 끝난 뒤에야 받아와 배경이 늦게 뜬다.
+
 ### 테스트 작성 시 참고
 `server/__tests__/effects.test.ts`는 결정론적 RNG(`rng0`=항상 0번째 선택, `rngLast`=항상 마지막 선택)로 `initGame`부터 각 엔진 함수를 직접 호출하는 패턴을 쓴다. `simulation.test.ts`는 봇 대전을 다회 시뮬레이션해 게임이 항상 유한 턴 내에 끝나는지 등 불변조건을 검증한다.

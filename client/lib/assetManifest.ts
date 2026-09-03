@@ -84,7 +84,13 @@ export const IMAGE_FILES: string[] = [
   "/emoticon/tiger_stone.png",
   "/howto/how_IPs.png",
   "/howto/how_places.png",
-  "/howto/how_skills.png"
+  "/howto/how_skills.png",
+  "/lobby/table_bg.webp",
+  "/tmp/logo.png",
+  "/tmp/panel_create_bg.svg",
+  "/tmp/panel_join_bg.svg",
+  "/tmp/panel_multi_bg.svg",
+  "/tmp/panel_solo_bg.svg"
 ];
 
 /** 프리로드 대상 전체(효과음 + 이미지) */
