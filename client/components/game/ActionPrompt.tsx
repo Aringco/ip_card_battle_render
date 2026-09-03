@@ -1,6 +1,6 @@
 'use client';
 
-import type { GameSettings, Team } from 'shared';
+import type { Team } from 'shared';
 import { TurnTimer } from './TurnTimer';
 
 // 해설판 가운데에 얹히는 흰 배경(테두리 없음) 안내 오버레이 — 해설 텍스트와 겹치면
@@ -22,7 +22,7 @@ export function ActionPrompt({
   interactive,
   noEligible,
   turnDeadline,
-  settings,
+  turnTotalMs,
   turn,
   startingTeam,
   startingTeamReason,
@@ -36,8 +36,8 @@ export function ActionPrompt({
   isMyDrawTurn: boolean; // 정산이 끝난 상태에서 내가 장소를 고를 차례인지
   interactive: boolean; // 정산이 끝난 상태에서 내가 행동을 고를 차례인지
   noEligible: boolean;
-  turnDeadline: number;
-  settings: GameSettings;
+  turnDeadline: number; // 내 브라우저 시계 기준 만료 시각(useWebSocket이 환산해준 값)
+  turnTotalMs: number;  // 게이지 100%에 해당하는 시간 — 서버가 상태와 함께 보내준다
   turn: number; // 1이면 아직 첫 라운드 — 선 플레이어 안내를 함께 보여준다
   startingTeam: Team;
   startingTeamReason: 'setting' | 'random';
@@ -84,11 +84,11 @@ export function ActionPrompt({
         <div className="flex items-center gap-3">
           {showTimer && (
             <div className="w-56 shrink-0">
-              <TurnTimer
-                deadline={turnDeadline}
-                paused={false}
-                maxSeconds={urgent ? settings.noActionTimeSec : interactive ? settings.actionTimeSec : settings.drawTimeSec}
-              />
+              {/* 게이지 폭(=100%)은 방 설정값을 클라이언트가 다시 계산하지 않고 서버가
+                  알려주는 turnTotalMs를 그대로 쓴다 — 실용신양·도토리 축제 예약 뽑기로
+                  늘어난 시간이나 행동할 게 없을 때의 짧은 시간까지 서버가 이미 반영해
+                  보내주므로, 여기서 설정값만 보고 짐작하면 눈금과 숫자가 어긋난다. */}
+              <TurnTimer deadline={turnDeadline} paused={false} totalMs={turnTotalMs} />
             </div>
           )}
           <p className={`font-bold whitespace-nowrap ${urgent ? 'text-amber-600' : 'text-jungle-700'}`}>{text}</p>

@@ -4,11 +4,16 @@ import type { ClientGameEvent, ClientGameState } from 'shared';
 /**
  * 서버 GameState → 클라이언트 전송용 ClientGameState 변환.
  * 카드는 뽑히는 즉시 공개되므로 숨길 정보가 없어, 활성 플레이어 닉네임과
- * 턴 데드라인, 팀 이름만 덧붙이면 된다.
+ * 턴 제한시간, 팀 이름만 덧붙이면 된다.
+ *
+ * 턴 제한시간은 서버 시계의 절대 시각이 아니라 "지금부터 남은 ms"로 보낸다 —
+ * 클라이언트 PC 시계가 서버와 어긋나도 표시가 틀어지지 않게 하기 위함이다
+ * (ClientGameState.turnRemainingMs 주석 참고).
  */
 export function serializeState(
   state: GameState,
   turnDeadline: number,
+  turnTotalMs: number,
   teamNames: Record<Team, string>,
   memberIds: Record<Team, string[]>,
 ): ClientGameState {
@@ -21,7 +26,8 @@ export function serializeState(
     activeTeam: state.activeTeam,
     activePlayerIndex: state.activePlayerIndex,
     activePlayerNickname,
-    turnDeadline,
+    turnRemainingMs: turnDeadline === 0 ? 0 : Math.max(0, turnDeadline - Date.now()),
+    turnTotalMs,
     teamNames,
     memberIds: { A: [...memberIds.A], B: [...memberIds.B] },
     stacks: {

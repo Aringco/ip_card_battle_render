@@ -32,6 +32,7 @@ function shakeScale(level: number): number {
 
 export function GameLayout({
   gameState,
+  turnDeadline,
   myTeam,
   playerId,
   onPlaceClick,
@@ -41,6 +42,9 @@ export function GameLayout({
   animState,
 }: {
   gameState: ClientGameState;
+  // 턴 제한시간 만료 시각 — 서버 시계가 아니라 내 브라우저 시계 기준으로 환산된 값이
+  // 필요해서 gameState가 아니라 useWebSocket에서 따로 받아온다(useWebSocket 주석 참고).
+  turnDeadline: number;
   myTeam: Team | null;
   playerId: string | null;
   onPlaceClick: (place: Place) => void;
@@ -67,16 +71,17 @@ export function GameLayout({
   // 그래야 "카드 도착 → 경험치 반영 → 레벨업"이라는 순서가 화면에서도 지켜진다.
   const skillPreviewGameState = withDisplayedExp(gameState, skillPreviewTeam, animState.displayedExp[skillPreviewTeam]);
 
-  // 게임 템포가 늘어지지 않도록, 고를 수 있는 행동이 하나도 없으면 3초 뒤
-  // "아무것도 하지 않음"이 자동으로 눌린 것처럼 처리한다(서버 타이머도 5초로
-  // 별도로 짧아져 있어 이중 안전장치가 된다). 이 로컬 타이머는 noEligible이 true가
-  // 되는 순간(=정산 연출이 끝나 실제로 화면에 보이는 순간)부터 세므로, 서버의
-  // 정산-유예 보정과 자연히 같은 시점에서 시작한다.
+  // 게임 템포가 늘어지지 않도록, 고를 수 있는 행동이 하나도 없으면 방에서 정한
+  // noActionTimeSec 뒤에 "아무것도 하지 않음"이 자동으로 눌린 것처럼 처리한다(서버
+  // 타이머도 같은 값으로 짧아져 있어 이중 안전장치가 된다). 이 로컬 타이머는
+  // noEligible이 true가 되는 순간(=정산 연출이 끝나 실제로 화면에 보이는 순간)부터
+  // 세고, 서버는 그 연출 길이만큼을 유예로 얹어두므로 자연히 이쪽이 먼저 발동한다.
+  const noActionMs = gameState.settings.noActionTimeSec * 1000;
   useEffect(() => {
     if (!noEligible) return;
-    const t = setTimeout(() => onPassSkill(), 5000);
+    const t = setTimeout(() => onPassSkill(), noActionMs);
     return () => clearTimeout(t);
-  }, [noEligible, onPassSkill]);
+  }, [noEligible, noActionMs, onPassSkill]);
 
   return (
     <div
@@ -157,8 +162,8 @@ export function GameLayout({
                 isMyDrawTurn={isMyDrawTurn}
                 interactive={isMyChoiceTurn}
                 noEligible={noEligible}
-                turnDeadline={gameState.turnDeadline}
-                settings={gameState.settings}
+                turnDeadline={turnDeadline}
+                turnTotalMs={gameState.turnTotalMs}
                 turn={gameState.turn}
                 startingTeam={gameState.startingTeam}
                 startingTeamReason={gameState.startingTeamReason}

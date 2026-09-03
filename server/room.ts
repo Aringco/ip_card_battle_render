@@ -3,7 +3,7 @@ import type { Animal, Place, Team } from 'shared';
 import type { ServerMessage } from 'shared';
 import { processPlayerAction, processSkillChoice, processPass, processTimeout, initGame } from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
-import type { GameSettings, GameState } from 'shared';
+import type { GameEvent, GameSettings, GameState } from 'shared';
 import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
   SHEEP_TIMER_EXTRA_DRAW_CAP,
@@ -23,18 +23,55 @@ const CPU_TEAM_NAME = '컴퓨터';
 // 가장 긴 연출보다 여유 있게 최소 대기 시간을 잡아 그런 일이 최대한 드물게 한다.
 const CPU_THINK_MIN_MS = 2200;
 const CPU_THINK_MAX_MS = 3200;
-// 게임 템포가 늘어지지 않도록, 고를 수 있는 스킬이 하나도 없는 선택 대기 상태는
-// settings.actionTimeSec을 다 기다리지 않고 settings.noActionTimeSec 뒤 자동으로
-// "아무것도 하지 않음"이 눌리도록 짧게 준다.
-// 페어를 맞춘 직후처럼, 짧은 선택 타이머가 시작되기 전 클라이언트가 아직 정산(카드 수집·
-// 이펙트) 애니메이션을 재생 중일 수 있다. 그 사이 서버가 먼저 타임아웃을 처리해버리면
-// 플레이어는 "행동을 선택하세요" 화면을 보지도 못한 채 턴이 그냥 넘어간 것처럼 느낀다.
-// 짧은 타이머의 실제 만료 시점에 이 유예를 더해, 클라이언트가 정산을 끝내고 화면을
-// 실제로 보여줄 즈음에야 카운트다운이 의미 있게 시작되도록 한다(다른 연출 유예값과
-// 같은 CPU_THINK_MIN_MS를 기준으로 삼는다 — 이미 "가장 긴 연출보다 여유 있게"로
-// 검증된 값이다). 유예 시간은 turnDeadline에 그대로 녹아들어 화면에 별도로 드러나지
-// 않는다 — 클라이언트는 정산이 끝나야 비로소 이 타이머를 보여주기 시작하기 때문이다.
-const NO_ELIGIBLE_SETTLE_GRACE_MS = CPU_THINK_MIN_MS;
+// ─── 연출 유예(settle grace) ──────────────────────────────────────────────
+// 서버는 액션을 처리하는 즉시 다음 턴 타이머를 시작하지만, 클라이언트는 그 액션의
+// 연출(슬롯 → 카드 등장 → 페어 정산 → 행동 효과)이 다 끝나야 비로소 조작을 받는다.
+// 그 연출 시간이 제한시간에서 그대로 깎이면 "방에서 설정한 시간보다 적은 숫자에서
+// 카운트다운이 시작"되고, 연출이 길면 화면에 타이머가 뜨기도 전에 시간이 다 가버린다.
+// 그래서 이번 액션의 연출 길이를 추정해 그만큼을 제한시간 위에 얹는다.
+//
+// 아래 값들은 client/lib/drawTiming.ts와 client/hooks/useAnimationQueue.ts의 실제
+// 연출 타이밍에서 가져온 근사치다. 정확히 일치할 필요는 없고(연출이 조금 바뀌어도
+// 게임 규칙은 그대로다), 모자라기보다 조금 넉넉한 쪽이 안전하다.
+const SETTLE_DRAW_MS = 1430;        // SLOT_TOTAL_DUR(1350) + EMPTY_GAP(80) — 마지막 한 장
+const SETTLE_ROLL_STEP_MS = 300;    // SHEEP_DRAW_STEP — 연쇄 뽑기는 0.3초 간격으로 겹쳐 재생된다
+const SETTLE_ROLL_ENTER_MS = 500;   // WOOL_BALL_DUR — 예약 뽑기 롤에 진입하는 울 볼/도토리
+const SETTLE_COLLECT_MS = 1080;     // SHAKE_CHECK_DUR(550) + COLLECT_FLING_DUR(450) + 80
+const SETTLE_SKILL_MS = 1500;       // 행동 효과 연출(가장 긴 특허랑이 기준)
+const SETTLE_FESTIVAL_MS = 700;     // 축제 시작 연출
+// 연출 유예가 한 턴을 통째로 삼키지 않도록 상한을 둔다(대규모 연쇄 뽑기 대비).
+const SETTLE_GRACE_MAX_MS = 15000;
+
+/** 방금 브로드캐스트한 이벤트들의 클라이언트 연출이 끝나기까지 걸리는 시간(ms) 추정치. */
+function settleGraceMs(events: GameEvent[]): number {
+  let draws = 0;
+  let rolls = 0;
+  let collects = 0;
+  let skills = 0;
+  let festivals = 0;
+
+  for (const ev of events) {
+    if (ev.type === 'draw') draws++;
+    else if (ev.type === 'bonusDraws' || ev.type === 'festivalDraws') rolls++;
+    else if (ev.type === 'collect') collects++;
+    else if (ev.type === 'skillApplied') skills++;
+    else if (ev.type === 'festival') festivals++;
+  }
+
+  const ms =
+    (draws > 0 ? SETTLE_DRAW_MS + (draws - 1) * SETTLE_ROLL_STEP_MS : 0) +
+    rolls * SETTLE_ROLL_ENTER_MS +
+    collects * SETTLE_COLLECT_MS +
+    skills * SETTLE_SKILL_MS +
+    festivals * SETTLE_FESTIVAL_MS;
+
+  return Math.min(ms, SETTLE_GRACE_MAX_MS);
+}
+
+// 연출 길이 추정이 조금 모자라도 서버 타임아웃이 클라이언트보다 먼저 터지지 않도록 하는
+// 여유분. 유예 구간은 화면에 드러나지 않으므로(게이지는 turnTotalMs 기준으로 가득 찬
+// 상태를 유지한다) 이 값을 늘려도 표시되는 숫자는 변하지 않는다.
+const SETTLE_GRACE_MARGIN_MS = 600;
 
 /**
  * 싱글 모드 컴퓨터의 행동 선택 — 기본은 무작위지만, 지금 당장 이길 수 있는 수(상표토끼로
@@ -77,6 +114,9 @@ export class Room {
   private settings: GameSettings = DEFAULT_SETTINGS;
   private state: GameState | null = null;
   private turnDeadline = 0;
+  // 타이머 게이지 100%에 해당하는 시간 — turnDeadline까지 남은 시간에서 연출 유예를
+  // 뺀 "이번 턴에 실제로 주어진 생각할 시간"이다(ClientGameState.turnTotalMs 참고).
+  private turnTotalMs = 0;
   private timerHandle: ReturnType<typeof setTimeout> | null = null;
   private vsComputer = false;
   private computerTimer: ReturnType<typeof setTimeout> | null = null;
@@ -162,7 +202,7 @@ export class Room {
     this.assignTeamName('B');
 
     this.resetTimer();
-    const clientState = serializeState(this.state, this.turnDeadline, this.finalTeamNames(), this.teamPlayerIds);
+    const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
     this.broadcast({ type: 'gameStart', state: clientState });
     this.scheduleComputerActionIfNeeded();
   }
@@ -201,7 +241,7 @@ export class Room {
     const { state, events } = processPlayerAction(this.state, place);
     this.state = state;
     if (this.state.phase === 'ended') this.clearTimer();
-    else this.resetTimer();
+    else this.resetTimer(events);
     this.broadcastResult(events);
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
@@ -222,7 +262,7 @@ export class Room {
     const { state, events } = processSkillChoice(this.state, animal);
     this.state = state;
     if (this.state.phase === 'ended') this.clearTimer();
-    else this.resetTimer();
+    else this.resetTimer(events);
     this.broadcastResult(events);
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
@@ -243,7 +283,7 @@ export class Room {
     const { state, events } = processPass(this.state);
     this.state = state;
     if (this.state.phase === 'ended') this.clearTimer();
-    else this.resetTimer();
+    else this.resetTimer(events);
     this.broadcastResult(events);
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
@@ -279,7 +319,7 @@ export class Room {
 
     this.state = result.state;
     if (this.state.phase === 'ended') this.clearTimer();
-    else this.resetTimer();
+    else this.resetTimer(result.events);
     this.broadcastResult(result.events);
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
@@ -300,12 +340,12 @@ export class Room {
     }
 
     if (this.state.phase === 'playing') {
-      this.resetTimer();
+      this.resetTimer(events);
     } else {
       this.clearTimer();
     }
 
-    const clientState = serializeState(this.state, this.turnDeadline, this.finalTeamNames(), this.teamPlayerIds);
+    const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
@@ -314,7 +354,7 @@ export class Room {
   private broadcastResult(events: ReturnType<typeof processPlayerAction>['events']): void {
     if (!this.state) return;
     const clientEvents = serializeEvents(events);
-    const clientState = serializeState(this.state, this.turnDeadline, this.finalTeamNames(), this.teamPlayerIds);
+    const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
   }
 
@@ -325,10 +365,16 @@ export class Room {
    * settings.actionTimeSec을 기본으로 쓴다. 지금 막 시작된 턴에 실용신양 스킬 또는
    * 도토리 축제로 예약해둔 추가 뽑기가 있다면 그 합계만큼(뽑기 1회당 10초) 시간을
    * 더 준다 — "이번에 결정해야 할 팀"의 예약된 추가 뽑기 수를 기준으로 계산하며,
-   * 행동 선택 대기 중에는 그 팀이 이미 이번 액션에서 예약분을 소모했으므로 자연히
-   * 0이 되어 순수 actionTimeSec으로 돌아간다.
+   * 행동 선택 대기 중에는 그 팀이 이미 이번 액션에서 소모했으므로 자연히 0이 되어
+   * 순수 actionTimeSec으로 돌아간다. 고를 수 있는 행동이 하나도 없으면 게임 템포가
+   * 늘어지지 않도록 훨씬 짧은 settings.noActionTimeSec을 쓴다.
+   *
+   * 여기까지가 "플레이어가 실제로 쓸 수 있는 생각할 시간"(turnTotalMs)이고, 그 위에
+   * 직전 액션의 연출이 재생되는 동안의 유예(settleGraceMs)를 얹어 실제 타임아웃
+   * 시각을 잡는다 — 연출 때문에 아직 조작할 수 없는 시간까지 제한시간에서 깎이면
+   * 화면의 카운트다운이 설정값보다 적은 숫자에서 시작해버리기 때문이다.
    */
-  private resetTimer(): void {
+  private resetTimer(events: GameEvent[] = []): void {
     this.clearTimer();
     if (!this.state) return;
     const settings = this.state.settings;
@@ -344,9 +390,12 @@ export class Room {
       eligibleAnimals(this.state, this.state.pendingChoice).length === 0;
 
     const baseSec = this.state.pendingChoice != null ? settings.actionTimeSec : settings.drawTimeSec;
-    const durationMs = noEligibleChoice
-      ? settings.noActionTimeSec * 1000 + NO_ELIGIBLE_SETTLE_GRACE_MS
+    const totalMs = noEligibleChoice
+      ? settings.noActionTimeSec * 1000
       : (baseSec + SHEEP_EXTRA_TIME_PER_DRAW_SEC * timerDraws) * 1000;
+    const durationMs = totalMs + settleGraceMs(events) + SETTLE_GRACE_MARGIN_MS;
+
+    this.turnTotalMs = totalMs;
     this.turnDeadline = Date.now() + durationMs;
     this.timerHandle = setTimeout(() => this.handleTimeout(), durationMs);
   }
@@ -362,6 +411,7 @@ export class Room {
     }
     // 종료된 게임의 스냅샷·재접속에 유령 카운트다운이 실리지 않도록 초기화한다.
     this.turnDeadline = 0;
+    this.turnTotalMs = 0;
   }
 
   // ─── 재접속/이탈 ─────────────────────────────────────────────────────────
@@ -395,7 +445,7 @@ export class Room {
     if (this.state === null) {
       this.sendTo(playerId, { type: 'lobbyState', players: this.buildLobbyPlayers(), teamNames: this.teamNames, settings: this.settings });
     } else {
-      const clientState = serializeState(this.state, this.turnDeadline, this.finalTeamNames(), this.teamPlayerIds);
+      const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
       this.sendTo(playerId, { type: 'gameSnapshot', state: clientState });
     }
     return true;

@@ -49,7 +49,19 @@ export type ErrorCode =
 
 export interface ClientGameState extends GameState {
   activePlayerNickname: string;
-  turnDeadline: number; // Date.now() + (30 + 10×예약된 추가뽑기)초 (클라이언트 타이머 표시용)
+  // 남은 턴 제한시간(ms) — 서버가 이 상태를 직렬화하는 순간을 기준으로 잰 "상대 시간"이다.
+  // 예전에는 서버 시계의 절대 시각(turnDeadline)을 그대로 보냈는데, 그러면 클라이언트 PC
+  // 시계가 서버와 어긋난 만큼 표시가 그대로 틀어졌다(엉뚱한 숫자에서 시작해 0에 멈춰
+  // 있는데도 턴은 계속 흐르는 증상). 상대 시간으로 보내고 클라이언트가 자기 시계로
+  // 데드라인을 다시 계산하면 시계 오차의 영향을 받지 않는다.
+  turnRemainingMs: number;
+  // 타이머 게이지 100%에 해당하는 시간(ms) — 방 설정값(drawTimeSec/actionTimeSec/
+  // noActionTimeSec)에 실용신양·도토리 축제 예약 뽑기로 늘어난 시간까지 더한, 이번 턴에
+  // 실제로 주어진 시간이다. 클라이언트가 방 설정값만 보고 게이지 폭을 정하면 늘어난
+  // 시간을 반영하지 못해 눈금과 숫자가 어긋나므로 서버가 직접 알려준다.
+  // (연출 유예 시간은 여기에 포함하지 않는다 — 아래 turnRemainingMs가 이 값을 잠시
+  //  넘을 수 있고, 그 구간에는 게이지가 가득 찬 상태로 표시된다.)
+  turnTotalMs: number;
   teamNames: Record<Team, string>; // 방장이 정했거나 무작위로 배정된 팀 이름("A팀"/"B팀" 대신 표시)
   memberIds: Record<Team, string[]>; // teams[team].members와 같은 순서의 playerId — 클라이언트가 "지금 활성 플레이어가 바로 나인지"를 판별하는 데 쓴다
 }

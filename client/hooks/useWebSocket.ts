@@ -38,6 +38,12 @@ export interface UseWebSocketReturn {
   lobbyTeamNames: LobbyTeamNames;
   lobbySettings: GameSettings;
   gameState: ClientGameState | null;
+  // 턴 제한시간이 끝나는 시각 — 내 브라우저 시계(Date.now()) 기준이다. 서버는 절대
+  // 시각이 아니라 "직렬화 순간부터 남은 ms"(state.turnRemainingMs)를 보내오고, 그 값을
+  // 받은 순간에 여기서 내 시계로 환산한다. 서버 시계 값을 그대로 쓰면 두 시계가 어긋난
+  // 만큼 화면 카운트다운이 통째로 틀어지기 때문이다(엉뚱한 숫자에서 시작하거나, 0에
+  // 멈춰 있는데도 턴은 계속 흐르는 증상).
+  turnDeadline: number;
   lastEvents: ClientGameEvent[];
   error: string | null;
   createRoom: (nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>) => void;
@@ -62,8 +68,17 @@ export function useWebSocket(): UseWebSocketReturn {
   const [lobbyTeamNames, setLobbyTeamNames] = useState<LobbyTeamNames>({ A: null, B: null });
   const [lobbySettings, setLobbySettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
+  const [turnDeadline, setTurnDeadline] = useState(0);
   const [lastEvents, setLastEvents] = useState<ClientGameEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // 상태를 받은 "그 순간"을 기준으로 데드라인을 내 시계로 환산해둔다. 화면에 타이머가
+  // 실제로 보이기 시작하는 건 연출이 끝난 뒤(수 초 뒤)라, 이 환산을 타이머 컴포넌트가
+  // 마운트될 때 하면 그 사이 흘러간 시간이 통째로 사라져버린다 — 반드시 수신 시점에 한다.
+  const applyState = useCallback((state: ClientGameState) => {
+    setGameState(state);
+    setTurnDeadline(state.turnRemainingMs > 0 ? Date.now() + state.turnRemainingMs : 0);
+  }, []);
 
   const send = useCallback((msg: ClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -115,13 +130,13 @@ export function useWebSocket(): UseWebSocketReturn {
 
         case 'gameStart':
         case 'gameSnapshot':
-          setGameState(msg.state);
+          applyState(msg.state);
           setLobbyPlayers([]);
           break;
 
         case 'actionResult':
           setLastEvents(msg.events);
-          setGameState(msg.state);
+          applyState(msg.state);
           break;
 
         case 'error':
@@ -141,7 +156,7 @@ export function useWebSocket(): UseWebSocketReturn {
     };
 
     return () => ws.close();
-  }, []);
+  }, [applyState]);
 
   const createRoom = useCallback((nickname: string, team: Team, teamName?: string, settings?: Partial<GameSettings>) => {
     setError(null);
@@ -172,7 +187,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
   return {
     connected, roomId, playerId,
-    lobbyPlayers, lobbyTeamNames, lobbySettings, gameState, lastEvents, error,
+    lobbyPlayers, lobbyTeamNames, lobbySettings, gameState, turnDeadline, lastEvents, error,
     createRoom, joinRoom, createSoloRoom, sendReady, drawCard, chooseSkill, passSkill,
   };
 }

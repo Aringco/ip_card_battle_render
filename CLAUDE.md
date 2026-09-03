@@ -39,20 +39,25 @@ npm run build
 ## 핵심 아키텍처
 
 ### 서버가 유일한 진실(Source of Truth)
-카드는 뽑히는 즉시 공개되므로(숨김 정보 없음) `GameState`를 거의 그대로 클라이언트에 보낸다(`server/serializer.ts`가 `activePlayerNickname`/`turnDeadline`/`teamNames`/`memberIds`만 덧붙임). 모든 랜덤(뽑히는 동물/숫자, 실용신양 추가 뽑기 장소, 시간초과 시 대신 고르는 선택)은 서버에서만 생성된다. 30초(설정 가능) 턴 타이머는 서버가 `turnDeadline` 타임스탬프로 관리하고, 클라이언트 타이머는 표시 전용이다.
+카드는 뽑히는 즉시 공개되므로(숨김 정보 없음) `GameState`를 거의 그대로 클라이언트에 보낸다(`server/serializer.ts`가 `activePlayerNickname`/`turnRemainingMs`/`turnTotalMs`/`teamNames`/`memberIds`만 덧붙임). 모든 랜덤(뽑히는 동물/숫자, 실용신양 추가 뽑기 장소, 시간초과 시 대신 고르는 선택)은 서버에서만 생성된다. 30초(설정 가능) 턴 타이머는 서버가 `Room.turnDeadline`으로 관리하고, 클라이언트 타이머는 표시 전용이다.
+
+**턴 타이머를 화면에 그리는 규칙 3가지** — 이 셋 중 하나만 어겨도 "설정한 시간과 다른 숫자에서 시작하거나, 0에 멈춰 있는데 턴은 계속 흐르는" 증상이 된다.
+1. **절대 시각을 보내지 않는다.** 서버 시계의 `Date.now()`를 그대로 보내면 클라이언트 PC 시계가 어긋난 만큼 표시가 통째로 틀어진다(배포 환경에서 특히). 서버는 직렬화 순간 기준 **남은 ms**(`turnRemainingMs`)를 보내고, `useWebSocket`이 **받은 그 순간에** 자기 시계로 데드라인을 환산한다(타이머 컴포넌트가 마운트될 때 환산하면 연출 대기 시간이 통째로 사라진다).
+2. **게이지 폭은 클라이언트가 짐작하지 않는다.** 실제 제한시간은 방 설정값에 예약 뽑기 연장(`SHEEP_EXTRA_TIME_PER_DRAW_SEC`)이나 "고를 행동이 없을 때"의 단축이 섞여 있다. 서버가 `turnTotalMs`로 알려주고 클라이언트는 그대로 쓴다.
+3. **연출 시간은 제한시간에서 깎지 않는다.** 서버는 액션 처리 즉시 타이머를 걸지만 플레이어는 연출이 끝나야 조작할 수 있으므로, `Room.settleGraceMs(events)`가 그 액션의 연출 길이를 추정해 `turnTotalMs` 위에 유예로 얹는다. 유예 구간에는 남은 시간이 `turnTotalMs`를 넘는데, `TurnTimer`가 `turnTotalMs`로 잘라 표시하므로 화면에는 "설정값 그대로 가득 찬 게이지"로 보인다.
 
 ### 게임 엔진 3계층 (server/engine/, UI와 완전 분리 — 순수 함수 + 단위 테스트 대상)
 1. **`gameEngine.ts`** — 외부에서 부르는 진입점. `processPlayerAction`(장소 클릭 → 뽑기+정산) → `processSkillChoice`/`processPass`(턴 종료 시 행동 선택) 2단계 흐름. `processTimeout`이 두 대기 상태 모두를 대신 처리(장소 대기 중이면 무작위 장소, 행동 대기 중이면 무작위 유효 행동 또는 자동 패스).
 2. **`drawCard.ts`** — 실용신양으로 예약된 추가 뽑기(`pendingExtraDraws`, `SHEEP_SAFETY_CAP`까지) 소모 → 클릭한 장소에서 1장 뽑기 → 동물별 미획득 스택이 짝수면 한 번에 정산(`settleStacks`). 정산은 경험치만 올리고 체력은 건드리지 않는다.
 3. **`skills.ts`** / **`turnManager.ts`** — `skills.ts`는 레벨(`floor(exp/threshold)`) 기반 4행동 효과 계산과 경험치 소모, `turnManager.ts`는 턴/팀 교대, 축제(`festivalTurn`) 진입, `MAX_TURN` 초과·즉시 승패(체력 knockout) 판정.
 
-**행동(스킬) 규칙 요약** — 행동을 고르면 그 동물의 경험치는 `레벨 × threshold`만큼만 차감(초과분은 다음 레벨을 위해 유지)되고, 효과로 얻은 값은 절대 경험치로 되돌아가지 않는다(경험치·체력은 완전히 분리된 자원). `pendingMultiplier`는 디자인어(인어)가 `MERMAID_MULTIPLIER_BASE ** 레벨`로 곱연산 누적시키고, 인어 외의 행동을 쓰면 사용 직후 1로 초기화된다.
+**행동(스킬) 규칙 요약** — 행동을 고르면 그 동물의 경험치는 `레벨 × threshold`만큼만 차감(초과분은 다음 레벨을 위해 유지)되고, 효과로 얻은 값은 절대 경험치로 되돌아가지 않는다(경험치·체력은 완전히 분리된 자원). `pendingMultiplier`는 디자인어(인어)를 쓸 때마다 그 발동의 레벨만큼 더해진다(`pendingMultiplier += 레벨` — 곱연산이 아니라 합연산. "다음 행동이 레벨만큼 더 발동한다"는 뜻이고, 기본값 1이 "기본 1회"에 해당해 최종 배율은 항상 `1 + 누적 레벨`이다). 인어 외의 행동을 쓰면 사용 직후 1로 초기화된다.
 
 | 동물 | threshold | 효과 |
 |---|---|---|
 | sheep(실용신양) | 10 | 다음 내 턴에 `레벨×배율`회 추가 뽑기 예약(`pendingExtraDraws`) |
 | rabbit(상표토끼) | 10 | 내 체력 `+레벨×배율` |
-| mermaid(디자인어) | 20 | `pendingMultiplier`에 `2^레벨` 곱연산(자기 자신은 배율 미소모) |
+| mermaid(디자인어) | 20 | `pendingMultiplier += 레벨`(자기 자신은 배율 미소모, 합연산으로 누적) |
 | tiger(특허랑이) | 20 | 상대 체력에서 `레벨×배율`만큼 강탈(보존형 — 상대가 가진 만큼만, 오버킬 없음) |
 
 ### 방(Room) 상태 머신 — `server/room.ts`
