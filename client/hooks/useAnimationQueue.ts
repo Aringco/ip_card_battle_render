@@ -572,7 +572,7 @@ export function useAnimationQueue(
               : '시간 초과로 아무 행동도 선택되지 않아 턴이 넘어갔습니다.',
           });
         } else if (ev.type === 'gameEnd') {
-          const reasonText = ev.reason === 'knockout' ? '체력 승부 결정타!' : '제한 턴 종료 — 체력 비교';
+          const reasonText = ev.reason === 'knockout' ? '체력 승부 GAME OVER!' : '제한 턴 종료 — 체력 비교';
           newLines.push({
             team: null,
             text: ev.winner === 'draw' ? `무승부! (${reasonText})` : `${teamLabel(ev.winner)} 승리! (${reasonText})`,

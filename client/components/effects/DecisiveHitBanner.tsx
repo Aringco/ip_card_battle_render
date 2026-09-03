@@ -9,7 +9,7 @@ export function DecisiveHitBanner({ hit }: { hit: { winner: Team } | null }) {
 
   return (
     <div key={hit.winner} className="decisive-hit-banner" aria-hidden>
-      <span className="decisive-hit-title">결정타!</span>
+      <span className="decisive-hit-title">GAME OVER!</span>
       <span className="decisive-hit-sub">{hit.winner === 'A' ? '🟢' : '🔵'} 승리!</span>
     </div>
   );

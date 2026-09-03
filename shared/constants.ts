@@ -36,7 +36,7 @@ export const DEFAULT_NO_ACTION_TIME_SEC = 5;
 
 // 방 생성 화면에서 입력값을 이 범위로 잘라낸다(서버도 방어적으로 다시 clamp한다).
 export const SETTINGS_LIMITS = {
-  targetScore: { min: 1, max: 30 },
+  targetScore: { min: 1, max: 100 },
   festivalTurn: { min: 1, max: 20 }, // MAX_TURN(20)을 넘기면 축제가 아예 시작되지 않는다
   festivalDrawCount: { min: 1, max: 20 },
   festivalDrawIncreaseInterval: { min: 1, max: 999 },

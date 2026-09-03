@@ -67,7 +67,7 @@ export function GameEndScreen({
   const hpB = gameState.teams.B.hp;
   const winHp = gameState.settings.targetScore * 2;
   const isKnockout = hpA >= winHp || hpB >= winHp || hpA <= LOSE_HP || hpB <= LOSE_HP;
-  const reasonText = isKnockout ? '체력 즉시 승부 — 결정타!' : '제한 턴 종료 — 체력 비교';
+  const reasonText = isKnockout ? '체력 즉시 승부 — GAME OVER!' : '제한 턴 종료 — 체력 비교';
 
   const confetti = useMemo(
     () => (winner && winner !== 'draw' ? generateConfetti(45, winner) : []),
