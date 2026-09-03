@@ -11,6 +11,7 @@ import { WoolBallLayer } from '@/components/effects/WoolBallLayer';
 import { AcornBallLayer } from '@/components/effects/AcornBallLayer';
 import { FestivalStartBurstLayer } from '@/components/effects/FestivalStartBurstLayer';
 import { MermaidPopup } from './MermaidPopup';
+import { useGuideEnabled } from '@/lib/guideSettings';
 import type {
   AcornBallItem,
   CaptionItem,
@@ -70,10 +71,13 @@ export function GameBoard({
   // 장소가 호버·클릭되어 버려 플레이 감성을 해친다. 반드시 정산 연출(행동 효과 또는
   // "다음을 노리기" 캡션)까지 전부 끝난 뒤에만 조작을 허용한다.
   const canAct = myTeam !== null && !isSettling && displayedActiveTeam === myTeam;
-  // 첫 턴에는 아직 아무것도 안 눌러본 사람이 많으니, 실제로 장소를 고를 수 있는 동안에만
-  // 장소마다 손가락 가이드를 띄운다 — 장소를 하나 고른 뒤(행동 선택 단계로 넘어간
-  // 뒤)에는 꺼지고, 대신 SkillChoiceBar의 [턴 마치기] 버튼에 가이드가 옮겨간다.
-  const showPlaceGuide = gameState.turn === 1 && canAct && gameState.pendingChoice === null;
+  // 예전엔 게임당 첫 턴에만 손가락 가이드를 잠깐 보여줬는데, 그 순간을 놓친 사람은
+  // 규칙을 다시 확인할 방법이 없었다("규칙을 모르겠다" 피드백의 원인). 이제는 내가
+  // 실제로 장소를 고를 수 있는 턴마다 매번 띄우고, 설정 패널(⚙️)에서 끄고 켤 수 있게
+  // 했다(useGuideEnabled). 장소를 하나 고른 뒤(행동 선택 단계로 넘어간 뒤)에는 꺼지고,
+  // 대신 SkillChoiceBar의 행동 버튼/[턴 마치기]에 가이드가 옮겨간다.
+  const guideEnabled = useGuideEnabled();
+  const showPlaceGuide = guideEnabled && canAct && gameState.pendingChoice === null;
   // 테두리 펄스·동물 무드(happy/focus)는 정산 연출이 끝날 때까지 "내 차례"로 유지되는
   // 화면상 턴을 따른다.
   const isMyTurnDisplayed = myTeam !== null && displayedActiveTeam === myTeam;

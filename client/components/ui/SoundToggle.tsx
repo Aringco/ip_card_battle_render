@@ -14,6 +14,7 @@ import {
   setFontStep,
   subscribeUiSettings,
 } from '@/lib/uiSettings';
+import { useGuideEnabled, setGuideEnabled } from '@/lib/guideSettings';
 
 function ToggleButton({
   label,
@@ -119,6 +120,17 @@ function FontSizeRow() {
   );
 }
 
+/** 내 턴마다 뜨는 장소·행동 손가락 가이드 on/off — 게임을 오래 한 사람은 거슬릴 수 있어 끌 수 있게 했다. */
+function GuideToggleRow() {
+  const guideEnabled = useGuideEnabled();
+  return (
+    <div className="flex items-center gap-2">
+      <ToggleButton label="가이드" active={guideEnabled} onClick={() => setGuideEnabled(!guideEnabled)} />
+      <span className="text-2xs text-gray-400 flex-1">내 턴마다 손가락 안내를 보여줘요</span>
+    </div>
+  );
+}
+
 export function SoundToggle() {
   const [settings, setSettings] = useState<AudioSettings>(getAudioSettings());
   // 평소엔 작은 원형 스피커 아이콘만 떠 있다가, 누르면 조절 패널로 펼쳐진다.
@@ -196,6 +208,7 @@ export function SoundToggle() {
       />
       <div className="h-px bg-jungle-100 my-0.5" />
       <FontSizeRow />
+      <GuideToggleRow />
     </div>
   );
 }

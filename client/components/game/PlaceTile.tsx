@@ -14,7 +14,7 @@ export function PlaceTile({
   place: Place;
   disabled: boolean;
   onClick: (place: Place) => void;
-  showGuide?: boolean; // 첫 턴에만 "여길 눌러보세요" 손가락 가이드를 보여준다
+  showGuide?: boolean; // 내가 장소를 고를 수 있는 턴마다 "여길 눌러보세요" 손가락 가이드를 보여준다(설정에서 끌 수 있음)
 }) {
   const [pressed, setPressed] = useState(false);
 

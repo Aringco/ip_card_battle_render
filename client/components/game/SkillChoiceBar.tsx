@@ -1,9 +1,9 @@
 'use client';
 
-import { useRef } from 'react';
 import type { Animal, ClientGameState, Team } from 'shared';
 import { previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeSkill } from '@/lib/skillInfo';
+import { useGuideEnabled } from '@/lib/guideSettings';
 
 const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 
@@ -26,22 +26,12 @@ export function SkillChoiceBar({
   onPass: () => void;
 }) {
   const previews = ANIMAL_ORDER.map(animal => previewSkill(gameState, team, animal));
-  const anyEligible = previews.some(p => p.level > 0);
 
-  // 팀당 "첫 스킬(행동) 해금" 온보딩 가이드 — 동물 종류와 무관하게 이 팀에게 딱 한 번만
-  // 보여준다. everShownRef는 한 번 true가 되면 이 컴포넌트가 살아있는 동안(=게임이
-  // 끝날 때까지) 절대 되돌리지 않는 "평생 1회" 래치이고, activeRef는 그 1회가 시작된
-  // 이번 행동 선택 구간 동안만 손가락을 계속 띄워두기 위한 별도 플래그다(구간이 끝나면,
-  // 즉 interactive가 꺼지면 내린다 — 다음에 또 켜져도 everShownRef 때문에 다시는 안 뜬다).
-  const everShownRef = useRef(false);
-  const activeRef = useRef(false);
-  if (!interactive) {
-    activeRef.current = false;
-  } else if (!everShownRef.current && anyEligible) {
-    everShownRef.current = true;
-    activeRef.current = true;
-  }
-  const showSkillGuide = interactive && activeRef.current;
+  // 예전엔 이 팀의 첫 행동이 해금된 그 순간에만(평생 1회) 손가락 가이드를 보여줬는데,
+  // 그 순간을 놓치면 다시 볼 방법이 없었다. 이제는 행동을 고를 수 있는 턴마다 매번
+  // 보여주고, 설정 패널(⚙️)에서 원하는 사람만 끌 수 있게 했다.
+  const guideEnabled = useGuideEnabled();
+  const showSkillGuide = interactive && guideEnabled;
 
   return (
     // 마우스를 올리면 그 칸이 살짝 떠오르며 커지는 연출을 넣으려면 각 버튼이 이 컨테이너
@@ -111,7 +101,7 @@ export function SkillChoiceBar({
               </div>
             </button>
 
-            {/* 팀당 평생 1회 — 이 팀의 첫 스킬(행동)이 해금된 바로 그 스킬(들)에만 뜬다. */}
+            {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다. */}
             {showSkillGuide && eligible && (
               <span className="place-guide-finger" aria-hidden>
                 👇
@@ -142,8 +132,8 @@ export function SkillChoiceBar({
           </div>
         </button>
 
-        {/* 첫 턴 온보딩 — 행동 선택 차례가 되면, 언제나 누를 수 있는 이 버튼을 손가락으로 짚어준다. */}
-        {gameState.turn === 1 && interactive && (
+        {/* 언제나 누를 수 있는 이 버튼도, 행동 선택 차례마다 손가락으로 짚어준다. */}
+        {guideEnabled && interactive && (
           <span className="place-guide-finger" aria-hidden>
             👇
           </span>
