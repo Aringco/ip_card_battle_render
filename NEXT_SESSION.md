@@ -19,8 +19,9 @@
 > `ROADMAP.md`는 초기 설계 문서로 실제 코드와 많이 다릅니다. 참고만 하세요.
 
 > ✅ **upstream 재조정은 끝났습니다(2026-09-04).** upstream 7개 커밋을 병합해
-> `merge/upstream-2026-09-04` 브랜치에 있습니다. 남은 판단은 "이걸 main에 올릴지,
-> upstream에 PR로 보낼지"뿐입니다 — §5-0 참조.
+> **`main`에 올리고 `origin`에 push까지 마쳤습니다** — 지금 `origin/main`을 clone하면
+> 병합된 상태가 그대로 옵니다. upstream 미반영 커밋은 0건입니다. 남은 것은
+> "upstream에 PR로 보낼지"와 대기실 테마뿐입니다 — §5-0 참조.
 
 ---
 
@@ -316,8 +317,13 @@ sharp(src).resize(768, 768, { fit: 'cover' }).webp({ quality: 82 }).toFile(dst)
 
 ### 5-0. upstream 재조정 — 병합 완료, 올릴 곳만 정하면 된다
 
-**2026-09-04에 upstream/main 7개 커밋을 병합했다.** 결과는 `merge/upstream-2026-09-04`
-브랜치에 있고 **main은 병합 전 그대로**다. 아직 어디에도 push하지 않았다.
+**2026-09-04에 upstream/main 7개 커밋을 병합했다.** `merge/upstream-2026-09-04` 브랜치에서
+작업한 뒤 `main`으로 fast-forward하고 `origin`에 push했다(`ede6b49..8b7d1b6`).
+**`origin/main`이 곧 병합된 상태**이고, upstream 미반영 커밋은 0건이다.
+
+> 병합 작업 브랜치 `merge/upstream-2026-09-04`는 main과 같은 커밋을 가리키는 로컬
+> 브랜치일 뿐이다. push하지 않았으므로 다른 PC에서 clone하면 존재하지 않는다 —
+> 없다고 당황하지 말 것.
 
 ```
 origin    https://github.com/Aringco/ip_card_battle_render.git   (내 fork, push 가능)
@@ -355,8 +361,9 @@ upstream  https://github.com/HanJaeseok/ip_card_battle_render.git (권한 READ, 
 
 #### 남은 판단
 
-1. **`merge/upstream-2026-09-04`를 main에 올릴지** — 검증은 §2-4대로 전부 통과했다.
-2. **내 로비 개편을 upstream에 PR로 보낼지** — 보낸다면 이 병합 브랜치가 그대로 PR 기반이 된다.
+1. ~~병합분을 main에 올릴지~~ → **완료.** `origin/main`에 반영했다(검증은 §2-4).
+2. **내 로비 개편을 upstream에 PR로 보낼지** — 보낸다면 지금의 `origin/main`이 그대로
+   PR 기반이 된다(upstream 커밋을 이미 다 품고 있어 PR에 충돌이 없다).
 3. **대기실 카드테이블 테마 입히기** — upstream 대기실은 초록 계열 옛 스타일 그대로다.
    지금은 안전영역만 풀어 "쓸 수 있게" 해둔 상태이고, 로비와 같은 문법으로 다시 그리는
    작업은 §5-1에 남아 있다.
@@ -426,8 +433,9 @@ git merge-tree --write-tree upstream/main HEAD | grep '^CONFLICT'
 
 ```
 origin    https://github.com/Aringco/ip_card_battle_render.git   (내 fork — push 가능)
-upstream  https://github.com/HanJaeseok/ip_card_battle_render.git (READ only, push DISABLED)
-브랜치    main (기본)
+upstream  https://github.com/HanJaeseok/ip_card_battle_render.git (권한 READ only — 아래처럼
+          push URL을 DISABLED로 막아두길 권장. remote 설정은 PC를 옮기면 따라오지 않는다)
+브랜치    main (기본) — 2026-09-04 기준 upstream 병합분까지 origin에 반영돼 있다
 구조      npm workspaces — client / server / shared
           루트 package.json에는 실행 스크립트가 없고(배포용 start만),
           각 워크스페이스 디렉토리에서 직접 명령을 실행합니다

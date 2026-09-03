@@ -236,7 +236,7 @@ DOM 전역을 요구하는데 이 서버의 `lib`에는 DOM이 없다. `"types":
 
 ## 6. upstream 병합 — 로비 기능 이식 (2026-09-04)
 
-upstream/main 7개 커밋을 `merge/upstream-2026-09-04` 브랜치로 병합했다. 배경과 남은 판단은
+upstream/main 7개 커밋을 병합해 `origin/main`에 반영했다(`ede6b49..8b7d1b6`). 배경과 남은 판단은
 [`NEXT_SESSION.md`](NEXT_SESSION.md) §5-0에 있고, 여기에는 **로비를 어떻게 건드렸는지**만 적는다.
 
 두 갈래는 손댄 영역이 거의 겹치지 않았다(내 쪽=로비 화면, upstream=게임 로직+대기실).
