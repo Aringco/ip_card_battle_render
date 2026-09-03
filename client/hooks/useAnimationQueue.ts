@@ -528,15 +528,18 @@ export function useAnimationQueue(
 
     // ── Pass 0: 해설판 커멘터리 생성 (즉시 반영, 통합 로그) ─────────────────
     if (gameState) {
-      // A팀/B팀이 아니라 방 생성 시 입력한 실제 팀 이름으로 표기한다.
-      const teamLabel = (t: Team) => `[${gameState.teamNames[t]}]`;
+      // A팀/B팀이 아니라 방 생성 시 입력한 실제 팀 이름으로 표기한다. 뒤에 "팀"을 붙여
+      // 팀 이름과 다른 낱말이 헷갈리지 않게 한다(예: "상표" → "[상표팀]").
+      const teamLabel = (t: Team) => `[${gameState.teamNames[t]}팀]`;
 
       const newLines: { team: Team | null; text: string }[] = [];
       lastEvents.forEach(ev => {
         if (ev.type === 'collect') {
+          // 동물 이름은 넣지 않는다 — 이모지가 이미 그 동물을 가리키는데 바로 뒤에
+          // 이름까지 또 적으면("🐰 상표토끼") 같은 것을 두 번 말하는 것처럼 보인다.
           newLines.push({
             team: ev.team,
-            text: `${teamLabel(ev.team)} ${ANIMAL_INFO[ev.animal].emoji} ${ANIMAL_INFO[ev.animal].name} 경험치 +${ev.exp}!`,
+            text: `${teamLabel(ev.team)} ${ANIMAL_INFO[ev.animal].emoji} 경험치 +${ev.exp}!`,
           });
         } else if (ev.type === 'bonusDraws') {
           newLines.push({
@@ -550,7 +553,7 @@ export function useAnimationQueue(
           });
         } else if (ev.type === 'skillApplied' && ev.level > 0) {
           const parts: string[] = [
-            `${teamLabel(ev.team)} ${ANIMAL_INFO[ev.animal].emoji} ${ANIMAL_INFO[ev.animal].name} ${randomActionPhrase(ev.animal)}`,
+            `${teamLabel(ev.team)} ${ANIMAL_INFO[ev.animal].emoji} ${randomActionPhrase(ev.animal)}`,
           ];
           if (ev.animal === 'mermaid') {
             parts.push(`다음 행동 ×${ev.multiplierAfter}배로!`);
