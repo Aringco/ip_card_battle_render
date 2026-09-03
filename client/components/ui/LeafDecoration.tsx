@@ -18,15 +18,17 @@ export function LeafDecoration({
   position,
   size = 80,
   swaying = false,
+  offsetY = 0,
 }: {
   position: Position;
   size?: number; // px — 기본 80(화면 모서리), 팀 패널처럼 작은 자리엔 더 작게 쓴다
   swaying?: boolean; // true인 동안 호버 없이도 살랑살랑 흔들린다(행동 발동 등 효과 강조용)
+  offsetY?: number; // px, 양수면 아래로 살짝 내림 — 특정 모서리만 다른 요소와 겹칠 때 미세 조정용
 }) {
   return (
     <div
       className={`absolute ${POSITIONS[position]} z-10 pointer-events-none`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, transform: offsetY ? `translateY(${offsetY}px)` : undefined }}
     >
       <svg
         width={size}

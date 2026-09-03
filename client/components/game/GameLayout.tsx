@@ -92,8 +92,8 @@ export function GameLayout({
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
     >
       {/* 모서리 잎사귀 장식 — 좌상단은 왼쪽 팀 패널 바로 위라 다른 세 모서리보다 커
-          보인다는 피드백으로 살짝 줄였다. */}
-      <LeafDecoration position="tl" size={64} />
+          보인다는 피드백으로 살짝 줄이고, 아래로도 조금 내렸다. */}
+      <LeafDecoration position="tl" size={64} offsetY={12} />
       <LeafDecoration position="tr" />
       <LeafDecoration position="bl" />
       <LeafDecoration position="br" />
