@@ -57,14 +57,26 @@ export function GameLayout({
   animState: AnimationState;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
-  // 정산 연출이 다 끝난 뒤, 내 팀이 행동을 고를 차례일 때만 행동 선택 영역을 활성화한다.
-  const isMyChoiceTurn = !animState.isSettling && myTeam !== null && gameState.pendingChoice === myTeam;
-  // 정산 연출이 다 끝난 뒤, 내 팀이 장소를 고를(카드를 뽑을) 차례인지.
+  // N:N(팀에 여러 명)일 때, "우리 팀 차례"인 것과 "지금 나 자신의 차례"인 것은 다르다.
+  // 예전엔 팀만 맞으면(=isMyChoiceTurn/isMyDrawTurn이 team만 검사) 같은 팀의 다른
+  // 플레이어 차례에도 보드·행동 패널이 나한테까지 클릭 가능하게 보여서, 실제로는
+  // 아무 동작도 안 하는데(서버가 activePlayerIndex로 걸러 거부) 화면만 상호작용
+  // 가능한 척하는 혼란이 있었다. ActionPrompt는 이미 자체적으로 memberIds로 이
+  // 구분을 하고 있었으니(그래서 문구는 "내 차례가 아니에요"로 맞았다), 여기서도
+  // 같은 기준으로 판단해 보드/행동 패널의 실제 상호작용 가능 여부까지 맞춘다.
+  const isMyPlayerTurn =
+    myTeam !== null &&
+    playerId !== null &&
+    gameState.memberIds[animState.displayedActiveTeam]?.[animState.displayedActivePlayerIndex] === playerId;
+  // 정산 연출이 다 끝난 뒤, 내가(정확히 나 자신이) 행동을 고를 차례일 때만 행동 선택 영역을 활성화한다.
+  const isMyChoiceTurn = !animState.isSettling && myTeam !== null && gameState.pendingChoice === myTeam && isMyPlayerTurn;
+  // 정산 연출이 다 끝난 뒤, 내가 장소를 고를(카드를 뽑을) 차례인지.
   const isMyDrawTurn =
     !animState.isSettling &&
     myTeam !== null &&
     gameState.pendingChoice === null &&
-    animState.displayedActiveTeam === myTeam;
+    animState.displayedActiveTeam === myTeam &&
+    isMyPlayerTurn;
   // 관전자(myTeam === null)를 포함해 행동 선택 영역은 항상 보여주되, 상세 수치는
   // 내 팀(없으면 A팀) 기준으로 미리보기한다.
   const skillPreviewTeam = myTeam ?? 'A';
@@ -133,6 +145,7 @@ export function GameLayout({
           <GameBoard
             gameState={gameState}
             myTeam={myTeam}
+            canAct={isMyDrawTurn}
             onPlaceClick={onPlaceClick}
             captions={animState.captions}
             placeFocusBursts={animState.placeFocusBursts}
@@ -144,7 +157,6 @@ export function GameLayout({
             newCardId={animState.newCardId}
             stackCards={animState.stackCards}
             displayedActiveTeam={animState.displayedActiveTeam}
-            isSettling={animState.isSettling}
             festivalFlash={animState.festivalFlash}
             festivalBurst={animState.festivalBurst}
             mermaidPopup={animState.mermaidPopup}
