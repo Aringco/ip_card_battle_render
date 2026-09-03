@@ -91,8 +91,9 @@ export function GameLayout({
       className={`h-screen bg-jungle-50 flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
     >
-      {/* 모서리 잎사귀 장식 */}
-      <LeafDecoration position="tl" />
+      {/* 모서리 잎사귀 장식 — 좌상단은 왼쪽 팀 패널 바로 위라 다른 세 모서리보다 커
+          보인다는 피드백으로 살짝 줄였다. */}
+      <LeafDecoration position="tl" size={64} />
       <LeafDecoration position="tr" />
       <LeafDecoration position="bl" />
       <LeafDecoration position="br" />
@@ -114,11 +115,11 @@ export function GameLayout({
       {/* 3열 × (본판 / 해설(+행동 안내 오버레이) / 합계·행동선택) 그리드 —
           화면 높이를 넘지 않도록 board·skill 행은 남는 공간을 나눠 갖는 fr 비율로,
           해설 행만 고정 높이(3줄)로 둔다.
-          위쪽 패딩만 다른 세 방향(0.5rem)보다 넉넉히(1.5rem) 준다 — 보드 맨 윗줄
+          위쪽 패딩만 다른 세 방향(0.5rem)보다 넉넉히(1.35rem) 준다 — 보드 맨 윗줄
           장소(오두막·부둣가)의 손가락 가이드가 타일 밖 위로 튀어나오며 까딱거리는데,
           그 여유 공간이 없으면 바로 아래 overflow-hidden에 손가락 끝이 잘린다. */}
       <main
-        className="flex-1 grid gap-2 pt-6 pr-2 pb-2 pl-2 min-h-0 overflow-hidden"
+        className="flex-1 grid gap-2 pt-[1.35rem] pr-2 pb-2 pl-2 min-h-0 overflow-hidden"
         style={{
           gridTemplateColumns: '19rem 1fr 19rem',
           gridTemplateRows: 'minmax(0, 1.25fr) auto minmax(0, 1fr)',

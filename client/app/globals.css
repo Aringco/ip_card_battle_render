@@ -1273,7 +1273,9 @@ body {
   bottom: 4.75rem;
   right: 0.75rem;
   z-index: 95;
-  max-width: 15rem;
+  /* max-width로 줄바꿈시키지 않고, 문구 길이에 맞춰 한 줄로 딱 맞게 늘어나게 한다
+     (fixed 위치 요소는 left를 안 정하면 내용 크기만큼 자동으로 넓어진다). */
+  white-space: nowrap;
   background: #ffffff;
   border-radius: 1rem;
   padding: 0.85rem 1.75rem 0.85rem 1rem;
