@@ -40,7 +40,7 @@ const ANIMAL_NAME: Record<Animal, string> = {
 const SKILL_LINE: Record<Animal, string[]> = {
   sheep: ['더 뽑기'],
   rabbit: ['체력', '회복'],
-  mermaid: ['효과', '증폭'],
+  mermaid: ['효과', '더 발동'],
   tiger: ['체력', '뺏기'],
 };
 

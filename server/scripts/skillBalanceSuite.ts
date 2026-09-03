@@ -10,7 +10,7 @@ import path from 'path';
 import { initGame } from '../engine/turnManager';
 import { processPlayerAction, processSkillChoice, processPass } from '../engine/gameEngine';
 import { eligibleAnimals, levelOf } from '../engine/skills';
-import { PLACES, ANIMALS, MAX_TURN, THRESHOLDS, INITIAL_HP, WIN_HP, LOSE_HP, MERMAID_MULTIPLIER_BASE, FESTIVAL_TURN } from 'shared';
+import { PLACES, ANIMALS, MAX_TURN, THRESHOLDS, INITIAL_HP, WIN_HP, LOSE_HP, FESTIVAL_TURN } from 'shared';
 import type { Animal, GameState, Team } from 'shared';
 
 function makeLCG(seed: number): () => number {
@@ -37,7 +37,8 @@ function skillValue(state: GameState, team: Team, animal: Animal): number {
   if (animal === 'rabbit') return level * mult;
   if (animal === 'tiger') return Math.min(level * mult, state.teams[opponent].hp);
 
-  const newMultiplier = mult * MERMAID_MULTIPLIER_BASE ** level;
+  // 배율에 레벨만큼 더해진다(engine/skills.ts와 동일한 합연산 공식).
+  const newMultiplier = mult + level;
   return (newMultiplier - mult) * MERMAID_EXPECTED_NEXT_LEVEL;
 }
 
@@ -150,7 +151,7 @@ function main() {
   log('');
   log('> 카드 숫자 합은 오직 경험치만 채운다. 체력(=점수)은 오직 행동으로만 움직인다:');
   log('> 상표토끼(+레벨×배율 회복), 특허랑이(상대에게서 레벨×배율 강탈), 디자인어(다음');
-  log('> 행동의 배율을 2^레벨만큼 키움, 스스로는 소모하지 않고 계속 누적).');
+  log('> 행동의 배율에 레벨만큼 더함, 스스로는 소모하지 않고 계속 누적).');
   log('');
   log(`> ⚠️ 실용신양의 "가치"와 디자인어의 "가치"는 봇이 행동을 비교하기 위한 근사 휴리스틱이다.`);
   log('> 실제 게임 효과(processSkillChoice) 자체는 이 근사와 무관하게 정확한 규칙대로 적용된다.');

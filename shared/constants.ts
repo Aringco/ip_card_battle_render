@@ -80,9 +80,6 @@ export function clampSettings(input: Partial<typeof DEFAULT_SETTINGS> | undefine
   };
 }
 
-// 디자인어(인어) 스킬 — 대기 배율에 곱연산으로 누적된다: pendingMultiplier *= BASE ** level
-export const MERMAID_MULTIPLIER_BASE = 2;
-
 export const MAX_TURN = 20;
 export const TURN_TIME_SEC = 30;
 

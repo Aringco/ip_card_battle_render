@@ -29,7 +29,7 @@ export function describeSkill(animal: Animal, level: number): SkillDescription {
     case 'rabbit':
       return { effect: `토끼 레벨(${level})만큼\n체력이 상승합니다.`, catchphrase: '점점 더 브랜드 가치가 더해진다!' };
     case 'mermaid':
-      return { effect: `인어 레벨(${level})만큼\n내 다음 효과를 증폭합니다.`, catchphrase: '보기 좋은 떡이 먹기도 좋다!' };
+      return { effect: `인어 레벨(${level})만큼\n내 다음 효과가 ${level}번 더 발동합니다.`, catchphrase: '보기 좋은 떡이 먹기도 좋다!' };
     case 'tiger':
       return { effect: `호랑이 레벨(${level})만큼\n상대 체력을 강탈해옵니다.`, catchphrase: '독점적 실시를 통해 상대를 억제한다!' };
   }
@@ -43,7 +43,7 @@ export function describeSkillShort(animal: Animal, level: number): string {
     case 'rabbit':
       return `${level}만큼 체력을 획득합니다.`;
     case 'mermaid':
-      return `${level}만큼 다음 효과를 증폭합니다.`;
+      return `다음 효과가 ${level}번 더 발동합니다.`;
     case 'tiger':
       return `${level}만큼 체력을 강탈해옵니다.`;
   }

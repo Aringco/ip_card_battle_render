@@ -1,6 +1,6 @@
 // 턴 종료 행동 선택의 "예상 효과" 미리보기 — 서버 engine/skills.ts와 동일한
 // 공식을 클라이언트에서 그대로 복제한다(상태를 바꾸지 않는 순수 계산).
-import { THRESHOLDS, MERMAID_MULTIPLIER_BASE } from 'shared';
+import { THRESHOLDS } from 'shared';
 import type { Animal, ClientGameState, Team } from 'shared';
 
 /**
@@ -58,7 +58,9 @@ export function previewSkill(gameState: ClientGameState, team: Team, animal: Ani
     oppHpDelta = -steal;
     myHpDelta = steal;
   } else if (animal === 'mermaid') {
-    multiplierAfter = mult * MERMAID_MULTIPLIER_BASE ** level;
+    // 서버 engine/skills.ts와 동일한 합연산 공식 — 곱연산(2^레벨)이 아니라
+    // "다음 행동이 이 레벨만큼 더 발동한다"는 뜻으로 배율에 레벨을 더한다.
+    multiplierAfter = mult + level;
   }
 
   return { animal, level, myHpDelta, oppHpDelta, extraDraws, multiplierAfter };

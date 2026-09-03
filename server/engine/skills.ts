@@ -1,4 +1,4 @@
-import { ANIMALS, THRESHOLDS, MERMAID_MULTIPLIER_BASE } from 'shared';
+import { ANIMALS, THRESHOLDS } from 'shared';
 import type { Animal, GameEvent, GameState, Team } from 'shared';
 
 /** 레벨 = floor(누적 경험치 / 임계값). 임계값은 동물마다 다르다(양·토끼 10, 인어·호랑이 20). */
@@ -20,7 +20,9 @@ export function eligibleAnimals(state: GameState, team: Team): Animal[] {
  * - 🐑 실용신양: 다음 내 턴에 `레벨 × 배율`회 추가로 뽑는다.
  * - 🐰 상표토끼: 내 체력이 `레벨 × 배율`만큼 오른다.
  * - 🐯 특허랑이: 상대 체력에서 `레벨 × 배율`만큼(상대가 가진 만큼만) 강탈한다 — 상대 −n, 나 +n.
- * - 🧜‍♀️ 디자인어: 대기 배율에 `2^레벨`을 곱한다. 스스로는 배율을 소모하지 않고 계속 누적된다.
+ * - 🧜‍♀️ 디자인어: 대기 배율에 그 발동의 레벨을 더한다(`배율 += 레벨`) — "다음 행동이 레벨만큼
+ *   더 발동한다"는 뜻이다. 스스로는 배율을 소모하지 않고, 연달아 쓰면 레벨이 그대로 누적된다
+ *   (기본 배율 1에 레벨 2를 두 번 쌓으면 1+2+2=5, 곱연산이 아니라 합연산이다).
  *
  * 배율은 토끼·호랑이·양을 쓰는 순간 1로 초기화된다("다음을 노리기"로는 소모되지 않는다).
  * 레벨이 0인 동물을 골랐다면(정상적인 클라이언트라면 UI에서 막힘) 아무 일도 일어나지 않는다.
@@ -57,8 +59,9 @@ export function applySkillChoice(state: GameState, team: Team, animal: Animal): 
   let extraDrawsQueued = 0;
 
   if (animal === 'mermaid') {
-    // ② 인어는 배율만 키운다 — 자기 자신은 배율을 소모하지 않는다(곱연산으로 누적).
-    me.pendingMultiplier *= MERMAID_MULTIPLIER_BASE ** level;
+    // ② 인어는 배율만 키운다 — 자기 자신은 배율을 소모하지 않는다. 곱연산이 아니라
+    // "다음 행동이 이 레벨만큼 더 발동한다"는 합연산으로 누적된다(효과 × (1 + 누적 레벨)).
+    me.pendingMultiplier += level;
   } else {
     // ③ 나머지 셋은 지금까지 쌓인 배율을 곱해 쓰고, 쓴 뒤 1로 되돌린다.
     multiplierUsed = me.pendingMultiplier;

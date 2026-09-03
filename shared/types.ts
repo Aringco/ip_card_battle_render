@@ -35,7 +35,8 @@ export interface TeamState {
   members: string[];
   exp: Record<Animal, number>;    // 동물별 누적 경험치 = 카드 숫자 합. 레벨 = floor(exp/threshold)
   hp: number;                      // 체력(=점수) — settings.targetScore에서 시작, 그 두 배 이상이면 승리, 0 이하면 패배
-  pendingMultiplier: number;       // 디자인어가 키우는 대기 배율. 초기값 1, 인어 외 스킬을 쓰면 1로 초기화
+  pendingMultiplier: number;       // 디자인어가 키우는 대기 배율. 초기값 1, 인어를 쓸 때마다 그 레벨만큼
+                                    // 더해진다(1 + 누적 레벨 = 다음 행동이 발동하는 총 횟수). 인어 외 스킬을 쓰면 1로 초기화
   pendingExtraDraws: number;       // 실용신양 스킬로 예약된, 다음 내 턴에 추가로 뽑을 카드 수
   pendingFestivalDraws: number;    // 도토리 축제로 예약된, 다음 내 턴에 추가로 뽑을 카드 수(실용신양과 동일한 방식)
   playerIndex: number;             // 팀 내 현재 차례 플레이어 인덱스 (N:N 로테이션)
@@ -87,8 +88,8 @@ export type GameEvent =
       animal: Animal;
       level: number;            // 발동에 사용된(초기화 직전) 레벨. 0이면 아무 일도 없었다는 뜻
       expSpent: number;         // level × threshold — 소모된 경험치
-      multiplierUsed: number;   // 이번 발동에 실제로 곱해진 배율(인어일 때는 항상 1)
-      multiplierAfter: number;  // 발동 후 그 팀의 pendingMultiplier(인어면 커진 값, 나머지는 1)
+      multiplierUsed: number;   // 이번 발동에 실제로 곱해진 배율(=총 발동 횟수, 인어일 때는 항상 1)
+      multiplierAfter: number;  // 발동 후 그 팀의 pendingMultiplier(인어면 레벨만큼 늘어난 값, 나머지는 1)
       myHpDelta: number;        // 내 체력 증감 — 항상 0 이상
       oppHpDelta: number;       // 상대 체력 증감 — 항상 0 이하(음수 그대로, 양수로 뒤집지 않는다)
       extraDrawsQueued: number; // 양을 골랐을 때, 다음 내 턴에 예약된 추가 뽑기 수(배율 반영 후 최종값)

@@ -15,7 +15,7 @@
 import { initGame } from '../engine/turnManager';
 import { processPlayerAction, processSkillChoice, processPass } from '../engine/gameEngine';
 import { eligibleAnimals, levelOf } from '../engine/skills';
-import { PLACES, ANIMALS, MERMAID_MULTIPLIER_BASE, WIN_HP, LOSE_HP } from 'shared';
+import { PLACES, ANIMALS, WIN_HP, LOSE_HP } from 'shared';
 import type { Animal, GameState, Team } from 'shared';
 
 function makeLCG(seed: number): () => number {
@@ -42,8 +42,8 @@ function skillValue(state: GameState, team: Team, animal: Animal): number {
   if (animal === 'rabbit') return level * mult;
   if (animal === 'tiger') return Math.min(level * mult, state.teams[opponent].hp);
 
-  // mermaid
-  const newMultiplier = mult * MERMAID_MULTIPLIER_BASE ** level;
+  // mermaid — 배율에 레벨만큼 더해진다(engine/skills.ts와 동일한 합연산 공식).
+  const newMultiplier = mult + level;
   return (newMultiplier - mult) * MERMAID_EXPECTED_NEXT_LEVEL;
 }
 

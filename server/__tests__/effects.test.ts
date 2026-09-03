@@ -123,20 +123,20 @@ describe('행동 — 상표토끼', () => {
 });
 
 describe('행동 — 디자인어', () => {
-  it('대기 배율에 2^레벨이 곱해지고, 자기 자신은 배율을 소모하지 않는다', () => {
+  it('대기 배율에 레벨만큼 더해지고(합연산), 자기 자신은 배율을 소모하지 않는다', () => {
     const state = initGame(['A1'], ['B1'], rng0);
     state.teams['A'].exp.mermaid = 40; // level=2
 
     const ev1 = applySkillChoice(state, 'A', 'mermaid');
-    expect(ev1.type === 'skillApplied' && ev1.multiplierAfter).toBe(4); // 2^2
-    expect(state.teams['A'].pendingMultiplier).toBe(4);
+    expect(ev1.type === 'skillApplied' && ev1.multiplierAfter).toBe(3); // 1(기본) + 2(레벨)
+    expect(state.teams['A'].pendingMultiplier).toBe(3);
     expect(state.teams['A'].hp).toBe(INITIAL_HP); // 체력 불변
 
-    // 연속으로 다시 쓰면 곱연산으로 계속 누적된다 (4 × 4 = 16)
+    // 연속으로 다시 쓰면 곱연산이 아니라 합연산으로 레벨이 그대로 누적된다 (3 + 2 = 5)
     state.teams['A'].exp.mermaid = 40;
     const ev2 = applySkillChoice(state, 'A', 'mermaid');
     expect(ev2.type === 'skillApplied' && ev2.multiplierUsed).toBe(1); // 인어는 자기 배율을 쓰지 않는다
-    expect(state.teams['A'].pendingMultiplier).toBe(16);
+    expect(state.teams['A'].pendingMultiplier).toBe(5);
   });
 
   it.each(['sheep', 'rabbit', 'tiger'] as const)('%s은 배율을 쓰고 나면 1로 초기화된다', animal => {
