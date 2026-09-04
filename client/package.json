@@ -6,6 +6,7 @@
     "gen:assets": "node scripts/generateAssetManifest.mjs",
     "predev": "npm run gen:assets",
     "dev": "next dev",
+    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && npm run dev",
     "prebuild": "npm run gen:assets",
     "build": "next build",
     "start": "next start"

@@ -293,17 +293,25 @@ clip-path·opacity와 **일부러 같은 값**입니다. 한쪽만 바꾸면 교
 
 브라우저 캐시가 **아니라** dev 서버 쪽이므로 새 브라우저·시크릿 모드로 접속해도 똑같습니다.
 
+> ⚠️ **그냥 재시작해서는 안 고쳐집니다.** 낡은 청크는 `.next/dev/`에 있는데 dev 서버를
+> 껐다 켜는 것만으로는 이 폴더가 지워지지 않습니다. 실제로 이 프로젝트에서 "재시작했는데
+> 그대로"인 상황이 세 번 반복됐고, 매번 원인이 이것이었습니다.
+> `next build`는 `.next/static/`에 따로 쓰므로 프로덕션 빌드가 통과해도 dev는 낡은 채입니다.
+
 ```bash
 # client 터미널에서 Ctrl+C 후
-rm -rf .next && npm run dev
+npm run dev:clean      # .next를 지우고 dev 서버를 띄운다
 ```
 
-확인하는 법 — dev 서버가 실제로 내주는 CSS를 직접 받아 grep합니다.
+확인하는 법 — 어느 커밋 시점 CSS인지 표지 마커로 특정할 수 있습니다.
 
 ```bash
 CSS=$(curl -s http://localhost:3000/ | grep -o '/_next/static/[^"]*\.css' | head -1)
-curl -s "http://localhost:3000$CSS" | grep -c '찾는-속성'
+curl -s "http://localhost:3000$CSS" | grep -c '찾는-셀렉터'
+# 0이면 낡은 청크. .next/static/(프로덕션)과 .next/dev/(개발)을 대조해도 바로 드러난다
 ```
+
+
 
 ### 4-2. `measureLobby.mjs`는 WS 서버가 떠 있어야 의미가 있다
 
