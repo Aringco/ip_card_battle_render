@@ -2336,6 +2336,13 @@ body {
    두 의사요소의 역할: ::before가 액자, ::after가 귀퉁이 장식이다. z-index로 순서를
    못박아 장식이 액자 위에 오게 한다. */
 .lobby-form-board {
+  /* 카드 전체(액자·귀퉁이 장식·글자·입력창)를 한 번에 키운다.
+     transform: scale()이 아니라 zoom인 이유 — scale은 레이아웃 상자를 그대로 둬서
+     주변이 커진 것을 모르고 스테이지 밖으로 삐져나간다. zoom은 상자까지 함께 커져
+     .stage-form의 스크롤 판정과 measureLobby 실측이 눈에 보이는 것과 일치한다.
+     기본값 1이고, 아래 미디어쿼리에서 넓은 화면·접힌 상태에만 올린다. */
+  zoom: var(--form-zoom, 1);
+
   --board-edge: 26px;
   /* 귀퉁이 장식 — 액자 두께와 무관한 고정 크기라, 폼이 커져도 작아지지 않는다.
      ⚠️ overhang은 반드시 .lobby-form-wrap의 padding보다 작아야 한다. 장식 레이어가
@@ -2379,6 +2386,14 @@ body {
    나왔다), 가로는 1280에서 380px, 1920에서 527px이 늘 놀고 있다.
    :has()로 읽으므로 GameRulesFields가 상태를 부모로 올릴 필요가 없다. */
 @media (min-width: 768px) {
+  /* 넓은 화면에서는 카드를 크게 — 스테이지가 738×590인데 접힌 카드가 358×326이라
+     절반이 비어 있었다. 1280×900 기준 최대 1.81배까지 들어가므로 1.75를 쓴다.
+     **규칙을 펼치면 1로 되돌린다.** 그때는 카드가 이미 스테이지 폭을 다 쓰고 있어
+     더 키울 자리가 없고, 렌더 폭이 그대로인 채 글자만 커지면 규칙 라벨이 다시
+     말줄임으로 잘린다(가로 확장으로 겨우 없앤 문제다). */
+  .lobby-form-board { --form-zoom: 1.45; }
+  .lobby-form-board:has([data-rules-open]) { --form-zoom: 1; }
+
   .lobby-form-board:has([data-rules-open]) {
     /* 스테이지가 허락하는 만큼 다 쓴다 — 1280에서 바깥 여백을 뺀 712px가 상한이고,
        그보다 넓은 화면에서는 56rem에서 멈춘다(너무 넓으면 좌우 시선 이동이 길어진다).
@@ -2406,6 +2421,15 @@ body {
 
 }
 
+/* 세로가 넉넉한 화면에서만 목표치인 1.75까지 올린다.
+   1280×900에서 1.75를 쓰면 초대 링크로 들어온 "방 참가하기"(안내 문단이 한 줄 더 붙어
+   가장 키가 큰 폼)가 645px가 되어 스테이지 590px를 넘겼다 — 실측 상한이 약 1.50이다.
+   높이 1000px 이상이면 그 폼도 1.75가 들어간다(1920×1080 상한 약 1.83). */
+@media (min-width: 768px) and (min-height: 1000px) {
+  .lobby-form-board { --form-zoom: 1.75; }
+  .lobby-form-board:has([data-rules-open]) { --form-zoom: 1; }
+}
+
 /* 입력들이 세로로 쌓이는 묶음 — 카드가 2열이 되어도 이 안의 간격은 그대로다 */
 .lobby-form-fields {
   display: flex;
@@ -2419,7 +2443,9 @@ body {
 .text-board-muted { color: #7d6a55; }
 .border-board-line { border-color: #cbb99a; }
 
-.lobby-form-wrap { padding: 1rem; }
+/* 귀퉁이 장식이 액자 밖으로 걸치는 만큼(--orn-overhang × zoom)을 여기서 받아준다.
+   여백이 모자라면 그만큼 스크롤 영역이 넓어져 .stage-form에 스크롤바가 생긴다. */
+.lobby-form-wrap { padding: 1.5rem; }
 
 /* 좁은 화면(390×844)에서는 액자와 바깥 여백을 함께 줄인다. 가로 확장은 하지 않는다 —
    안전영역이 371px인데 카드가 이미 358px이라 옆으로 펼 자리가 13px뿐이다.
