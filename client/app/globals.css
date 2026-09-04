@@ -1954,7 +1954,7 @@ body {
   opacity: 1;
   transition: opacity 0.7s ease-out;   /* 서서히 켜진다 */
   animation:
-    lobbyScanDrift 0.5s linear infinite,
+    lobbyScanDrift 0.85s linear infinite,
     lobbyScanFlicker 0.7s ease-in-out infinite;
 }
 
