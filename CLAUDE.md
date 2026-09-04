@@ -126,11 +126,13 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 
 **단계를 고르면 배경이 어두워진다.** `.lobby-table::after`가 검정 0.6을 덮는데, `z-index: -1`이 요령이다 — 이 의사요소가 테이블 **배경 이미지 위**, 그 안의 콘텐츠(`.lobby-safe`) **아래**에 정확히 들어간다. 음수 z-index가 부모 밖으로 새지 않는 것은 `.lobby-table`이 `transform: translate()` 때문에 이미 쌓임 맥락을 만들고 있어서다 — **그 transform을 걷어내면 이 어둠이 배경 뒤로 숨어 사라진다.** `data-stage`는 자식인 `.lobby-safe`에 붙어 있어 `:has()`로 거슬러 읽는다.
 
-**패널에는 옛 LCD 같은 가로 주사선이 얹힌다 — 가리키고 있는 하나에만.** `.lobby-panel::after`의 `repeating-linear-gradient`이고, 아래로 천천히 흐르며(`lobbyScanDrift`, 이동량이 줄 간격과 같아 이음매가 없다) 밝기가 흔들린다(`lobbyScanFlicker`). 넷 다 늘 깔면 동시에 지직거려 시선 둘 곳이 없어진다. `.lobby-panel-bg`가 아니라 **버튼 자신**에 거는 이유는 배경 레이어에 `blur`/`scale` filter가 걸려 있어 그 안에 그리면 줄무늬까지 함께 뭉개지기 때문이다.
+**패널에는 옛 LCD 같은 가로 주사선이 얹힌다 — 가리키고 있는 하나에만.** `.lobby-panel::after`의 `repeating-linear-gradient`이고, hover하면 0.7초에 걸쳐 서서히 켜지며 아래로 흐르고(`lobbyScanDrift`, 이동량이 줄 간격과 같아 이음매가 없다) 밝기가 흔들린다(`lobbyScanFlicker`). 넷 다 늘 깔면 동시에 지직거려 시선 둘 곳이 없어진다. `.lobby-panel-bg`가 아니라 **버튼 자신**에 거는 이유는 배경 레이어에 `blur`/`scale` filter가 걸려 있어 그 안에 그리면 줄무늬까지 함께 뭉개지기 때문이다.
 
-**패널 안의 층 순서는 `z-index`로 못박혀 있다** — 넷 다 위치지정 요소라 tree order가 아니라 z-index가 정한다: `0` 그림(`.lobby-panel-bg`) → `1` 유리(`::before`) → `2` 주사선(`::after`) → `3` 글자(`.stage-panel-label`). 글자가 주사선 위에 있어야 읽힌다.
+**깜빡임은 `opacity`가 아니라 `filter: opacity()`로 건다.** 애니메이션은 같은 속성의 transition을 즉시 덮어쓰므로, `opacity`를 흔들면 hover하는 순간 첫 키프레임 값으로 튀어 **fade-in이 통째로 사라진다**(실제로 그렇게 만들었다가 고쳤다). `filter`로 옮기면 `opacity`를 transition 전용으로 비워둘 수 있고, 두 값이 곱해져 "서서히 켜지면서 지직거린다"가 된다.
 
-**폼이 열린 패널은 유리판이 된다.** 흰 테두리를 지우고(`border-color: transparent` — 확장된 뒤에는 이 패널이 버튼이 아니라 폼을 담는 바탕이라, 테두리가 남으면 화면 전체를 두르는 큰 사각형으로 보인다) `::before`에 얕은 글래스모피즘을 얹는다. `backdrop-filter`가 **그 아래 칠해진 것**(= 패널 그림)을 흐려 서리유리가 되고, `opacity: 0.6`이 "얕게"에 해당한다 — 1.0이면 그림이 우유처럼 덮여 무엇이 그려져 있었는지 사라진다. 강약은 그 한 값으로 조절한다.
+**패널 안의 층 순서는 `z-index`로 못박혀 있다** — 위치지정 요소끼리는 tree order가 아니라 z-index가 정한다: `0` 그림(`.lobby-panel-bg`) → `2` 주사선(`::after`) → `3` 글자(`.stage-panel-label`). 글자가 주사선 위에 있어야 읽힌다.
+
+**폼이 열린 패널은 흰 테두리를 지운다**(`border-color: transparent`) — 확장된 뒤에는 이 패널이 버튼이 아니라 폼을 담는 바탕이라, 테두리가 남으면 화면 전체를 두르는 큰 사각형으로 보인다. 한때 여기에 얕은 글래스모피즘(`::before` + `backdrop-filter`)도 얹었다가 되돌렸다 — 패널 그림을 서리유리로 덮으면 무엇이 그려져 있었는지 흐려져, `brightness`/`blur`만으로 눌러두는 편이 나았다.
 
 **아트 패널(`.lobby-panel-art`)은 톤 패널과 처리가 반대다.** 그라디언트는 반투명하게 깔아 테이블이 비치게 두면 됐지만, 그림을 반투명하게 만들면 펠트 무늬와 섞여 무엇을 그린 것인지 알아볼 수 없게 된다. 그래서 불투명하게 깔되 어둡게 눌러 글자를 읽히게 하고, hover하면 흐림이 풀리며 제 색으로 밝아진다. `blur`에는 `scale(1.05)`가 반드시 딸려야 한다 — `filter: blur()`는 요소 가장자리 **바깥의 투명까지** 번지게 해서 패널 테두리에 희끄무레한 띠를 만들기 때문이고, 그래서 `prefers-reduced-motion`에서도 `transform: none`이 아니라 양쪽 상태를 같은 배율로 고정한다.
 
