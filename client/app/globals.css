@@ -1902,6 +1902,25 @@ body {
   cursor: not-allowed;
   opacity: 0.85;
 }
+/* 옛 LCD/CRT 화면처럼 가로 주사선을 얹는다.
+   .lobby-panel-bg가 아니라 **버튼 자신**의 ::after인 이유 두 가지 —
+     · .lobby-panel-bg에는 blur/scale filter가 걸려 있어, 그 안에 그리면 줄무늬까지
+       뭉개진다
+     · ::after는 마지막 자식이라 그림과 글자 **둘 다** 위에 얹힌다. 실제 화면이라면
+       글자에도 주사선이 지나가는 것이 맞다
+   버튼이 overflow: hidden이라 둥근 모서리에 맞춰 잘린다. */
+.lobby-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.22) 0 1px,
+    transparent 1px 3px
+  );
+}
+
 @keyframes lobbyPanelPress {
   0%   { transform: scale(1); }
   40%  { transform: scale(0.97); }
@@ -1948,6 +1967,31 @@ body {
   background-size: 100% 100%;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+/* 단계를 고르면 배경이 어두워져 폼·버튼이 앞으로 나온다.
+   z-index: -1이 요령이다 — 이 의사요소는 .lobby-table의 **배경 이미지 위**,
+   그 안의 콘텐츠(.lobby-safe) **아래**에 정확히 들어간다. 음수 z-index가 부모 밖으로
+   새지 않는 것은 .lobby-table이 transform: translate() 때문에 이미 쌓임 맥락을
+   만들고 있어서다(그 transform을 걷어내면 이 어둠이 배경 뒤로 숨어 사라진다).
+
+   data-stage는 자식인 .lobby-safe에 붙어 있으므로 :has()로 거슬러 읽는다.
+   home이 아닌 모든 단계 — 대기실(waiting)까지 포함해 어둡게 한다.
+
+   0.3s는 .lobby-stage의 --t-expand와 같은 값이다. 그 변수는 .lobby-stage에
+   선언돼 있어 여기(조상)까지 닿지 않아 리터럴로 쓴다 — 한쪽을 바꾸면 같이 맞출 것. */
+.lobby-table::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.lobby-table:has(> .lobby-safe:not([data-stage="home"]))::after {
+  opacity: 0.6;
 }
 /* 캐릭터·카드더미·램프를 피한 테이블 중앙 영역 — 콘텐츠는 전부 이 안에만 놓인다 */
 .lobby-safe {
