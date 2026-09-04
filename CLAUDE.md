@@ -46,7 +46,9 @@ npm run build
 
 **`server/tsconfig.json`의 `types` 목록을 지우지 말 것.** 이 서버는 Node 전용이라 `lib`에 DOM이 없는데, `types`를 비워두면 TypeScript가 `node_modules/@types/*`를 **전부** 자동으로 끌어온다. 워크스페이스 루트에는 클라이언트용 `@types/react-dom`이 함께 설치돼 있어서, 그 순간 `npm run build`(tsc)가 DOM 전역(`ReferrerPolicy`·`RequestDestination`)을 못 찾고 실패한다 — 서버 코드는 한 줄도 안 건드렸는데 갑자기 터지므로 원인을 찾기 어렵다. 서버가 새 전역 타입 패키지를 쓰게 되면 그 목록에 이름을 더한다(`ws`처럼 import 경로로 해석되는 모듈 타입은 목록과 무관하니 더할 필요 없다). `ts-node`(`npm run dev`)와 `ts-jest`(`npm test`)는 타입 검사를 그렇게까지 하지 않아 멀쩡히 돌아간다 — **이 증상은 `npm run build`에서만 드러난다.**
 
-**CSS를 고쳤는데 화면이 그대로면 `.next/dev/` 캐시를 의심할 것.** Turbopack이 청크 파일명은 그대로 둔 채 낡은 내용을 계속 내주는 일이 이 프로젝트에서 반복해서 일어났다. **dev 서버를 껐다 켜는 것만으로는 안 고쳐진다** — 낡은 청크가 `.next/dev/`에 있고 재시작이 그 폴더를 지우지 않기 때문이다(`next build`는 `.next/static/`에 따로 쓰므로 프로덕션 빌드가 통과해도 dev는 낡은 채다). `cd client && npm run dev:clean`이 `.next`를 지우고 띄운다. 브라우저 캐시가 아니라 서버 쪽이라 시크릿 모드로 접속해도 똑같다.
+**dev 서버가 떠 있는 채로 같은 디렉터리에서 `next build`를 돌리지 말 것.** 둘이 `.next/`를 공유해 dev 쪽 증분 상태가 어긋난다 — 이 프로젝트에서 "CSS를 고쳤는데 화면이 그대로"인 일이 네 번 반복됐고, 한 번은 dev 서버 시작 1분 뒤부터 그 뒤 모든 편집이 반영되지 않았다(`.next/dev/`의 수정 시각이 그 시점에 멈춰 있었다). 검증용 빌드는 `NEXT_DIST_DIR=.next-verify npx next build` / `NEXT_DIST_DIR=.next-verify npx next start -p 3200`으로 산출물을 분리한다(`next.config.ts`의 `distDir`).
+
+**그래도 화면이 그대로면 `.next/dev/` 캐시를 의심할 것.** Turbopack이 청크 파일명은 그대로 둔 채 낡은 내용을 계속 내주는 일이 이 프로젝트에서 반복해서 일어났다. **dev 서버를 껐다 켜는 것만으로는 안 고쳐진다** — 낡은 청크가 `.next/dev/`에 있고 재시작이 그 폴더를 지우지 않기 때문이다(`next build`는 `.next/static/`에 따로 쓰므로 프로덕션 빌드가 통과해도 dev는 낡은 채다). `cd client && npm run dev:clean`이 `.next`를 지우고 띄운다. 브라우저 캐시가 아니라 서버 쪽이라 시크릿 모드로 접속해도 똑같다.
 
 두 서버(WS 8080 + Next 3000)를 각각 별도 터미널로 띄워야 브라우저에서 실제 플레이가 가능하다. 클라이언트가 바라보는 WS 주소는 `NEXT_PUBLIC_WS_URL`(기본 `ws://localhost:8080`)로 바꿀 수 있다. lint 스크립트/설정은 아직 없다.
 
