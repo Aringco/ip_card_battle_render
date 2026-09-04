@@ -39,8 +39,8 @@ export const LOBBY_ASSETS = {
    */
   /* 원본 PNG를 **손대지 않고** 그대로 쓴다 — 자르기·축소·장식선 제거 모두 하지 않았다.
      알파가 살아 있는 상태로 도착해 복원 처리도 필요 없었다. 투명 여백(상 73 / 좌 61px)이
-     포함돼 있어, globals.css가 그만큼 액자 레이어를 바깥으로 밀어 나무가 카드 모서리에
-     맞도록 한다(--board-margin). */
+     포함돼 있어(네 변이 다르다), globals.css가 그만큼 액자 레이어를 바깥으로 밀어 나무가
+     카드 모서리에 맞도록 한다(--board-mt/mr/mb/ml). */
   formBoard: '/ui/back_board.png',
   cornerTL: '/ui/corner_tl.webp',
   cornerTR: '/ui/corner_tr.webp',

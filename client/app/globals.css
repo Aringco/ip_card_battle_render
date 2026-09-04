@@ -2348,27 +2348,32 @@ body {
      기본값 1이고, 아래 미디어쿼리에서 넓은 화면·접힌 상태에만 올린다. */
   zoom: var(--form-zoom, 1);
 
-  /* 액자 그림은 원본 PNG를 손대지 않고 쓴다. 그래서 바깥에 투명 여백(상 73 / 좌 61px,
-     1024² 기준)이 붙어 있고 나무는 그 안쪽 49~51px이다.
+  /* 액자 그림은 원본 PNG를 손대지 않고 쓴다. 그래서 바깥에 투명 여백이 붙어 있고
+     (1024² 기준 상 78 / 하 67 / 좌 57 / 우 56px) 나무는 그 안쪽 46~49px이다.
        --board-slice  그림에서 잘라낼 조각(여백 + 나무 + 둥근 모서리가 다 들어가는 크기)
        --board-edge   그 조각을 화면에 그릴 두께
-       --board-margin 그중 투명 여백이 차지하는 몫 — 이만큼 ::before를 **바깥으로** 밀어야
-                      나무가 카드 모서리에 딱 맞는다. 안 밀면 카드 안쪽에 빈 띠가 생기고
-                      귀퉁이 장식이 나무에서 그만큼 떨어져 뜬다. */
+     투명 여백의 몫만큼 ::before를 **바깥으로** 밀어야 나무가 카드 모서리에 딱 맞는다.
+     안 밀면 카드 안쪽에 빈 띠가 생기고 귀퉁이 장식이 나무에서 그만큼 떨어져 뜬다.
+     여백이 네 변에서 다르므로 inset도 네 값을 따로 준다 — 한 값으로 뭉뚱그리면
+     위쪽이 22px, 왼쪽이 16px씩 어긋나 액자가 한쪽으로 쏠린다.
+     **그림을 교체하면 이 네 숫자를 다시 재야 한다.** */
   --board-slice: 140;
   --board-edge: 40px;
-  --board-margin: calc(var(--board-edge) * 73 / 140);
+  --board-mt: calc(var(--board-edge) * 78 / 140);
+  --board-mr: calc(var(--board-edge) * 56 / 140);
+  --board-mb: calc(var(--board-edge) * 67 / 140);
+  --board-ml: calc(var(--board-edge) * 57 / 140);
 
   /* 귀퉁이 장식 — 액자 두께와 무관한 고정 크기라, 폼이 커져도 작아지지 않는다.
      ⚠️ overhang은 반드시 .lobby-form-wrap의 padding보다 작아야 한다. 장식 레이어가
      액자 밖으로 걸치는 만큼 스크롤 영역이 넓어져, 넘치면 .stage-form에 스크롤바가
      생긴다(16px로 뒀다가 390×844에서 실제로 겪었다). */
-  --orn-size: 72px;
+  --orn-size: 126px;   /* 72px에서 1.75배 */
   --orn-overhang: 10px;
   position: relative;
   isolation: isolate;
   /* 나무 두께(조각의 49/140)만큼 지나온 뒤 양피지 안쪽 여백을 더한다 */
-  padding: calc(var(--board-edge) * 49 / 140 + 16px);
+  padding: calc(var(--board-edge) * 47 / 140 + 16px);
   max-width: 28rem;
   display: flex;
   flex-direction: column;
@@ -2379,7 +2384,9 @@ body {
 .lobby-form-board::before {
   content: '';
   position: absolute;
-  inset: calc(var(--board-margin) * -1);   /* 투명 여백만큼 바깥으로 */
+  /* 투명 여백만큼 바깥으로 — 네 변이 다르다 */
+  inset: calc(var(--board-mt) * -1) calc(var(--board-mr) * -1)
+         calc(var(--board-mb) * -1) calc(var(--board-ml) * -1);
   z-index: -2;
   border: var(--board-edge) solid transparent;
   border-image: var(--form-board) var(--board-slice) fill stretch;
@@ -2481,7 +2488,7 @@ body {
 @media (max-width: 767px) {
   .lobby-form-board {
     --board-edge: 20px;
-    --orn-size: 52px;
+    --orn-size: 91px;    /* 52px에서 1.75배 */
     --orn-overhang: 4px;   /* 바깥 여백 0.5rem(≈6.4px)보다 작아야 한다 */
   }
   .lobby-form-wrap { padding: 0.5rem; }
