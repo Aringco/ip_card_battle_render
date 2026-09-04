@@ -30,22 +30,37 @@ export function FormCard({
   title,
   description,
   children,
+  side,
+  footer,
 }: {
   title: string;
   description?: React.ReactNode;
   children: React.ReactNode;
+  /**
+   * 게임 규칙처럼 펼치면 길어지는 덩어리. 접혀 있을 때는 children 아래에 그대로 이어
+   * 붙고, 펼치면 **오른쪽 열**로 옮겨간다(넓은 화면에 한해). 세로로만 자라면 스테이지
+   * 박스를 넘겨 스크롤바가 생기는데, 가로는 380~527px이 늘 놀고 있어서 그쪽으로 편다.
+   */
+  side?: React.ReactNode;
+  /** 제출 버튼 — 2열이 되면 왼쪽 열 맨 아래에 남아야 해서 children과 분리한다. */
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="lobby-form-wrap min-h-full flex items-center justify-center">
       <div
-        className="lobby-form-board w-full max-w-md flex flex-col gap-3"
-        style={{ ['--form-board' as string]: `url(${LOBBY_ASSETS.formBoard})` }}
+        className="lobby-form-board w-full"
+        style={{
+          ['--form-board' as string]: `url(${LOBBY_ASSETS.formBoard})`,
+          ['--form-board-wide' as string]: `url(${LOBBY_ASSETS.formBoardWide})`,
+        }}
       >
-        <div>
+        <div className="lobby-form-head">
           <h3 className="font-bold text-board-ink">{title}</h3>
           {description && <p className="text-xs text-board-muted mt-0.5">{description}</p>}
         </div>
-        {children}
+        <div className="lobby-form-fields">{children}</div>
+        {side && <div className="lobby-form-side">{side}</div>}
+        {footer && <div className="lobby-form-foot">{footer}</div>}
       </div>
     </div>
   );

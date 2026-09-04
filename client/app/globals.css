@@ -2224,39 +2224,93 @@ body {
 
 /* ── 폼 백보드 — 나무 액자 ───────────────────────────────────────────────
    통짜로 늘리지 않고 border-image로 9분할해 그린다. 폼은 뷰포트마다 세로로 길쭉한
-   비율(대략 0.7:1)인데 그림은 정사각형이라, 통째로 늘리면 모서리 잎 덩어리가
-   가로로 눌린다. 9분할하면 네 모서리는 배율 그대로 두고 변만 늘어난다.
+   비율인데 그림은 정사각형이라, 통째로 늘리면 모서리 잎 덩어리가 가로로 눌린다.
+   9분할하면 네 모서리는 배율 그대로 두고 변만 늘어난다.
 
-   슬라이스 215는 실측값이다 — 그림에서 모서리 잎 덩어리가 안쪽으로 약 215px까지
-   뻗는다(프레임 나무막대 자체의 두께는 좌우 104px, 상하 77/66px). 잎 덩어리 전체가
-   모서리 조각 안에 들어가야 잘리지 않으므로 그 바깥값을 쓴다.
+   슬라이스는 실측값이다 — 모서리 장식이 안쪽으로 뻗는 거리.
+     세로형(back_board)      215 (나무막대 자체는 좌우 104px, 상하 77/66px)
+     가로형(back_board_wide) 190 (나무막대 자체는 좌우 75/76px, 상하 80/69px)
    fill이 있어야 가운데 양피지가 배경으로 함께 그려진다.
 
-   border-width가 곧 화면상 액자 두께다. 슬라이스(215)가 이 값으로 축소되므로,
-   나무막대는 그중 104/215 ≈ 48%인 약 15px로 보인다. 나머지는 양피지라 안쪽 여백 역할을
-   겸한다 — 그래서 padding을 따로 크게 줄 필요가 없다.
-
-   ⚠️ border-width를 키우면 위아래로 그만큼 두꺼워져 폼이 넘친다. 32px는 실측으로 정한
-   상한에 가까운 값이다 — 40px로 올려봤더니 1280×900의 "방 만들기+규칙"에서 카드가
-   552 → 568px가 되어 스크롤바가 생겼다. 이 값을 바꿨다면
-   client/scripts/measureLobby.mjs로 반드시 다시 잴 것. */
+   **액자를 카드가 아니라 의사요소 두 겹에 그리는 이유** — border-image-source는
+   보간되지 않아 카드에 직접 걸면 규칙을 펼치는 순간 그림만 툭 바뀐다. 두 겹을
+   겹쳐두고 opacity를 교대시켜야 폭이 늘어나는 동안 부드럽게 넘어간다. */
 .lobby-form-board {
   --board-edge: 32px;
-  border: var(--board-edge) solid transparent;
-  border-image: var(--form-board) 215 fill stretch;
-  padding: 0 0.25rem 0.25rem;
+  position: relative;
+  isolation: isolate;
+  padding: var(--board-edge);
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: max-width var(--t-expand) ease;
 }
+.lobby-form-board::before,
+.lobby-form-board::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--board-edge) solid transparent;
+  transition: opacity var(--t-expand) ease;
+}
+.lobby-form-board::before { border-image: var(--form-board) 215 fill stretch; opacity: 1; }
+.lobby-form-board::after  { border-image: var(--form-board-wide) 190 fill stretch; opacity: 0; }
+
+/* 규칙을 펼치면 — 오른쪽으로 넓어지고 가로형 액자로 넘어간다.
+   세로로만 자라면 스테이지 박스를 넘겨 스크롤바가 생기는데(액자 두께 상한도 거기서
+   나왔다), 가로는 1280에서 380px, 1920에서 527px이 늘 놀고 있다.
+   :has()로 읽으므로 GameRulesFields가 상태를 부모로 올릴 필요가 없다. */
+@media (min-width: 768px) {
+  .lobby-form-board:has([data-rules-open]) {
+    /* 스테이지가 허락하는 만큼 다 쓴다 — 1280에서 바깥 여백을 뺀 712px가 상한이고,
+       그보다 넓은 화면에서는 56rem에서 멈춘다(너무 넓으면 좌우 시선 이동이 길어진다).
+       좁게 잡으면 규칙 라벨이 말줄임으로 잘려 오히려 접었을 때보다 못해진다. */
+    max-width: min(56rem, 100%);
+    display: grid;
+    /* 오른쪽(규칙)이 조금 더 넓다 — 그 안에서 다시 2열 격자를 쓰기 때문 */
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-rows: auto 1fr auto;
+    column-gap: 1.25rem;
+  }
+  /* 왼쪽 열에 머리말·입력·버튼이 위에서 아래로, 오른쪽 열은 규칙이 통째로 차지한다 */
+  .lobby-form-board:has([data-rules-open]) > .lobby-form-head   { grid-area: 1 / 1; }
+  .lobby-form-board:has([data-rules-open]) > .lobby-form-fields { grid-area: 2 / 1; }
+  .lobby-form-board:has([data-rules-open]) > .lobby-form-foot   { grid-area: 3 / 1; align-self: end; }
+  .lobby-form-board:has([data-rules-open]) > .lobby-form-side   { grid-area: 1 / 2 / 4 / 3; }
+
+  /* 두 팀 이름은 접혀 있을 때만 한 줄에 나란히 둔다. 왼쪽 열은 카드의 45%뿐이라
+     나란히 두면 "비우면 무작위" 자리표시가 잘린다 — 규칙을 펼치면 세로가 크게
+     남으므로(552 → 342px) 위아래로 풀어도 넘치지 않는다.
+     위아래로 놓아도 여전히 맞붙어 있어, 같은 이름인지 눈으로 확인하기는 그대로 쉽다. */
+  .lobby-form-board:has([data-rules-open]) .lobby-team-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lobby-form-board:has([data-rules-open])::before { opacity: 0; }
+  .lobby-form-board:has([data-rules-open])::after  { opacity: 1; }
+}
+
+/* 입력들이 세로로 쌓이는 묶음 — 카드가 2열이 되어도 이 안의 간격은 그대로다 */
+.lobby-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 /* 양피지(크림색) 위 글자 — 예전 흰 카드용 회색은 여기서 흐리게 뜬다.
    나무·잎 색과 같은 계열의 갈색으로 맞춰 액자 안에 인쇄된 것처럼 보이게 한다. */
 .text-board-ink   { color: #4a3728; }
 .text-board-muted { color: #7d6a55; }
+.border-board-line { border-color: #cbb99a; }
 
 .lobby-form-wrap { padding: 1rem; }
 
-/* 좁은 화면(390×844)에서는 액자와 바깥 여백을 함께 줄인다.
+/* 좁은 화면(390×844)에서는 액자와 바깥 여백을 함께 줄인다. 가로 확장은 하지 않는다 —
+   안전영역이 371px인데 카드가 이미 358px이라 옆으로 펼 자리가 13px뿐이다.
    실측 근거 — 바깥 여백이 1rem일 때 액자 24px는 폼이 정확히 10px 넘쳐 스크롤바가 생겼다.
-   여백을 0.5rem으로 줄여 되찾은 만큼을 액자에 돌려주어 20px로 맞췄다(여유 약 10px).
-   이 두 값을 다시 키울 때는 measureLobby.mjs의 390×844 행을 반드시 확인할 것. */
+   여백을 0.5rem으로 줄여 되찾은 만큼을 액자에 돌려주어 20px로 맞췄다(여유 약 10px). */
 @media (max-width: 767px) {
   .lobby-form-board { --board-edge: 20px; }
   .lobby-form-wrap { padding: 0.5rem; }

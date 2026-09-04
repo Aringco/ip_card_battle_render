@@ -37,7 +37,14 @@ export const LOBBY_ASSETS = {
    * 않아야 하기 때문. 슬라이스 값의 근거는 globals.css의 .lobby-form-board 주석 참조.
    */
   formBoard: '/ui/back_board.webp',
-  /** 가로형 백보드 — 점수판용. 아직 어디에도 쓰이지 않는다. */
+  /**
+   * 게임 규칙을 펼쳐 폼이 가로로 넓어졌을 때 쓰는 가로형 백보드 (1226×701 WebP 46KB).
+   * score_board.webp에서 왼쪽 아래 나무 팻말을 지우고 액자만 남긴 것이다 — 팻말이
+   * 왼쪽 기둥·모서리와 겹쳐 있어 9분할(border-image)의 모서리 조각에 담기지 않았다.
+   * 지운 자리는 오른쪽 아래 모서리를 좌우 반전해 메웠다.
+   */
+  formBoardWide: '/ui/back_board_wide.webp',
+  /** 가로형 백보드 원본(팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
   scoreBoard: '/ui/score_board.webp',
 } as const;
 

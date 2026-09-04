@@ -32,6 +32,16 @@ export function SoloForm({
     <FormCard
       title="🤖 혼자 놀기"
       description="상대는 컴퓨터예요. 컴퓨터는 자기 차례마다 무작위 장소를 클릭합니다."
+      side={<GameRulesFields settings={settings} onChange={onSettings} />}
+      footer={
+        <button
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className="w-full bg-jungle-500 hover:bg-jungle-600 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+        >
+          컴퓨터와 대전 시작
+        </button>
+      }
     >
       <NicknameField
         inputRef={firstFieldRef}
@@ -48,15 +58,6 @@ export function SoloForm({
         avoid=""
       />
 
-      <GameRulesFields settings={settings} onChange={onSettings} />
-
-      <button
-        onClick={onSubmit}
-        disabled={!canSubmit}
-        className="bg-jungle-500 hover:bg-jungle-600 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
-      >
-        컴퓨터와 대전 시작
-      </button>
     </FormCard>
   );
 }

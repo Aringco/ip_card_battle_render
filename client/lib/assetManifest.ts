@@ -92,6 +92,7 @@ export const IMAGE_FILES: string[] = [
   "/lobby/panel_solo.webp",
   "/lobby/table_bg.webp",
   "/ui/back_board.webp",
+  "/ui/back_board_wide.webp",
   "/ui/score_board.webp"
 ];
 

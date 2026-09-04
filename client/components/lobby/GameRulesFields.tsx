@@ -56,7 +56,10 @@ export function GameRulesFields({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border border-gray-200 rounded-lg">
+    // data-rules-open은 CSS가 :has()로 읽는다 — 규칙이 펼쳐지면 폼 카드가 2열로 넓어지고
+    // 백보드가 가로형으로 교체된다(globals.css의 .lobby-form-board). 상태를 부모로
+    // 끌어올리는 대신 속성 하나로 알리면 폼 3종의 prop이 늘어나지 않는다.
+    <div className="border border-board-line rounded-lg" data-rules-open={open || undefined}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}

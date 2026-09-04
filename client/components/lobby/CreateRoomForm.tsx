@@ -51,6 +51,16 @@ export function CreateRoomForm({
           '방장이 되어 규칙을 정해요.'
         )
       }
+      side={<GameRulesFields settings={settings} onChange={onSettings} />}
+      footer={
+        <button
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className="w-full bg-jungle-600 hover:bg-jungle-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
+        >
+          방 만들기
+        </button>
+      }
     >
       <NicknameField
         inputRef={firstFieldRef}
@@ -62,7 +72,7 @@ export function CreateRoomForm({
       {/* 두 팀 이름은 한 줄에 나란히 둔다 — 같은 이름을 넣으면 안 된다는 규칙이 있어서,
           서로 떨어져 있으면 무엇과 겹쳤는지 눈으로 확인하기 어렵다. 주사위는 상대 칸에
           적힌 이름을 피해서 뽑으므로 주사위만 눌러서는 충돌이 나지 않는다. */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="lobby-team-pair grid grid-cols-2 gap-3">
         <TeamNameField
           label="우리 팀 이름 (선택)"
           value={teamName}
@@ -80,16 +90,6 @@ export function CreateRoomForm({
       </div>
 
       <TeamSelect team={team} onChange={onTeam} />
-
-      <GameRulesFields settings={settings} onChange={onSettings} />
-
-      <button
-        onClick={onSubmit}
-        disabled={!canSubmit}
-        className="bg-jungle-600 hover:bg-jungle-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
-      >
-        방 만들기
-      </button>
     </FormCard>
   );
 }
