@@ -1902,23 +1902,50 @@ body {
   cursor: not-allowed;
   opacity: 0.85;
 }
-/* 옛 LCD/CRT 화면처럼 가로 주사선을 얹는다.
-   .lobby-panel-bg가 아니라 **버튼 자신**의 ::after인 이유 두 가지 —
-     · .lobby-panel-bg에는 blur/scale filter가 걸려 있어, 그 안에 그리면 줄무늬까지
-       뭉개진다
-     · ::after는 마지막 자식이라 그림과 글자 **둘 다** 위에 얹힌다. 실제 화면이라면
-       글자에도 주사선이 지나가는 것이 맞다
+/* 옛 LCD/CRT 화면처럼 가로 주사선을 얹는다 — **가리키고 있는 버튼에만**.
+   늘 깔아두면 네 장이 동시에 지직거려 시선 둘 곳이 없어진다. hover한 하나만
+   "전원이 들어온" 것처럼 보이는 편이 어느 것을 고르는 중인지도 분명하다.
+
+   .lobby-panel-bg가 아니라 **버튼 자신**의 ::after인 이유 — 배경 레이어에는
+   blur/scale filter가 걸려 있어, 그 안에 그리면 줄무늬까지 함께 뭉개진다.
+
+   층 순서는 z-index로 못박는다(넷 다 위치지정 요소라 tree order가 아니라 z-index가
+   정한다). 글자는 주사선 **위**여야 읽힌다:
+     0 그림(.lobby-panel-bg) → 1 유리(::before) → 2 주사선(::after) → 3 글자(라벨)
    버튼이 overflow: hidden이라 둥근 모서리에 맞춰 잘린다. */
+.lobby-panel-bg { z-index: 0; }
 .lobby-panel::after {
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
   background: repeating-linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0.22) 0 1px,
     transparent 1px 3px
   );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.stage-panel-label { z-index: 3; }
+
+/* 줄무늬가 아래로 천천히 흐르고(주기와 간격이 같아 이음매가 없다) 밝기가 살짝
+   흔들린다 — 두 애니메이션이 서로 다른 속성을 건드리므로 함께 걸 수 있다. */
+@keyframes lobbyScanDrift {
+  to { background-position-y: 3px; }
+}
+@keyframes lobbyScanFlicker {
+  0%, 100% { opacity: 0.82; }
+  45%      { opacity: 1; }
+  70%      { opacity: 0.9; }
+}
+.lobby-panel-active:hover::after,
+.lobby-panel-active:focus-visible::after {
+  opacity: 1;
+  animation:
+    lobbyScanDrift 1.8s linear infinite,
+    lobbyScanFlicker 3.2s ease-in-out infinite;
 }
 
 @keyframes lobbyPanelPress {
@@ -2192,6 +2219,37 @@ body {
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg {
   filter: brightness(0.8);
 }
+/* 폼이 열린 패널은 **유리판**이 된다 — 테두리를 지우고 얕은 글래스모피즘을 얹는다.
+   확장된 뒤에는 이 패널이 버튼이 아니라 폼을 담는 바탕이라, 흰 테두리가 남아 있으면
+   화면 전체를 두르는 큰 사각형으로 보인다(그래서 border-color를 지운다).
+
+   유리는 ::before에 건다. z-index: 1이라 그림 위·주사선 아래에 들어가고,
+   backdrop-filter가 **그 아래 칠해진 것**(= 패널 그림)을 흐려 서리유리가 된다.
+   opacity 0.6은 "얕게"에 해당한다 — 1.0이면 그림이 우유처럼 덮여 무엇이 그려져
+   있었는지 사라진다. 강약은 이 한 값으로 조절하면 된다. */
+.lobby-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  backdrop-filter: blur(10px) saturate(115%);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+  opacity: 0;
+  transition: opacity var(--t-form) ease;
+}
+.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel::before,
+.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel::before,
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel::before {
+  opacity: 0.6;
+}
+.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel,
+.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel,
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel {
+  border-color: transparent;
+}
+
 /* 아트 패널은 폼이 열려도 흐림을 풀지 않는다 — 그림이 선명해지면 그 위에 뜬 폼 카드의
    글자와 경쟁한다. 밝기만 조금 올려 "열려 있다"는 신호를 준다. */
 .lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel.lobby-panel-art .lobby-panel-bg,
@@ -2403,6 +2461,9 @@ body {
   .lobby-panel-active:hover,
   .lobby-panel-active:focus-visible { transform: none; }
   .lobby-panel-pressed { animation: none; }
+  /* 주사선은 남기되 흐름·깜빡임만 멈춘다 — 어느 버튼을 가리키는지 알리는 신호다 */
+  .lobby-panel-active:hover::after,
+  .lobby-panel-active:focus-visible::after { animation: none; opacity: 1; }
   /* 밝아지는 것까지 막지는 않는다 — 어느 패널을 가리키고 있는지 알려주는 유일한 신호다.
      확대를 0으로 되돌리는 대신 양쪽 상태를 같은 배율로 고정한다: transform: none으로 두면
      blur가 다시 가장자리 바깥으로 번져 패널 테두리에 흰 띠가 생긴다. */
