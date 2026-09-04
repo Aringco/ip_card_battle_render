@@ -29,22 +29,20 @@ export const LOBBY_ASSETS = {
   panelCreate: '/lobby/panel_create.webp',
   panelJoin: '/lobby/panel_join.webp',
   /**
-   * 폼(혼자 놀기·방 만들기·방 참가하기) 뒤에 깔리는 나무 액자 백보드.
-   * 1024² WebP 67KB — 원본은 알파가 있는 PNG(1MB)였고, 팔레트 PNG로 줄여도 364KB라
-   * table_bg와 같은 이유로 WebP를 골랐다(로비 프리로드 대상이라 용량이 곧 진입 대기시간).
+   * 폼(혼자 놀기·방 만들기·방 참가하기) 뒤에 깔리는 나무 액자와 네 귀퉁이 장식.
    *
-   * 통째로 늘리지 않고 `border-image`로 9분할해 쓴다 — 모서리 잎 덩어리가 찌그러지지
-   * 않아야 하기 때문. 슬라이스 값의 근거는 globals.css의 .lobby-form-board 주석 참조.
+   * **액자와 장식을 한 장으로 합치지 않는다.** 액자는 `border-image`로 9분할해
+   * 어떤 크기에도 늘어나야 하는데, 귀퉁이 장식을 거기 합쳐 넣으면 모서리 조각
+   * (border-width × border-width, 42px 남짓)에 통째로 압축돼 잎·버섯·도토리가
+   * 초록 얼룩이 된다. 실제로 한 번 합쳐봤다가 되돌렸다.
+   * 장식은 별도 배경 레이어로 **고정 크기**로 얹는다(globals.css의 .lobby-form-board).
    */
   formBoard: '/ui/back_board.webp',
-  /**
-   * 게임 규칙을 펼쳐 폼이 가로로 넓어졌을 때 쓰는 가로형 백보드 (1226×701 WebP 46KB).
-   * score_board.webp에서 왼쪽 아래 나무 팻말을 지우고 액자만 남긴 것이다 — 팻말이
-   * 왼쪽 기둥·모서리와 겹쳐 있어 9분할(border-image)의 모서리 조각에 담기지 않았다.
-   * 지운 자리는 오른쪽 아래 모서리를 좌우 반전해 메웠다.
-   */
-  formBoardWide: '/ui/back_board_wide.webp',
-  /** 가로형 백보드 원본(팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
+  cornerTL: '/ui/corner_tl.webp',
+  cornerTR: '/ui/corner_tr.webp',
+  cornerBL: '/ui/corner_bl.webp',
+  cornerBR: '/ui/corner_br.webp',
+  /** 가로형 백보드 원본(나무 팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
   scoreBoard: '/ui/score_board.webp',
 } as const;
 

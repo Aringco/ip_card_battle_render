@@ -51,7 +51,10 @@ export function FormCard({
         className="lobby-form-board w-full"
         style={{
           ['--form-board' as string]: `url(${LOBBY_ASSETS.formBoard})`,
-          ['--form-board-wide' as string]: `url(${LOBBY_ASSETS.formBoardWide})`,
+          ['--orn-tl' as string]: `url(${LOBBY_ASSETS.cornerTL})`,
+          ['--orn-tr' as string]: `url(${LOBBY_ASSETS.cornerTR})`,
+          ['--orn-bl' as string]: `url(${LOBBY_ASSETS.cornerBL})`,
+          ['--orn-br' as string]: `url(${LOBBY_ASSETS.cornerBR})`,
         }}
       >
         <div className="lobby-form-head">
