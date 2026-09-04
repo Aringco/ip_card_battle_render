@@ -8,6 +8,11 @@
      전혀 실행되지 못하는 극단적인 경우의 최후 폴백이므로, lib/uiSettings.ts의
      DEFAULT_FONT_STEP(4단계)과 같은 값(FONT_SCALE_STEPS[3]=1.12)으로 맞춰둔다. */
   --font-scale: 1.12;
+  /* 사용자가 고른 글씨 크기를 그대로 비추는 거울. lib/uiSettings.ts가 --font-scale을
+     documentElement에 인라인으로 얹으므로, 같은 요소에서 참조하면 그 값이 들어온다.
+     로비 폼처럼 --font-scale을 자기 몫으로 다시 계산해야 하는 곳이 "원래 사용자 설정"을
+     잃지 않도록 하기 위한 것 — 폼은 이 값에 배수를 곱해 쓴다. */
+  --font-scale-user: var(--font-scale);
 }
 
 @theme inline {
@@ -2343,7 +2348,17 @@ body {
      기본값 1이고, 아래 미디어쿼리에서 넓은 화면·접힌 상태에만 올린다. */
   zoom: var(--form-zoom, 1);
 
-  --board-edge: 26px;
+  /* 액자 그림은 원본 PNG를 손대지 않고 쓴다. 그래서 바깥에 투명 여백(상 73 / 좌 61px,
+     1024² 기준)이 붙어 있고 나무는 그 안쪽 49~51px이다.
+       --board-slice  그림에서 잘라낼 조각(여백 + 나무 + 둥근 모서리가 다 들어가는 크기)
+       --board-edge   그 조각을 화면에 그릴 두께
+       --board-margin 그중 투명 여백이 차지하는 몫 — 이만큼 ::before를 **바깥으로** 밀어야
+                      나무가 카드 모서리에 딱 맞는다. 안 밀면 카드 안쪽에 빈 띠가 생기고
+                      귀퉁이 장식이 나무에서 그만큼 떨어져 뜬다. */
+  --board-slice: 140;
+  --board-edge: 40px;
+  --board-margin: calc(var(--board-edge) * 73 / 140);
+
   /* 귀퉁이 장식 — 액자 두께와 무관한 고정 크기라, 폼이 커져도 작아지지 않는다.
      ⚠️ overhang은 반드시 .lobby-form-wrap의 padding보다 작아야 한다. 장식 레이어가
      액자 밖으로 걸치는 만큼 스크롤 영역이 넓어져, 넘치면 .stage-form에 스크롤바가
@@ -2352,7 +2367,8 @@ body {
   --orn-overhang: 10px;
   position: relative;
   isolation: isolate;
-  padding: var(--board-edge);
+  /* 나무 두께(조각의 49/140)만큼 지나온 뒤 양피지 안쪽 여백을 더한다 */
+  padding: calc(var(--board-edge) * 49 / 140 + 16px);
   max-width: 28rem;
   display: flex;
   flex-direction: column;
@@ -2363,10 +2379,10 @@ body {
 .lobby-form-board::before {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: calc(var(--board-margin) * -1);   /* 투명 여백만큼 바깥으로 */
   z-index: -2;
   border: var(--board-edge) solid transparent;
-  border-image: var(--form-board) 58 fill stretch;
+  border-image: var(--form-board) var(--board-slice) fill stretch;
 }
 /* 귀퉁이 장식 — 액자보다 위(z-index -1). 액자 바깥으로 조금 걸치게 inset을 음수로 준다 */
 .lobby-form-board::after {
@@ -2391,8 +2407,19 @@ body {
      **규칙을 펼치면 1로 되돌린다.** 그때는 카드가 이미 스테이지 폭을 다 쓰고 있어
      더 키울 자리가 없고, 렌더 폭이 그대로인 채 글자만 커지면 규칙 라벨이 다시
      말줄임으로 잘린다(가로 확장으로 겨우 없앤 문제다). */
-  .lobby-form-board { --form-zoom: 1.45; }
+  .lobby-form-board { --form-zoom: 1.35; }
   .lobby-form-board:has([data-rules-open]) { --form-zoom: 1; }
+
+  /* 글자만 확대에서 떼어낸다 — 액자·장식은 --form-zoom만큼 커지되, 글자는 배율과 무관하게
+     화면에서 약 14pt로 보이게 zoom을 나눠 되돌린다.
+     **--text-* 를 다시 정의해서는 안 된다** — Tailwind v4는 .text-sm 을
+     `calc(.875rem * var(--font-scale))` 로 인라인 컴파일해 --text-sm 을 읽지 않는다.
+     동적으로 남는 것은 --font-scale뿐이라 그쪽을 쓴다.
+     계수 1.488 = 목표 14pt(18.67px) ÷ (0.875rem × 12.8px/rem × 기본 배수 1.12).
+     --font-scale-user를 곱하므로 사용자가 고른 글씨 크기 단계는 그대로 반영된다. */
+  .lobby-form-board {
+    --font-scale: calc(var(--font-scale-user) * 1.488 / var(--form-zoom, 1));
+  }
 
   .lobby-form-board:has([data-rules-open]) {
     /* 스테이지가 허락하는 만큼 다 쓴다 — 1280에서 바깥 여백을 뺀 712px가 상한이고,
@@ -2445,7 +2472,7 @@ body {
 
 /* 귀퉁이 장식이 액자 밖으로 걸치는 만큼(--orn-overhang × zoom)을 여기서 받아준다.
    여백이 모자라면 그만큼 스크롤 영역이 넓어져 .stage-form에 스크롤바가 생긴다. */
-.lobby-form-wrap { padding: 1.5rem; }
+.lobby-form-wrap { padding: 1.25rem; }
 
 /* 좁은 화면(390×844)에서는 액자와 바깥 여백을 함께 줄인다. 가로 확장은 하지 않는다 —
    안전영역이 371px인데 카드가 이미 358px이라 옆으로 펼 자리가 13px뿐이다.
