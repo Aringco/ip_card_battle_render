@@ -96,6 +96,9 @@ export const IMAGE_FILES: string[] = [
   "/ui/corner_br.webp",
   "/ui/corner_tl.webp",
   "/ui/corner_tr.webp",
+  "/ui/laurel_book.webp",
+  "/ui/medal_1.webp",
+  "/ui/medal_2.webp",
   "/ui/score_board.webp"
 ];
 

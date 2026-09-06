@@ -5,6 +5,7 @@ import type { Animal, ClientGameState, Team } from 'shared';
 import { ANIMALS, LOSE_HP } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { BoardFrame } from '@/components/ui/BoardFrame';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
 const FLAVOR_TEXT: Record<Animal, string> = {
   sheep: '실용신안의 실리주의로 판을 키우셨군요!',
@@ -27,6 +28,25 @@ function pickFlavorAnimal(gameState: ClientGameState, winner: Team | 'draw' | nu
     }
   }
   return best;
+}
+
+/**
+ * 판 위쪽 한가운데에 걸치는 월계수 문장.
+ *
+ * `.board-crest`가 액자 윗변을 정확히 반씩 나눠 물게 하고(translate(-50%, -50%)),
+ * 위로 삐져나온 절반만큼 판이 스스로 위 여백을 낸다 — globals.css 참고.
+ * `BoardFrame`의 직계 자식이어야 한다(`:has(> .board-crest)`로 그 여백을 잡는다).
+ */
+function BoardCrest() {
+  return (
+    <img
+      src={LOBBY_ASSETS.crestLaurel}
+      alt=""
+      aria-hidden
+      className="board-crest"
+      draggable={false}
+    />
+  );
 }
 
 interface ConfettiPiece {
@@ -75,7 +95,15 @@ export function GameEndScreen({
     [winner],
   );
 
-  const winnerEmoji = winner === 'draw' ? '🤝' : winner === 'A' ? '🟢' : '🔵';
+  // 승패 표시 — 동그란 팀 마크(🟢/🔵) 대신 메달을 쓴다. 팀 색은 아래 체력표가
+  // 이미 말해주고 있어서, 이 자리에는 "이겼는가 졌는가"가 훨씬 크게 보여야 한다.
+  //   내가 이겼거나 관전자(=발표된 팀이 이긴 것) → 금메달
+  //   내가 졌으면                                → 은메달
+  //   무승부는 어느 쪽도 아니므로 이모지를 그대로 둔다
+  const decided = winner === 'A' || winner === 'B';
+  const medal = !decided ? null : myTeam === null || winner === myTeam
+    ? { src: LOBBY_ASSETS.medalFirst, alt: '1등' }
+    : { src: LOBBY_ASSETS.medalSecond, alt: '2등' };
   // 관전자(myTeam === null)에게는 "우리팀"이 없다 — 예전엔 그 경우가 그대로 "우리팀
   // 패배!"로 떨어져 이긴 팀을 구경하고도 패배 문구를 보게 됐다.
   const winnerText =
@@ -112,7 +140,13 @@ export function GameEndScreen({
 
       {/* 승리 텍스트 */}
       <div className="winner-bounce-in flex flex-col items-center gap-3">
-        <div style={{ fontSize: '5rem' }}>{winnerEmoji}</div>
+        {medal ? (
+          // 높이를 맞춰 둔다 — 금메달이 밀 이삭 때문에 훨씬 넓어서, 폭을 맞추면
+          // 은메달만 커 보인다
+          <img src={medal.src} alt={medal.alt} className="h-24 w-auto select-none" draggable={false} />
+        ) : (
+          <div style={{ fontSize: '5rem' }}>🤝</div>
+        )}
         <h2 className="text-3xl font-bold text-jungle-900">{winnerText}</h2>
         <p className="text-xs font-semibold text-jungle-400 -mt-1">{reasonText}</p>
         {flavorAnimal && (
@@ -126,6 +160,7 @@ export function GameEndScreen({
         className="w-full max-w-2xl"
         style={{ animation: 'bounceIn 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 200ms both' }}
       >
+        <BoardCrest />
         {/* 팀 이름과 체력을 한 줄에 붙여 쓰면 이름이 조금만 길어도 줄바꿈되므로,
             좌우 두 칸으로 나눈 뒤 이름 아래에 체력을 따로 크게 적는다. */}
         <div className="grid grid-cols-2 gap-6 mb-1">
@@ -191,6 +226,7 @@ export function GameEndScreen({
         className="w-full max-w-2xl"
         style={{ animation: 'bounceIn 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 300ms both' }}
       >
+        <BoardCrest />
         <p className="text-center text-base font-bold text-board-ink mb-4">행동 사용 통계</p>
         <div className="grid grid-cols-2 gap-8">
           {(['A', 'B'] as const).map(t => (

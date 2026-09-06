@@ -2513,6 +2513,28 @@ body {
   background-size: var(--orn-size) var(--orn-size);
 }
 
+/* 판 위쪽 한가운데에 걸치는 문장(월계수) — 액자 윗변을 정확히 반씩 나눠 물고 앉는다.
+   translate(-50%, -50%)가 그 "반씩"을 만든다: 가로는 가운데 정렬, 세로는 자기 높이의
+   절반만큼 위로 올라가 top: 0(= 액자 윗변) 위아래로 걸친다.
+
+   ⚠️ 액자 위로 삐져나온 절반만큼 **위 요소와 겹친다.** 그래서 문장을 단 판은 그만큼
+   위쪽에 자리를 낸다(아래 :has 규칙). 이 비율 0.42는 그림 비율(320:268 ≈ 0.84)의 절반이다 —
+   그림을 다른 비율로 바꾸면 여기도 함께 고쳐야 겹침이 다시 생기지 않는다. */
+.board-crest {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: var(--crest-w, 132px);
+  height: auto;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+}
+.board-frame:has(> .board-crest) {
+  margin-top: calc(var(--crest-w, 132px) * 0.42);
+}
+
 /* 양피지 위에 얹히는 안쪽 칸 — 대기실의 팀 목록·채팅처럼 원래 회색 상자였던 것들.
    흰색·회색을 그대로 두면 양피지 위에서 종이 조각을 붙여 놓은 것처럼 겉돈다.
    따뜻한 반투명 흰색이라 아래 양피지 결이 비쳐 같은 재질로 읽힌다. */

@@ -48,6 +48,16 @@ export const LOBBY_ASSETS = {
   cornerBR: '/ui/corner_br.webp',
   /** 가로형 백보드 원본(나무 팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
   scoreBoard: '/ui/score_board.webp',
+  /**
+   * 게임 결과 화면 장식 — 받은 스프라이트 시트(1024²)에서 잘라낸 세 조각.
+   *
+   * 사각형으로 자르면 이웃 오브젝트가 모서리에 딸려 오므로(금메달 오른쪽 위에 도토리가
+   * 실제로 들어왔다) **연결 성분 단위**로 남기고 나머지를 알파 0으로 지웠다. 잘라낸
+   * 좌표와 방법은 `client/public/ui/README.md`에 적어 뒀다.
+   */
+  crestLaurel: '/ui/laurel_book.webp',   // 버섯+책 월계수 — 판 상단 문장
+  medalFirst: '/ui/medal_1.webp',        // 금메달 "1" — 승리팀
+  medalSecond: '/ui/medal_2.webp',       // 은메달 "2" — 패배팀
 } as const;
 
 /**
