@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { GameSettings, LobbyChatMessage, LobbyPlayer, Seat, Team } from 'shared';
 import { SEATS, SPECTATOR, TEAM_NAME_MAX_LEN, isPlayingSeat, randomTeamName } from 'shared';
 import { SEAT_META, seatLabel } from '@/lib/seatInfo';
+import { BoardFrame } from '@/components/ui/BoardFrame';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
 
@@ -87,7 +88,10 @@ export function WaitingRoom({
           : null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-10 w-full max-w-4xl flex flex-col gap-6">
+    // 로비 폼과 같은 나무 액자를 두른다 — 예전에는 흰 카드 한 장이라, 카드테이블
+    // 일러스트 위에 인쇄물을 얹어 놓은 것처럼 세계관이 끊겼다. 안쪽 칸들도 회색이
+    // 아니라 .board-panel(반투명 따뜻한 흰색)이라야 양피지와 같은 재질로 읽힌다.
+    <BoardFrame className="w-full max-w-4xl flex flex-col gap-6">
       <RoomCodeHeader roomId={roomId} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -137,7 +141,7 @@ export function WaitingRoom({
           >
             👑 게임 시작
           </button>
-          {blockReason && <p className="text-center text-base text-gray-400">{blockReason}</p>}
+          {blockReason && <p className="text-center text-base text-board-muted">{blockReason}</p>}
         </div>
       ) : iAmSpectator ? (
         // 관전자는 준비할 것이 없다(서버도 항상 준비 완료로 둔다) — 준비 버튼 대신
@@ -155,7 +159,7 @@ export function WaitingRoom({
           >
             {me?.ready ? '준비 완료 ✓ (누르면 취소)' : '준비'}
           </button>
-          <p className="text-center text-base text-gray-400">
+          <p className="text-center text-base text-board-muted">
             방장이 시작 버튼을 누르면 게임이 시작돼요.
           </p>
         </div>
@@ -167,10 +171,10 @@ export function WaitingRoom({
         <RuleSummary settings={settings} teamNames={teamNames} />
       )}
 
-      <button onClick={onLeave} className="text-lg text-gray-400 hover:text-gray-600">
+      <button onClick={onLeave} className="text-lg text-board-muted hover:text-board-ink">
         ← 방 나가기
       </button>
-    </div>
+    </BoardFrame>
   );
 }
 
@@ -192,7 +196,7 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
 
   return (
     <div className="text-center">
-      <p className="text-lg text-gray-400">방 코드</p>
+      <p className="text-lg text-board-muted">방 코드</p>
       <p className="text-6xl font-mono font-bold text-green-700 tracking-widest">{roomId}</p>
       <div className="flex flex-wrap gap-2 justify-center mt-3">
         <button
@@ -203,12 +207,12 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
         </button>
         <button
           onClick={() => copy('code')}
-          className="bg-gray-100 hover:bg-gray-200 text-gray-600 text-base font-semibold px-4 py-2 rounded-lg transition"
+          className="board-panel hover:brightness-105 text-board-ink text-base font-semibold px-4 py-2 transition"
         >
           📋 방 코드 복사
         </button>
       </div>
-      <p className="text-base text-gray-400 mt-2 h-6">
+      <p className="text-base text-board-muted mt-2 h-6">
         {copied === 'link'
           ? '초대 링크를 복사했어요! 붙여넣기로 친구에게 보내세요.'
           : copied === 'code'
@@ -242,7 +246,7 @@ function TeamColumn({
   const meta = SEAT_META[team];
 
   return (
-    <div className={`bg-gray-50 rounded-xl p-4 min-h-[140px] border ${meta.border}`}>
+    <div className={`board-panel p-4 min-h-[140px] border ${meta.border}`}>
       <TeamNameRow
         team={team}
         name={name}
@@ -252,7 +256,7 @@ function TeamColumn({
       />
 
       {players.length === 0 ? (
-        <p className="text-base text-gray-400 mt-2">아직 아무도 없어요</p>
+        <p className="text-base text-board-muted mt-2">아직 아무도 없어요</p>
       ) : (
         <div className="flex flex-col gap-1 mt-2">
           {players.map(p => (
@@ -289,15 +293,15 @@ function SpectatorRow({
   onTransferHost: (targetMemberId: string) => void;
 }) {
   return (
-    <div className={`bg-gray-50 rounded-xl px-4 py-3 border ${SEAT_META[SPECTATOR].border}`}>
+    <div className={`board-panel px-4 py-3 border ${SEAT_META[SPECTATOR].border}`}>
       {/* 아무도 없을 때는 한 줄로만 남긴다 — 대기실은 이미 길어서(팀·채팅·규칙) 빈 칸이
           자리를 크게 차지하면 정작 자주 누르는 버튼이 스크롤 밖으로 밀린다. */}
       <div className="flex items-baseline gap-2 flex-wrap">
-        <p className="font-semibold text-gray-700 text-lg">
+        <p className="font-semibold text-board-ink text-lg">
           {seatLabel(SPECTATOR)}
           {players.length > 0 && ` (${players.length}명)`}
         </p>
-        <p className="text-base text-gray-400">
+        <p className="text-base text-board-muted">
           {players.length === 0
             ? '아직 관전자가 없어요 — 구경만 하려면 이름 옆 "👀 관전자"를 누르세요'
             : '게임에 참여하지 않고 구경만 해요'}
@@ -386,7 +390,7 @@ function TeamNameRow({
         </button>
         <button
           onClick={() => setEditing(false)}
-          className="text-base text-gray-400 hover:text-gray-600 px-1 shrink-0"
+          className="text-base text-board-muted hover:text-board-ink px-1 shrink-0"
         >
           취소
         </button>
@@ -396,14 +400,14 @@ function TeamNameRow({
 
   return (
     <div className="flex items-center gap-2">
-      <p className="font-semibold text-gray-700 text-lg truncate">
+      <p className="font-semibold text-board-ink text-lg truncate">
         {meta.badge} {name ?? `${meta.label} (미정)`}
       </p>
       {canEdit && (
         <button
           onClick={() => setEditing(true)}
           title="팀 이름 바꾸기"
-          className="text-base text-gray-400 hover:text-gray-600 shrink-0"
+          className="text-base text-board-muted hover:text-board-ink shrink-0"
         >
           ✏️
         </button>
@@ -456,7 +460,7 @@ function PlayerRow({
           !player.connected ? 'bg-red-300' : isSpectator ? 'bg-purple-400' : player.ready ? 'bg-green-500' : 'bg-gray-300'
         }`}
       />
-      <span className={`text-lg truncate ${isMe ? 'text-green-700 font-semibold' : 'text-gray-700'}`}>
+      <span className={`text-lg truncate ${isMe ? 'text-green-700 font-semibold' : 'text-board-ink'}`}>
         {isTheHost && '👑 '}
         {player.nickname}
         {isMe && ' (나)'}
@@ -478,7 +482,7 @@ function PlayerRow({
           </button>
           <button
             onClick={() => setConfirming(null)}
-            className="text-sm text-gray-400 hover:text-gray-600 px-1"
+            className="text-sm text-board-muted hover:text-board-ink px-1"
           >
             취소
           </button>
@@ -491,7 +495,7 @@ function PlayerRow({
                 key={seat}
                 onClick={() => onMove(player.memberId, seat)}
                 title={`${SEAT_META[seat].label}(으)로 옮기기`}
-                className="text-sm text-gray-500 bg-white border border-gray-200 hover:bg-gray-100 px-2 py-1 rounded"
+                className="text-sm text-board-muted board-panel hover:brightness-105 px-2 py-1 rounded"
               >
                 {seatLabel(seat)}
               </button>
@@ -501,14 +505,14 @@ function PlayerRow({
               <button
                 onClick={() => setConfirming('host')}
                 title="방장 넘기기"
-                className="text-sm text-gray-500 bg-white border border-gray-200 hover:bg-gray-100 px-2 py-1 rounded"
+                className="text-sm text-board-muted board-panel hover:brightness-105 px-2 py-1 rounded"
               >
                 👑
               </button>
               <button
                 onClick={() => setConfirming('kick')}
                 title="내보내기"
-                className="text-sm text-red-400 bg-white border border-gray-200 hover:bg-red-50 px-2 py-1 rounded"
+                className="text-sm text-red-400 board-panel hover:bg-red-50/70 px-2 py-1 rounded"
               >
                 ✕
               </button>
@@ -541,36 +545,36 @@ function HostRulesPanel({
   const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
 
   return (
-    <div className="border border-gray-200 rounded-xl">
+    <div className="board-panel">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-lg font-semibold text-gray-600"
+        className="w-full flex items-center justify-between px-4 py-3 text-lg font-semibold text-board-ink"
       >
         <span>⚙️ 게임 규칙 바꾸기</span>
-        <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
+        <span className="text-board-muted">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
 
       {open ? (
-        <div className="px-4 pb-4 border-t border-gray-100 pt-3 flex flex-col gap-3">
+        <div className="px-4 pb-4 border-t border-board-line/60 pt-3 flex flex-col gap-3">
           <GameRulesInputs settings={draft} onChange={setDraft} />
           <div className="flex gap-2">
             <button
               onClick={() => onApply(draft)}
               disabled={!dirty}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-lg py-2.5 rounded-lg transition"
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-board-muted text-white font-semibold text-lg py-2.5 rounded-lg transition"
             >
               {dirty ? '규칙 적용' : '적용됨 ✓'}
             </button>
             <button
               onClick={() => setDraft(settings)}
               disabled={!dirty}
-              className="text-lg text-gray-400 hover:text-gray-600 disabled:text-gray-300 px-4"
+              className="text-lg text-board-muted hover:text-board-ink disabled:text-gray-300 px-4"
             >
               되돌리기
             </button>
           </div>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-board-muted">
             적용하면 대기실의 모든 참가자에게 바뀐 규칙이 바로 보여요.
           </p>
         </div>

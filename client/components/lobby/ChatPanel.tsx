@@ -51,8 +51,8 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <p className="px-4 py-2.5 text-lg font-semibold text-gray-600 bg-gray-50 border-b border-gray-100">
+    <div className="board-panel overflow-hidden">
+      <p className="px-4 py-2.5 text-lg font-semibold text-board-ink border-b border-board-line/60">
         💬 대기실 채팅
       </p>
 
@@ -65,13 +65,13 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
         className="h-48 overflow-y-auto px-4 py-3 flex flex-col gap-1"
       >
         {messages.length === 0 ? (
-          <p className="text-base text-gray-400 m-auto">아직 대화가 없어요. 먼저 인사해 보세요!</p>
+          <p className="text-base text-board-muted m-auto">아직 대화가 없어요. 먼저 인사해 보세요!</p>
         ) : (
           messages.map(m => <ChatLine key={m.id} message={m} isMine={m.memberId === myMemberId} />)
         )}
       </div>
 
-      <div className="flex gap-2 px-3 py-3 border-t border-gray-100">
+      <div className="flex gap-2 px-3 py-3 border-t border-board-line/60">
         <input
           type="text"
           value={draft}
@@ -92,7 +92,7 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
         <button
           onClick={submit}
           disabled={!canSend}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold text-base px-4 rounded-lg shrink-0 transition"
+          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-board-muted text-white font-semibold text-base px-4 rounded-lg shrink-0 transition"
         >
           전송
         </button>
@@ -103,7 +103,7 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
 
 function ChatLine({ message, isMine }: { message: LobbyChatMessage; isMine: boolean }) {
   if (message.kind === 'system') {
-    return <p className="text-sm text-gray-400 text-center py-0.5">{message.text}</p>;
+    return <p className="text-sm text-board-muted text-center py-0.5">{message.text}</p>;
   }
 
   // 관전자(팀이 A도 B도 아닌 사람)는 두 팀 색 어느 쪽도 아니어야 헷갈리지 않는다.
@@ -117,7 +117,7 @@ function ChatLine({ message, isMine }: { message: LobbyChatMessage; isMine: bool
         {message.team === SPECTATOR && '👀 '}
         {message.nickname}
       </span>
-      <span className="text-gray-700">{message.text}</span>
+      <span className="text-board-ink">{message.text}</span>
     </p>
   );
 }

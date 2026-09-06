@@ -14,6 +14,24 @@
 
 경로는 [`client/lib/lobbyAssets.ts`](../../lib/lobbyAssets.ts) 한 곳에서만 참조한다.
 
+## 액자를 쓰는 화면은 셋이다
+
+`back_board.png` + 귀퉁이 장식은 이제 로비 폼만의 것이 아니다.
+
+| 화면 | 컴포넌트 | CSS |
+| --- | --- | --- |
+| 로비 폼(혼자·방 만들기·방 참가) | `lobby/Field.tsx`의 `FormCard` | `.lobby-form-board` |
+| 대기실 | `lobby/WaitingRoom.tsx` | `.board-frame` |
+| 게임 결과 창(체력표·행동 통계) | `game/GameEndScreen.tsx` | `.board-frame` |
+
+뒤의 둘은 [`ui/BoardFrame.tsx`](../../components/ui/BoardFrame.tsx)를 쓴다. **액자를 그리는
+규칙(아래 9분할 슬라이스·투명 여백 보정·장식 크기)은 `.lobby-form-board, .board-frame`
+공유 선언 한 곳에 있다** — 아래 네 숫자를 다시 잴 일이 생겨도 고칠 곳은 하나뿐이다.
+
+`.board-frame`은 장식을 폼보다 작게 쓴다(`--orn-size: 96px`, `--board-edge: 34px`).
+폼의 126px은 `zoom: 1.75`가 걸린 값이라 확대 없는 곳에 그대로 쓰면 과하고, 결과 창처럼
+키가 낮은 카드(약 210px)에서는 위아래 장식이 서로 닿아 가운데가 잎으로 막힌다.
+
 ## 액자와 귀퉁이 장식을 한 장으로 합치지 말 것
 
 액자는 `border-image`로 9분할해 어떤 크기에도 늘어나야 한다. 그런데 **모서리 조각은

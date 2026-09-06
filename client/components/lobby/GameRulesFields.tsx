@@ -144,7 +144,7 @@ export function GameRulesInputs({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <label className="text-lg text-gray-500">선 플레이어(먼저 시작하는 팀)</label>
+        <label className="text-lg text-board-muted">선 플레이어(먼저 시작하는 팀)</label>
         <div className="flex gap-1">
           {FIRST_TEAM_OPTIONS.map(({ value, label }) => (
             <button
@@ -154,7 +154,7 @@ export function GameRulesInputs({
               className={`flex-1 py-2 rounded-lg font-semibold transition text-base ${
                 settings.firstTeam === value
                   ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'board-panel text-board-ink hover:brightness-105'
               }`}
             >
               {label}
@@ -168,9 +168,9 @@ export function GameRulesInputs({
           return (
             <div key={key} className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2 text-lg">
-                <label className="text-gray-500 whitespace-nowrap">{title}</label>
+                <label className="text-board-muted whitespace-nowrap">{title}</label>
                 {/* 라벨과 입력창 사이를 점선으로 이어 어느 값이 어느 항목인지 눈으로 따라가기 쉽게 한다. */}
-                <span className="flex-1 min-w-4 border-b-2 border-dotted border-gray-300" />
+                <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
                 <input
                   type="number"
                   min={min}
@@ -183,9 +183,9 @@ export function GameRulesInputs({
                   onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value) })}
                   className="input-base input-rule"
                 />
-                <span className="text-gray-400 w-8 shrink-0">{suffix}</span>
+                <span className="text-board-muted w-8 shrink-0">{suffix}</span>
               </div>
-              {hint && <p className="text-sm text-gray-400 text-right">{hint}</p>}
+              {hint && <p className="text-sm text-board-muted text-right">{hint}</p>}
             </div>
           );
         })}
@@ -212,7 +212,7 @@ export function RuleSummary({
   // 규칙 종류(승패·축제 / 제한시간)끼리 묶어 두 행으로 나눈다 — 한 줄에 흘려두면
   // 화면 폭에 따라 마지막 한 항목만 다음 줄로 넘어가 어정쩡하게 보인다.
   return (
-    <div className="bg-gray-50 rounded-xl p-4 text-base text-gray-500 flex flex-col gap-1.5">
+    <div className="board-panel p-4 text-base text-board-muted flex flex-col gap-1.5">
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">
         <span>🚩 선공 {firstTeamLabel}</span>
         <span>🎯 목표 {settings.targetScore}점</span>

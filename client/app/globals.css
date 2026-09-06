@@ -2443,14 +2443,13 @@ body {
 
    두 의사요소의 역할: ::before가 액자, ::after가 귀퉁이 장식이다. z-index로 순서를
    못박아 장식이 액자 위에 오게 한다. */
-.lobby-form-board {
-  /* 카드 전체(액자·귀퉁이 장식·글자·입력창)를 한 번에 키운다.
-     transform: scale()이 아니라 zoom인 이유 — scale은 레이아웃 상자를 그대로 둬서
-     주변이 커진 것을 모르고 스테이지 밖으로 삐져나간다. zoom은 상자까지 함께 커져
-     .stage-form의 스크롤 판정과 measureLobby 실측이 눈에 보이는 것과 일치한다.
-     기본값 1이고, 아래 미디어쿼리에서 넓은 화면·접힌 상태에만 올린다. */
-  zoom: var(--form-zoom, 1);
-
+/* 액자·귀퉁이 장식은 로비 폼 말고도 쓴다 — 대기실(.board-frame), 게임 결과 창.
+   그래서 "그림을 어떻게 그리는가"(아래 세 규칙)와 "폼을 어떻게 배치하는가"(그 다음
+   .lobby-form-board 전용 규칙)를 갈라 둔다. 액자 숫자를 한 곳에서만 만지려는 것이고,
+   ui/README.md가 "그림을 교체하면 다시 재라"고 말하는 네 값도 여기 하나뿐이다.
+   .board-frame은 zoom·max-width·2열 배치를 갖지 않는 순수 액자다. */
+.lobby-form-board,
+.board-frame {
   /* 액자 그림은 원본 PNG를 손대지 않고 쓴다. 그래서 바깥에 투명 여백이 붙어 있고
      (1024² 기준 상 78 / 하 67 / 좌 57 / 우 56px) 나무는 그 안쪽 46~49px이다.
        --board-slice  그림에서 잘라낼 조각(여백 + 나무 + 둥근 모서리가 다 들어가는 크기)
@@ -2468,23 +2467,29 @@ body {
   --board-ml: calc(var(--board-edge) * 57 / 140);
 
   /* 귀퉁이 장식 — 액자 두께와 무관한 고정 크기라, 폼이 커져도 작아지지 않는다.
-     ⚠️ overhang은 반드시 .lobby-form-wrap의 padding보다 작아야 한다. 장식 레이어가
-     액자 밖으로 걸치는 만큼 스크롤 영역이 넓어져, 넘치면 .stage-form에 스크롤바가
-     생긴다(16px로 뒀다가 390×844에서 실제로 겪었다). */
-  --orn-size: 126px;   /* 72px에서 1.75배 */
+     ⚠️ overhang은 반드시 감싸는 쪽의 padding보다 작아야 한다. 장식 레이어가 액자 밖으로
+     걸치는 만큼 스크롤 영역이 넓어져, 넘치면 스크롤바가 생긴다(로비 폼에서 16px로
+     뒀다가 390×844에서 실제로 겪었다 — .lobby-form-wrap의 padding 참고). */
+  --orn-size: 126px;
   --orn-overhang: 10px;
   position: relative;
   isolation: isolate;
   /* 나무 두께(조각의 49/140)만큼 지나온 뒤 양피지 안쪽 여백을 더한다 */
   padding: calc(var(--board-edge) * 47 / 140 + 16px);
-  max-width: 28rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  transition: max-width var(--t-expand) ease;
+}
+
+/* .board-frame은 로비 폼보다 장식을 작게 쓴다.
+   폼의 126px은 `zoom: 1.75`가 걸린 상태에서 고른 값이라 확대 없이 그대로 쓰면 과하다.
+   특히 결과 창의 "행동 사용 통계"처럼 **키가 낮은 카드**에서는 위아래 장식이 서로 닿아
+   가운데가 잎으로 막힌다(카드 높이 약 210px < 126×2). 96px이면 180px 남짓한 카드까지
+   위아래가 겹치지 않는다. */
+.board-frame {
+  --board-edge: 34px;
+  --orn-size: 96px;
 }
 /* 액자 */
-.lobby-form-board::before {
+.lobby-form-board::before,
+.board-frame::before {
   content: '';
   position: absolute;
   /* 투명 여백만큼 바깥으로 — 네 변이 다르다 */
@@ -2495,7 +2500,8 @@ body {
   border-image: var(--form-board) var(--board-slice) fill stretch;
 }
 /* 귀퉁이 장식 — 액자보다 위(z-index -1). 액자 바깥으로 조금 걸치게 inset을 음수로 준다 */
-.lobby-form-board::after {
+.lobby-form-board::after,
+.board-frame::after {
   content: '';
   position: absolute;
   inset: calc(var(--orn-overhang) * -1);
@@ -2505,6 +2511,36 @@ body {
   background-position: left top, right top, left bottom, right bottom;
   background-repeat: no-repeat;
   background-size: var(--orn-size) var(--orn-size);
+}
+
+/* 양피지 위에 얹히는 안쪽 칸 — 대기실의 팀 목록·채팅처럼 원래 회색 상자였던 것들.
+   흰색·회색을 그대로 두면 양피지 위에서 종이 조각을 붙여 놓은 것처럼 겉돈다.
+   따뜻한 반투명 흰색이라 아래 양피지 결이 비쳐 같은 재질로 읽힌다. */
+.board-panel {
+  background: rgba(255, 252, 242, 0.62);
+  border: 1px solid #cbb99a;
+  border-radius: 0.75rem;
+}
+/* 입력창처럼 "파인 자리"로 보여야 하는 칸 — 조금 더 밝고 안쪽 그림자를 준다 */
+.board-inset {
+  background: rgba(255, 253, 246, 0.82);
+  border: 1px solid #cbb99a;
+  box-shadow: inset 0 1px 3px rgba(74, 55, 40, 0.12);
+}
+
+.lobby-form-board {
+  /* 카드 전체(액자·귀퉁이 장식·글자·입력창)를 한 번에 키운다.
+     transform: scale()이 아니라 zoom인 이유 — scale은 레이아웃 상자를 그대로 둬서
+     주변이 커진 것을 모르고 스테이지 밖으로 삐져나간다. zoom은 상자까지 함께 커져
+     .stage-form의 스크롤 판정과 measureLobby 실측이 눈에 보이는 것과 일치한다.
+     기본값 1이고, 아래 미디어쿼리에서 넓은 화면·접힌 상태에만 올린다. */
+  zoom: var(--form-zoom, 1);
+
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: max-width var(--t-expand) ease;
 }
 
 /* 규칙을 펼치면 — 오른쪽으로 넓어진다(액자는 9분할이라 폭만 늘어난다).
@@ -2595,6 +2631,13 @@ body {
     --orn-overhang: 4px;   /* 바깥 여백 0.5rem(≈6.4px)보다 작아야 한다 */
   }
   .lobby-form-wrap { padding: 0.5rem; }
+  /* 대기실·결과 창도 함께 줄인다. 로비 폼만큼 빠듯하진 않지만(스테이지에 갇히지
+     않는다) 390px 화면에서 액자 40px가 양쪽이면 안쪽이 286px밖에 남지 않는다. */
+  .board-frame {
+    --board-edge: 24px;
+    --orn-size: 91px;
+    --orn-overhang: 4px;
+  }
 }
 
 /* 폼 — 확장된 패널 위에 겹쳐서 페이드 인/아웃. 높이는 고정이라 넘치면 안에서 스크롤한다 */
