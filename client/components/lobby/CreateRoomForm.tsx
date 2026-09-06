@@ -57,7 +57,14 @@ export function CreateRoomForm({
           '방장이 되어 규칙을 정해요.'
         )
       }
-      side={<GameRulesFields settings={settings} onChange={onSettings} />}
+      // 규칙을 펼치면 오른쪽 열이 되는 자리 — "고르는 것"(자리·규칙)을 모아 둔다.
+      // 접혀 있을 때는 DOM 순서 그대로 입력칸 아래로 흘러 예전과 같은 차례가 된다.
+      side={
+        <>
+          <TeamSelect team={team} onChange={onTeam} />
+          <GameRulesFields settings={settings} onChange={onSettings} />
+        </>
+      }
       footer={
         <button
           onClick={onSubmit}
@@ -96,8 +103,6 @@ export function CreateRoomForm({
           invalid={teamNamesClash}
         />
       </div>
-
-      <TeamSelect team={team} onChange={onTeam} />
     </FormCard>
   );
 }

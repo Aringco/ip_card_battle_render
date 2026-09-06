@@ -2587,16 +2587,14 @@ body {
   .lobby-form-board { --form-zoom: 1.35; }
   .lobby-form-board:has([data-rules-open]) { --form-zoom: 1; }
 
-  /* 글자만 확대에서 떼어낸다 — 액자·장식은 --form-zoom만큼 커지되, 글자는 배율과 무관하게
-     화면에서 약 14pt로 보이게 zoom을 나눠 되돌린다.
-     **--text-* 를 다시 정의해서는 안 된다** — Tailwind v4는 .text-sm 을
+  /* 글자 크기는 **기본값 그대로** 둔다(2026-09-06에 되돌림).
+     한때 여기서 --font-scale에 1.488을 곱해 화면에서 약 14pt로 고정했지만, 글자가
+     너무 커 보여 되돌렸다. 지금은 글자도 액자와 함께 --form-zoom만큼 커진다.
+
+     다시 손대게 되면 **--text-* 를 재정의하지 말 것** — Tailwind v4는 .text-sm 을
      `calc(.875rem * var(--font-scale))` 로 인라인 컴파일해 --text-sm 을 읽지 않는다.
-     동적으로 남는 것은 --font-scale뿐이라 그쪽을 쓴다.
-     계수 1.488 = 목표 14pt(18.67px) ÷ (0.875rem × 12.8px/rem × 기본 배수 1.12).
-     --font-scale-user를 곱하므로 사용자가 고른 글씨 크기 단계는 그대로 반영된다. */
-  .lobby-form-board {
-    --font-scale: calc(var(--font-scale-user) * 1.488 / var(--form-zoom, 1));
-  }
+     동적으로 남는 것은 --font-scale뿐이고, 사용자가 고른 글씨 크기 단계를 잃지 않으려면
+     :root의 거울 변수 --font-scale-user에 배수를 곱해야 한다. */
 
   .lobby-form-board:has([data-rules-open]) {
     /* 스테이지가 허락하는 만큼 다 쓴다 — 1280에서 바깥 여백을 뺀 712px가 상한이고,
@@ -2604,16 +2602,17 @@ body {
        좁게 잡으면 규칙 라벨이 말줄임으로 잘려 오히려 접었을 때보다 못해진다. */
     max-width: min(56rem, 100%);
     display: grid;
-    /* 오른쪽(규칙)이 조금 더 넓다 — 그 안에서 다시 2열 격자를 쓰기 때문 */
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    /* 5:5. 왼쪽은 "내가 적는 것"(닉네임·팀 이름), 오른쪽은 "내가 고르는 것"
+       (자리·규칙)과 제출 버튼으로 갈랐다. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
     column-gap: 1.25rem;
   }
-  /* 왼쪽 열에 머리말·입력·버튼이 위에서 아래로, 오른쪽 열은 규칙이 통째로 차지한다 */
+  /* 왼쪽: 머리말 + 입력칸 / 오른쪽: 자리 선택·규칙(side) 위에서 아래로, 맨 아래에 버튼 */
   .lobby-form-board:has([data-rules-open]) > .lobby-form-head   { grid-area: 1 / 1; }
   .lobby-form-board:has([data-rules-open]) > .lobby-form-fields { grid-area: 2 / 1; }
-  .lobby-form-board:has([data-rules-open]) > .lobby-form-foot   { grid-area: 3 / 1; align-self: end; }
-  .lobby-form-board:has([data-rules-open]) > .lobby-form-side   { grid-area: 1 / 2 / 4 / 3; }
+  .lobby-form-board:has([data-rules-open]) > .lobby-form-side   { grid-area: 1 / 2 / 3 / 3; }
+  .lobby-form-board:has([data-rules-open]) > .lobby-form-foot   { grid-area: 3 / 2; align-self: end; }
 
   /* 두 팀 이름은 접혀 있을 때만 한 줄에 나란히 둔다. 왼쪽 열은 카드의 45%뿐이라
      나란히 두면 "비우면 무작위" 자리표시가 잘린다 — 규칙을 펼치면 세로가 크게
@@ -2625,17 +2624,29 @@ body {
 
 }
 
-/* 세로가 넉넉한 화면에서만 목표치인 1.75까지 올린다.
+/* 세로가 넉넉한 화면에서만 배율을 더 올린다.
    1280×900에서 1.75를 쓰면 초대 링크로 들어온 "방 참가하기"(안내 문단이 한 줄 더 붙어
-   가장 키가 큰 폼)가 645px가 되어 스테이지 590px를 넘겼다 — 실측 상한이 약 1.50이다.
-   높이 1000px 이상이면 그 폼도 1.75가 들어간다(1920×1080 상한 약 1.83). */
+   가장 키가 큰 폼)가 스테이지 590px를 넘긴다 — 그래서 그쪽은 1.35에 머문다.
+
+   ⚠️ 이 상한은 **글자 크기와 함께 움직인다.** 글자를 14pt로 고정하던 시절에는 글자가
+   zoom을 나눠 되돌렸기 때문에 1.75가 들어갔지만, 2026-09-06에 글자를 기본값으로 되돌리면서
+   글자도 zoom만큼 커지게 되어 같은 폼이 1920×1080에서 657px로 넘쳤다. 그래서 1.6으로 내렸다.
+   **글자 크기 규칙을 다시 손대면 이 값도 measureLobby.mjs로 다시 재야 한다.** */
 @media (min-width: 768px) and (min-height: 1000px) {
-  .lobby-form-board { --form-zoom: 1.75; }
+  .lobby-form-board { --form-zoom: 1.6; }
   .lobby-form-board:has([data-rules-open]) { --form-zoom: 1; }
 }
 
 /* 입력들이 세로로 쌓이는 묶음 — 카드가 2열이 되어도 이 안의 간격은 그대로다 */
 .lobby-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+/* 오른쪽 열 묶음 — 자리 선택과 게임 규칙이 위아래로 놓인다.
+   규칙을 접으면 이 묶음이 그대로 입력칸 아래로 흘러 들어간다(DOM 순서가 그대로라
+   접힌 화면의 차례는 예전과 같다: 닉네임 → 팀 이름 → 자리 선택 → 규칙 → 버튼). */
+.lobby-form-side {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
