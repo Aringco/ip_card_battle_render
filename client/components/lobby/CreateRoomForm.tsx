@@ -1,6 +1,6 @@
 'use client';
 
-import type { GameSettings, Team } from 'shared';
+import type { GameSettings, Seat } from 'shared';
 import { GameRulesFields } from './GameRulesFields';
 import { FormCard } from './Field';
 import { NicknameField, TeamNameField } from './NameFields';
@@ -13,6 +13,7 @@ export function CreateRoomForm({
   nicknameHint,
   team,
   onTeam,
+  spectatorSeat,
   teamName,
   onTeamName,
   otherTeamName,
@@ -27,8 +28,10 @@ export function CreateRoomForm({
   nickname: string;
   onNickname: (v: string) => void;
   nicknameHint: string;
-  team: Team;
-  onTeam: (t: Team) => void;
+  team: Seat;
+  onTeam: (t: Seat) => void;
+  /** 방장이 관전석에 앉았는지 — "우리/상대 팀"이라는 말이 성립하지 않게 된다 */
+  spectatorSeat: boolean;
   teamName: string;
   onTeamName: (v: string) => void;
   otherTeamName: string;
@@ -47,6 +50,9 @@ export function CreateRoomForm({
       description={
         teamNamesClash ? (
           <span className="text-red-600 font-semibold">두 팀 이름이 같아요. 한쪽을 바꿔주세요.</span>
+        ) : spectatorSeat ? (
+          // 충돌 경고가 우선한다 — 그쪽은 제출을 막는 오류이고 이건 안내다
+          '관전자는 지켜보기만 해요.'
         ) : (
           '방장이 되어 규칙을 정해요.'
         )
@@ -72,16 +78,18 @@ export function CreateRoomForm({
       {/* 두 팀 이름은 한 줄에 나란히 둔다 — 같은 이름을 넣으면 안 된다는 규칙이 있어서,
           서로 떨어져 있으면 무엇과 겹쳤는지 눈으로 확인하기 어렵다. 주사위는 상대 칸에
           적힌 이름을 피해서 뽑으므로 주사위만 눌러서는 충돌이 나지 않는다. */}
+      {/* 방장이 관전석에 앉으면 "우리 팀"이 없으므로, 두 입력칸이 그대로 팀 1·팀 2의
+          이름이 된다(서버 Room.addPlayer도 같은 순서로 받는다). */}
       <div className="lobby-team-pair grid grid-cols-2 gap-3">
         <TeamNameField
-          label="우리 팀 이름 (선택)"
+          label={spectatorSeat ? '팀 1 이름 (선택)' : '우리 팀 이름 (선택)'}
           value={teamName}
           onChange={onTeamName}
           avoid={otherTeamName}
           invalid={teamNamesClash}
         />
         <TeamNameField
-          label="상대 팀 이름 (선택)"
+          label={spectatorSeat ? '팀 2 이름 (선택)' : '상대 팀 이름 (선택)'}
           value={otherTeamName}
           onChange={onOtherTeamName}
           avoid={teamName}

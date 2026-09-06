@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { GameSettings, Team } from 'shared';
-import { DEFAULT_SETTINGS, randomNickname } from 'shared';
+import type { GameSettings, Seat } from 'shared';
+import { DEFAULT_SETTINGS, isPlayingSeat, randomNickname } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { playBgm } from '@/lib/bgm';
 import { HowToPlayModal } from '@/components/ui/HowToPlayModal';
@@ -46,7 +46,10 @@ export default function LobbyPage() {
   const [nicknameHint, setNicknameHint] = useState('');
   useEffect(() => setNicknameHint(randomNickname()), []);
 
-  const [team, setTeam] = useState<Team>('A');
+  // 내가 앉을 자리 — 두 팀 중 하나이거나 관전석. 관전석을 고르면 게임 화면에서
+  // 아무것도 조작할 수 없고 양 팀의 진행만 지켜본다.
+  const [team, setTeam] = useState<Seat>('A');
+  const spectatorSeat = !isPlayingSeat(team);
   const [teamName, setTeamName] = useState('');
   // 방을 만드는 쪽만 입력할 수 있다 — 아직 아무도 들어오지 않은 반대편 팀의 이름까지
   // 미리 정해둔다(비워두면 기존처럼 실제 참가자가 자기 팀 이름을 직접 고른다).
@@ -233,6 +236,7 @@ export default function LobbyPage() {
                 canSubmitName={canSubmitName}
                 team={team}
                 onTeam={setTeam}
+                spectatorSeat={spectatorSeat}
                 teamName={teamName}
                 onTeamName={setTeamName}
                 otherTeamName={otherTeamName}

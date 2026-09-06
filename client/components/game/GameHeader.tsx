@@ -1,5 +1,6 @@
 import type { ClientGameState, Team } from 'shared';
-import { MAX_TURN } from 'shared';
+import { MAX_TURN, festivalDrawInfoAt } from 'shared';
+import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 
 function StepPill({ label, active }: { label: string; active: boolean }) {
   return (
@@ -46,19 +47,28 @@ export function GameHeader({
   // "지금 이 차례가 나(우리팀)인지 상대인지" + "장소 선택 → 행동 선택" 중 어느 단계인지를
   // 도식으로 보여준다. 실제 타이머는 해설판 가운데 오버레이(ActionPrompt)가 담당하므로
   // 여기서는 중복 표시하지 않는다.
-  const relativeLabel = myTeam === null ? gameState.teamNames[displayedActiveTeam] : displayedActiveTeam === myTeam ? '우리팀' : '상대팀';
+  // 관전자에게는 "우리팀/상대팀"이 없으므로 팀 이름을 그대로 쓰고, 그 팀 색(민트·핑크)으로
+  // 칠해 화면 다른 곳(팀 패널·보드 테두리·손가락 가이드)과 같은 기준으로 읽히게 한다.
+  const spectating = myTeam === null;
+  const relativeLabel = spectating ? gameState.teamNames[displayedActiveTeam] : displayedActiveTeam === myTeam ? '우리팀' : '상대팀';
+  const spectatorLabelStyle = spectating
+    ? { color: SPECTATOR_TEAM_PALETTE[displayedActiveTeam].base }
+    : undefined;
   // 서버가 이미 pendingChoice를 세워도(=장소 뽑기 자체는 끝났어도), 카드가 날아가고
   // 경험치·레벨이 반영되는 정산 연출이 다 끝나기 전까지는 아직 "행동 선택" 단계가
   // 아니다 — 그 앞 단계(장소 선택)가 마무리되는 그림을 계속 보여준다.
   const isDrawPhase = gameState.pendingChoice === null;
   const isChoicePhase = !isDrawPhase && !isSettling;
-  // 지금 장소를 클릭할 팀에게 예약된 도토리 축제 뽑기 수 — "이번에 클릭하면 몇 장이 더 뽑히는지"를 보여준다.
-  const pendingFestivalDraws = gameState.teams[gameState.activeTeam].pendingFestivalDraws;
+  // 이번 턴의 도토리 축제 보너스 안내 — 팀의 pendingFestivalDraws를 그대로 읽으면 장소를
+  // 클릭하는 순간 소모돼 0이 되므로(=행동 선택 단계에서 문구가 짧아진다), 예약과 똑같은 식
+  // (festivalDrawInfoAt)으로 "이번 턴에 걸린 횟수"를 다시 계산해 두 단계에서 같은 문구를 쓴다.
+  const festivalInfo = festivalDrawInfoAt(gameState.turn, gameState.settings);
 
   return (
     <header className="relative bg-jungle-800 text-white px-5 py-2.5 flex items-center shadow-md shrink-0 min-h-[3.25rem]">
       <div className="text-sm text-jungle-200 hidden sm:block">
-        {teamLabel} <span className="font-semibold text-white">{nickname}</span> 차례
+        <span style={spectatorLabelStyle}>{teamLabel}</span>{' '}
+        <span className="font-semibold text-white">{nickname}</span> 차례
       </div>
 
       {/* 나뭇잎 장식이 화면 좌우 모서리를 가리므로, 턴/단계 표시는 항상 잘 보이도록 중앙에 고정 */}
@@ -67,15 +77,28 @@ export function GameHeader({
           {gameState.turn} / {MAX_TURN}턴
         </span>
         <div className="step-flow flex items-center gap-1.5 px-2 py-1 rounded-full">
-          <span className="text-xs font-bold text-jungle-200 whitespace-nowrap">[{relativeLabel}]</span>
+          <span className="text-xs font-bold text-jungle-200 whitespace-nowrap" style={spectatorLabelStyle}>
+            [{relativeLabel}]
+          </span>
           <StepPill label="장소 선택" active={isDrawPhase} />
           <FlowArrow />
           <StepPill label="행동 선택" active={isChoicePhase} />
         </div>
         {gameState.festival && (
           <span className="festival-header-badge text-sm font-bold whitespace-nowrap">
-            🌰 도토리 축제 진행 중
-            {pendingFestivalDraws > 0 && ` (랜덤 뽑기 +${pendingFestivalDraws}회 추가!)`}
+            🌰 도토리 축제 진행 중! 보너스 랜덤 뽑기 +{festivalInfo.count}회!
+            {/* 강화 주기가 남은 턴보다 커서 다시 오를 일이 없으면 예고 자체를 감춘다. */}
+            {festivalInfo.turnsToNextStage !== null && (
+              // 예고는 본문보다 한 단계 물러나 보여야 하므로 알약 전체를 반투명(opacity-50)으로
+              // 깐다. 색(text-amber-100)을 직접 주는 것도 중요한데, 그러지 않으면 부모의
+              // 깜빡임 애니메이션이 상속돼 숫자까지 함께 명멸한다.
+              <span className="ml-2 inline-flex items-baseline gap-1 rounded-full border border-amber-300/70 bg-amber-900 px-2 py-px text-xs font-bold text-amber-100 opacity-50 align-middle">
+                <span className="tabular-nums">{festivalInfo.turnsToNextStage}턴 후</span>
+                <span className="tabular-nums">
+                  +{festivalInfo.count} → +{festivalInfo.nextCount}
+                </span>
+              </span>
+            )}
           </span>
         )}
       </div>

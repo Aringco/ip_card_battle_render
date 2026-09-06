@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { Animal, Place, Team } from 'shared';
+import type { Animal, Place, Seat, Team } from 'shared';
 import type { ServerMessage } from 'shared';
 import { processPlayerAction, processSkillChoice, processPass, processTimeout, initGame } from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
@@ -16,19 +16,28 @@ import {
   CHAT_HISTORY_MAX,
   CHAT_MIN_INTERVAL_MS,
   DEFAULT_SETTINGS,
+  SPECTATOR,
+  isPlayingSeat,
   clampSettings,
 } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
 
 // 싱글 모드 컴퓨터 플레이어는 실제 WebSocket 연결이 없으므로 고정 ID로 취급한다.
 const CPU_PLAYER_ID = 'CPU';
-const CPU_NICKNAME = '컴퓨터';
-const CPU_TEAM_NAME = '컴퓨터';
+const CPU_NICKNAME = 'CPU 병사';
+const CPU_TEAM_NAME = 'AI 군단';
 // 클라이언트의 스킬 발동 연출(디자인어 팝업 2000ms 등)이 끝나기 전에 컴퓨터가 다음 수를
 // 두면, 그 사이 상대 턴 배경색이 거의 안 보이고 곧바로 내 턴으로 돌아온 것처럼 보인다.
 // 가장 긴 연출보다 여유 있게 최소 대기 시간을 잡아 그런 일이 최대한 드물게 한다.
 const CPU_THINK_MIN_MS = 2200;
 const CPU_THINK_MAX_MS = 3200;
+// 행동(스킬) 선택은 위 값을 그대로 쓰면 안 된다 — 서버는 뽑기를 처리하는 즉시 pendingChoice를
+// 세우지만, 화면에는 슬롯 → 카드 등장 → 페어 정산 연출이 다 끝나야 [행동 선택] 단계가 뜬다.
+// 처리 시각부터 세면 그 연출이 끝나기도 전에 컴퓨터가 골라버려서, 사람 눈에는 행동 선택
+// 단계를 통째로 건너뛴 것처럼 보인다. 그래서 아래 대기 시간은 "연출이 끝난 시각"(settleGraceMs)
+// 부터 다시 세고, 그 위에 짧게 생각하는 척하는 시간만 얹는다.
+const CPU_SKILL_THINK_MIN_MS = 1000;
+const CPU_SKILL_THINK_MAX_MS = 1500;
 
 /**
  * 닉네임 정리 — 클라이언트가 이미 12자로 자르고 빈 이름을 막지만, 서버도 같은 기준을
@@ -121,7 +130,10 @@ interface PlayerConnection {
   // 남의 세션을 가로챌 수 있으므로, 로비 목록에는 이 값만 싣는다.
   memberId: string;
   nickname: string;
-  team: Team;
+  // 이 사람이 앉은 자리 — 두 팀 중 하나이거나 관전석('spectator')이다.
+  team: Seat;
+  // 관전자는 준비할 것이 없으므로 언제나 true로 유지한다(관전자 한 명 때문에
+  // 방장이 시작 버튼을 못 누르는 일이 없도록).
   ready: boolean;
   connected: boolean;
   // 마지막으로 채팅을 보낸 시각 — 과속 전송을 걸러내는 데만 쓴다.
@@ -130,7 +142,9 @@ interface PlayerConnection {
 
 export class Room {
   private players = new Map<string, PlayerConnection>();  // playerId → PlayerConnection
-  private teamPlayerIds: Record<Team, string[]> = { A: [], B: [] };
+  // 자리별 playerId 목록. A/B는 그대로 게임의 팀 순번(activePlayerIndex)이 되고,
+  // spectator 칸은 게임에 전혀 쓰이지 않는다(직렬화할 때도 A/B만 넘긴다).
+  private teamPlayerIds: Record<Seat, string[]> = { A: [], B: [], [SPECTATOR]: [] };
   private teamNames: Record<Team, string | null> = { A: null, B: null };
   // 방장 = 방을 처음 만든 사람. 로비에서 이 사람이 나가면 남아 있는 다음 사람에게 넘어간다.
   private hostPlayerId: string | null = null;
@@ -217,9 +231,10 @@ export class Room {
     this.sendTo(playerId, { type: 'chatHistory', messages: this.chatLog });
   }
 
-  /** 팀 이름을 화면 표기용으로 — 아직 정해지지 않았으면 "팀 1"/"팀 2". */
-  private teamLabel(team: Team): string {
-    return this.teamNames[team] ?? (team === 'A' ? '팀 1' : '팀 2');
+  /** 자리 이름을 화면 표기용으로 — 팀 이름이 아직 없으면 "팀 1"/"팀 2", 관전석은 "관전석". */
+  private teamLabel(seat: Seat): string {
+    if (!isPlayingSeat(seat)) return '관전석';
+    return this.teamNames[seat] ?? (seat === 'A' ? '팀 1' : '팀 2');
   }
 
   /**
@@ -266,7 +281,7 @@ export class Room {
     ws: WebSocket,
     playerId: string,
     nickname: string,
-    team: Team,
+    team: Seat,
     teamName?: string,
     settings?: Partial<GameSettings>,
     // 방을 처음 만드는 사람만 넘겨준다 — 아직 아무도 들어오지 않은 반대편 팀의 이름.
@@ -286,23 +301,32 @@ export class Room {
     }
 
     // 방장은 따로 "준비"를 누르지 않는다 — 준비 버튼 대신 "게임 시작" 버튼을 쥔다.
+    // 관전자도 준비할 것이 없으므로 처음부터 준비 완료로 둔다.
     this.players.set(playerId, {
       ws, playerId, memberId: this.nextMemberId(), nickname, team,
-      ready: isRoomCreator, connected: true, lastChatAt: 0,
+      ready: isRoomCreator || !isPlayingSeat(team), connected: true, lastChatAt: 0,
     });
     if (isRoomCreator) this.hostPlayerId = playerId;
     // 이전 대화를 먼저 넘겨준 뒤에 입장 안내를 방송한다 — 순서가 뒤바뀌면 새로 들어온
     // 사람이 자기 입장 메시지를 chatMessage로 한 번, chatHistory로 또 한 번 받게 된다.
     this.sendChatHistory(playerId);
-    this.pushSystem(`${nickname} 님이 들어왔어요`);
+    this.pushSystem(
+      isPlayingSeat(team) ? `${nickname} 님이 들어왔어요` : `${nickname} 님이 관전자로 들어왔어요`,
+    );
     this.teamPlayerIds[team].push(playerId);
-    this.assignTeamName(team, teamName);
     // 방을 만드는 순간 양 팀 이름을 모두 확정한다 — 방장이 상대 팀 이름을 비워뒀더라도
     // 무작위로 채운다. 예전에는 "그 팀에 실제로 참가하는 사람이 직접 고를 기회"를 남기려고
     // 비워뒀지만, 참가 화면에는 팀 이름 입력칸이 아예 없어서 그 기회는 쓰이지 못하고
     // 대기실에 "팀 2 (미정)"만 덩그러니 남았다.
     if (isRoomCreator) {
-      this.assignTeamName(team === 'A' ? 'B' : 'A', otherTeamName);
+      // 방장이 관전석을 골랐다면 자기 팀이 없으므로 teamName/otherTeamName이 곧
+      // 팀 1(A)·팀 2(B)의 이름이다. 먼저 부른 쪽이 이름 우선권을 가지므로(겹치면
+      // 나중 쪽이 무작위로 대체된다) 방장 자신의 팀부터 확정한다.
+      const own: Team = isPlayingSeat(team) ? team : 'A';
+      this.assignTeamName(own, teamName);
+      this.assignTeamName(own === 'A' ? 'B' : 'A', otherTeamName);
+    } else if (isPlayingSeat(team)) {
+      this.assignTeamName(team, teamName);
     }
     this.broadcastLobbyState();
     return 'ok';
@@ -334,16 +358,21 @@ export class Room {
     if (!p || this.started) return;
     // 방장은 준비 상태를 내릴 수 없다(시작 버튼을 쥔 쪽이라 준비 개념 자체가 없다).
     if (this.isHost(playerId)) return;
+    // 관전자도 마찬가지 — 준비를 내릴 수 있으면 게임에 나서지도 않는 사람이 시작을 막는다.
+    if (!isPlayingSeat(p.team)) return;
     p.ready = ready;
     this.broadcastLobbyState();
   }
 
   // ─── 방장 명령 ───────────────────────────────────────────────────────────
 
-  /** 참가자를 다른 팀으로 옮긴다. 방장은 누구든, 그 외에는 자기 자신만 옮길 수 있다. */
-  movePlayer(playerId: string, targetMemberId: string, team: Team): void {
+  /**
+   * 참가자를 다른 자리(팀 1/팀 2/관전석)로 옮긴다. 방장은 누구든, 그 외에는 자기
+   * 자신만 옮길 수 있다.
+   */
+  movePlayer(playerId: string, targetMemberId: string, team: Seat): void {
     if (this.started) {
-      this.sendTo(playerId, { type: 'error', code: 'GAME_ALREADY_STARTED', message: '이미 게임이 시작되어 팀을 바꿀 수 없습니다.' });
+      this.sendTo(playerId, { type: 'error', code: 'GAME_ALREADY_STARTED', message: '이미 게임이 시작되어 자리를 바꿀 수 없습니다.' });
       return;
     }
     const target = this.findByMemberId(targetMemberId);
@@ -352,21 +381,29 @@ export class Room {
       return;
     }
     if (target.playerId !== playerId && !this.isHost(playerId)) {
-      this.sendTo(playerId, { type: 'error', code: 'NOT_HOST', message: '다른 참가자의 팀은 방장만 바꿀 수 있습니다.' });
+      this.sendTo(playerId, { type: 'error', code: 'NOT_HOST', message: '다른 참가자의 자리는 방장만 바꿀 수 있습니다.' });
       return;
     }
     if (target.team === team) return;
 
-    const from = this.teamPlayerIds[target.team];
+    const prevSeat = target.team;
+    const from = this.teamPlayerIds[prevSeat];
     const idx = from.indexOf(target.playerId);
     if (idx !== -1) from.splice(idx, 1);
     target.team = team;
     this.teamPlayerIds[team].push(target.playerId);
+    // 관전석에 앉으면 준비할 것이 없으므로 준비 완료, 관전석에서 팀으로 나오면 이제부터
+    // 실제로 뛰는 사람이므로 다시 준비를 눌러야 한다. 팀↔팀 이동은 예전 그대로 준비
+    // 상태를 건드리지 않고, 방장은 애초에 준비 개념이 없어 어느 경우든 제외한다.
+    if (!this.isHost(target.playerId) && isPlayingSeat(prevSeat) !== isPlayingSeat(team)) {
+      target.ready = !isPlayingSeat(team);
+    }
     // 팀 이름은 방을 만드는 순간 양쪽 다 정해지므로(addPlayer) 여기서 손댈 것이 없다.
+    const where = isPlayingSeat(team) ? `${this.teamLabel(team)} 팀으로` : '관전석으로';
     this.pushSystem(
       target.playerId === playerId
-        ? `${target.nickname} 님이 ${this.teamLabel(team)} 팀으로 옮겼어요`
-        : `방장이 ${target.nickname} 님을 ${this.teamLabel(team)} 팀으로 옮겼어요`,
+        ? `${target.nickname} 님이 ${where} 옮겼어요`
+        : `방장이 ${target.nickname} 님을 ${where} 옮겼어요`,
     );
     this.broadcastLobbyState();
   }
@@ -448,9 +485,10 @@ export class Room {
   /** 지금 게임을 시작할 수 없는 이유(없으면 null). */
   private startBlockReason(): string | null {
     const all = [...this.players.values()];
-    if (all.length < 2) return '두 명 이상 모여야 시작할 수 있습니다.';
+    // 인원수는 관전자를 빼고 센다 — 양 팀에 한 명씩만 있으면 그것으로 충분하고,
+    // 관전자만 잔뜩 있어도 게임은 시작될 수 없다(아래 조건이 그대로 걸러낸다).
     if (this.teamPlayerIds.A.length === 0 || this.teamPlayerIds.B.length === 0) {
-      return '양 팀에 각각 한 명 이상 있어야 합니다.';
+      return '양 팀에 각각 한 명 이상 있어야 합니다(관전자는 인원에 들어가지 않아요).';
     }
     if (!all.every(p => p.ready)) return '아직 준비하지 않은 참가자가 있습니다.';
     // setTeamName이 겹치는 이름을 이미 막지만, 게임에 들어가고 나면 두 팀을 구분할 방법이
@@ -512,9 +550,8 @@ export class Room {
 
   private tryStartGame(): void {
     const all = [...this.players.values()];
-    const minPlayers = this.vsComputer ? 1 : 2;
-    if (all.length < minPlayers) return;
     if (!all.every(p => p.ready)) return;
+    // 양 팀이 한 명씩만 차 있으면 시작할 수 있다 — 관전자 수는 여기에 영향을 주지 않는다.
     if (this.teamPlayerIds.A.length === 0 || this.teamPlayerIds.B.length === 0) return;
 
     const nickA = this.teamPlayerIds.A.map(id => this.players.get(id)?.nickname ?? CPU_NICKNAME);
@@ -544,7 +581,20 @@ export class Room {
     return this.teamPlayerIds[team][this.state.activePlayerIndex];
   }
 
+  /**
+   * 관전자의 게임 조작은 애초에 성립하지 않는다. 아래 expectedPlayerId 비교만으로도
+   * (관전자의 playerId는 A/B 어느 목록에도 없으므로) 걸러지지만, 그러면 "지금은 당신의
+   * 차례가 아닙니다"라는 엉뚱한 안내가 나가므로 이유를 정확히 알려준다.
+   */
+  private rejectIfSpectator(playerId: string): boolean {
+    const p = this.players.get(playerId);
+    if (!p || isPlayingSeat(p.team)) return false;
+    this.sendTo(playerId, { type: 'error', code: 'NOT_YOUR_TURN', message: '관전자는 게임에 참여할 수 없습니다.' });
+    return true;
+  }
+
   handleDrawCard(playerId: string, place: Place): void {
+    if (this.rejectIfSpectator(playerId)) return;
     if (!this.state || this.state.phase !== 'playing') {
       this.sendTo(playerId, { type: 'error', code: 'GAME_NOT_STARTED', message: '게임이 시작되지 않았습니다.' });
       return;
@@ -566,10 +616,11 @@ export class Room {
     else this.resetTimer(events);
     this.broadcastResult(events);
 
-    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
+    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
   }
 
   handleChooseSkill(playerId: string, animal: Animal): void {
+    if (this.rejectIfSpectator(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례가 아닙니다.' });
       return;
@@ -587,10 +638,11 @@ export class Room {
     else this.resetTimer(events);
     this.broadcastResult(events);
 
-    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
+    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
   }
 
   handlePassSkill(playerId: string): void {
+    if (this.rejectIfSpectator(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례가 아닙니다.' });
       return;
@@ -608,17 +660,29 @@ export class Room {
     else this.resetTimer(events);
     this.broadcastResult(events);
 
-    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
+    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
   }
 
-  /** 싱글 모드 — 컴퓨터(B팀) 차례(장소 클릭 또는 스킬 선택)가 되면 잠시 "생각하는" 척한 뒤 무작위로 진행한다. */
-  private scheduleComputerActionIfNeeded(): void {
+  /**
+   * 싱글 모드 — 컴퓨터(B팀) 차례(장소 클릭 또는 스킬 선택)가 되면 잠시 "생각하는" 척한 뒤
+   * 무작위로 진행한다. lastActionEvents는 방금 브로드캐스트한 액션의 이벤트로, 행동 선택
+   * 차례일 때 그 연출이 화면에서 끝날 때까지 기다리는 데 쓴다(CPU_SKILL_THINK_* 참고).
+   */
+  private scheduleComputerActionIfNeeded(lastActionEvents?: GameEvent[]): void {
     if (!this.vsComputer || !this.state || this.state.phase !== 'playing') return;
     const waitingTeam = this.state.pendingChoice ?? this.state.activeTeam;
     if (waitingTeam !== 'B') return;
     if (this.computerTimer !== null) return;
 
-    const delay = CPU_THINK_MIN_MS + Math.floor(Math.random() * (CPU_THINK_MAX_MS - CPU_THINK_MIN_MS));
+    // 행동 선택은 자기가 방금 뽑은 카드의 연출이 끝난 뒤부터 시간을 센다. 장소 선택은
+    // 직전 액션이 이미 상대 턴에 끝나 있으므로 기존대로 처리 시각부터 그대로 센다.
+    const isSkillChoice = this.state.pendingChoice === 'B';
+    const [minMs, maxMs] = isSkillChoice
+      ? [CPU_SKILL_THINK_MIN_MS, CPU_SKILL_THINK_MAX_MS]
+      : [CPU_THINK_MIN_MS, CPU_THINK_MAX_MS];
+    const graceMs = isSkillChoice && lastActionEvents ? settleGraceMs(lastActionEvents) : 0;
+
+    const delay = graceMs + minMs + Math.floor(Math.random() * (maxMs - minMs));
     this.computerTimer = setTimeout(() => {
       this.computerTimer = null;
       this.performComputerAction();
@@ -647,7 +711,7 @@ export class Room {
     else this.resetTimer(result.events);
     this.broadcastResult(result.events);
 
-    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
+    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(result.events);
   }
 
   handleTimeout(): void {
@@ -673,7 +737,7 @@ export class Room {
     const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
 
-    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded();
+    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
   }
 
   private broadcastResult(events: ReturnType<typeof processPlayerAction>['events']): void {

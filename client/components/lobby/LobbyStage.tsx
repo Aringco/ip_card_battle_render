@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { GameSettings, Team } from 'shared';
+import type { GameSettings, Seat } from 'shared';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { ModePanel } from './ModePanel';
 import { SoloForm } from './SoloForm';
@@ -32,8 +32,10 @@ export interface LobbyStageProps {
   nicknameHint: string;
   /** 닉네임 입력 + 무작위 이름을 합쳐 "제출 가능한 이름이 있는가" — page.tsx가 계산한다 */
   canSubmitName: boolean;
-  team: Team;
-  onTeam: (t: Team) => void;
+  team: Seat;
+  onTeam: (t: Seat) => void;
+  /** 관전석을 골랐는지 — 자리 선택 안내와 팀 이름 라벨이 함께 바뀐다 */
+  spectatorSeat: boolean;
   teamName: string;
   onTeamName: (v: string) => void;
   /** 방을 만드는 쪽만 입력 — 아직 아무도 없는 반대편 팀 이름까지 미리 정해둔다 */
@@ -175,6 +177,7 @@ export function LobbyStage(props: LobbyStageProps) {
                 nicknameHint={props.nicknameHint}
                 team={props.team}
                 onTeam={props.onTeam}
+                spectatorSeat={props.spectatorSeat}
                 teamName={props.teamName}
                 onTeamName={props.onTeamName}
                 otherTeamName={props.otherTeamName}
@@ -210,6 +213,7 @@ export function LobbyStage(props: LobbyStageProps) {
                 arrivedByInvite={props.arrivedByInvite}
                 team={props.team}
                 onTeam={props.onTeam}
+                spectatorSeat={props.spectatorSeat}
                 canSubmit={!blocked && props.canSubmitName && !!props.roomCode.trim()}
                 onSubmit={props.onJoinRoom}
               />

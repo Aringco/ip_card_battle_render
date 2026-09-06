@@ -86,6 +86,31 @@ async function makeTeamNamesClash(page) {
     [...document.querySelectorAll('.stage-form-create p')].some(p => p.textContent.includes('두 팀 이름이 같아요')));
 }
 
+/** 팀 이름 충돌을 푼다 — 상대 팀 칸만 비우면 된다. */
+async function clearTeamNameClash(page) {
+  const inputs = await page.$$('.stage-form-create input[type="text"]');
+  await inputs[2].click({ clickCount: 3 });
+  await inputs[2].press('Backspace');
+}
+
+/**
+ * 자리를 관전석으로 바꿔 안내문을 띄운다. 관전석은 기본값이 아니라서 그냥 열어두면
+ * 이 상태를 한 번도 재지 못한다.
+ *
+ * ⚠️ 충돌 경고와 관전자 안내는 **같은 한 줄(FormCard의 description)을 나눠 쓰고**,
+ * 충돌 쪽이 우선한다(그쪽은 제출을 막는 오류다). 그래서 충돌을 켜둔 채 관전석을 고르면
+ * 안내가 영영 뜨지 않는다 — 반드시 충돌을 먼저 풀고 부를 것.
+ */
+async function pickSpectatorSeat(page, formSel) {
+  for (const b of await page.$$(`${formSel} button`)) {
+    const t = await page.evaluate(el => el.textContent, b);
+    if (t && t.includes('관전')) { await b.click(); break; }
+  }
+  return page.evaluate(sel =>
+    [...document.querySelectorAll(`${sel} p`)].some(p => p.textContent.includes('관전자는 지켜보기만')),
+    formSel);
+}
+
 const { default: puppeteer } = await import('puppeteer-core');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -123,6 +148,14 @@ for (const vp of VIEWPORTS) {
   clash.note = clashShown ? '' : '*** 경고 안 뜸';
   results.push(clash);                                            await shot('5-create-clash');
 
+  // 관전석을 고른 상태 — 안내문이 설명 줄을 갈아끼우고, 팀 이름 라벨도 바뀐다.
+  // 충돌을 먼저 풀어야 한다(둘이 같은 줄을 쓰고 충돌이 우선한다 — 위 주석 참고).
+  await clearTeamNameClash(page);                     await sleep(300);
+  const specShown = await pickSpectatorSeat(page, '.stage-form-create'); await sleep(400);
+  const spec = await measure(page, `create+spectator@${tag}`);
+  spec.note = specShown ? '' : '*** 관전자 안내 안 뜸';
+  results.push(spec);                                             await shot('6-create-spectator');
+
   // 초대 링크로 들어온 참가 폼 — 안내 배너가 한 덩어리 더 붙는다.
   // 새로 열어야 한다(page.tsx의 ?room= 처리는 마운트 직후 한 번뿐이다).
   await page.goto(`${URL_BASE}?room=ABCD`, { waitUntil: 'networkidle2' });
@@ -133,7 +166,7 @@ for (const vp of VIEWPORTS) {
     [...document.querySelectorAll('.stage-form-join p')].some(p => p.textContent.includes('초대 링크로 들어왔어요'))
     && document.querySelector('.stage-form-join input.font-mono')?.value === 'ABCD');
   invite.note = inviteOk ? '' : '*** 안내/코드 채움 실패';
-  results.push(invite);                                           await shot('6-join-invite');
+  results.push(invite);                                           await shot('7-join-invite');
 
   await page.close();
 }

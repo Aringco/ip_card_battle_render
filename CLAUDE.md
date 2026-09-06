@@ -65,7 +65,9 @@ npm run build
 ### 게임 엔진 3계층 (server/engine/, UI와 완전 분리 — 순수 함수 + 단위 테스트 대상)
 1. **`gameEngine.ts`** — 외부에서 부르는 진입점. `processPlayerAction`(장소 클릭 → 뽑기+정산) → `processSkillChoice`/`processPass`(턴 종료 시 행동 선택) 2단계 흐름. `processTimeout`이 두 대기 상태 모두를 대신 처리(장소 대기 중이면 무작위 장소, 행동 대기 중이면 무작위 유효 행동 또는 자동 패스).
 2. **`drawCard.ts`** — 실용신양으로 예약된 추가 뽑기(`pendingExtraDraws`, `SHEEP_SAFETY_CAP`까지) 소모 → 클릭한 장소에서 1장 뽑기 → 동물별 미획득 스택이 짝수면 한 번에 정산(`settleStacks`). 정산은 경험치만 올리고 체력은 건드리지 않는다.
-3. **`skills.ts`** / **`turnManager.ts`** — `skills.ts`는 레벨(`floor(exp/threshold)`) 기반 4행동 효과 계산과 경험치 소모, `turnManager.ts`는 턴/팀 교대, 축제(`festivalTurn`) 진입, `MAX_TURN` 초과·즉시 승패(체력 knockout) 판정.
+3. **`skills.ts`** / **`turnManager.ts`** — `skills.ts`는 레벨(`floor(exp/threshold)`) 기반 4행동 효과 계산과 경험치 소모, `turnManager.ts`는 턴/팀 교대, 축제(`festivalTurn`) 진입, `MAX_TURN` 초과·즉시 승패(체력 knockout) 판정, 그리고 `initGame`.
+
+**시작 공유 카드** — `initGame`은 빈 보드가 아니라 `dealOpeningSharedCards`(`engine/places.ts`)로 뽑은 **서로 다른 동물 2장**(숫자 `OPENING_SHARED_CARD_NUM_MIN~MAX` = 7~13)을 중앙 스택에 깔고 시작한다. 빈 보드에서는 선 플레이어가 무엇을 뽑아도 짝이 되지 않고 그 짝을 바로 다음 차례인 상대가 가져가는 구조적 불리함이 있어서다. **두 장이 반드시 다른 동물이어야 한다**는 게 이 규칙의 핵심 — 같은 동물이면 선 플레이어가 첫 클릭도 하기 전에 그 자리에서 정산되어 취지가 뒤집힌다. 스택을 한 장 단위로 통제해야 하는 테스트는 `effects.test.ts`의 `clearStacks`로 이 두 장을 걷어내고 시작한다.
 
 **행동(스킬) 규칙 요약** — 행동을 고르면 그 동물의 경험치는 `레벨 × threshold`만큼만 차감(초과분은 다음 레벨을 위해 유지)되고, 효과로 얻은 값은 절대 경험치로 되돌아가지 않는다(경험치·체력은 완전히 분리된 자원). `pendingMultiplier`는 디자인어(인어)를 쓸 때마다 그 발동의 레벨만큼 더해진다(`pendingMultiplier += 레벨` — 곱연산이 아니라 합연산. "다음 행동이 레벨만큼 더 발동한다"는 뜻이고, 기본값 1이 "기본 1회"에 해당해 최종 배율은 항상 `1 + 누적 레벨`이다). 인어 외의 행동을 쓰면 사용 직후 1로 초기화된다.
 
@@ -81,6 +83,10 @@ npm run build
 
 **방장(host)** — 방을 만든 사람이 `hostPlayerId`가 되고, 로비에서만 쓸 수 있는 명령(`movePlayer`/`kickPlayer`/`transferHost`/`setTeamName`/`updateSettings`/`startGame`)을 갖는다. 모든 명령은 `requireHost`가 "게임 시작 전인지 + 방장인지"를 함께 검사한다(`movePlayer`만 예외 — 자기 자신을 옮길 때는 누구나 가능). 방장이 로비에서 빠지면 `removePlayer`가 남아 있는 첫 번째 사람에게 자리를 넘긴다 — 안 그러면 아무도 `startGame`을 부를 수 없어 방이 통째로 멈춘다. 이전에는 전원이 ready가 되는 순간 자동으로 시작했지만, 지금은 방장이 명시적으로 시작 버튼을 눌러야 한다(방장 본인은 ready 개념이 없어 항상 `ready: true`).
 
+**관전자(제3의 자리)** — 로비에서 고르는 "자리"는 `Seat = Team | 'spectator'`(`shared/types.ts`)이고, **게임 엔진에는 관전석이 존재하지 않는다**(`Team`은 여전히 `'A'|'B'` 둘뿐 — 정산·턴 교대·승패가 전부 두 팀을 전제로 짜여 있으니 엔진 타입에 `'spectator'`를 섞지 말 것). 관전자는 `Room`의 `teamPlayerIds.spectator`에만 담기므로 `memberIds`에도 실리지 않고, 그 결과 `expectedPlayerId` 비교에 절대 걸리지 않는다(그래도 이유가 분명한 에러를 주려고 `rejectIfSpectator`가 세 조작 핸들러 앞을 막는다). 관전자는 **인원수에도 준비 상태에도 영향을 주지 않는다** — `ready`는 항상 true로 고정(`setReady`가 관전자를 무시)이고, 시작 조건은 "양 팀에 한 명 이상 + 전원 준비"뿐이라 관전자만 늘어나도 시작이 막히지 않는다. 관전석↔팀 이동 시 `movePlayer`가 `ready`를 다시 맞춘다. 이 규칙들은 `server/__tests__/spectator.test.ts`가 지킨다.
+
+클라이언트에서는 **`myTeam === null`이 곧 "관전 시점"**이다(대기실에서 `sessionStorage.cardBattle_team`에 `'spectator'`가 저장되면 게임 화면이 A/B 어느 쪽도 아니라고 판단해 null로 남긴다). 이 한 값으로 화면 전체가 갈린다: 팀 색이 "우리 연두/상대 붉은"에서 중립 두 색으로 바뀌고(팔레트는 **`client/lib/teamColors.ts` 한 곳** — 기본 민트·핑크이고 CSS 변수 `--spec-*`로만 소비되므로 색을 바꾸려면 이 파일만 고친다), 조작은 전부 막히며, 대신 지금 차례인 팀 색의 반투명 👇 가이드(`GuideFinger`)가 양 팀 차례 모두에 뜬다. **새로 팀 색을 쓰는 UI를 추가할 때는 `myTeam === null` 분기를 빠뜨리지 말 것** — 빠뜨리면 관전자에게 양 팀이 모두 "상대팀(붉은색)"으로 보인다(실제로 자막·결과 화면에서 그 버그가 있었다).
+
 **이름은 항상 채워져 있다** — 닉네임과 팀 이름의 무작위 생성은 `shared/names.ts`(`randomNickname`/`randomTeamName`) 한 곳에 있고 클라이언트·서버가 같이 쓴다. **팀 이름에 "미정(null)" 상태를 되살리지 말 것** — `addPlayer`는 방을 만드는 순간 양 팀 이름을 모두 확정하고(방장이 상대 팀 이름을 비워뒀으면 무작위), `setTeamName`에 빈 이름이 오면 미정으로 되돌리는 게 아니라 무작위로 다시 뽑는다. 예전엔 "그 팀에 실제로 참가하는 사람이 직접 정할 기회"를 남기려고 비워뒀지만 참가 화면에는 팀 이름 입력칸이 아예 없어서, 대기실에 "팀 2 (미정)"만 남는 버그로만 드러났다. 서버는 닉네임도 `normalizeNickname`으로 다시 정리한다(길이 컷 + 빈 이름이면 무작위) — 클라이언트 검증만 믿지 않는다. 양 팀 이름이 같아지는 경로는 `setTeamName`·`startBlockReason`·클라이언트 방 만들기 화면 세 곳에서 함께 막는다(게임에 들어가면 두 팀을 가리는 단서가 이름뿐이다).
 
 **대기실 채팅** — `Room.chatLog`는 `CHAT_HISTORY_MAX`(50)개짜리 링 버퍼이고, 사람이 친 말(`kind: 'chat'`)과 방에서 일어난 일(`kind: 'system'`, `pushSystem`)이 한 줄기로 섞여 있다. 게임 화면에는 채팅이 없다 — `handleChat`은 `started`면 곧바로 return하고, 클라이언트도 `gameStart`에서 `chatLog`를 비운다. 과속·빈 메시지는 **에러를 보내지 않고 조용히 버린다**(실사용자는 클라이언트 쪽 억제에 먼저 걸리므로 빨간 배너는 소음일 뿐이다).
@@ -89,7 +95,7 @@ npm run build
 1. `addPlayer`는 `sendChatHistory` → `pushSystem('… 들어왔어요')` 순서여야 한다. 뒤바뀌면 새로 들어온 사람이 자기 입장 줄을 `chatMessage`로 한 번, `chatHistory`로 또 한 번 받아 두 줄로 보인다(클라이언트의 id 비교 방어선이 있지만 그 방어선에 기대지 말 것).
 2. `removePlayer(playerId, reason)`는 퇴장 안내 → 방장 승계 안내 순으로 push하고, 둘 다 `players.size === 0 → onEmpty()` 검사 **앞**에 와야 한다. `reason`은 자진 퇴장·연결 끊김(`'left'`)과 추방(`'kicked'`)의 문구를 가른다.
 
-**`memberId` vs `playerId`** — `playerId`(UUID)는 사실상 재접속 자격증명이라(`handleReconnect`가 이 값만으로 통과시킨다) 로비 목록에 실으면 남의 세션을 가로챌 수 있다. 그래서 방장 명령의 대상 지정과 로비 목록에는 방 안에서만 통하는 짧은 공개 식별자 `memberId`(`m1`, `m2`, …)를 쓰고, `playerId`는 오직 그 소유자에게만 `roomCreated`/`roomJoined`로 보낸다. 새 로비 기능을 추가할 때도 이 구분을 유지할 것. 턴 타이머(`resetTimer`)는 대기 상태(장소 선택 vs 행동 선택)에 따라 `settings.drawTimeSec`/`actionTimeSec`을 쓰고, 실용신양 예약 뽑기 수만큼 `SHEEP_EXTRA_TIME_PER_DRAW_SEC`를 더 준다. 싱글 모드(`addSoloPlayer`)는 B팀을 CPU로 채우고 `performComputerAction`이 일정 딜레이 후 무작위(또는 즉시 승리 가능한 수 우선) 행동을 대신 수행한다. 재접속은 `sessionStorage`에 저장된 `playerId`로 `reconnect` 메시지를 보내 `gameSnapshot`을 다시 받는 방식.
+**`memberId` vs `playerId`** — `playerId`(UUID)는 사실상 재접속 자격증명이라(`handleReconnect`가 이 값만으로 통과시킨다) 로비 목록에 실으면 남의 세션을 가로챌 수 있다. 그래서 방장 명령의 대상 지정과 로비 목록에는 방 안에서만 통하는 짧은 공개 식별자 `memberId`(`m1`, `m2`, …)를 쓰고, `playerId`는 오직 그 소유자에게만 `roomCreated`/`roomJoined`로 보낸다. 새 로비 기능을 추가할 때도 이 구분을 유지할 것. 턴 타이머(`resetTimer`)는 대기 상태(장소 선택 vs 행동 선택)에 따라 `settings.drawTimeSec`/`actionTimeSec`을 쓰고, 실용신양 예약 뽑기 수만큼 `SHEEP_EXTRA_TIME_PER_DRAW_SEC`를 더 준다. 싱글 모드(`addSoloPlayer`)는 B팀을 CPU로 채우고 `performComputerAction`이 일정 딜레이 후 무작위(또는 즉시 승리 가능한 수 우선) 행동을 대신 수행한다. 그 딜레이는 두 대기 상태가 서로 다르다 — 장소 선택은 처리 시각부터 `CPU_THINK_*`(2.2~3.2초)를 그대로 세지만, **행동 선택은 반드시 `settleGraceMs(직전 이벤트)`를 먼저 얹은 뒤** `CPU_SKILL_THINK_*`(1~1.5초)를 센다. 서버는 뽑기를 처리하는 즉시 `pendingChoice`를 세우는 반면 화면에는 슬롯·정산 연출이 다 끝나야 [행동 선택] 단계가 뜨므로, 이 유예를 빼면 컴퓨터가 연출 도중에 골라버려 그 단계가 통째로 없는 것처럼 보인다. 재접속은 `sessionStorage`에 저장된 `playerId`로 `reconnect` 메시지를 보내 `gameSnapshot`을 다시 받는 방식.
 
 `RoomManager`(`server/roomManager.ts`)는 4글자 방 코드(`O`/`I` 제외)로 `Room` 인스턴스를 생성·조회·정리하는 순수 관리 계층이고, `createConnectionHandler`(`server/gameServer.ts`)가 `ClientMessage` 타입별 분기(WS 연결 하나당 `currentRoomId`/`currentPlayerId` 클로저 유지)를 맡는다. 이 핸들러를 분리해둔 이유는 독립 실행(`server/index.ts`, 로컬 개발용 8080 포트에 자체 `WebSocketServer` 생성)과 통합 실행(루트 `server.ts`, Next.js와 같은 포트를 쓰는 배포용) 양쪽이 동일한 연결 처리 로직을 공유하기 위해서다.
 
@@ -161,4 +167,6 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 **대기실만 안전영역 밖으로 나간다.** 안전영역은 *배경 위에 얹히는 반투명 UI*가 캐릭터·카드더미를 가리지 않게 하려는 장치인데, 대기실은 불투명한 흰 카드 하나라 그 제약이 무의미하고 오히려 참가자 목록·채팅·방장 조작·규칙까지 들어가 로비 폼보다 훨씬 길다. 그래서 `.lobby-safe[data-stage="waiting"]`에서만 좌우/상하 제약을 풀고 화면을 세로로 꽉 쓴다(가로는 카드 자신의 `max-w-4xl`에 맞춘다). 로고 슬롯은 폼이 열릴 때와 같은 방식으로 함께 접힌다. 이 단계 값을 되돌리면 대기실 윗부분만 보이고 시작 버튼이 스크롤 밖으로 밀려난다.
 
 ### 테스트 작성 시 참고
+`server/__tests__/spectator.test.ts`는 엔진이 아니라 방(`Room`)을 직접 세우는 유일한 테스트다 — 가짜 WebSocket(`send`가 JSON을 배열에 쌓는 객체)으로 로비 명령을 넣고 브로드캐스트를 읽는다. 게임을 시작시키면 방이 실제 턴 타이머를 걸므로 반드시 `jest.useFakeTimers()`로 감쌀 것(안 그러면 30초짜리 타이머가 남아 프로세스가 붙들린다).
+
 `server/__tests__/effects.test.ts`는 결정론적 RNG(`rng0`=항상 0번째 선택, `rngLast`=항상 마지막 선택)로 `initGame`부터 각 엔진 함수를 직접 호출하는 패턴을 쓴다. `simulation.test.ts`는 봇 대전을 다회 시뮬레이션해 게임이 항상 유한 턴 내에 끝나는지 등 불변조건을 검증한다.
