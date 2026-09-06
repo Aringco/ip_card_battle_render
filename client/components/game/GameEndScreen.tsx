@@ -142,8 +142,14 @@ export function GameEndScreen({
       <div className="winner-bounce-in flex flex-col items-center gap-3">
         {medal ? (
           // 높이를 맞춰 둔다 — 금메달이 밀 이삭 때문에 훨씬 넓어서, 폭을 맞추면
-          // 은메달만 커 보인다
-          <img src={medal.src} alt={medal.alt} className="h-24 w-auto select-none" draggable={false} />
+          // 은메달만 커 보인다. max-w-full은 좁은 화면 방어선 — 금메달은 h-36에서
+          // 폭이 321px이라 390px 화면의 콘텐츠 폭(326px)에 겨우 들어간다.
+          <img
+            src={medal.src}
+            alt={medal.alt}
+            className="h-36 w-auto max-w-full object-contain select-none"
+            draggable={false}
+          />
         ) : (
           <div style={{ fontSize: '5rem' }}>🤝</div>
         )}

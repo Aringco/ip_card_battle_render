@@ -2517,6 +2517,11 @@ body {
    translate(-50%, -50%)가 그 "반씩"을 만든다: 가로는 가운데 정렬, 세로는 자기 높이의
    절반만큼 위로 올라가 top: 0(= 액자 윗변) 위아래로 걸친다.
 
+   **귀퉁이 장식과 같은 층에 둔다** — `z-index: -1`은 `.board-frame::after`(귀퉁이 장식 4장)와
+   같은 값이다. 액자 그림(`::before`, -2)보다는 위, 판 안의 글자보다는 아래에 놓여
+   "액자에 붙은 장식"으로 읽힌다. 값을 0이나 양수로 올리면 글자 위로 올라와 판 안의
+   내용을 가린다.
+
    ⚠️ 액자 위로 삐져나온 절반만큼 **위 요소와 겹친다.** 그래서 문장을 단 판은 그만큼
    위쪽에 자리를 낸다(아래 :has 규칙). 이 비율 0.42는 그림 비율(320:268 ≈ 0.84)의 절반이다 —
    그림을 다른 비율로 바꾸면 여기도 함께 고쳐야 겹침이 다시 생기지 않는다. */
@@ -2525,14 +2530,14 @@ body {
   left: 50%;
   top: 0;
   transform: translate(-50%, -50%);
-  width: var(--crest-w, 132px);
+  width: var(--crest-w, 53px);
   height: auto;
-  z-index: 1;
+  z-index: -1;
   pointer-events: none;
   user-select: none;
 }
 .board-frame:has(> .board-crest) {
-  margin-top: calc(var(--crest-w, 132px) * 0.42);
+  margin-top: calc(var(--crest-w, 53px) * 0.42);
 }
 
 /* 양피지 위에 얹히는 안쪽 칸 — 대기실의 팀 목록·채팅처럼 원래 회색 상자였던 것들.
