@@ -202,7 +202,9 @@ export default function LobbyPage() {
           )}
 
           {inWaitingRoom && ws.roomId ? (
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            // 스크롤은 여기가 아니라 **액자 안쪽**에서 난다(WaitingRoom 참고) — 여기서
+            // 스크롤하면 나무 액자까지 통째로 밀려 올라가 판이 화면 밖으로 나간다.
+            <div className="flex-1 min-h-0 flex justify-center">
               <WaitingRoom
                 roomId={ws.roomId}
                 players={ws.lobbyPlayers}

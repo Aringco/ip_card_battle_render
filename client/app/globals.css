@@ -2530,14 +2530,18 @@ body {
   left: 50%;
   top: 0;
   transform: translate(-50%, -50%);
-  width: var(--crest-w, 53px);
+  width: var(--crest-w, 92px);
   height: auto;
   z-index: -1;
   pointer-events: none;
   user-select: none;
 }
 .board-frame:has(> .board-crest) {
-  margin-top: calc(var(--crest-w, 53px) * 0.42);
+  margin-top: calc(var(--crest-w, 92px) * 0.42);
+  /* 문장의 **아래쪽 절반**은 판 안으로 들어온다. 액자 기본 여백(약 27px)보다 깊이
+     들어오면 맨 윗줄 글자와 겹치므로(92px 문장에서 실제로 "행동 사용 통계" 제목을
+     덮었다), 그만큼 내용을 내려준다. 문장 크기를 바꿔도 따라온다. */
+  padding-top: calc(var(--crest-w, 92px) * 0.42 + 8px);
 }
 
 /* 양피지 위에 얹히는 안쪽 칸 — 대기실의 팀 목록·채팅처럼 원래 회색 상자였던 것들.

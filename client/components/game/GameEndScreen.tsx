@@ -147,7 +147,7 @@ export function GameEndScreen({
           <img
             src={medal.src}
             alt={medal.alt}
-            className="h-36 w-auto max-w-full object-contain select-none"
+            className="h-[8.1rem] w-auto max-w-full object-contain select-none"
             draggable={false}
           />
         ) : (

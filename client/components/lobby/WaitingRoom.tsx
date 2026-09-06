@@ -91,7 +91,17 @@ export function WaitingRoom({
     // 로비 폼과 같은 나무 액자를 두른다 — 예전에는 흰 카드 한 장이라, 카드테이블
     // 일러스트 위에 인쇄물을 얹어 놓은 것처럼 세계관이 끊겼다. 안쪽 칸들도 회색이
     // 아니라 .board-panel(반투명 따뜻한 흰색)이라야 양피지와 같은 재질로 읽힌다.
-    <BoardFrame className="w-full max-w-4xl flex flex-col gap-6">
+    <BoardFrame className="w-full max-w-4xl h-full flex flex-col">
+      {/* 스크롤은 액자가 아니라 **양피지 안쪽**에서 난다. 액자를 스크롤 컨테이너 안에
+          넣으면 나무테까지 함께 밀려 올라가 판이 화면 밖으로 나가버린다. 여기서는
+          액자가 제자리에 서 있고 내용만 그 안에서 오르내린다.
+          pr-1은 스크롤바가 글자에 바짝 붙지 않게 하는 여유다.
+
+          ⚠️ `[&>*]:shrink-0`이 없으면 안 된다. 높이가 정해진 flex 열 안에서는 자식이
+          기본값(flex-shrink: 1)대로 **내용보다 작게 찌그러진다** — 스크롤이 생기는 대신
+          채팅창(h-48)이 선 하나로 눌려 사라졌다. 자식이 제 높이를 지켜야 넘치고,
+          넘쳐야 이 컨테이너가 스크롤한다. */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 [&>*]:shrink-0">
       <RoomCodeHeader roomId={roomId} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -174,6 +184,7 @@ export function WaitingRoom({
       <button onClick={onLeave} className="text-lg text-board-muted hover:text-board-ink">
         ← 방 나가기
       </button>
+      </div>
     </BoardFrame>
   );
 }
