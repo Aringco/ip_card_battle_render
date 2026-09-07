@@ -7,6 +7,7 @@ import { SEAT_META, seatLabel } from '@/lib/seatInfo';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
+import { UiIcon } from '@/components/ui/UiIcon';
 
 /** 초대 링크 — 로비 첫 화면(`/`)을 방 코드가 채워진 "방 참가하기" 상태로 열어준다. */
 function inviteUrl(roomId: string): string {
@@ -149,7 +150,7 @@ export function WaitingRoom({
             disabled={blockReason !== null}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
           >
-            👑 게임 시작
+            <UiIcon name="iconStart" /> 게임 시작
           </button>
           {blockReason && <p className="text-center text-base text-board-muted">{blockReason}</p>}
         </div>
@@ -562,7 +563,7 @@ function HostRulesPanel({
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-3 text-lg font-semibold text-board-ink"
       >
-        <span>⚙️ 게임 규칙 바꾸기</span>
+        <span><UiIcon name="iconCog" /> 게임 규칙 바꾸기</span>
         <span className="text-board-muted">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
 

@@ -5,6 +5,7 @@ import { GameRulesFields } from './GameRulesFields';
 import { FormCard } from './Field';
 import { NicknameField, TeamNameField } from './NameFields';
 import { TeamSelect } from './TeamSelect';
+import { UiIcon } from '@/components/ui/UiIcon';
 
 export function CreateRoomForm({
   firstFieldRef,
@@ -46,7 +47,7 @@ export function CreateRoomForm({
     // 충돌 경고를 새 줄로 덧붙이지 않고 설명 줄을 갈아끼운다 — 폼이 절대배치라 한 줄만
     // 늘어도 좁은 화면(390×844)에서 스크롤바가 생긴다(LOBBY_REDESIGN.md §12 실측 참고).
     <FormCard
-      title="🏠 방 만들기"
+      title={<><UiIcon name="iconCreate" /> 방 만들기</>}
       description={
         teamNamesClash ? (
           <span className="text-red-600 font-semibold">두 팀 이름이 같아요. 한쪽을 바꿔주세요.</span>

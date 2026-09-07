@@ -55,7 +55,18 @@ export const LOBBY_ASSETS = {
    * 실제로 들어왔다) **연결 성분 단위**로 남기고 나머지를 알파 0으로 지웠다. 잘라낸
    * 좌표와 방법은 `client/public/ui/README.md`에 적어 뒀다.
    */
-  crestLaurel: '/ui/laurel_book.webp',   // 버섯+책 월계수 — 판 상단 문장
+  /**
+   * UI 아이콘 5종 — 한 장짜리 시트에서 잘라 배경(베이지)을 투명화한 것.
+   * 시트에는 아이콘 아래에 글씨가 함께 그려져 있었지만 **그 부분은 잘라내 버렸다** —
+   * 글자는 HTML로 따로 쓴다(글꼴을 나중에 바꿔도 그림을 다시 만들 필요가 없다).
+   * 자른 좌표와 절차는 client/public/ui/README.md 참조.
+   */
+  iconStart: '/ui/icon_start.webp',    // 게임 시작 — 동물들이 달리는 원형
+  iconCreate: '/ui/icon_create.webp',  // 방 만들기 — 통나무집
+  iconCog: '/ui/icon_cog.webp',        // 설정 — 톱니바퀴+렌치
+  iconRank: '/ui/icon_rank.webp',      // 순위 — 왕관 쓴 토끼 방패. 판 상단 문장으로 쓴다
+  iconHelp: '/ui/icon_help.webp',      // 도움말 — 책+돋보기. "게임 방법"에 쓴다
+  crestLaurel: '/ui/laurel_book.webp',   // 버섯+책 월계수 — 지금은 iconRank로 대체됨(미사용)
   medalFirst: '/ui/medal_1.webp',        // 금메달 "1" — 승리팀
   medalSecond: '/ui/medal_2.webp',       // 은메달 "2" — 패배팀
 } as const;

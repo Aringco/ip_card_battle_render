@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { GameSettings, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
+import { UiIcon } from '@/components/ui/UiIcon';
 
 // 선 플레이어(먼저 시작하는 팀) — 숫자가 아니라 3지선다라 아래 RULE_FIELDS와 따로 그린다.
 const FIRST_TEAM_OPTIONS: { value: GameSettings['firstTeam']; label: string }[] = [
@@ -65,7 +66,7 @@ export function GameRulesFields({
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600"
       >
-        <span>⚙️ 게임 규칙 (방장이 정해요)</span>
+        <span><UiIcon name="iconCog" /> 게임 규칙 (방장이 정해요)</span>
         <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
       {open && (

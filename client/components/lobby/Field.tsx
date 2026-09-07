@@ -33,7 +33,7 @@ export function FormCard({
   side,
   footer,
 }: {
-  title: string;
+  title: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
   /**

@@ -1,6 +1,7 @@
 'use client';
 
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import { UiIcon } from '@/components/ui/UiIcon';
 
 /**
  * 로비 상단 로고 — 투명 배경의 "떱카드 T.U.P.D." 엠블럼.
@@ -28,7 +29,7 @@ export function LobbyHero({ onHowTo }: { onHowTo: () => void }) {
         className="absolute bottom-0 right-0 z-20 text-xs md:text-sm font-semibold text-jungle-900
                    bg-white/85 hover:bg-white px-3 py-1.5 rounded-full transition shadow-lg"
       >
-        📖 게임 방법
+        <UiIcon name="iconHelp" /> 게임 방법
       </button>
     </div>
   );

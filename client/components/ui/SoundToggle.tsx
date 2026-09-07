@@ -15,6 +15,7 @@ import {
   subscribeUiSettings,
 } from '@/lib/uiSettings';
 import { useGuideEnabled, setGuideEnabled } from '@/lib/guideSettings';
+import { UiIcon } from '@/components/ui/UiIcon';
 
 function ToggleButton({
   label,
@@ -195,7 +196,7 @@ export function SoundToggle() {
         className="fixed bottom-3 right-3 z-[90] w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg border border-jungle-200 flex items-center justify-center text-lg hover:scale-105 transition-transform"
         aria-label="설정 열기"
       >
-        ⚙️
+        <UiIcon name="iconCog" className="!w-6 !h-6 !align-middle" />
         {/* 톱니바퀴만 있으면 음소거 상태가 안 보이므로 꺼져 있을 때만 작게 겹쳐 표시한다. */}
         {settings.muteAll && (
           <span className="absolute -top-0.5 -right-0.5 text-xs leading-none">🔇</span>

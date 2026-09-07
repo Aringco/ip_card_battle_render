@@ -40,7 +40,7 @@ function pickFlavorAnimal(gameState: ClientGameState, winner: Team | 'draw' | nu
 function BoardCrest() {
   return (
     <img
-      src={LOBBY_ASSETS.crestLaurel}
+      src={LOBBY_ASSETS.iconRank}
       alt=""
       aria-hidden
       className="board-crest"
@@ -160,16 +160,25 @@ export function GameEndScreen({
         )}
       </div>
 
+      {/* 체력표와 행동 통계를 **같은 높이의 좌우 2열**로 놓는다. 예전에는 위아래로
+          쌓여 있었는데, 둘 다 max-w-2xl이라 넓은 화면에서 좌우가 크게 비고 세로로만
+          길어져 마지막 화면이 스크롤됐다.
+          - `items-stretch`(grid 기본)라 두 판의 높이가 자동으로 맞는다
+          - 좁은 화면(<md)에서는 1열로 떨어져 예전 세로 배치가 그대로 된다
+          - 액자는 내용 높이를 따라가므로, 높이를 맞추려면 **BoardFrame이 h-full**이어야 한다 */}
+      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
       {/* 체력표 — 로비 폼·대기실과 같은 나무 액자를 두른다(BoardFrame 주석 참고).
           예전에는 흰 카드였는데, 게임 안에서 만나는 마지막 화면만 UI 톤이 달랐다. */}
       <BoardFrame
-        className="w-full max-w-2xl"
+        className="w-full h-full"
         style={{ animation: 'bounceIn 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 200ms both' }}
       >
         <BoardCrest />
         {/* 팀 이름과 체력을 한 줄에 붙여 쓰면 이름이 조금만 길어도 줄바꿈되므로,
             좌우 두 칸으로 나눈 뒤 이름 아래에 체력을 따로 크게 적는다. */}
-        <div className="grid grid-cols-2 gap-6 mb-1">
+        {/* 판 자체가 이미 좌우로 나뉘었으므로 안쪽은 팀 둘을 세로로 쌓는다 —
+            2열 안에 또 2열을 넣으면 팀 이름이 잘린다. */}
+        <div className="grid grid-cols-1 gap-4 mb-1">
           {(['A', 'B'] as const).map(t => (
             <div
               key={t}
@@ -229,12 +238,12 @@ export function GameEndScreen({
 
       {/* 행동 사용 통계 — 동물별로 몇 번, 총 몇 레벨어치를 발동했는지 */}
       <BoardFrame
-        className="w-full max-w-2xl"
+        className="w-full h-full"
         style={{ animation: 'bounceIn 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 300ms both' }}
       >
         <BoardCrest />
         <p className="text-center text-base font-bold text-board-ink mb-4">행동 사용 통계</p>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-5">
           {(['A', 'B'] as const).map(t => (
             <div key={t}>
               <p
@@ -261,6 +270,7 @@ export function GameEndScreen({
           ))}
         </div>
       </BoardFrame>
+      </div>
 
       <button
         onClick={onBack}
