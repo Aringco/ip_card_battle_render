@@ -57,10 +57,10 @@ export function GameRulesFields({
   const [open, setOpen] = useState(false);
 
   return (
-    // data-rules-open은 CSS가 :has()로 읽는다 — 규칙이 펼쳐지면 폼 카드의
-    // 확대(--form-zoom)가 1로 내려간다. 항목이 세로로 줄줄이 붙는데 확대까지 걸려
-    // 있으면 스테이지 박스를 넘겨 조용히 스크롤바가 생기기 때문이다.
-    // (한때는 이 속성으로 카드를 2열로 넓혔지만 2026-09-08에 세로로 되돌렸다.)
+    // data-rules-open은 지금 화면을 바꾸지 않는다 — 펼쳐도 카드 크기를 그대로 두고
+    // 넘치는 만큼 스크롤시키기로 했기 때문이다(globals.css 참고). 예전에는 이 속성을
+    // :has()로 읽어 카드를 2열로 넓히거나 확대를 1로 내렸다. 상태를 밖에서 알아볼
+    // 표식으로 남겨 둔다 — 되살릴 때 컴포넌트를 다시 고치지 않아도 된다.
     <div className="border border-board-line rounded-lg" data-rules-open={open || undefined}>
       <button
         type="button"
@@ -95,7 +95,10 @@ export function GameRulesFields({
             </div>
           </div>
 
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {/* 한 항목씩 세로로 — 예전에는 2열로 눌러 담았지만, 규칙을 펼치면 카드가
+            넘치는 만큼 스크롤하도록 바뀌어(globals.css의 data-rules-open 절) 더는
+            좁은 세로에 억지로 맞출 이유가 없다. 라벨도 잘리지 않는다. */}
+        <div className="grid grid-cols-1 gap-y-1.5">
           {RULE_FIELDS.map(({ key, label, title, suffix, hint }) => {
             const { min, max } = SETTINGS_LIMITS[key];
             return (

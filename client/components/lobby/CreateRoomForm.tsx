@@ -5,7 +5,8 @@ import { GameRulesFields } from './GameRulesFields';
 import { FormCard } from './Field';
 import { NicknameField, TeamNameField } from './NameFields';
 import { TeamSelect } from './TeamSelect';
-import { IconButton } from '@/components/ui/UiIcon';
+import { UiIcon } from '@/components/ui/UiIcon';
+import { PlankButton } from '@/components/ui/PlankButton';
 
 export function CreateRoomForm({
   firstFieldRef,
@@ -47,7 +48,10 @@ export function CreateRoomForm({
     // 충돌 경고를 새 줄로 덧붙이지 않고 설명 줄을 갈아끼운다 — 폼이 절대배치라 한 줄만
     // 늘어도 좁은 화면(390×844)에서 스크롤바가 생긴다(LOBBY_REDESIGN.md §12 실측 참고).
     <FormCard
-      title="🏠 방 만들기"
+      // 제목 왼쪽 아이콘 — 예전에는 🏠 이모지였고, 그 다음에는 이 그림이 제출 버튼이었다.
+      // 제출이 팻말로 바뀌면서 그림이 이 자리로 옮겨 왔다. .ui-icon이 1.6em이라
+      // 제목 글자 크기를 그대로 따라가며 작게 들어간다.
+      title={<><UiIcon name="iconCreate" /> 방 만들기</>}
       description={
         teamNamesClash ? (
           <span className="text-red-600 font-semibold">두 팀 이름이 같아요. 한쪽을 바꿔주세요.</span>
@@ -67,18 +71,10 @@ export function CreateRoomForm({
         </>
       }
       footer={
-        // 통나무집 그림 자체가 제출 버튼이다 — 초록 막대와 글씨를 걷어냈다.
-        // 무슨 버튼인지는 바로 위 제목이 말해준다.
-        // 크기를 숫자가 아니라 CSS 변수로 넘기는 이유는 globals.css의
-        // --form-icon-btn 선언을 볼 것 — 폼은 zoom이 걸려 있어 px를 그대로 쓰면
-        // 화면에 그려지는 크기가 뷰포트마다 달라진다.
-        <IconButton
-          name="iconCreate"
-          label="방 만들기"
-          size="var(--form-icon-btn)"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-        />
+        // 다른 시작 버튼들과 같은 나무 팻말 — 통나무집 그림은 제목 옆으로 옮겼다.
+        <PlankButton onClick={onSubmit} disabled={!canSubmit} block>
+          방 만들기
+        </PlankButton>
       }
     >
       <NicknameField

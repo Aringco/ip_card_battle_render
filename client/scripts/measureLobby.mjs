@@ -176,12 +176,18 @@ let bad = 0;
 console.log('label                   안전영역     카드         폼스크롤  페이지스크롤  화면밖   비고');
 for (const r of results) {
   const b = o => (o ? `${o.w}x${o.h}` : '-');
-  if (r.formScroll?.v || r.pageScroll || r.offscreen || r.note) bad++;
+  // 규칙을 **펼친** 상태의 폼 스크롤은 2026-09-08부터 의도된 동작이다 — 펼치면 카드
+  // 크기를 그대로 두고 넘치는 만큼 스크롤한다(globals.css의 data-rules-open 절).
+  // 예전처럼 이것을 문제로 세면 매번 12건이 떠서 진짜 문제를 덮는다.
+  // 규칙을 **접은** 상태(join+invite 등)에서 스크롤이 생기면 그때가 진짜 문제다.
+  const scrollExpected = /\+rules|\+clash|\+spectator/.test(r.label);
+  const formScrollBad = !!r.formScroll?.v && !scrollExpected;
+  if (formScrollBad || r.pageScroll || r.offscreen || r.note) bad++;
   console.log(
     r.label.padEnd(23),
     b(r.safe).padEnd(12),
     b(r.card).padEnd(12),
-    (r.formScroll ? (r.formScroll.v ? '*** YES' : 'no') : '-').padEnd(9),
+    (r.formScroll ? (r.formScroll.v ? (scrollExpected ? 'yes(정상)' : '*** YES') : 'no') : '-').padEnd(9),
     (r.pageScroll ? '*** YES' : 'no').padEnd(13),
     (r.offscreen ? '*** YES' : 'no').padEnd(8),
     r.note ?? '',
