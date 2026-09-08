@@ -119,7 +119,7 @@ export function GameRulesFields({
             return (
               <div key={key} className="flex flex-col text-xs" title={title}>
                 <div className="flex items-center justify-between gap-1">
-                  <label className="text-gray-500 truncate">{label}</label>
+                  <label className="text-gray-500 truncate min-w-0">{label}</label>
                   <div className="flex items-center gap-1 shrink-0">
                     <input
                       type="number"
@@ -131,7 +131,7 @@ export function GameRulesFields({
                         onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
                       }}
                       onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value) })}
-                      className="input-base input-compact w-16 text-right"
+                      className="input-base input-compact input-rule-num"
                     />
                     <span className="text-gray-400 w-3">{suffix}</span>
                   </div>
