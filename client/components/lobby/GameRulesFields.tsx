@@ -57,9 +57,10 @@ export function GameRulesFields({
   const [open, setOpen] = useState(false);
 
   return (
-    // data-rules-open은 CSS가 :has()로 읽는다 — 규칙이 펼쳐지면 폼 카드가 2열로 넓어지고
-    // 백보드가 가로형으로 교체된다(globals.css의 .lobby-form-board). 상태를 부모로
-    // 끌어올리는 대신 속성 하나로 알리면 폼 3종의 prop이 늘어나지 않는다.
+    // data-rules-open은 CSS가 :has()로 읽는다 — 규칙이 펼쳐지면 폼 카드의
+    // 확대(--form-zoom)가 1로 내려간다. 항목이 세로로 줄줄이 붙는데 확대까지 걸려
+    // 있으면 스테이지 박스를 넘겨 조용히 스크롤바가 생기기 때문이다.
+    // (한때는 이 속성으로 카드를 2열로 넓혔지만 2026-09-08에 세로로 되돌렸다.)
     <div className="border border-board-line rounded-lg" data-rules-open={open || undefined}>
       <button
         type="button"

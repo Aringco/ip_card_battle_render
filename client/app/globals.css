@@ -98,6 +98,54 @@ body {
   font-family: var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
 }
 
+/* ── 스크롤바 ───────────────────────────────────────────────────────────
+   배경이 일러스트라 기본 스크롤바(회색 홈 + 두꺼운 막대)가 그 위에 얹히면 눈에 띈다.
+   그래서 홈(track)은 투명하게 지우고, 손잡이(thumb)만 얇은 알약으로 남긴다.
+
+   **핵심은 "보이는 굵기"와 "잡히는 폭"을 따로 두는 것이다.** 손잡이를 정말 2px로
+   만들면 마우스로 잡을 수가 없다. 그래서 스크롤바 자체는 10px로 넉넉히 두고,
+   손잡이에 **투명한 테두리**를 둘러 안쪽 색칠 영역만 2px로 보이게 한다
+   (`background-clip: padding-box`가 있어야 테두리 자리에 배경이 안 칠해진다).
+   hover하면 테두리를 2px로 줄여 색칠 영역이 6px로 두꺼워진다 —
+   잡히는 폭 10px은 그대로라 커서가 흔들려도 놓치지 않는다.
+
+   양끝 화살표 버튼(scrollbar-button)은 크기를 0으로 두어 없앤다. 두지 않으면
+   웹킷이 기본 화살표를 그려 얇은 막대 위아래에 회색 사각형 둘이 남는다.
+
+   Firefox는 이 정도로 세밀하게 못 만든다 — `scrollbar-width: thin`과 색만 받는다.
+   그쪽에서는 "얇고 홈이 투명한 스크롤바"까지가 한계이고, 그것으로 충분하다. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 55, 40, 0.45) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(74, 55, 40, 0.45);
+  /* 10px - (4px × 2) = 2px 가 보인다 */
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  /* 10px - (2px × 2) = 6px. 반지름은 2px로 모서리만 살짝 둥글린다 */
+  border-width: 2px;
+  border-radius: 2px;
+  background-color: rgba(74, 55, 40, 0.7);
+}
+
 /* ── 현재 플레이어 글로우 펄스 ──────────────────────────────────────── */
 @keyframes glowPulse {
   0%, 100% {
@@ -2546,13 +2594,20 @@ body {
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
-  text-shadow: 0 1px 0 rgba(255, 240, 205, 0.65);
+  /* 나무에 **파 넣은 것처럼** 보이게 한다(음각).
+     빛이 위에서 오므로, 파인 글자는 **위쪽 안쪽 벽이 그늘지고** 아래쪽 모서리가 빛을
+     받는다. 그래서 짙은 그림자를 위로(0 -1px), 옅은 빛을 아래로(0 1px) 깐다.
+     이 둘의 방향을 바꾸면 그대로 양각(도드라진 글자)이 되므로 부호를 뒤집지 말 것. */
+  text-shadow:
+    0 -1px 1px rgba(58, 33, 10, 0.55),
+    0 1px 0 rgba(255, 246, 222, 0.35);
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
-  transition: transform 0.15s ease, filter 0.15s ease;
+  transition: filter 0.15s ease;
 }
+/* hover에는 **판을 움직이지 않는다** — transform을 걸면 글씨까지 함께 떠올라
+   음각으로 파인 느낌이 깨진다. 밝기와 그림자만 바뀐다. */
 .plank-button:hover:not(:disabled) {
-  transform: translateY(-1px) scale(1.02);
-  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.38)) brightness(1.05);
+  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.38)) brightness(1.06);
 }
 .plank-button:active:not(:disabled) {
   transform: translateY(1px) scale(0.99);
@@ -2750,18 +2805,24 @@ body {
   transition: max-width var(--t-expand) ease;
 }
 
-/* 규칙을 펼치면 — 오른쪽으로 넓어진다(액자는 9분할이라 폭만 늘어난다).
-   세로로만 자라면 스테이지 박스를 넘겨 스크롤바가 생기는데(액자 두께 상한도 거기서
-   나왔다), 가로는 1280에서 380px, 1920에서 527px이 늘 놀고 있다.
-   :has()로 읽으므로 GameRulesFields가 상태를 부모로 올릴 필요가 없다. */
+/* 규칙을 펼치면 카드가 **세로로** 자란다.
+   한때는 오른쪽으로 넓어지는 2열 배치였지만(51d6d24 ~ 8efe72e) 2026-09-08에 되돌렸다.
+   되돌리면서도 **--form-zoom만은 1로 내리는 규칙을 남겼다** — 확대까지 걸린 채로 세로로
+   자라면 스테이지 박스를 그대로 넘긴다. :has()로 읽으므로 GameRulesFields가 상태를
+   부모로 올릴 필요는 여전히 없다. */
 @media (min-width: 768px) {
   /* 넓은 화면에서는 카드를 크게 — 스테이지가 738×590인데 접힌 카드가 358×326이라
      절반이 비어 있었다. 1280×900 기준 최대 1.81배까지 들어가므로 1.75를 쓴다.
-     **규칙을 펼치면 1로 되돌린다.** 그때는 카드가 이미 스테이지 폭을 다 쓰고 있어
-     더 키울 자리가 없고, 렌더 폭이 그대로인 채 글자만 커지면 규칙 라벨이 다시
-     말줄임으로 잘린다(가로 확장으로 겨우 없앤 문제다). */
+     **규칙을 펼치면 1로 되돌린다.** 규칙 항목이 세로로 줄줄이 붙는데 확대까지 걸려
+     있으면 스테이지 박스를 그대로 넘긴다. */
   .lobby-form-board { --form-zoom: 1.35; }
   .lobby-form-board:has([data-rules-open]) { --form-zoom: 1; }
+  /* 규칙을 펼치면 제출 버튼(통나무집 그림)도 줄인다.
+     2열 배치를 세로로 되돌리면서 방 만들기 카드가 1280×900에서 583px가 됐는데,
+     스테이지가 590px라 여백까지 더하면 넘친다(실측 3건). 그림 버튼 76 → 40px가
+     그 36px을 그대로 메운다. 40px은 좁은 화면에서 이미 쓰는 값이고, 걷어낸 초록
+     막대와 같은 키라 이보다 더 줄일 자리는 없다. */
+  .lobby-form-board:has([data-rules-open]) { --form-icon-btn: 40px; }
 
   /* 글자 크기는 **기본값 그대로** 둔다(2026-09-06에 되돌림).
      한때 여기서 --font-scale에 1.488을 곱해 화면에서 약 14pt로 고정했지만, 글자가
@@ -2771,33 +2832,6 @@ body {
      `calc(.875rem * var(--font-scale))` 로 인라인 컴파일해 --text-sm 을 읽지 않는다.
      동적으로 남는 것은 --font-scale뿐이고, 사용자가 고른 글씨 크기 단계를 잃지 않으려면
      :root의 거울 변수 --font-scale-user에 배수를 곱해야 한다. */
-
-  .lobby-form-board:has([data-rules-open]) {
-    /* 스테이지가 허락하는 만큼 다 쓴다 — 1280에서 바깥 여백을 뺀 712px가 상한이고,
-       그보다 넓은 화면에서는 56rem에서 멈춘다(너무 넓으면 좌우 시선 이동이 길어진다).
-       좁게 잡으면 규칙 라벨이 말줄임으로 잘려 오히려 접었을 때보다 못해진다. */
-    max-width: min(56rem, 100%);
-    display: grid;
-    /* 5:5. 왼쪽은 "내가 적는 것"(닉네임·팀 이름), 오른쪽은 "내가 고르는 것"
-       (자리·규칙)과 제출 버튼으로 갈랐다. */
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr auto;
-    column-gap: 1.25rem;
-  }
-  /* 왼쪽: 머리말 + 입력칸 / 오른쪽: 자리 선택·규칙(side) 위에서 아래로, 맨 아래에 버튼 */
-  .lobby-form-board:has([data-rules-open]) > .lobby-form-head   { grid-area: 1 / 1; }
-  .lobby-form-board:has([data-rules-open]) > .lobby-form-fields { grid-area: 2 / 1; }
-  .lobby-form-board:has([data-rules-open]) > .lobby-form-side   { grid-area: 1 / 2 / 3 / 3; }
-  .lobby-form-board:has([data-rules-open]) > .lobby-form-foot   { grid-area: 3 / 2; align-self: end; }
-
-  /* 두 팀 이름은 접혀 있을 때만 한 줄에 나란히 둔다. 왼쪽 열은 카드의 45%뿐이라
-     나란히 두면 "비우면 무작위" 자리표시가 잘린다 — 규칙을 펼치면 세로가 크게
-     남으므로(552 → 342px) 위아래로 풀어도 넘치지 않는다.
-     위아래로 놓아도 여전히 맞붙어 있어, 같은 이름인지 눈으로 확인하기는 그대로 쉽다. */
-  .lobby-form-board:has([data-rules-open]) .lobby-team-pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
 }
 
 /* 세로가 넉넉한 화면에서만 배율을 더 올린다.
