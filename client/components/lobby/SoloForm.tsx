@@ -2,6 +2,7 @@
 
 import type { GameSettings } from 'shared';
 import { FormCard } from './Field';
+import { BarButton } from '@/components/ui/UiIcon';
 import { GameRulesFields } from './GameRulesFields';
 import { NicknameField, TeamNameField } from './NameFields';
 
@@ -34,13 +35,17 @@ export function SoloForm({
       description="상대는 컴퓨터예요. 컴퓨터는 자기 차례마다 무작위 장소를 클릭합니다."
       side={<GameRulesFields settings={settings} onChange={onSettings} />}
       footer={
-        <button
+        // 나무 팻말 그림 한 장이 시작 버튼이다 — 초록 막대를 걷어냈다.
+        // **"컴퓨터와 대전하기"라는 글씨는 그림 안에 있어** 여기에 따로 쓰지 않는다.
+        // 최대 폭을 CSS 변수로 넘기는 이유는 globals.css의 --form-bar-btn 주석을 볼 것
+        // (폼에는 zoom이 걸려 있어 px를 그대로 쓰면 화면 크기가 뷰포트마다 달라진다).
+        <BarButton
+          name="barSolo"
+          label="컴퓨터와 대전 시작"
+          maxWidth="var(--form-bar-btn)"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="w-full bg-jungle-500 hover:bg-jungle-600 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
-        >
-          컴퓨터와 대전 시작
-        </button>
+        />
       }
     >
       <NicknameField

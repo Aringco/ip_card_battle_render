@@ -7,7 +7,7 @@ import { SEAT_META, seatLabel } from '@/lib/seatInfo';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
-import { UiIcon } from '@/components/ui/UiIcon';
+import { UiIcon, BarButton } from '@/components/ui/UiIcon';
 
 /** 초대 링크 — 로비 첫 화면(`/`)을 방 코드가 채워진 "방 참가하기" 상태로 열어준다. */
 function inviteUrl(roomId: string): string {
@@ -64,6 +64,14 @@ export interface WaitingRoomProps {
   onRenameTeam: (team: Team, name: string) => void;
   onUpdateSettings: (settings: GameSettings) => void;
 }
+
+/**
+ * 게임 시작 팻말의 최대 가로폭(px).
+ *
+ * 대기실 카드는 넓어서(1280에서 700px 남짓) 팻말이 자리를 다 쓰면 비율 때문에 키도
+ * 226px까지 자란다. 420px이면 키가 135px로, 걷어낸 초록 막대와 비슷한 무게가 된다.
+ */
+const START_BAR_MAX_PX = 420;
 
 export function WaitingRoom({
   roomId, players, teamNames, settings,
@@ -145,13 +153,18 @@ export function WaitingRoom({
           규칙을 아래에 두지 않으면 정작 가장 자주 누르는 버튼이 스크롤 밖으로 밀려난다. */}
       {isHost ? (
         <div className="flex flex-col gap-2">
-          <button
+          {/* 나무 팻말 그림 한 장이 시작 버튼이다 — 초록 막대를 걷어냈다.
+              **"게임 시작"이라는 글씨는 그림 안에 이미 그려져 있어** 여기에 따로 쓰지 않는다.
+              시작을 막는 사유가 있으면 바로 아래 줄이 그것을 글로 알려주고, 팻말 쪽은
+              .bar-button의 disabled 처리(흑백+반투명)로 누를 수 없음을 드러낸다. */}
+          <BarButton
+            name="barStart"
+            label="게임 시작"
+            maxWidth={START_BAR_MAX_PX}
             onClick={onStart}
             disabled={blockReason !== null}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white font-semibold text-xl py-4 rounded-xl transition"
-          >
-            <UiIcon name="iconStart" /> 게임 시작
-          </button>
+            className="self-center"
+          />
           {blockReason && <p className="text-center text-base text-board-muted">{blockReason}</p>}
         </div>
       ) : iAmSpectator ? (

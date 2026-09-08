@@ -15,7 +15,7 @@ import {
   subscribeUiSettings,
 } from '@/lib/uiSettings';
 import { useGuideEnabled, setGuideEnabled } from '@/lib/guideSettings';
-import { UiIcon } from '@/components/ui/UiIcon';
+import { IconButton } from '@/components/ui/UiIcon';
 
 function ToggleButton({
   label,
@@ -169,6 +169,15 @@ function GuideToggleRow() {
   );
 }
 
+/**
+ * 설정 버튼(톱니바퀴)의 한 변(px).
+ *
+ * 예전 흰 원판은 `w-10 h-10`이었는데, 이 프로젝트는 `html { font-size: 80% }`이라
+ * 그 2.5rem은 40px가 아니라 **32px**로 그려졌다. 그 1.3배가 42px다 — 클래스 이름이
+ * 아니라 실제로 그려지던 크기를 기준으로 잡았다.
+ */
+const COG_BUTTON_PX = 42;
+
 export function SoundToggle() {
   const [settings, setSettings] = useState<AudioSettings>(getAudioSettings());
   // 평소엔 작은 원형 스피커 아이콘만 떠 있다가, 누르면 조절 패널로 펼쳐진다.
@@ -189,19 +198,22 @@ export function SoundToggle() {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [expanded]);
 
+  // 흰 원판·테두리·그림자 상자를 걷어내고 톱니바퀴 그림 자체를 버튼으로 쓴다.
+  // 배경이 없어진 만큼 누를 수 있는 면적도 줄어드므로 그림을 키운다.
   if (!expanded) {
     return (
-      <button
+      <IconButton
+        name="iconCog"
+        label="설정 열기"
+        size={COG_BUTTON_PX}
         onClick={() => setExpanded(true)}
-        className="fixed bottom-3 right-3 z-[90] w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg border border-jungle-200 flex items-center justify-center text-lg hover:scale-105 transition-transform"
-        aria-label="설정 열기"
+        className="fixed bottom-3 right-3 z-[90]"
       >
-        <UiIcon name="iconCog" className="!w-6 !h-6 !align-middle" />
         {/* 톱니바퀴만 있으면 음소거 상태가 안 보이므로 꺼져 있을 때만 작게 겹쳐 표시한다. */}
         {settings.muteAll && (
-          <span className="absolute -top-0.5 -right-0.5 text-xs leading-none">🔇</span>
+          <span className="absolute -top-0.5 -right-0.5 text-xs leading-none drop-shadow">🔇</span>
         )}
-      </button>
+      </IconButton>
     );
   }
 

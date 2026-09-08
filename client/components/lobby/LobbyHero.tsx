@@ -1,7 +1,10 @@
 'use client';
 
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
-import { UiIcon } from '@/components/ui/UiIcon';
+import { IconButton } from '@/components/ui/UiIcon';
+
+/** 게임 방법 버튼의 한 변(px). 아이콘 원본 256px의 0.2배. */
+const HOW_TO_ICON_PX = 51;
 
 /**
  * 로비 상단 로고 — 투명 배경의 "떱카드 T.U.P.D." 엠블럼.
@@ -23,14 +26,16 @@ export function LobbyHero({ onHowTo }: { onHowTo: () => void }) {
                    drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)]"
       />
 
-      <button
-        type="button"
+      {/* 그림 자체가 버튼이다 — 흰 알약 배경을 걷어내고 책+돋보기 아이콘만 남겼다.
+          배경이 사라져 글자를 얹을 자리도 없어졌으므로, 버튼 이름은 IconButton이
+          aria-label·title로 대신 싣는다. */}
+      <IconButton
+        name="iconHelp"
+        label="게임 방법"
+        size={HOW_TO_ICON_PX}
         onClick={onHowTo}
-        className="absolute bottom-0 right-0 z-20 text-xs md:text-sm font-semibold text-jungle-900
-                   bg-white/85 hover:bg-white px-3 py-1.5 rounded-full transition shadow-lg"
-      >
-        <UiIcon name="iconHelp" /> 게임 방법
-      </button>
+        className="absolute bottom-0 right-0 z-20"
+      />
     </div>
   );
 }

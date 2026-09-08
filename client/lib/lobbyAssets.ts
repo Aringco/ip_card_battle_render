@@ -49,24 +49,44 @@ export const LOBBY_ASSETS = {
   /** 가로형 백보드 원본(나무 팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
   scoreBoard: '/ui/score_board.webp',
   /**
+   * UI 아이콘 5종 — 한 장짜리 시트(2행 4열, 8개)에서 잘라낸 것.
+   *
+   * 시트에는 글씨가 없고 아이콘만 들어 있다 — 라벨은 항상 HTML로 따로 쓴다
+   * (글꼴을 바꾸거나 문구를 고칠 때 그림을 다시 만들지 않아도 되고, 스크린리더도 읽는다).
+   * 자른 좌표와 절차는 client/public/ui/README.md 참조.
+   *
+   * 이 중 셋(create·cog·help)은 그림 자체가 버튼이다(`IconButton`) — 배경·테두리 없이 그림만 놓인다.
+   */
+  /**
+   * 가로형 나무 팻말 버튼 두 장 — **그림 안에 글씨가 이미 그려져 있다.**
+   *
+   * 아이콘 5종과 규칙이 정반대다. 저쪽은 그림에 글씨가 없어 라벨을 HTML로 따로 쓰지만,
+   * 이 둘은 팻말·그림·글씨가 한 장으로 그려진 완성된 버튼이라 **HTML 라벨을 겹쳐 쓰면
+   * 글씨가 두 번 보인다.** 그래서 `BarButton`은 화면에 글자를 내지 않고 `aria-label`과
+   * `title`로만 이름을 싣는다(스크린리더·툴팁은 그대로 읽힌다).
+   *
+   * 받은 원본은 투명 PNG였지만 세션에는 JPEG로 도착해 투명한 자리가 어두운 글로우로
+   * 칠해져 있었다 — 되살린 방법은 client/public/ui/README.md 참조.
+   */
+  barStart: '/ui/btn_start_bar.webp',   // "게임 시작" — 대기실 시작 버튼
+  barSolo: '/ui/btn_solo_bar.webp',     // "컴퓨터와 대전하기" — 혼자 놀기 폼의 시작 버튼
+  /** 놀이터 재생 버튼. 대기실 시작 버튼에 쓰다가 가로 팻말 `barStart`에 자리를 내주어
+      **지금은 어디서도 쓰이지 않는다**(되돌릴 수 있게 파일과 경로는 남겨 둔다). */
+  iconStart: '/ui/icon_start.webp',
+  iconCreate: '/ui/icon_create.webp',  // 방 만들기 — 통나무집+. 방 만들기 폼의 제출 버튼 그 자체
+  iconCog: '/ui/icon_cog.webp',        // 설정 — 톱니바퀴+렌치. 설정 버튼 그 자체 + 규칙 접기/펼치기 라벨 2곳
+  iconRank: '/ui/icon_rank.webp',      // 순위 — 왕관 쓴 토끼 방패. 결과 화면 **왼쪽(팀별 점수)** 판의 문장
+  iconHelp: '/ui/icon_help.webp',      // 도움말 — 책+돋보기. 로비 "게임 방법" 버튼 그 자체
+  /**
    * 게임 결과 화면 장식 — 받은 스프라이트 시트(1024²)에서 잘라낸 세 조각.
    *
    * 사각형으로 자르면 이웃 오브젝트가 모서리에 딸려 오므로(금메달 오른쪽 위에 도토리가
    * 실제로 들어왔다) **연결 성분 단위**로 남기고 나머지를 알파 0으로 지웠다. 잘라낸
    * 좌표와 방법은 `client/public/ui/README.md`에 적어 뒀다.
    */
-  /**
-   * UI 아이콘 5종 — 한 장짜리 시트에서 잘라 배경(베이지)을 투명화한 것.
-   * 시트에는 아이콘 아래에 글씨가 함께 그려져 있었지만 **그 부분은 잘라내 버렸다** —
-   * 글자는 HTML로 따로 쓴다(글꼴을 나중에 바꿔도 그림을 다시 만들 필요가 없다).
-   * 자른 좌표와 절차는 client/public/ui/README.md 참조.
-   */
-  iconStart: '/ui/icon_start.webp',    // 게임 시작 — 동물들이 달리는 원형
-  iconCreate: '/ui/icon_create.webp',  // 방 만들기 — 통나무집
-  iconCog: '/ui/icon_cog.webp',        // 설정 — 톱니바퀴+렌치
-  iconRank: '/ui/icon_rank.webp',      // 순위 — 왕관 쓴 토끼 방패. 판 상단 문장으로 쓴다
-  iconHelp: '/ui/icon_help.webp',      // 도움말 — 책+돋보기. "게임 방법"에 쓴다
-  crestLaurel: '/ui/laurel_book.webp',   // 버섯+책 월계수 — 지금은 iconRank로 대체됨(미사용)
+  /** 버섯+책 월계수 — 결과 화면 **오른쪽(행동 사용 통계)** 판의 문장.
+      왼쪽과 다른 그림이어야 나란히 놓인 두 판이 구별된다. */
+  crestLaurel: '/ui/laurel_book.webp',
   medalFirst: '/ui/medal_1.webp',        // 금메달 "1" — 승리팀
   medalSecond: '/ui/medal_2.webp',       // 은메달 "2" — 패배팀
 } as const;

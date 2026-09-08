@@ -31,22 +31,18 @@ function pickFlavorAnimal(gameState: ClientGameState, winner: Team | 'draw' | nu
 }
 
 /**
- * 판 위쪽 한가운데에 걸치는 월계수 문장.
+ * 판 위쪽 한가운데에 걸치는 문장.
  *
  * `.board-crest`가 액자 윗변을 정확히 반씩 나눠 물게 하고(translate(-50%, -50%)),
- * 위로 삐져나온 절반만큼 판이 스스로 위 여백을 낸다 — globals.css 참고.
+ * 위로 샐져나온 절반만큼 판이 스스로 위 여백을 낸다 — globals.css 참고.
  * `BoardFrame`의 직계 자식이어야 한다(`:has(> .board-crest)`로 그 여백을 잡는다).
+ *
+ * **두 판이 서로 다른 문장을 달고 있다.** 왼쪽(팀별 점수)은 순위를 뜻하는 왝관 쓴
+ * 토끼 방패, 오른쪽(행동 사용 통계)은 예전부터 쓰던 버섯+책 월계수다 — 같은 그림을
+ * 둘 다 달면 나란히 놓았을 때 어느 판이 무엇인지 구별되지 않는다.
  */
-function BoardCrest() {
-  return (
-    <img
-      src={LOBBY_ASSETS.iconRank}
-      alt=""
-      aria-hidden
-      className="board-crest"
-      draggable={false}
-    />
-  );
+function BoardCrest({ src }: { src: string }) {
+  return <img src={src} alt="" aria-hidden className="board-crest" draggable={false} />;
 }
 
 interface ConfettiPiece {
@@ -173,7 +169,7 @@ export function GameEndScreen({
         className="w-full h-full"
         style={{ animation: 'bounceIn 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 200ms both' }}
       >
-        <BoardCrest />
+        <BoardCrest src={LOBBY_ASSETS.iconRank} />
         {/* 팀 이름과 체력을 한 줄에 붙여 쓰면 이름이 조금만 길어도 줄바꿈되므로,
             좌우 두 칸으로 나눈 뒤 이름 아래에 체력을 따로 크게 적는다. */}
         {/* 판 자체가 이미 좌우로 나뉘었으므로 안쪽은 팀 둘을 세로로 쌓는다 —
@@ -241,7 +237,7 @@ export function GameEndScreen({
         className="w-full h-full"
         style={{ animation: 'bounceIn 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 300ms both' }}
       >
-        <BoardCrest />
+        <BoardCrest src={LOBBY_ASSETS.crestLaurel} />
         <p className="text-center text-base font-bold text-board-ink mb-4">행동 사용 통계</p>
         <div className="grid grid-cols-1 gap-5">
           {(['A', 'B'] as const).map(t => (
