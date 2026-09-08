@@ -4,6 +4,7 @@ import type { Seat } from 'shared';
 import { Field, FormCard } from './Field';
 import { NicknameField } from './NameFields';
 import { TeamSelect } from './TeamSelect';
+import { PlankButton } from '@/components/ui/PlankButton';
 
 export function JoinRoomForm({
   firstFieldRef,
@@ -69,13 +70,9 @@ export function JoinRoomForm({
 
       <TeamSelect team={team} onChange={onTeam} />
 
-      <button
-        onClick={onSubmit}
-        disabled={!canSubmit}
-        className="bg-jungle-600 hover:bg-jungle-700 disabled:bg-gray-300 text-white font-semibold py-3 rounded-xl transition"
-      >
+      <PlankButton onClick={onSubmit} disabled={!canSubmit} block>
         입장하기
-      </button>
+      </PlankButton>
     </FormCard>
   );
 }

@@ -118,6 +118,29 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 
 **진짜 해법은 이펙트 자체를 쓰지 않는 것**: React가 공식 지원하는 "렌더 도중 상태 보정" 패턴(prop 변화를 ref로 감지해 그 조건 블록 안에서 곧바로 `setState` 호출)으로, `gameState`/`lastEvents`가 바뀐 그 렌더 안에서 마스킹 상태도 함께 동기 반영해버린다(`client/hooks/useAnimationQueue.ts`의 `lastEventsForCreditRef` 블록 참고). 이러면 "부풀려진" 중간 렌더 자체가 커밋되지 않으므로, 그 어떤 하위 `useEffect`/`useLayoutEffect`도 잘못된 값을 관측할 기회가 없다. **교훈: 서버 진실과 그 진실을 가리는 마스킹이 반드시 같은 커밋에서 함께 나타나야 하는 경우, `useLayoutEffect`도 충분하지 않을 수 있다 — 렌더 도중 동기 보정을 우선 고려할 것.**
 
+### 글꼴과 그림 버튼
+
+**기본 글꼴은 Cafe24 Ssurround다.** `layout.tsx`의 `next/font/local`이 `--font-cafe24`에
+싣고 `globals.css`의 `body`가 그것을 쓴다. 받은 폴더에는 확장자가 넷(ttf 3.8MB / otf 1.6MB /
+woff 906KB / **woff2 392KB**) 있지만 **woff2를 쓴다** — 한글 글꼴은 원본이 무거워 그 차이가
+첫 접속 대기시간에 그대로 얹힌다. woff는 woff2를 못 읽는 브라우저용 보험이라 평소 비용이 0이다.
+**글꼴을 바꾸면 글자 높이가 달라져 로비 폼이 몇 px 움직인다 — `measureLobby.mjs`로 다시 잴 것.**
+
+그림으로 그리는 버튼이 셋이고 쓰임이 다르다. 새 버튼을 만들 때 어느 쪽인지부터 고른다.
+
+| | 그림 | 글씨 | 크기 지정 |
+| --- | --- | --- | --- |
+| `IconButton`(`.icon-button`) | 아이콘 한 장 | 그림에 없음 → `aria-label`만 | 정사각형 한 변(px) |
+| `BarButton`(`.bar-button`) | 글씨까지 그려진 완성 팻말 | **그림 안에 있음** → 라벨을 쓰면 두 번 보인다 | 가로만, 세로는 비율 |
+| `PlankButton`(`.plank-button`) | 빈 나무판(9분할) | **HTML로 얹는다** | 글자 길이를 따라 늘어남 |
+
+문구가 상태에 따라 바뀌는 자리("준비" ↔ "준비 완료 ✓")는 `PlankButton`뿐이다 — 글씨가 박힌
+그림으로는 만들 수 없다. `.plank-button`의 9분할 슬라이스(`40 95`)와 테두리 두께(`12px 28px`)는
+**비율을 맞춘 짝이라 한쪽만 고치면 마구리가 눌린다**(`client/public/ui/README.md` 참조).
+
+크기를 `em`이 아니라 px로 잡는 이유는 로비 폼의 세로 여유가 몇 px 단위라, 글씨 크기 설정
+5단계에 버튼까지 따라 커지면 폼이 넘치기 때문이다.
+
 ### 로비 화면 — `client/app/page.tsx` + `client/components/lobby/`
 
 게임 화면과는 완전히 다른 원리로 돌아가므로 따로 이해해야 한다. 설계 배경과 실측값은 `LOBBY_REDESIGN.md`에 있다.

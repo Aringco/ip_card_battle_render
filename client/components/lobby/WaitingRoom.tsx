@@ -7,7 +7,8 @@ import { SEAT_META, seatLabel } from '@/lib/seatInfo';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
-import { UiIcon, BarButton } from '@/components/ui/UiIcon';
+import { UiIcon } from '@/components/ui/UiIcon';
+import { PlankButton } from '@/components/ui/PlankButton';
 
 /** 초대 링크 — 로비 첫 화면(`/`)을 방 코드가 채워진 "방 참가하기" 상태로 열어준다. */
 function inviteUrl(roomId: string): string {
@@ -65,13 +66,9 @@ export interface WaitingRoomProps {
   onUpdateSettings: (settings: GameSettings) => void;
 }
 
-/**
- * 게임 시작 팻말의 최대 가로폭(px).
- *
- * 대기실 카드는 넓어서(1280에서 700px 남짓) 팻말이 자리를 다 쓰면 비율 때문에 키도
- * 226px까지 자란다. 420px이면 키가 135px로, 걷어낸 초록 막대와 비슷한 무게가 된다.
- */
-const START_BAR_MAX_PX = 420;
+/** 시작·준비 팻말의 최대 가로폭(px). 대기실 카드는 700px 남짓이라 그대로 두면
+ *  팻말이 지나치게 길어져 글자만 가운데 조그맣게 남는다. */
+const PLANK_MAX_PX = 420;
 
 export function WaitingRoom({
   roomId, players, teamNames, settings,
@@ -153,18 +150,17 @@ export function WaitingRoom({
           규칙을 아래에 두지 않으면 정작 가장 자주 누르는 버튼이 스크롤 밖으로 밀려난다. */}
       {isHost ? (
         <div className="flex flex-col gap-2">
-          {/* 나무 팻말 그림 한 장이 시작 버튼이다 — 초록 막대를 걷어냈다.
-              **"게임 시작"이라는 글씨는 그림 안에 이미 그려져 있어** 여기에 따로 쓰지 않는다.
-              시작을 막는 사유가 있으면 바로 아래 줄이 그것을 글로 알려주고, 팻말 쪽은
-              .bar-button의 disabled 처리(흑백+반투명)로 누를 수 없음을 드러낸다. */}
-          <BarButton
-            name="barStart"
-            label="게임 시작"
-            maxWidth={START_BAR_MAX_PX}
+          {/* 빈 나무판 위에 글씨를 얹은 팻말 버튼. 시작을 막는 사유가 있으면 바로 아래
+              줄이 그것을 글로 알려주고, 팻말 쪽은 .plank-button의 disabled 처리로 드러낸다. */}
+          <PlankButton
             onClick={onStart}
             disabled={blockReason !== null}
-            className="self-center"
-          />
+            block
+            className="self-center text-xl"
+            style={{ maxWidth: PLANK_MAX_PX }}
+          >
+            게임 시작
+          </PlankButton>
           {blockReason && <p className="text-center text-base text-board-muted">{blockReason}</p>}
         </div>
       ) : iAmSpectator ? (
@@ -175,14 +171,17 @@ export function WaitingRoom({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          <button
+          {/* 문구가 상태에 따라 바뀌므로(준비 ↔ 준비 완료) 글씨가 박힌 그림은 못 쓴다 —
+              빈 나무판 위에 HTML로 글씨를 얹는 PlankButton이 이 자리에 맞는 이유다.
+              준비를 마치면 판을 옅게 눌러 "이미 한 일"로 보이게 한다. */}
+          <PlankButton
             onClick={() => onReady(!me?.ready)}
-            className={`font-semibold text-xl py-4 rounded-xl transition text-white ${
-              me?.ready ? 'bg-green-300 hover:bg-green-400' : 'bg-green-600 hover:bg-green-700'
-            }`}
+            block
+            className={`self-center text-xl ${me?.ready ? 'opacity-70' : ''}`}
+            style={{ maxWidth: PLANK_MAX_PX }}
           >
             {me?.ready ? '준비 완료 ✓ (누르면 취소)' : '준비'}
-          </button>
+          </PlankButton>
           <p className="text-center text-base text-board-muted">
             방장이 시작 버튼을 누르면 게임이 시작돼요.
           </p>
@@ -584,13 +583,13 @@ function HostRulesPanel({
         <div className="px-4 pb-4 border-t border-board-line/60 pt-3 flex flex-col gap-3">
           <GameRulesInputs settings={draft} onChange={setDraft} />
           <div className="flex gap-2">
-            <button
+            <PlankButton
               onClick={() => onApply(draft)}
               disabled={!dirty}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-board-muted text-white font-semibold text-lg py-2.5 rounded-lg transition"
+              className="flex-1 text-lg"
             >
               {dirty ? '규칙 적용' : '적용됨 ✓'}
-            </button>
+            </PlankButton>
             <button
               onClick={() => setDraft(settings)}
               disabled={!dirty}
