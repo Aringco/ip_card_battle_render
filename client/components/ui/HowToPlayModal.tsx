@@ -2,6 +2,7 @@
 
 import { THRESHOLDS } from 'shared';
 import { SKILL_COLOR } from '@/lib/skillInfo';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import type { Animal } from 'shared';
 
 // ─────────────────────────────────────────────────────────────
@@ -76,12 +77,12 @@ function Step({
 }) {
   return (
     <section
-      className={`relative bg-white rounded-2xl border-2 border-jungle-100 p-4 pt-7 flex flex-col ${className}`}
+      className={`relative board-panel p-4 pt-7 flex flex-col ${className}`}
     >
-      <span className="absolute -top-4 left-4 w-10 h-10 rounded-full bg-jungle-600 text-white text-xl font-black flex items-center justify-center border-4 border-white">
+      <span className="absolute -top-4 left-4 w-10 h-10 rounded-full bg-jungle-600 text-white text-xl font-black flex items-center justify-center border-4 border-[#f7efdd]">
         {no}
       </span>
-      <h4 className="text-xl font-black text-jungle-900 leading-snug mb-3">{title}</h4>
+      <h4 className="text-xl font-black text-board-ink leading-snug mb-3">{title}</h4>
       {children}
     </section>
   );
@@ -134,29 +135,50 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-3"
       onClick={onClose}
     >
+      {/* 로비 폼·대기실·결과 창과 같은 나무 액자 문법. 스크롤은 액자가 아니라 **안쪽**에서
+          난다(.howto-scroll) — 액자째 스크롤하면 나무테와 귀퉁이 덩굴이 함께 밀려 올라간다. */}
       <div
-        className="bg-jungle-50 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[94vh] overflow-y-auto"
+        className="howto-board w-full max-w-6xl max-h-[94vh]"
+        style={{
+          ['--howto-board-img' as string]: `url(${LOBBY_ASSETS.howtoBoard})`,
+          ['--howto-title-img' as string]: `url(${LOBBY_ASSETS.howtoTitle})`,
+          ['--howto-tl' as string]: `url(${LOBBY_ASSETS.howtoCornerTL})`,
+          ['--howto-tr' as string]: `url(${LOBBY_ASSETS.howtoCornerTR})`,
+          ['--howto-bl' as string]: `url(${LOBBY_ASSETS.howtoCornerBL})`,
+          ['--howto-br' as string]: `url(${LOBBY_ASSETS.howtoCornerBR})`,
+          ['--howto-title-w' as string]: 'clamp(220px, 34vw, 380px)',
+        }}
         onClick={e => e.stopPropagation()}
       >
+        {/* 제목 팻말 — 판 윗변 한가운데에 걸친다 */}
+        <div className="howto-title">
+          <span className="font-black tracking-[0.18em] text-[clamp(0.9rem,2.2vw,1.5rem)] text-[#f6e6c8] drop-shadow-[0_2px_2px_rgba(60,38,20,0.85)]">
+            HOW TO PLAY
+          </span>
+        </div>
+
+        <button
+          onClick={onClose}
+          // 나무테 위에 앉으므로 밝은 색이어야 보인다 — 양피지용 갈색은 여기서 묻힌다
+          className="absolute top-1 right-3 z-[2] text-3xl leading-none text-[#f6e6c8]/70 hover:text-[#f6e6c8]
+                     drop-shadow-[0_1px_2px_rgba(50,30,15,0.9)]"
+          aria-label="닫기"
+        >
+          ✕
+        </button>
+
+        <div className="howto-scroll [&>*]:shrink-0">
         {/* ── 포스터 머리말 — "내 차례에 할 일은 딱 두 번"을 가장 먼저 못박는다 ── */}
-        <header className="relative bg-jungle-900 text-white rounded-t-3xl px-6 py-6 text-center">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-5 text-white/50 hover:text-white text-3xl leading-none"
-            aria-label="닫기"
-          >
-            ✕
-          </button>
-          <p className="text-jungle-300 text-sm font-bold tracking-widest mb-2">HOW TO PLAY</p>
+        <header className="text-center pb-4">
           <div className="flex items-center justify-center gap-3 flex-wrap text-2xl sm:text-3xl font-black">
-            <span className="bg-white text-jungle-900 rounded-2xl px-5 py-2">카드 뽑기</span>
-            <span className="text-jungle-300">→</span>
-            <span className="bg-white text-jungle-900 rounded-2xl px-5 py-2">행동 하기</span>
+            <span className="board-panel text-board-ink px-5 py-2">카드 뽑기</span>
+            <span className="text-board-muted">→</span>
+            <span className="board-panel text-board-ink px-5 py-2">행동 하기</span>
           </div>
-          <p className="text-jungle-100 text-lg font-black mt-3">이 두 번이면 내 차례 끝! 🎉</p>
+          <p className="text-board-ink text-lg font-black mt-3">이 두 번이면 내 차례 끝! 🎉</p>
         </header>
 
-        <div className="p-5 pt-8 grid gap-6 lg:grid-cols-3 lg:items-stretch">
+        <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch">
           {/* ── 1. 장소를 고른다 ── */}
           <Step no={1} title="장소를 고른다">
             <img
@@ -164,7 +186,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
               alt="오두막·부둣가·숲길·강가 네 장소와 각 장소에서 나오는 동물"
               className="w-full flex-1 min-h-0 object-contain rounded-xl"
             />
-            <p className="text-base text-gray-700 font-bold text-center mt-3 leading-relaxed">
+            <p className="text-base text-board-ink font-bold text-center mt-3 leading-relaxed">
               장소마다 <b className="text-jungle-800">나오는 동물</b>이 달라요.
               <br />
               어디를 누를지 골라 보세요!
@@ -188,7 +210,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
                   <p className="text-3xl font-black leading-tight">+16</p>
                 </div>
               </div>
-              <p className="text-base text-gray-700 font-bold text-center mt-3 leading-relaxed">
+              <p className="text-base text-board-ink font-bold text-center mt-3 leading-relaxed">
                 같은 동물이 <b className="text-jungle-800">2장, 4장…</b> 모이면
                 <br />
                 전부 가져가요.
@@ -235,7 +257,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
                   </div>
                 ))}
               </div>
-              <p className="text-base text-gray-700 font-bold text-center mt-3 leading-relaxed">
+              <p className="text-base text-board-ink font-bold text-center mt-3 leading-relaxed">
                 <b className="text-jungle-800">실용신안·상표 {THRESHOLDS.sheep}년!</b>
                 <br />
                 <b className="text-jungle-800">디자인·특허 {THRESHOLDS.mermaid}년!</b>
@@ -285,6 +307,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
               이해했어요! 🎮
             </button>
           </div>
+        </div>
         </div>
       </div>
     </div>

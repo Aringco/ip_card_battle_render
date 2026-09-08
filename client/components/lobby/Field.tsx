@@ -57,12 +57,22 @@ export function FormCard({
           ['--orn-br' as string]: `url(${LOBBY_ASSETS.cornerBR})`,
         }}
       >
-        <div className="lobby-form-head">
-          <h3 className="font-bold text-board-ink">{title}</h3>
-          {description && <p className="text-xs text-board-muted mt-0.5">{description}</p>}
+        {/* 규칙을 펼쳐 내용이 길어지면 **카드가 자라지 않고 여기가 스크롤한다.**
+            예전에는 카드가 세로로 자라 .stage-form이 통째로 스크롤했는데, 그러면
+            나무 액자까지 함께 밀려 올라가 판이 화면 밖으로 나갔다.
+
+            ⚠️ `[&>*]:shrink-0`이 없으면 안 된다. 높이가 정해진 flex 열에서는 자식이
+            기본값(flex-shrink: 1)대로 내용보다 작게 찌그러져, 넘치지 않으니 스크롤도
+            생기지 않는다(대기실에서 채팅창이 선 하나로 눌려 사라진 적이 있다). */}
+        <div className="lobby-form-scroll [&>*]:shrink-0">
+          <div className="lobby-form-head">
+            <h3 className="font-bold text-board-ink">{title}</h3>
+            {description && <p className="text-xs text-board-muted mt-0.5">{description}</p>}
+          </div>
+          <div className="lobby-form-fields">{children}</div>
+          {side && <div className="lobby-form-side">{side}</div>}
         </div>
-        <div className="lobby-form-fields">{children}</div>
-        {side && <div className="lobby-form-side">{side}</div>}
+        {/* 제출 버튼은 스크롤 밖에 둔다 — 규칙을 끝까지 내리지 않아도 늘 눌릴 수 있어야 한다 */}
         {footer && <div className="lobby-form-foot">{footer}</div>}
       </div>
     </div>

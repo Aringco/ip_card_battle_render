@@ -89,6 +89,22 @@ export const LOBBY_ASSETS = {
   crestLaurel: '/ui/laurel_book.webp',
   medalFirst: '/ui/medal_1.webp',        // 금메달 "1" — 승리팀
   medalSecond: '/ui/medal_2.webp',       // 은메달 "2" — 패배팀
+  /**
+   * 게임 방법 창 — 받은 그림 3장에서 잘라낸 여섯 조각.
+   *
+   * 배경이 검정/짙은 회색으로 구워져 온 JPEG라, 테두리에서 **연결된 배경만** flood fill로
+   * 지웠다(전역 임계값으로 지우면 그림 안의 어두운 윤곽선까지 뚫린다). 자세한 절차는
+   * `client/public/ui/README.md` 참조.
+   *
+   * `howtoBoard`는 9분할(`border-image`)로 늘려 쓴다 — 창 비율이 그림(1289×652)과 달라
+   * 통째로 늘리면 모서리 나무가 눌린다. 나머지 다섯은 고정 크기로 얹는다.
+   */
+  howtoBoard: '/ui/howto_board.webp',        // 나무 액자 + 양피지
+  howtoTitle: '/ui/howto_title.webp',        // 잎 달린 팻말 — "HOW TO PLAY"가 얹힌다
+  howtoCornerTL: '/ui/howto_corner_tl.webp',
+  howtoCornerTR: '/ui/howto_corner_tr.webp',
+  howtoCornerBL: '/ui/howto_corner_bl.webp',
+  howtoCornerBR: '/ui/howto_corner_br.webp',
 } as const;
 
 /**

@@ -2779,10 +2779,28 @@ body {
      기본값 1이고, 아래 미디어쿼리에서 넓은 화면·접힌 상태에만 올린다. */
   zoom: var(--form-zoom, 1);
   max-width: 28rem;
+  /* 스테이지가 허락하는 높이를 넘지 않는다 — 넘치는 만큼은 안쪽(.lobby-form-scroll)이
+     스크롤한다. 카드가 자라면 나무 액자까지 함께 밀려 올라가 판이 화면 밖으로 나간다.
+
+     ⚠️ `--form-zoom`으로 나누지 말 것. 요즘 Chrome의 `zoom`은 **퍼센트를 이미 확대분만큼
+     보정해서** 해석한다 — 한 번 더 나눴더니 카드가 배율만큼(1.35배) 작아져, 스테이지
+     550px 자리에 413px짜리 카드가 떠 있었다. */
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   transition: max-width var(--t-expand) ease;
+}
+/* 카드 안에서 실제로 스크롤하는 부분(머리말·입력·규칙). 제출 버튼은 이 밖에 있어
+   규칙을 끝까지 내리지 않아도 늘 보인다. 스크롤바 모양은 globals 상단의 공통 설정을
+   그대로 쓴다(얇고 홈이 투명한 막대). */
+.lobby-form-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 /* 규칙을 펼치면 카드가 **세로로** 자라고, 스테이지 박스를 넘치면 그냥 스크롤한다.
@@ -2842,6 +2860,87 @@ body {
   gap: 0.75rem;
 }
 
+/* ── 게임 방법 창 ───────────────────────────────────────────────────────────
+   로비 폼·대기실·결과 창과 같은 "나무 액자에 얹힌 양피지" 문법을 쓰되, 그림이 달라
+   변수 이름을 따로 둔다(--howto-*). 판·팻말·귀퉁이 넷은 서로 다른 그림 여섯 장이다.
+
+   ⚠️ 판은 **9분할로 늘린다.** 그림은 1289×652(약 2:1)인데 창은 그때그때 비율이 달라,
+   통째로 늘리면 모서리 나무가 눌린다. 슬라이스 110은 실측값 — 나무 두께가 위 60 / 아래
+   45 / 좌우 63~64px이고, 그 위에 모서리 판자가 서로 겹쳐 튀어나온 부분까지 감싸야 한다.
+   **필요 이상으로 키우지 말 것** — 양피지가 많이 들려 들어가면 변 조각과 가운데 조각의
+   톤이 어긋나 이음매가 보인다(back_board에서 겪었다). */
+.howto-board {
+  --howto-slice: 110;
+  --howto-edge: 46px;
+  --howto-orn: 132px;
+  --howto-overhang: 8px;
+  position: relative;
+  isolation: isolate;
+  /* 나무 두께를 지나 양피지 안쪽까지 */
+  padding: calc(var(--howto-edge) * 0.9);
+  /* 팻말은 판 **안쪽으로도** 절반이 들어온다(그림 비율 768:229의 절반 ≈ 0.149).
+     그만큼 위를 비우지 않으면 첫 줄("카드 뽑기 → 행동 하기")을 덮는다 — 실제로 덮였다. */
+  padding-top: calc(var(--howto-title-w, 300px) * 0.149 + 12px);
+  display: flex;
+  flex-direction: column;
+  /* 팻말이 윗변 **위로** 걸치는 절반만큼 바깥에도 자리를 낸다 */
+  margin-top: calc(var(--howto-title-w, 300px) * 0.149);
+}
+/* 판 */
+.howto-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border: var(--howto-edge) solid transparent;
+  border-image: var(--howto-board-img) var(--howto-slice) fill stretch;
+}
+/* 네 귀퉁이 덩굴·버섯 — 액자 두께와 무관한 고정 크기라 창이 커져도 또렷하다.
+   그림마다 세로 비율이 조금씩 달라 `auto`로 둔다(320×277~305). */
+.howto-board::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--howto-overhang) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--howto-tl), var(--howto-tr), var(--howto-bl), var(--howto-br);
+  background-position: left top, right top, left bottom, right bottom;
+  background-repeat: no-repeat;
+  background-size: var(--howto-orn) auto;
+}
+/* 제목 팻말 — 판 윗변 한가운데에 걸친다. 글자가 위에 얹히므로 내용보다 위층(z-index 1)이다
+   (귀퉁이 장식과 달리 읽어야 하는 요소다). 비율 768:229를 aspect-ratio로 고정해 두면
+   폭 하나만 바꿔도 모양이 유지된다. */
+.howto-title {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: var(--howto-title-w, 300px);
+  aspect-ratio: 768 / 229;
+  z-index: 1;
+  background-image: var(--howto-title-img);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+/* 창 안에서 실제로 스크롤하는 부분 — 액자·팻말·귀퉁이는 제자리에 남는다 */
+.howto-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+@media (max-width: 767px) {
+  .howto-board {
+    --howto-edge: 26px;
+    --howto-orn: 84px;
+    --howto-overhang: 4px;
+  }
+}
+
 /* 양피지(크림색) 위 글자 — 예전 흰 카드용 회색은 여기서 흐리게 뜬다.
    나무·잎 색과 같은 계열의 갈색으로 맞춰 액자 안에 인쇄된 것처럼 보이게 한다. */
 .text-board-ink   { color: #4a3728; }
@@ -2850,7 +2949,9 @@ body {
 
 /* 귀퉁이 장식이 액자 밖으로 걸치는 만큼(--orn-overhang × zoom)을 여기서 받아준다.
    여백이 모자라면 그만큼 스크롤 영역이 넓어져 .stage-form에 스크롤바가 생긴다. */
-.lobby-form-wrap { padding: 1.25rem; }
+/* height: 100%가 있어야 안쪽 카드의 max-height: 100%가 뜻을 갖는다 —
+   min-height만 있으면 내용이 길어질 때 이 상자가 함께 늘어나 상한이 사라진다. */
+.lobby-form-wrap { padding: 1.25rem; height: 100%; }
 
 /* 좁은 화면(390×844)에서는 액자와 바깥 여백을 함께 줄인다. 가로 확장은 하지 않는다 —
    안전영역이 371px인데 카드가 이미 358px이라 옆으로 펼 자리가 13px뿐이다.
