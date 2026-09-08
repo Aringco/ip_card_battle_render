@@ -2784,8 +2784,18 @@ body {
 
      ⚠️ `--form-zoom`으로 나누지 말 것. 요즘 Chrome의 `zoom`은 **퍼센트를 이미 확대분만큼
      보정해서** 해석한다 — 한 번 더 나눴더니 카드가 배율만큼(1.35배) 작아져, 스테이지
-     550px 자리에 413px짜리 카드가 떠 있었다. */
-  max-height: 100%;
+     550px 자리에 413px짜리 카드가 떠 있었다.
+
+     `max-height`가 아니라 `height`인 이유 — 상한만 두면 규칙을 펼칠 때 카드가 405 → 558px로
+     **눈에 띄게 자란다.** 판 크기는 규칙을 펼치든 접든 그대로여야 하고, 넘치는 만큼은
+     스크롤바만 생겨야 한다. 그래서 아예 스테이지 높이에 못박는다.
+
+     ⚠️ 100%를 그대로 쓰면 안 된다 — **액자(::before)는 카드 상자 밖으로 --board-mt/mb만큼
+     더 그려진다**(원본 PNG의 투명 여백을 보정하느라). 카드가 여백을 꽉 채우면 그 몫이
+     .stage-form을 넘겨 스크롤바가 생긴다(실측: 스크롤 600 vs 화면 590 = 정확히 그 차이).
+     그래서 위아래 보정분을 미리 빼둔다. 두 값 모두 --board-edge에 비례하므로 액자 두께를
+     바꿔도 따라온다. */
+  height: calc(100% - var(--board-mt) - var(--board-mb));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -2872,7 +2882,10 @@ body {
 .howto-board {
   --howto-slice: 110;
   --howto-edge: 46px;
-  --howto-orn: 132px;
+  /* 귀퉁이 그림은 **모서리 기준 오프셋을 보존한 공유 캔버스**(487×360 원본 → 360×266)라,
+     그림 안에 빈 여백이 함께 들어 있다. 그래서 같은 폭이라도 잎 덩어리는 예전(내용을 바짝
+     자른 320px 그림)보다 작게 보인다 — 그 몫(360/299)에 요청받은 1.2배를 곱해 190px이다. */
+  --howto-orn: 190px;
   --howto-overhang: 8px;
   position: relative;
   isolation: isolate;
@@ -2927,6 +2940,20 @@ body {
   justify-content: center;
   pointer-events: none;
 }
+/* 팻말에 새기는 세 줄(HOW TO PLAY / 카드 뽑기 → 행동 하기 / 이 두 번이면 끝).
+   판자 그림의 **안쪽 홈**에만 앉아야 한다 — 좌우로는 마구리(둥근 끝)와 잎이, 위아래로는
+   테두리가 있어 그 위로 넘어가면 글자가 나뭇결에 묻힌다. 폭 74% / 높이 62%가 그 홈이다. */
+.howto-title-text {
+  width: 74%;
+  height: 62%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.12em;
+  text-shadow: 0 2px 2px rgba(60, 38, 20, 0.85);
+}
 /* 창 안에서 실제로 스크롤하는 부분 — 액자·팻말·귀퉁이는 제자리에 남는다 */
 .howto-scroll {
   flex: 1;
@@ -2936,7 +2963,7 @@ body {
 @media (max-width: 767px) {
   .howto-board {
     --howto-edge: 26px;
-    --howto-orn: 84px;
+    --howto-orn: 121px;   /* 위와 같은 환산(84 × 360/299 × 1.2) */
     --howto-overhang: 4px;
   }
 }

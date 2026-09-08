@@ -3,6 +3,7 @@
 import { THRESHOLDS } from 'shared';
 import { SKILL_COLOR } from '@/lib/skillInfo';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import { PlankButton } from '@/components/ui/PlankButton';
 import type { Animal } from 'shared';
 
 // ─────────────────────────────────────────────────────────────
@@ -146,15 +147,25 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
           ['--howto-tr' as string]: `url(${LOBBY_ASSETS.howtoCornerTR})`,
           ['--howto-bl' as string]: `url(${LOBBY_ASSETS.howtoCornerBL})`,
           ['--howto-br' as string]: `url(${LOBBY_ASSETS.howtoCornerBR})`,
-          ['--howto-title-w' as string]: 'clamp(220px, 34vw, 380px)',
+          ['--howto-title-w' as string]: 'clamp(300px, 46vw, 560px)',
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* 제목 팻말 — 판 윗변 한가운데에 걸친다 */}
+        {/* 제목 팻말 — 판 윗변 한가운데에 걸치고, "내 차례에 할 일은 딱 두 번"까지
+            여기에 함께 새긴다. 예전에는 이 문구가 판 안 첫 줄에 있었는데, 팻말 바로
+            아래라 두 덩어리가 따로 노는 머리말이 두 개인 꼴이었다. */}
         <div className="howto-title">
-          <span className="font-black tracking-[0.18em] text-[clamp(0.9rem,2.2vw,1.5rem)] text-[#f6e6c8] drop-shadow-[0_2px_2px_rgba(60,38,20,0.85)]">
-            HOW TO PLAY
-          </span>
+          <div className="howto-title-text">
+            <span className="block font-black tracking-[0.18em] text-[clamp(0.62rem,1.35vw,0.95rem)] text-[#f0dcb4]">
+              HOW TO PLAY
+            </span>
+            <span className="block font-black leading-tight text-[clamp(0.95rem,2.3vw,1.6rem)] text-[#fdf3dd]">
+              카드 뽑기 <span className="text-[#e8c98d]">→</span> 행동 하기
+            </span>
+            <span className="block font-bold leading-tight text-[clamp(0.6rem,1.3vw,0.92rem)] text-[#f0dcb4]">
+              이 두 번이면 내 차례 끝! 🎉
+            </span>
+          </div>
         </div>
 
         <button
@@ -167,17 +178,8 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
           ✕
         </button>
 
+        {/* 머리말은 위 팻말로 올라갔다 — 여기서는 곧바로 네 단계로 들어간다 */}
         <div className="howto-scroll [&>*]:shrink-0">
-        {/* ── 포스터 머리말 — "내 차례에 할 일은 딱 두 번"을 가장 먼저 못박는다 ── */}
-        <header className="text-center pb-4">
-          <div className="flex items-center justify-center gap-3 flex-wrap text-2xl sm:text-3xl font-black">
-            <span className="board-panel text-board-ink px-5 py-2">카드 뽑기</span>
-            <span className="text-board-muted">→</span>
-            <span className="board-panel text-board-ink px-5 py-2">행동 하기</span>
-          </div>
-          <p className="text-board-ink text-lg font-black mt-3">이 두 번이면 내 차례 끝! 🎉</p>
-        </header>
-
         <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch">
           {/* ── 1. 장소를 고른다 ── */}
           <Step no={1} title="장소를 고른다">
@@ -299,13 +301,12 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
             </div>
           </Step>
 
-          <div className="lg:col-span-3">
-            <button
-              onClick={onClose}
-              className="w-full bg-jungle-600 hover:bg-jungle-700 text-white font-black text-xl rounded-2xl py-4 transition-colors"
-            >
+          {/* 로비·대기실의 다른 버튼들과 같은 나무 팻말. 판이 글자 길이를 따라 늘어나므로
+              폭을 가운데로 모으고 상한을 둔다 — 3열 전체를 채우면 팻말이 지나치게 길어진다. */}
+          <div className="lg:col-span-3 flex justify-center">
+            <PlankButton onClick={onClose} className="text-xl px-8" style={{ maxWidth: '26rem' }} block>
               이해했어요! 🎮
-            </button>
+            </PlankButton>
           </div>
         </div>
         </div>
