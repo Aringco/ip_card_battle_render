@@ -18,7 +18,43 @@ import { DEFAULT_SETTINGS } from 'shared';
 
 type LobbyTeamNames = Record<Team, string | null>;
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8080';
+/**
+ * 붙을 WebSocket 주소를 정한다 — 세 갈래다.
+ *
+ * 1. `NEXT_PUBLIC_WS_URL`이 있으면 그것.
+ * 2. 없고 **개발 빌드**면 `ws://localhost:8080` — 로컬 개발은 클라이언트(3000)와
+ *    WS 서버(8080)가 다른 포트라 자기 주소로는 찾아갈 수 없다.
+ * 3. 없고 **프로덕션 빌드**면 지금 보고 있는 **그 호스트의 `/ws`**.
+ *
+ * 3번이 배포(Docker·Render)를 위한 갈래다. 루트 `server.ts`가 Next.js와 WS를 같은
+ * 포트에 얹으므로 주소는 언제나 "이 페이지와 같은 호스트 + /ws"가 된다 — 그러면
+ * **배포 도메인을 빌드 전에 알 필요가 없어진다.** `NEXT_PUBLIC_*`는 런타임 환경변수가
+ * 아니라 빌드 시점에 번들로 박히는 값이라, 도메인을 미리 못 박는 방식은 한 글자만
+ * 어긋나도 게임이 조용히 연결되지 않는다(화면은 멀쩡히 뜨고 방만 안 만들어진다).
+ * Render는 서비스 이름이 이미 쓰이고 있으면 뒤에 임의 문자열을 붙이므로 실제로 어긋나기 쉽다.
+ *
+ * **갈림길이 호스트가 아니라 빌드 모드인 이유** — 로컬에서 Docker 이미지를 띄우면
+ * 브라우저 주소는 `http://localhost:3000`으로 개발 때와 똑같지만, WS는 8080이 아니라
+ * 같은 포트의 `/ws`에 있다. 호스트 이름으로는 이 둘을 가를 수 없다.
+ *
+ * ⚠️ 그래서 **로컬에서 프로덕션 빌드로 검증할 때는**(`NEXT_DIST_DIR=.next-verify next build`
+ * 후 `next start`) WS 서버를 따로 8080에 띄우므로 빌드할 때
+ * `NEXT_PUBLIC_WS_URL=ws://localhost:8080`을 함께 줘야 한다. 안 그러면 그 화면에서만
+ * 방이 만들어지지 않는다(NEXT_SESSION.md의 검증 절차 참고).
+ *
+ * https로 열렸으면 반드시 `wss:`여야 한다 — 브라우저가 https 페이지의 평문 ws를 막는다.
+ * 모듈 최상단이 아니라 함수인 이유: 서버 렌더 시점에는 `window`가 없다.
+ */
+function resolveWsUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_WS_URL;
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === 'development' || typeof window === 'undefined') {
+    return 'ws://localhost:8080';
+  }
+  const { protocol, host } = window.location;
+  return `${protocol === 'https:' ? 'wss:' : 'ws:'}//${host}/ws`;
+}
+
 const STORAGE_ROOM_ID = 'cardBattle_roomId';
 const STORAGE_PLAYER_ID = 'cardBattle_playerId';
 const STORAGE_MEMBER_ID = 'cardBattle_memberId';
@@ -114,7 +150,7 @@ export function useWebSocket(): UseWebSocketReturn {
   }, []);
 
   useEffect(() => {
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket(resolveWsUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {

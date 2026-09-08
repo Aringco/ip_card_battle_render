@@ -1,8 +1,14 @@
 **/node_modules
 **/.next
+**/.next-*
 **/dist
 **/*.log
 .git
 .claude
 *.md
 *.txt
+
+# 로컬 검증 산출물 — 저장소에는 없지만(gitignore) 로컬 `docker build`의 컨텍스트에는
+# 딸려 들어간다. 둘이 합쳐 30MB가 넘어 빌드가 느려지고 이미지와도 무관하다.
+# (`**/.next-*`가 client/.next-verify를 잡는다 — `**/.next`는 정확히 `.next`만 잡는다.)
+client/lobby-shots

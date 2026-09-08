@@ -354,7 +354,8 @@ scale은 레이아웃 상자를 그대로 둬서 스테이지 밖으로 삐져�
 시작했는데 `.next/dev/`의 수정 시각이 10:47에 멈춰 있었다.
 
 ```bash
-NEXT_DIST_DIR=.next-verify npx next build      # 검증용 — .next/를 건드리지 않는다
+# 검증용 — .next/를 건드리지 않는다. WS 주소를 빼면 그 화면에서만 방이 안 만들어진다
+NEXT_PUBLIC_WS_URL=ws://localhost:8080 NEXT_DIST_DIR=.next-verify npx next build
 npm run dev:clean                              # 그래도 낡았으면 .next 삭제 후 dev
 ```
 

@@ -12,8 +12,12 @@
 # 빌드 : docker build -t ip-card-battle .
 # 실행 : docker run -p 3000:3000 ip-card-battle
 #
-# 외부(다른 PC/도메인/Render)에서 접속할 경우 클라이언트가 바라볼 WS 주소를
-# 빌드 시점에 넣어야 합니다 (Next.js NEXT_PUBLIC_* 변수는 빌드 시 고정):
+# WS 주소는 **비워 두는 것이 기본**입니다. 비어 있으면 클라이언트가 지금 보고 있는
+# 페이지의 호스트에 `/ws`를 붙여 스스로 찾아갑니다(https면 wss). Next.js의
+# NEXT_PUBLIC_* 는 빌드 시점에 번들로 박히는 값이라, 배포 도메인을 빌드 전에 알아야
+# 하는 구조를 만들면 도메인이 조금만 달라져도 게임이 조용히 연결되지 않습니다
+# (Render는 서비스 이름이 이미 쓰이고 있으면 뒤에 임의 문자열을 붙입니다).
+# 클라이언트와 WS가 서로 다른 호스트에 있는 특수한 배치에서만 넣으세요:
 #   docker build --build-arg NEXT_PUBLIC_WS_URL=wss://<호스트>/ws -t ip-card-battle .
 # ─────────────────────────────────────────────────────────────
 
@@ -29,7 +33,9 @@ RUN npm ci --no-audit --no-fund
 ########## 2) 클라이언트 빌드 ##########
 FROM node:22-alpine AS build
 WORKDIR /app
-ARG NEXT_PUBLIC_WS_URL=ws://localhost:3000/ws
+# 기본값 없음 — 비어 있으면 클라이언트가 자기 호스트의 /ws로 붙는다
+# (client/hooks/useWebSocket.ts의 resolveWsUrl 참고).
+ARG NEXT_PUBLIC_WS_URL=
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules

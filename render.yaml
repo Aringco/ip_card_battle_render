@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────
+# Render 배포 청사진(Blueprint)
+#
+# Render 대시보드에서 [New +] → [Blueprint] → 이 저장소를 고르면 이 파일대로
+# 서비스가 만들어진다. 이후로는 **origin/main에 push할 때마다 자동으로 다시 배포**된다.
+#
+#   Blueprint 문서: https://render.com/docs/blueprint-spec
+#
+# 왜 웹 서비스 하나뿐인가 —
+#   브라우저가 WS 서버에 직접 붙는 구조인데 Render는 서비스당 포트를 하나만 공개한다.
+#   그래서 루트 server.ts가 Next.js와 WebSocket을 **같은 HTTP 서버·같은 포트**에 얹고,
+#   WS는 같은 호스트의 /ws 경로로 붙는다. 자세한 배경은 CLAUDE.md의 "배포" 절 참고.
+#
+# WS 주소를 여기에 적지 않는 이유 —
+#   NEXT_PUBLIC_* 는 런타임이 아니라 **빌드 시점에 번들로 박히는** 값이라 도메인을
+#   미리 알아야 한다. 그런데 Render는 서비스 이름이 이미 쓰이고 있으면 도메인 뒤에
+#   임의 문자열을 붙이므로 미리 못 박으면 어긋나기 쉽다. 대신 클라이언트가 자기
+#   호스트의 /ws로 붙게 해 두었다(client/hooks/useWebSocket.ts의 resolveWsUrl).
+#   클라이언트와 WS를 서로 다른 호스트에 두는 특수한 배치에서만 아래 주석을 풀 것.
+# ─────────────────────────────────────────────────────────────
+services:
+  - type: web
+    name: ip-card-battle
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    branch: main
+    # 게임이 살아 있는지 확인하는 경로. Next.js 첫 화면이 200이면 정상이다.
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # PORT는 Render가 자동으로 넣어 준다. server.ts가 그 값을 그대로 쓴다.
+      #
+      # 클라이언트와 WS가 다른 호스트일 때만 사용:
+      # - key: NEXT_PUBLIC_WS_URL
+      #   value: wss://<도메인>/ws

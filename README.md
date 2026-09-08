@@ -188,11 +188,15 @@ Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼�
 npm run start            # ts-node --transpile-only server.ts
 
 # Docker
-docker build --build-arg NEXT_PUBLIC_WS_URL=wss://<호스트>/ws -t ip-card-battle .
+docker build -t ip-card-battle .
 docker run -p 3000:3000 ip-card-battle
 ```
 
-`NEXT_PUBLIC_*`는 **빌드 시점에 고정**되므로, 외부 도메인에 배포할 때는 반드시 빌드 인자로 `wss://<호스트>/ws`를 넘겨야 합니다.
+WS 주소는 **넘기지 않는 것이 기본**입니다. 프로덕션 빌드의 클라이언트는 지금 보고 있는 페이지와 같은 호스트의 `/ws`로 붙습니다(https면 `wss`) — 통합 서버가 둘을 같은 포트에 얹으므로 언제나 맞고, **배포 도메인을 빌드 전에 알 필요가 없습니다.** 클라이언트와 WS를 서로 다른 호스트에 두는 특수한 배치에서만 `--build-arg NEXT_PUBLIC_WS_URL=wss://<호스트>/ws`를 넘기세요(`NEXT_PUBLIC_*`는 런타임이 아니라 **빌드 시점에 번들로 박히는** 값입니다).
+
+### Render
+
+`render.yaml`이 있으므로 대시보드에서 **New + → Blueprint → 이 저장소**를 고르면 서비스가 그대로 만들어지고, 이후 `main`에 push할 때마다 자동으로 다시 배포됩니다. 별도로 넣어야 할 환경변수는 없습니다(`PORT`는 Render가 넣어 주고, WS 주소는 위처럼 클라이언트가 스스로 찾습니다).
 
 ---
 
