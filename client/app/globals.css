@@ -18,7 +18,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-cafe24);
+  --font-sans: var(--font-comic), var(--font-cafe24);
   --font-mono: var(--font-geist-mono);
 
   /* 정글 팔레트 */
@@ -89,13 +89,19 @@ html {
   line-height: 1.4;
 }
 
-/* 기본 글꼴 — Cafe24 Ssurround(둥근 한글 글꼴). layout.tsx의 next/font/local이
-   --font-cafe24에 실어 준다. 그 뒤는 글꼴이 아직 안 왔거나 못 읽을 때의 대체 순서다.
+/* 기본 글꼴 — 영문은 Comic Relief, 한글은 Cafe24 Ssurround.
+   layout.tsx의 next/font/local이 두 변수에 실어 준다. 그 뒤는 글꼴이 아직 안 왔거나
+   못 읽을 때의 대체 순서다.
+
+   **순서가 곧 규칙이다.** Comic Relief에는 한글 글리프가 없으므로, 브라우저가 글자마다
+   목록을 앞에서부터 훑어 영문·숫자·문장부호는 Comic Relief에서, 한글은 그 다음인
+   Cafe24에서 가져온다. 둘의 앞뒤를 바꾸면 영문까지 Cafe24로 그려진다.
+
    ⚠️ 여기 한 줄이 게임 전체의 글꼴이다 — 예전에는 '맑은 고딕'이었다. */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
+  font-family: var(--font-comic), var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
 }
 
 /* ── 스크롤바 ───────────────────────────────────────────────────────────
@@ -2786,21 +2792,36 @@ body {
      보정해서** 해석한다 — 한 번 더 나눴더니 카드가 배율만큼(1.35배) 작아져, 스테이지
      550px 자리에 413px짜리 카드가 떠 있었다.
 
-     `max-height`가 아니라 `height`인 이유 — 상한만 두면 규칙을 펼칠 때 카드가 405 → 558px로
-     **눈에 띄게 자란다.** 판 크기는 규칙을 펼치든 접든 그대로여야 하고, 넘치는 만큼은
-     스크롤바만 생겨야 한다. 그래서 아예 스테이지 높이에 못박는다.
+     `height`가 아니라 `max-height`다 — **상한일 뿐, 평소 카드는 제 내용만큼만 크다.**
+     한때 height로 못박아 봤다(규칙을 펼쳐도 판이 안 자라게 하려고). 그러면 판 크기는
+     고정되지만 접었을 때 양피지 아래가 휑하게 비었다. 지금은 펼침 자체가 카드를 키우지
+     않으므로(아래 .lobby-rules-body) 상한만 있으면 된다.
 
      ⚠️ 100%를 그대로 쓰면 안 된다 — **액자(::before)는 카드 상자 밖으로 --board-mt/mb만큼
      더 그려진다**(원본 PNG의 투명 여백을 보정하느라). 카드가 여백을 꽉 채우면 그 몫이
      .stage-form을 넘겨 스크롤바가 생긴다(실측: 스크롤 600 vs 화면 590 = 정확히 그 차이).
      그래서 위아래 보정분을 미리 빼둔다. 두 값 모두 --board-edge에 비례하므로 액자 두께를
      바꿔도 따라온다. */
-  height: calc(100% - var(--board-mt) - var(--board-mb));
+  max-height: calc(100% - var(--board-mt) - var(--board-mb));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   transition: max-width var(--t-expand) ease;
 }
+/* 게임 규칙을 펼쳤을 때 — **흐름 안에 그대로 둔다.**
+ *
+ * 한때 펼쳐지는 몸통을 `position: absolute`로 흐름에서 빼봤다. 카드 높이는 접힌 그대로
+ * 유지되고(절대배치는 부모 높이에 안 보태진다) 스크롤 영역에는 잡혀서(절대배치 자손도
+ * 스크롤 높이에는 포함된다) 이론상 "판 고정 + 스크롤"이 됐다.
+ *
+ * **그런데 써 보니 못 쓴다.** 몸통이 통째로 보이는 영역 밖에 놓여, 펼치기를 눌러도
+ * 화면에는 아무 일도 안 일어난 것처럼 보였다 — 스크롤을 내려야 비로소 규칙이 나온다.
+ * 그래서 되돌렸다. 지금은 펼치면 카드가 **스테이지가 허락하는 데까지만** 자라고
+ * (`.lobby-form-board`의 max-height) 그보다 길면 안쪽이 스크롤한다.
+ *
+ * 두 클래스는 표식으로 남겨 둔다 — 규칙 상자를 CSS에서 집어야 할 때 쓴다. */
+.lobby-rules { position: relative; }
+
 /* 카드 안에서 실제로 스크롤하는 부분(머리말·입력·규칙). 제출 버튼은 이 밖에 있어
    규칙을 끝까지 내리지 않아도 늘 보인다. 스크롤바 모양은 globals 상단의 공통 설정을
    그대로 쓴다(얇고 홈이 투명한 막대). */

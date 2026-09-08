@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameSettings, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
@@ -55,13 +55,26 @@ export function GameRulesFields({
   onChange: (next: GameSettings) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // 펼치는 순간 규칙을 화면 안으로 끌어온다.
+  //
+  // 카드는 스테이지가 허락하는 데까지만 자라므로(globals.css의 .lobby-form-board),
+  // 접힌 내용이 이미 그 상한에 가까우면 **펼쳐도 규칙이 보이는 영역 밖에 놓인다** —
+  // 화면에는 "눌렀는데 아무 일도 없는" 것으로 보인다. 실제로 1440×950에서 카드가
+  // 528 → 537px(상한)까지밖에 못 자라 그렇게 됐다.
+  //
+  // block: 'nearest'라 이미 보이면 아무것도 하지 않고, 넘칠 때만 필요한 만큼 민다.
+  useEffect(() => {
+    if (!open) return;
+    bodyRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [open]);
 
   return (
-    // data-rules-open은 지금 화면을 바꾸지 않는다 — 펼쳐도 카드 크기를 그대로 두고
-    // 넘치는 만큼 스크롤시키기로 했기 때문이다(globals.css 참고). 예전에는 이 속성을
-    // :has()로 읽어 카드를 2열로 넓히거나 확대를 1로 내렸다. 상태를 밖에서 알아볼
-    // 표식으로 남겨 둔다 — 되살릴 때 컴포넌트를 다시 고치지 않아도 된다.
-    <div className="border border-board-line rounded-lg" data-rules-open={open || undefined}>
+    // data-rules-open은 상태를 밖에서 알아볼 표식으로 남겨 둔다 — 예전에는 이 속성을
+    // :has()로 읽어 카드를 2열로 넓히거나 확대를 1로 내렸다. 되살릴 때 컴포넌트를
+    // 다시 고치지 않아도 된다.
+    <div className="lobby-rules border border-board-line rounded-lg" data-rules-open={open || undefined}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -71,9 +84,11 @@ export function GameRulesFields({
         <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
       {open && (
-        // 행을 조밀하게 잡아 5개 항목이 스테이지 박스 안에 전부 들어오게 한다.
-        // max-height는 안전망일 뿐이라 평소에는 스크롤도, 행이 반쯤 잘리는 일도 없다.
-        <div className="px-3 pb-2.5 border-t border-gray-100 pt-2 flex flex-col gap-1.5">
+        // 펼쳐지는 몸통은 흐름 안에 그대로 둔다 — 카드는 스테이지가 허락하는 데까지만
+        // 자라고(globals.css의 .lobby-form-board max-height) 그보다 길면 안쪽이 스크롤한다.
+        // 한때 이 몸통을 절대배치해 카드를 아예 안 자라게 해봤지만, 몸통이 보이는 영역
+        // 밖으로 나가 "펼치기를 눌러도 아무 일도 없는" 화면이 됐다(globals.css .lobby-rules 주석).
+        <div ref={bodyRef} className="lobby-rules-body px-3 pb-2.5 border-t border-gray-100 pt-2 flex flex-col gap-1.5">
           {/* 선 플레이어 — 숫자 입력이 아니라 3지선다라 격자 위에 한 줄로 둔다 */}
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-gray-500">선 플레이어 (먼저 시작하는 팀)</label>
