@@ -18,7 +18,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-comic), var(--font-cafe24);
+  --font-sans: var(--font-cafe24);
   --font-mono: var(--font-geist-mono);
 
   /* 정글 팔레트 */
@@ -89,19 +89,21 @@ html {
   line-height: 1.4;
 }
 
-/* 기본 글꼴 — 영문은 Comic Relief, 한글은 Cafe24 Ssurround.
-   layout.tsx의 next/font/local이 두 변수에 실어 준다. 그 뒤는 글꼴이 아직 안 왔거나
-   못 읽을 때의 대체 순서다.
+/* 기본 글꼴 — **한글·영문·숫자 모두 Cafe24 Ssurround** 한 벌로 그린다.
+   layout.tsx의 next/font/local이 --font-cafe24에 실어 준다. 그 뒤는 글꼴이 아직 안
+   왔거나 못 읽을 때의 대체 순서다.
 
-   **순서가 곧 규칙이다.** Comic Relief에는 한글 글리프가 없으므로, 브라우저가 글자마다
-   목록을 앞에서부터 훑어 영문·숫자·문장부호는 Comic Relief에서, 한글은 그 다음인
-   Cafe24에서 가져온다. 둘의 앞뒤를 바꾸면 영문까지 Cafe24로 그려진다.
+   한때 영문만 Comic Relief로 갈라 쓴 적이 있다(2026-09-08 밤 ~ 09-09). 목록 앞쪽에
+   한글 글리프가 없는 글꼴을 두면 브라우저가 글자마다 훑어 영문만 그쪽에서 가져오는
+   방식이었는데, **그쪽 영문이 이 글꼴의 영문보다 눈에 띄게 얇아** 같은 줄에서 한글과
+   굵기가 어긋나 보였다. 되돌렸다.
 
-   ⚠️ 여기 한 줄이 게임 전체의 글꼴이다 — 예전에는 '맑은 고딕'이었다. */
+   ⚠️ 여기 한 줄이 게임 전체의 글꼴이다 — 예전에는 '맑은 고딕'이었다.
+   ⚠️ 글꼴을 바꾸면 글자 폭·높이가 달라져 로비 폼이 움직인다. measureLobby로 다시 잴 것. */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-comic), var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
+  font-family: var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
 }
 
 /* ── 스크롤바 ───────────────────────────────────────────────────────────

@@ -5,7 +5,12 @@ import { SoundToggle } from "@/components/ui/SoundToggle";
 import "./globals.css";
 
 /**
- * 게임 전체의 기본 글꼴 — Cafe24 Ssurround.
+ * 게임 전체의 기본 글꼴 — Cafe24 Ssurround. **한글·영문·숫자를 모두 이 글꼴로 그린다.**
+ *
+ * 한때 영문만 Comic Relief로 갈라 쓴 적이 있다(2026-09-08 밤 ~ 09-09). 되돌린 이유는
+ * 그쪽 영문이 이 글꼴의 영문보다 눈에 띄게 얇아, 같은 줄에 한글과 섞이면 굵기가
+ * 어긋나 보였기 때문이다. Cafe24 Ssurround는 라틴 글리프도 같은 둥근 톤으로 갖고 있어
+ * 한 벌로 쓰는 편이 화면이 고르다.
  *
  * **받은 네 확장자 중 `woff2`를 쓴다.** 넷 다 같은 글꼴이지만 용량이 열 배 가까이 차이 난다:
  *   ttf 3.8MB · otf 1.6MB · woff 906KB · **woff2 392KB**
@@ -31,28 +36,6 @@ const cafe24 = localFont({
   // 그래서 막지 않고 그대로 둔다.
 });
 
-/**
- * 영문 기본 글꼴 — Comic Relief.
- *
- * **한글 글꼴과 나란히 쓰는 것이 아니라, 글꼴 목록에서 Cafe24보다 앞에 둔다.**
- * Comic Relief에는 한글 글리프가 없으므로 브라우저가 글자마다 목록을 훑으며
- * 영문·숫자·문장부호는 이쪽에서, 한글은 그 다음인 Cafe24에서 가져온다.
- * `unicode-range`로 라틴만 잘라도 되지만, 순서만으로 같은 결과가 나오고
- * 어떤 문자가 어느 글꼴에 있는지 손으로 관리하지 않아도 된다.
- *
- * 받은 것이 `ttf`뿐이라 그대로 쓴다 — 라틴 전용이라 79KB/93KB로 가볍고(한글 글꼴은
- * 같은 이유로 woff2가 꼭 필요했다), 굵기가 Regular·Bold 둘 다 있어 합성 볼드를
- * 쓰지 않아도 된다.
- */
-const comicRelief = localFont({
-  src: [
-    { path: "../public/fonts/Comic_Relief/ComicRelief-Regular.ttf", weight: "400", style: "normal" },
-    { path: "../public/fonts/Comic_Relief/ComicRelief-Bold.ttf", weight: "700", style: "normal" },
-  ],
-  variable: "--font-comic",
-  display: "swap",
-});
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -76,7 +59,7 @@ export default function RootLayout({
     // 자식 트리의 하이드레이션 검사는 그대로 유지된다.
     <html
       lang="en"
-      className={`${comicRelief.variable} ${cafe24.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${cafe24.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

@@ -953,6 +953,12 @@ NODE_ENV=production NEXT_DIST_DIR=.next-verify PORT=3300 \
 
 ## 18. 영문 글꼴 Comic Relief · 규칙 펼침 최종 정리 (2026-09-08 밤, 3차)
 
+> ⚠️ **글꼴 부분은 2026-09-09에 되돌렸다 — 지금은 한글·영문·숫자 모두 Cafe24 Ssurround다.**
+> 아래 "영문만 Comic Relief" 서술은 그때의 기록이다. 되돌린 이유는 **그쪽 영문이 Cafe24의
+> 영문보다 눈에 띄게 얇아서**(같은 문자열 566px vs 641px) 한글과 같은 줄에 섰을 때 굵기가
+> 어긋나 보였기 때문이다. `--font-comic`은 layout.tsx·globals.css 어디에도 남아 있지 않다.
+> (규칙 펼침 부분은 그대로 유효하다.)
+
 ### 영문 글꼴을 목록 앞에 세운다
 
 `font-family: var(--font-comic), var(--font-cafe24), …` — Comic Relief에는 한글 글리프가
