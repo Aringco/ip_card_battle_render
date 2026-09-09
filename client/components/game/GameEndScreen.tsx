@@ -270,7 +270,7 @@ export function GameEndScreen({
 
       <button
         onClick={onBack}
-        className="bg-jungle-600 hover:bg-jungle-700 text-white font-semibold py-3 px-10 rounded-xl transition-colors shadow"
+        className="wood-button py-3 px-10 text-lg"
         style={{ animation: 'bounceIn 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 400ms both' }}
       >
         로비로 돌아가기

@@ -2096,20 +2096,80 @@ body {
 }
 
 /* ── 로비 — 폼 입력 공통 (page.tsx의 인라인 <style>에서 이관) ─────────────── */
+/* 입력칸 — 나무틀 그림을 9분할해 두른다(2026-09-09).
+   회색 1px 테두리 대신 `border-image`를 쓰므로 **테두리가 곧 그림**이다.
+
+   ⚠️ 슬라이스 56과 테두리 두께 6px은 **비율을 맞춘 짝**이다(0.107배). 네 변이 모두
+   같은 슬라이스라 두께도 사방이 같아야 마구리가 안 눌린다 — 한쪽만 고치지 말 것.
+   `fill`이 있어야 가운데 크림 면이 배경으로 함께 그려진다.
+
+   ⚠️ 두께를 키우면 **입력칸이 그만큼 두꺼워져 로비 폼이 넘친다.** 예전 회색 테두리는
+   위아래 1px + 안여백 0.5rem(6.4px) = 7.4px이었는데, 지금은 6px + 0.15rem(1.9px)로
+   거의 같은 값을 맞춰 뒀다. 건드리면 measureLobby로 다시 잴 것. */
 .input-base {
   width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  border: 6px solid transparent;
+  border-image: url('/ui/input_box.webp') 56 fill stretch;
+  border-radius: 0;
+  padding: 0.15rem 0.4rem;
   /* 글씨 크기 설정(--font-scale)을 입력창도 함께 따라간다 — 로비 폼은 테이블 안전영역
      안에 들어가야 해서 기준값은 1rem으로 두되, 배율은 그대로 적용한다. */
   font-size: calc(1rem * var(--font-scale, 1));
-  color: #1f2937;
+  color: #4a3728;
   outline: none;
 }
 .input-base:focus {
   box-shadow: 0 0 0 2px #4ade80;
-  border-color: transparent;
+}
+/* 대화 입력창만은 예전 모습 그대로 둔다 — 채팅은 줄이 계속 쌓이는 자리라
+   나무틀을 두르면 판이 시끄러워지고, 한 줄 높이도 그만큼 두꺼워진다. */
+.input-plain {
+  border: 1px solid #cbb99a;
+  border-image: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 253, 246, 0.82);
+}
+
+/* ── 나무틀 버튼 ────────────────────────────────────────────────────────
+   게임 **바깥** 화면(로비·대기실·결과 창)의 평범한 버튼 배경.
+   플레이 화면(장소 타일·기술 카드·턴 마치기)은 저마다의 그림이 있어 쓰지 않는다.
+   팀 1·팀 2·관전자·무작위처럼 이미 완성된 그림 버튼도 제외한다.
+
+   `.plank-button`과 같은 원리다 — 슬라이스와 테두리 두께가 비율을 맞춘 짝이고
+   (48 → 8px, 0.167배), `fill`이 가운데 주황 면을 그린다. */
+.wood-button {
+  border: 8px solid transparent;
+  border-image: url('/ui/button_bg.webp') 48 fill stretch;
+  border-radius: 0;
+  background: none;
+  padding: 0.15rem 0.5rem;
+  color: #5b3a1c;
+  font-weight: 700;
+  /* 팻말 버튼과 같은 음각 — 두 그림자 모두 아래로, blur 0 */
+  text-shadow:
+    0 1px 0 rgba(58, 33, 10, 0.4),
+    0 2px 0 rgba(255, 246, 222, 0.28);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.wood-button:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+.wood-button:active:not(:disabled) {
+  transform: translateY(2px) scale(0.98);
+  transition-duration: 0.05s;
+}
+.wood-button:disabled {
+  filter: grayscale(0.8) opacity(0.55);
+  cursor: not-allowed;
+}
+/* 참가자 줄처럼 키가 낮은 자리 — 8px 테두리는 버튼을 통째로 삼킨다 */
+.wood-button-sm {
+  border-width: 5px;
+  padding: 0.05rem 0.3rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wood-button:active:not(:disabled) { transform: none; }
 }
 /* 게임 규칙처럼 항목이 여러 개라 세로 길이를 아껴야 하는 곳 */
 .input-compact {

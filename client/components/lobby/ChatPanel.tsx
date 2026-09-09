@@ -87,12 +87,13 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
           maxLength={CHAT_MAX_LEN}
           disabled={!connected}
           placeholder={connected ? '메시지를 입력하세요' : '서버에 연결 중...'}
-          className="input-base flex-1 min-w-0 !py-2"
+          // 대화 입력창만 나무틀에서 빼둔다 — globals.css의 .input-plain 주석 참고
+          className="input-base input-plain flex-1 min-w-0 !py-2"
         />
         <button
           onClick={submit}
           disabled={!canSend}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-board-muted text-white font-semibold text-base px-4 rounded-lg shrink-0 transition"
+          className="wood-button text-base px-4 shrink-0"
         >
           전송
         </button>

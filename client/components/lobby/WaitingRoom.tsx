@@ -226,13 +226,13 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
       <div className="flex flex-wrap gap-2 justify-center mt-3">
         <button
           onClick={() => copy('link')}
-          className="bg-green-600 hover:bg-green-700 text-white text-base font-semibold px-4 py-2 rounded-lg transition"
+          className="wood-button text-base px-4 py-2"
         >
           🔗 초대 링크 복사
         </button>
         <button
           onClick={() => copy('code')}
-          className="board-panel hover:brightness-105 text-board-ink text-base font-semibold px-4 py-2 transition"
+          className="wood-button text-base px-4 py-2"
         >
           📋 방 코드 복사
         </button>
@@ -409,7 +409,7 @@ function TeamNameRow({
           onClick={submit}
           disabled={clash}
           title={clash ? '상대 팀과 같은 이름은 쓸 수 없어요' : undefined}
-          className="text-base font-semibold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 px-2.5 py-1.5 rounded-lg shrink-0"
+          className="wood-button text-base px-2.5 py-1.5 shrink-0"
         >
           저장
         </button>
@@ -501,7 +501,7 @@ function PlayerRow({
               else onTransferHost(player.memberId);
               setConfirming(null);
             }}
-            className="text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded"
+            className="wood-button wood-button-sm text-sm px-2 py-1"
           >
             {confirming === 'kick' ? '정말 내보내기' : '정말 넘기기'}
           </button>
@@ -534,14 +534,14 @@ function PlayerRow({
               <button
                 onClick={() => setConfirming('host')}
                 title="방장 넘기기"
-                className="text-sm text-board-muted board-panel hover:brightness-105 px-2 py-1 rounded"
+                className="wood-button wood-button-sm text-sm px-2 py-1"
               >
                 👑
               </button>
               <button
                 onClick={() => setConfirming('kick')}
                 title="내보내기"
-                className="text-sm text-red-400 board-panel hover:bg-red-50/70 px-2 py-1 rounded"
+                className="wood-button wood-button-sm text-sm px-2 py-1 !text-red-700"
               >
                 ✕
               </button>
