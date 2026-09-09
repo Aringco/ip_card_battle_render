@@ -167,9 +167,9 @@ export function GameRulesInputs({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <label className="text-lg text-board-muted">선 플레이어(먼저 시작하는 팀)</label>
-        {/* 대기실 카드는 폭이 넉넉해 그냥 두면 버튼 셋이 640px를 다 먹는다 —
-            주변 글씨(18px)에 견줘 지나치게 커 보여 폭에 상한을 둔다. */}
-        <div className="flex gap-1.5 items-center max-w-md">
+        {/* 폭은 globals.css의 .first-team-row가 정한다 — 버튼을 24%로 묶고 양끝에 붙인다.
+            (한때 max-w-md로 줄을 통째로 좁혔는데, 버튼이 116px까지 작아져 되돌렸다) */}
+        <div className="first-team-row">
           {/* 로비 폼과 같은 그림 버튼을 쓴다 — 같은 것을 고르는 자리라 모양도 같아야 한다.
               글씨가 그림 안에 있으므로 라벨은 aria-label로만 싣는다. */}
           {FIRST_TEAM_OPTIONS.map(({ value, label, img }) => (

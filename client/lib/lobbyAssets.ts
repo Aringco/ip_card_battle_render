@@ -95,6 +95,8 @@ export const LOBBY_ASSETS = {
   btnTeamB: '/ui/btn_team_b.webp',        // 팀 2 — 상표토끼 + 특허랑이
   btnSpectator: '/ui/btn_spectator.webp', // 관전자 — 로봇
   btnRandom: '/ui/btn_random.webp',       // 무작위 — 주사위
+  /** 닉네임·팀 이름을 다시 뽑는 주사위 버튼. 나무틀까지 그려져 있어 CSS로 상자를 두르지 않는다. */
+  btnDice: '/ui/btn_dice.webp',
 
   barStart: '/ui/btn_start_bar.webp',   // "게임 시작" — 대기실 시작 버튼
   barSolo: '/ui/btn_solo_bar.webp',     // "컴퓨터와 대전하기" — 혼자 놀기 폼의 시작 버튼

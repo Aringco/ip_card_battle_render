@@ -2,6 +2,7 @@
 
 import { NICKNAME_MAX_LEN, TEAM_NAME_MAX_LEN, randomNickname, randomTeamName } from 'shared';
 import { Field } from './Field';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
 /**
  * 무작위 이름 뽑기 버튼 — 누르면 입력창에 새 이름을 바로 써넣는다(이미 입력한 글자가
@@ -9,18 +10,13 @@ import { Field } from './Field';
  *
  * 로비 폼은 안전영역 안 고정 높이 박스라 세로로 늘어날 수 없다 — 그래서 버튼을 입력창
  * **옆에** 두고(`self-stretch`로 높이를 입력창에 맞춘다), 문구 없이 주사위 하나만 둔다.
+ * 2026-09-09에 이모지에서 나무틀 그림으로 바뀌면서 테두리 상자를 걷어냈다 —
+ * 그림에 이미 나무틀이 있어 상자를 두르면 액자가 두 겹이 된다(globals.css의 .dice-button).
  */
 function DiceButton({ onClick, title }: { onClick: () => void; title: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      className="shrink-0 self-stretch px-2 rounded-lg border border-jungle-200 bg-jungle-50
-                 hover:bg-jungle-100 active:scale-95 transition text-base leading-none"
-    >
-      🎲
+    <button type="button" onClick={onClick} title={title} aria-label={title} className="dice-button">
+      <img src={LOBBY_ASSETS.btnDice} alt="" draggable={false} />
     </button>
   );
 }

@@ -1701,6 +1701,64 @@ body {
   filter: drop-shadow(0 0 4px var(--spec-base)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
 }
 
+/* ── 무작위 주사위 버튼 ────────────────────────────────────────────────
+   닉네임·팀 이름을 다시 뽑는 버튼. 예전에는 🎲 이모지에 초록 테두리 상자를 둘렀지만,
+   지금은 나무틀까지 그려진 그림이라 **상자를 두르면 액자가 두 겹**이 된다.
+
+   폭만 고정하고 세로는 `align-self: stretch`로 옆 입력창 높이에 맞춘다 —
+   그림이 거의 정사각형(0.93:1)이라 `object-fit: contain`이면 비율이 유지된다. */
+.dice-button {
+  flex: none;
+  align-self: stretch;
+  position: relative;
+  /* ⚠️ 그림이 이 버튼의 높이를 밀어 올리지 못하게 해야 한다.
+     `align-self: stretch`는 "옆 입력창 높이에 맞춰라"는 뜻인데, 안쪽 `img`가 제
+     본래 크기(340×365)로 자리를 차지하면 오히려 **이 버튼이 줄 높이를 끌어올린다**
+     (실측: 입력창 48px 옆에서 버튼이 67px, `aspect-ratio`로 바꿨더니 493px까지 갔다).
+     그래서 img를 `position: absolute`로 띄워 높이 계산에서 빼고, 폭만 여기서 정한다. */
+  width: 2.7rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.dice-button img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.dice-button:hover {
+  filter: brightness(1.07) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
+  transform: translateY(-1px);
+}
+.dice-button:active {
+  transform: translateY(2px) scale(0.94);
+  transition-duration: 0.05s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dice-button:hover, .dice-button:active { transform: none; }
+}
+
+/* 대기실의 선 플레이어 줄 — 로비 폼보다 패널이 넓어(약 630px) 버튼을 크게 두고
+   양끝에 붙여 늘어놓는다. `flex: 1`로 꽉 채우면 한 칸이 210px가 넘어 주변 글씨에
+   견줘 과하므로, 폭을 24%로 묶고 `justify-content: space-between`으로 벌린다. */
+.first-team-row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.first-team-row .pick-image-button {
+  flex: none;
+  width: 24%;
+}
+
 /* ── 캐릭터별 손 가이드 ─────────────────────────────────────────────────
    행동(기술) 칸을 짚는 손. 👇 이모지를 대신하지만 **기준점이 다르다.**
 
@@ -2967,12 +3025,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  /* ⚠️ 좌우 3px은 장식이 아니라 **포커스 링 자리**다.
-     `.input-base:focus`는 `box-shadow: 0 0 0 2px`로 테두리 바깥에 링을 그리는데,
-     이 상자가 `overflow-y: auto`라 **가로로도 잘라낸다** — 여백이 0이면 입력칸을
-     클릭하는 순간 초록 링의 좌우가 싹둑 잘려 보인다.
-     위아래 2px도 같은 이유(첫 칸·마지막 칸의 링). */
-  padding: 2px 3px;
+  /* ⚠️ 이 여백은 장식이 아니라 **상자 밖으로 나가는 그림들의 자리**다.
+     `overflow-y: auto`인 상자는 세로뿐 아니라 **가로로도 잘라낸다.** 여백이 없으면
+     테두리 밖으로 그려지는 것이 전부 싹둑 잘린다:
+       · `.input-base:focus`의 초록 링 (`box-shadow: 0 0 0 2px`)
+       · 고른 자리 버튼의 `drop-shadow`와 1.03배 확대 (오른쪽 끝 버튼에서 실제로 잘렸다)
+     그래서 좌우를 3 → 8px로 넓혔다(2026-09-09). 위아래 4px도 같은 이유다. */
+  padding: 4px 8px;
 }
 
 /* 규칙을 펼치면 카드가 **세로로** 자라고, 스테이지 박스를 넘치면 그냥 스크롤한다.

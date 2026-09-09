@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { GameSettings, LobbyChatMessage, LobbyPlayer, Seat, Team } from 'shared';
 import { SEATS, SPECTATOR, TEAM_NAME_MAX_LEN, isPlayingSeat, randomTeamName } from 'shared';
 import { SEAT_IMAGE, SEAT_META, seatLabel } from '@/lib/seatInfo';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
@@ -400,9 +401,9 @@ function TeamNameRow({
           onClick={() => setDraft(randomTeamName(otherName))}
           title="팀 이름 무작위로 뽑기"
           aria-label="팀 이름 무작위로 뽑기"
-          className="text-base px-2 py-1.5 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 active:scale-95 transition shrink-0"
+          className="dice-button"
         >
-          🎲
+          <img src={LOBBY_ASSETS.btnDice} alt="" draggable={false} />
         </button>
         <button
           onClick={submit}
