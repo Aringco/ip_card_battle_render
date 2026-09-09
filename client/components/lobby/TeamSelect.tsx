@@ -1,9 +1,17 @@
 'use client';
 
 import type { Seat } from 'shared';
-import { SEATS } from 'shared';
+import { SEATS, SPECTATOR } from 'shared';
 import { seatLabel } from '@/lib/seatInfo';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { Field } from './Field';
+
+/** 자리마다의 그림 버튼. 글씨("팀 1"·"관전자")가 그림 안에 이미 들어 있다. */
+const SEAT_IMAGE: Record<Seat, string> = {
+  A: LOBBY_ASSETS.btnTeamA,
+  B: LOBBY_ASSETS.btnTeamB,
+  [SPECTATOR]: LOBBY_ASSETS.btnSpectator,
+};
 
 /**
  * 자리 선택 — 팀 1 / 팀 2 / 관전자.
@@ -16,26 +24,27 @@ import { Field } from './Field';
  * 1280×900에서 534→560px). 안내는 폼 카드의 설명 줄을 갈아끼워 보여준다 —
  * CreateRoomForm·JoinRoomForm의 `description` 참고.
  *
- * 버튼이 셋이 되면서 `whitespace-nowrap`이 필수가 됐다. 규칙을 펼치면 이 줄이 2열의
- * 왼쪽(약 240px)에 들어가는데, 그대로 두면 "관전자"가 "관전 / 자"로 접혀 줄 높이가
- * 27px 늘어난다(실측: create+rules 486→513px).
+ * 2026-09-09에 글자 버튼에서 **그림 버튼**으로 바뀌었다. 글씨가 그림 안에 있어
+ * 줄바꿈 걱정이 사라졌고(예전에는 "관전자"가 "관전 / 자"로 접혀 줄 높이가 늘었다),
+ * 대신 그림이 가로로 넓어 세로를 조금 더 쓴다 — 폼 높이는 measureLobby로 확인할 것.
  */
 export function TeamSelect({ team, onChange }: { team: Seat; onChange: (t: Seat) => void }) {
   return (
     <Field label="자리 선택">
       <div className="flex gap-1.5">
         {SEATS.map(t => (
+          // 그림 안에 글씨가 있으므로 라벨을 겹쳐 쓰지 않는다 — 이름은 aria-label로만.
+          // 고른 것/안 고른 것은 .pick-image-button이 색으로 가른다(aria-pressed).
           <button
             key={t}
             type="button"
             onClick={() => onChange(t)}
-            className={`flex-1 px-1 py-2 rounded-lg font-semibold transition text-sm whitespace-nowrap ${
-              team === t
-                ? 'bg-jungle-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 ring-1 ring-gray-300'
-            }`}
+            aria-pressed={team === t}
+            aria-label={seatLabel(t)}
+            title={seatLabel(t)}
+            className="pick-image-button"
           >
-            {seatLabel(t)}
+            <img src={SEAT_IMAGE[t]} alt="" draggable={false} />
           </button>
         ))}
       </div>

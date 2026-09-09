@@ -102,8 +102,10 @@ async function clearTeamNameClash(page) {
  * 안내가 영영 뜨지 않는다 — 반드시 충돌을 먼저 풀고 부를 것.
  */
 async function pickSpectatorSeat(page, formSel) {
+  // ⚠️ 자리 선택은 2026-09-09부터 **그림 버튼**이라 textContent가 비어 있다.
+  //    글씨가 그림 안에 있어서, 이름은 aria-label에만 실린다 — 둘 다 본다.
   for (const b of await page.$$(`${formSel} button`)) {
-    const t = await page.evaluate(el => el.textContent, b);
+    const t = await page.evaluate(el => `${el.textContent} ${el.getAttribute('aria-label') || ''}`, b);
     if (t && t.includes('관전')) { await b.click(); break; }
   }
   return page.evaluate(sel =>

@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameSettings, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
 // 선 플레이어(먼저 시작하는 팀) — 숫자가 아니라 3지선다라 아래 RULE_FIELDS와 따로 그린다.
-const FIRST_TEAM_OPTIONS: { value: GameSettings['firstTeam']; label: string }[] = [
-  { value: 'A', label: '🟢 팀 1' },
-  { value: 'B', label: '🔵 팀 2' },
-  { value: 'random', label: '🎲 무작위' },
+// 자리 선택과 같은 그림 버튼을 쓴다(팀 1·팀 2는 아예 같은 그림). 글씨가 그림 안에
+// 있으므로 라벨은 aria-label로만 싣는다.
+const FIRST_TEAM_OPTIONS: { value: GameSettings['firstTeam']; label: string; img: string }[] = [
+  { value: 'A', label: '팀 1', img: LOBBY_ASSETS.btnTeamA },
+  { value: 'B', label: '팀 2', img: LOBBY_ASSETS.btnTeamB },
+  { value: 'random', label: '무작위', img: LOBBY_ASSETS.btnRandom },
 ];
 
 // 라벨이 둘인 이유 — 같은 항목을 두 곳에서 다른 폭으로 그린다.
@@ -92,19 +95,18 @@ export function GameRulesFields({
           {/* 선 플레이어 — 숫자 입력이 아니라 3지선다라 격자 위에 한 줄로 둔다 */}
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-gray-500">선 플레이어 (먼저 시작하는 팀)</label>
-            <div className="flex gap-1">
-              {FIRST_TEAM_OPTIONS.map(({ value, label }) => (
+            <div className="flex gap-1.5 items-center">
+              {FIRST_TEAM_OPTIONS.map(({ value, label, img }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => onChange({ ...settings, firstTeam: value })}
-                  className={`flex-1 py-1 rounded-lg font-semibold transition text-xs ${
-                    settings.firstTeam === value
-                      ? 'bg-jungle-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 ring-1 ring-gray-300'
-                  }`}
+                  aria-pressed={settings.firstTeam === value}
+                  aria-label={label}
+                  title={label}
+                  className="pick-image-button"
                 >
-                  {label}
+                  <img src={img} alt="" draggable={false} />
                 </button>
               ))}
             </div>

@@ -68,6 +68,34 @@ export const LOBBY_ASSETS = {
    * 받은 원본은 투명 PNG였지만 세션에는 JPEG로 도착해 투명한 자리가 어두운 글로우로
    * 칠해져 있었다 — 되살린 방법은 client/public/ui/README.md 참조.
    */
+  /**
+   * 행동(기술) 칸을 짚어 주는 **캐릭터별 손** 4종.
+   *
+   * 예전에는 넷 다 같은 👇 이모지였다. 지금은 지금 짚고 있는 칸의 주인이 누구인지
+   * 손만 봐도 알 수 있다 — 실용신양은 털 달린 가죽장갑, 디자인어는 초록 손수건,
+   * 상표토끼는 도토리를 매단 분홍 앞발, 특허랑이는 톱니 장식의 줄무늬 손이다.
+   *
+   * ⚠️ 이모지와 달리 **세로로 긴 그림**(약 0.58:1)이고 손끝이 아래를 가리킨다.
+   * 그래서 이모지처럼 가운데를 기준점에 맞추면 안 되고, **손끝**이 칸 위쪽에 오도록
+   * 아래쪽 기준으로 앉힌다(globals.css의 `.place-guide-hand` 참고).
+   */
+  handSheep: '/ui/hand_sheep.webp',      // 실용신양 — 털 달린 가죽장갑
+  handMermaid: '/ui/hand_mermaid.webp',  // 디자인어 — 초록 손수건
+  handRabbit: '/ui/hand_rabbit.webp',    // 상표토끼 — 도토리를 맨 분홍 앞발
+  handTiger: '/ui/hand_tiger.webp',      // 특허랑이 — 톱니 장식의 줄무늬 손
+
+  /**
+   * 자리·선 플레이어를 고르는 **그림 버튼** 4종.
+   *
+   * 셋(팀 1·팀 2·관전자)은 한 시트에서, 무작위는 따로 받은 그림에서 잘랐다.
+   * **글씨가 그림 안에 있으므로** HTML 라벨을 겹쳐 쓰지 않는다 — 팻말(`BarButton`)과
+   * 같은 규칙이다. 고르지 않은 버튼은 CSS가 흑백으로 눌러 구분한다.
+   */
+  btnTeamA: '/ui/btn_team_a.webp',        // 팀 1 — 실용신양 + 디자인어
+  btnTeamB: '/ui/btn_team_b.webp',        // 팀 2 — 상표토끼 + 특허랑이
+  btnSpectator: '/ui/btn_spectator.webp', // 관전자 — 로봇
+  btnRandom: '/ui/btn_random.webp',       // 무작위 — 주사위
+
   barStart: '/ui/btn_start_bar.webp',   // "게임 시작" — 대기실 시작 버튼
   barSolo: '/ui/btn_solo_bar.webp',     // "컴퓨터와 대전하기" — 혼자 놀기 폼의 시작 버튼
   /** 놀이터 재생 버튼. 대기실 시작 버튼에 쓰다가 가로 팻말 `barStart`에 자리를 내주어

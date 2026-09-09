@@ -1701,6 +1701,82 @@ body {
   filter: drop-shadow(0 0 4px var(--spec-base)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
 }
 
+/* ── 캐릭터별 손 가이드 ─────────────────────────────────────────────────
+   행동(기술) 칸을 짚는 손. 👇 이모지를 대신하지만 **기준점이 다르다.**
+
+   이모지는 거의 정사각형이라 가운데를 기준선(top: 10%)에 맞추면 됐다. 이 손 그림은
+   세로로 긴 데다(약 0.58:1) **손끝이 아래를 가리키므로**, 같은 방식으로 앉히면
+   손이 칸 한복판을 덮고 정작 손끝은 칸 아래쪽을 짚는다.
+   그래서 세로 기준을 -50%가 아니라 **-82%**로 잡아 그림 아랫부분(손끝)이 기준선에
+   오게 한다 — 아래 keyframes의 translate 값과 반드시 같아야 한다(애니메이션이
+   transform을 통째로 덮어쓰므로, 한쪽만 고치면 손이 순간 튄다). */
+@keyframes guideHandBounce {
+  0%, 100% { transform: translate(-50%, -82%) translateY(0); }
+  50%      { transform: translate(-50%, -82%) translateY(-14px); }
+}
+.place-guide-hand {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  width: 3.4rem;
+  transform: translate(-50%, -82%);
+  z-index: 95;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  animation: guideHandBounce 0.8s ease-in-out infinite;
+}
+.place-guide-hand img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* 관전 시점 — 이모지 때와 달리 후광 원을 깔지 않는다. 세로로 긴 그림 뒤에 원을 두면
+   손끝만 원 밖으로 삐져나와 어색하다. 대신 팀 색 drop-shadow로 그림의 윤곽을 따라
+   빛을 두른다(모양을 따라가므로 손 모양 그대로 물든다). */
+.place-guide-hand-spectator {
+  filter:
+    drop-shadow(0 0 5px var(--spec-base))
+    drop-shadow(0 0 10px var(--spec-glow))
+    drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-guide-hand { animation: none; }
+}
+
+/* ── 그림으로 고르는 버튼 (자리 선택 · 선 플레이어) ──────────────────────
+   글씨가 그림 안에 있으므로 HTML 라벨을 겹쳐 쓰지 않는다 — 이름은 aria-label로만
+   싣는다(`BarButton`과 같은 규칙).
+
+   고른 것과 안 고른 것을 **색으로** 가른다. 안 고른 쪽은 흑백으로 눌러 두고, 고른
+   쪽만 제 색으로 살아나며 살짝 떠오른다. 테두리나 링을 더하지 않는 이유는 그림에
+   이미 나무·금속 테두리가 그려져 있어 링이 하나 더 붙으면 액자가 두 겹이 되기 때문이다. */
+.pick-image-button {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  border-radius: 0.6rem;
+  filter: grayscale(0.75) brightness(0.94) opacity(0.72);
+  transition: filter 0.16s ease, transform 0.16s ease;
+}
+.pick-image-button img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pick-image-button:hover:not([aria-pressed='true']) {
+  filter: grayscale(0.3) brightness(1) opacity(0.9);
+}
+.pick-image-button[aria-pressed='true'] {
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.32));
+  transform: translateY(-1px) scale(1.03);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick-image-button[aria-pressed='true'] { transform: none; }
+}
+
 /* ── 턴 종료 스킬 선택 모달 ─────────────────────────────────────────────── */
 .skill-choice-panel {
   border: none;

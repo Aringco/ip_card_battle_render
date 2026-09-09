@@ -123,8 +123,11 @@ export function SkillChoiceBar({
               </div>
             </button>
 
-            {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다. */}
-            {showSkillGuide && eligible && <GuideFinger team={spectatorGuideTeam} />}
+            {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다.
+                손은 그 칸의 주인 캐릭터 것이라, 어느 칸을 짚고 있는지 손만 봐도 안다. */}
+            {showSkillGuide && eligible && (
+              <GuideFinger team={spectatorGuideTeam} animal={animal} />
+            )}
           </div>
         );
       })}
