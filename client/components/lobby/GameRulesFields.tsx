@@ -167,19 +167,22 @@ export function GameRulesInputs({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <label className="text-lg text-board-muted">선 플레이어(먼저 시작하는 팀)</label>
-        <div className="flex gap-1">
-          {FIRST_TEAM_OPTIONS.map(({ value, label }) => (
+        {/* 대기실 카드는 폭이 넉넉해 그냥 두면 버튼 셋이 640px를 다 먹는다 —
+            주변 글씨(18px)에 견줘 지나치게 커 보여 폭에 상한을 둔다. */}
+        <div className="flex gap-1.5 items-center max-w-md">
+          {/* 로비 폼과 같은 그림 버튼을 쓴다 — 같은 것을 고르는 자리라 모양도 같아야 한다.
+              글씨가 그림 안에 있으므로 라벨은 aria-label로만 싣는다. */}
+          {FIRST_TEAM_OPTIONS.map(({ value, label, img }) => (
             <button
               key={value}
               type="button"
               onClick={() => onChange({ ...settings, firstTeam: value })}
-              className={`flex-1 py-2 rounded-lg font-semibold transition text-base ${
-                settings.firstTeam === value
-                  ? 'bg-green-600 text-white'
-                  : 'board-panel text-board-ink hover:brightness-105'
-              }`}
+              aria-pressed={settings.firstTeam === value}
+              aria-label={label}
+              title={label}
+              className="pick-image-button"
             >
-              {label}
+              <img src={img} alt="" draggable={false} />
             </button>
           ))}
         </div>

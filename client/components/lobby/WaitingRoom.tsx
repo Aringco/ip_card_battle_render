@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { GameSettings, LobbyChatMessage, LobbyPlayer, Seat, Team } from 'shared';
 import { SEATS, SPECTATOR, TEAM_NAME_MAX_LEN, isPlayingSeat, randomTeamName } from 'shared';
-import { SEAT_META, seatLabel } from '@/lib/seatInfo';
+import { SEAT_IMAGE, SEAT_META, seatLabel } from '@/lib/seatInfo';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
@@ -515,13 +515,17 @@ function PlayerRow({
         <div className="flex items-center gap-1 shrink-0">
           {canMove &&
             moveTargets.map(seat => (
+              // 자리 선택·선 플레이어와 같은 그림 버튼. 다만 이쪽은 **고르는 것이 아니라
+              // 누르면 곧바로 옮겨지는** 버튼이라 고른 상태가 없다 — 그래서 흑백으로
+              // 눌러 두지 않는 -action 변형을 쓰고, 참가자 줄이 좁아 -sm으로 작게 둔다.
               <button
                 key={seat}
                 onClick={() => onMove(player.memberId, seat)}
                 title={`${SEAT_META[seat].label}(으)로 옮기기`}
-                className="text-sm text-board-muted board-panel hover:brightness-105 px-2 py-1 rounded"
+                aria-label={`${SEAT_META[seat].label}(으)로 옮기기`}
+                className="pick-image-button pick-image-button-sm pick-image-button-action"
               >
-                {seatLabel(seat)}
+                <img src={SEAT_IMAGE[seat]} alt="" draggable={false} />
               </button>
             ))}
           {canManage && (

@@ -1,17 +1,9 @@
 'use client';
 
 import type { Seat } from 'shared';
-import { SEATS, SPECTATOR } from 'shared';
-import { seatLabel } from '@/lib/seatInfo';
-import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import { SEATS } from 'shared';
+import { SEAT_IMAGE, seatLabel } from '@/lib/seatInfo';
 import { Field } from './Field';
-
-/** 자리마다의 그림 버튼. 글씨("팀 1"·"관전자")가 그림 안에 이미 들어 있다. */
-const SEAT_IMAGE: Record<Seat, string> = {
-  A: LOBBY_ASSETS.btnTeamA,
-  B: LOBBY_ASSETS.btnTeamB,
-  [SPECTATOR]: LOBBY_ASSETS.btnSpectator,
-};
 
 /**
  * 자리 선택 — 팀 1 / 팀 2 / 관전자.
