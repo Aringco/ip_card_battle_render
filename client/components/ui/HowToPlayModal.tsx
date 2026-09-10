@@ -133,7 +133,8 @@ function MiniCard({ animal, num }: { animal: Animal; num: number }) {
 export function HowToPlayModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-3"
+      // 귀퉁이 덩굴이 판 밖으로 --howto-overhang만큼 걸치므로 그 몫보다 넉넉히 띄운다
+      className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4"
       onClick={onClose}
     >
       {/* 로비 폼·대기실·결과 창과 같은 나무 액자 문법. 스크롤은 액자가 아니라 **안쪽**에서
@@ -159,8 +160,12 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
             <span className="block font-black tracking-[0.18em] text-[clamp(0.62rem,1.35vw,0.95rem)] text-[#f0dcb4]">
               HOW TO PLAY
             </span>
-            <span className="block font-black leading-tight text-[clamp(0.95rem,2.3vw,1.6rem)] text-[#fdf3dd]">
-              카드 뽑기 <span className="text-[#e8c98d]">→</span> 행동 하기
+            {/* 두 낱말은 각자 네모난 판 위에 얹는다 — 에셋을 입히기 전 모습이고,
+                나뭇결 위에서 글자만으로는 "두 번"이라는 덩어리가 눈에 잡히지 않는다. */}
+            <span className="flex items-center justify-center gap-[0.35em] font-black leading-tight text-[clamp(0.95rem,2.3vw,1.6rem)]">
+              <span className="howto-title-plate">카드 뽑기</span>
+              <span className="text-[#e8c98d]">→</span>
+              <span className="howto-title-plate">행동 하기</span>
             </span>
             <span className="block font-bold leading-tight text-[clamp(0.6rem,1.3vw,0.92rem)] text-[#f0dcb4]">
               이 두 번이면 내 차례 끝! 🎉

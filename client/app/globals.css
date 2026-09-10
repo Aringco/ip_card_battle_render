@@ -2133,6 +2133,9 @@ body {
   outline: none;
 }
 .input-base:focus {
+  /* border-image로 그린 나무틀은 border-radius를 따르지 않는다 — 여기서 radius를 주는 것은
+     바깥 초록 링(box-shadow)만 둥글리기 위함이고, 나무틀 모양은 그대로 남는다. */
+  border-radius: 6px;
   box-shadow: 0 0 0 2px #4ade80;
 }
 /* 대화 입력창만은 예전 모습 그대로 둔다 — 채팅은 줄이 계속 쌓이는 자리라
@@ -2979,7 +2982,7 @@ body {
      ⚠️ overhang은 반드시 감싸는 쪽의 padding보다 작아야 한다. 장식 레이어가 액자 밖으로
      걸치는 만큼 스크롤 영역이 넓어져, 넘치면 스크롤바가 생긴다(로비 폼에서 16px로
      뒀다가 390×844에서 실제로 겪었다 — .lobby-form-wrap의 padding 참고). */
-  --orn-size: 126px;
+  --orn-size: 96px;
   --orn-overhang: 10px;
   position: relative;
   isolation: isolate;
@@ -2987,14 +2990,16 @@ body {
   padding: calc(var(--board-edge) * 47 / 140 + 16px);
 }
 
-/* .board-frame은 로비 폼보다 장식을 작게 쓴다.
-   폼의 126px은 `zoom: 1.75`가 걸린 상태에서 고른 값이라 확대 없이 그대로 쓰면 과하다.
-   특히 결과 창의 "행동 사용 통계"처럼 **키가 낮은 카드**에서는 위아래 장식이 서로 닿아
-   가운데가 잎으로 막힌다(카드 높이 약 210px < 126×2). 96px이면 180px 남짓한 카드까지
-   위아래가 겹치지 않는다. */
+/* 로비 폼도 결과·대기실 판과 **같은 96px**을 쓴다(2026-09-09).
+   예전에는 폼만 126px이었는데, 그 값은 `zoom: 1.75`가 걸린 상태에서 고른 것이라 지금
+   비율로는 덩굴이 양피지 한가운데까지 뻗었다 — 액자에 걸린 장식이 아니라 판 위에 얹힌
+   그림처럼 보였다. 두 판을 나란히 재보면 그 차이가 분명하다(카드 안쪽 폭 대비 덩굴이
+   닿는 깊이: 126px일 때 30% vs 결과 판 10%). 96px이면 21%로 내려와 결을 맞춘다.
+   96px에는 또 하나의 이유가 있다 — 결과 창의 "행동 사용 통계"처럼 **키가 낮은 카드**에서
+   위아래 장식이 서로 닿지 않는 상한이 이 값이다(카드 높이 약 210px < 126×2).
+   .board-frame은 액자만 얇게(34px) 쓰고 장식 크기는 물려받는다. */
 .board-frame {
   --board-edge: 34px;
-  --orn-size: 96px;
 }
 /* 액자 */
 .lobby-form-board::before,
@@ -3201,11 +3206,15 @@ body {
 .howto-board {
   --howto-slice: 110;
   --howto-edge: 46px;
-  /* 귀퉁이 그림은 **모서리 기준 오프셋을 보존한 공유 캔버스**(487×360 원본 → 360×266)라,
-     그림 안에 빈 여백이 함께 들어 있다. 그래서 같은 폭이라도 잎 덩어리는 예전(내용을 바짝
-     자른 320px 그림)보다 작게 보인다 — 그 몫(360/299)에 요청받은 1.2배를 곱해 190px이다. */
-  --howto-orn: 190px;
-  --howto-overhang: 8px;
+  /* 귀퉁이 그림은 2026-09-09에 **자기 모서리에 바짝 붙여** 다시 잘랐다(307×266).
+     그전에는 넷이 한 시트에서 같은 크기로 잘려 나온 탓에 잎 덩어리가 캔버스 안 제각기
+     다른 자리에 있었고(tr 위 19px · bl 왼쪽 53px · br 오른쪽 10px이 빈 여백), 배경으로
+     깔면 그 여백이 그대로 "안쪽으로 밀린 거리"가 되어 덩굴이 액자를 놓치고 양피지 위에
+     떠 있었다. 지금은 네 장 모두 잎이 캔버스 모서리에 닿아 있어 액자에 걸린다.
+     ⚠️ 그림을 다시 자르면 --howto-orn도 함께 환산할 것 — 잎 크기를 그대로 유지하려면
+     `새 캔버스 폭 × (예전 --howto-orn / 예전 캔버스 폭)`이다(307 × 190/360 = 162). */
+  --howto-orn: 162px;
+  --howto-overhang: 10px;
   position: relative;
   isolation: isolate;
   /* 나무 두께를 지나 양피지 안쪽까지 */
@@ -3273,17 +3282,33 @@ body {
   gap: 0.12em;
   text-shadow: 0 2px 2px rgba(60, 38, 20, 0.85);
 }
+/* 팻말 둘째 줄의 낱말 판 — 여백·모서리를 em으로 잡아 글자 크기(clamp)를 따라 늘어난다.
+   px로 잡으면 좁은 화면에서 판만 두꺼워져 세 줄이 홈(높이 62%)을 넘친다. */
+.howto-title-plate {
+  background: #fdf5e4;
+  color: #35281a;
+  border-radius: 0.42em;
+  padding: 0.06em 0.42em;
+  white-space: nowrap;
+  /* 밝은 판 위에서는 부모의 진한 글자 그림자가 때가 낀 것처럼 보인다 */
+  text-shadow: none;
+  box-shadow: 0 1px 2px rgba(50, 30, 15, 0.45);
+}
 /* 창 안에서 실제로 스크롤하는 부분 — 액자·팻말·귀퉁이는 제자리에 남는다 */
 .howto-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* 각 칸의 번호 배지가 `-top-4`로 칸 **밖에** 걸터앉는데, overflow는 안쪽만이 아니라
+     바깥으로 그린 것도 잘라낸다 — 이 여백이 없으면 1·2·4번 배지의 위쪽 11px이 잘린다
+     (입력창 포커스 링이 잘리던 것과 같은 갈래의 문제다). */
+  padding-top: 14px;
 }
 @media (max-width: 767px) {
   .howto-board {
     --howto-edge: 26px;
-    --howto-orn: 121px;   /* 위와 같은 환산(84 × 360/299 × 1.2) */
-    --howto-overhang: 4px;
+    --howto-orn: 103px;   /* 307 × 121/360 — 새 캔버스로 환산 */
+    --howto-overhang: 6px;
   }
 }
 

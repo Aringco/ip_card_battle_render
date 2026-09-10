@@ -269,7 +269,7 @@ export default function LobbyPage() {
 
       {TABLE_IS_STANDIN && (
         <p
-          className="fixed bottom-2 left-2 text-[0.6rem] font-mono text-white/45 select-none pointer-events-none"
+          className="fixed bottom-2 left-2 text-[0.6rem] text-white/45 select-none pointer-events-none"
           title="배경은 임시 스탠드인입니다 — client/public/lobby/README.md 참조"
         >
           BG STANDIN
