@@ -2193,6 +2193,24 @@ body {
   padding: 0.2rem 0.4rem;
   font-size: 0.8rem;
 }
+/* 숫자칸의 **브라우저 기본 증감 화살표(스피너)를 감춘다.**
+
+   나무틀이 좌우 13px씩을 테두리로 가져가고 나면 안쪽에 남는 폭이 좁은데, 거기에
+   스피너까지 얹히면 **화살표가 숫자를 덮는다**(실측 화면에서 "15"가 "1!"로 보였다).
+   화살표는 이 크기에서 어차피 누르기 어렵고, 나무틀 위에 얹힌 회색 사각형이라
+   그림과도 겉돈다. 값은 그대로 타이핑할 수 있고 blur에서 범위로 잘린다(clampField).
+
+   `appearance: textfield` 하나로는 부족하다 — WebKit은 의사요소를 따로 지워야 한다. */
+.input-base[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.input-base[type='number']::-webkit-outer-spin-button,
+.input-base[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* 로비 폼의 규칙 숫자칸 — **일곱 개가 모두 같은 폭이어야 한다.**
    `w-16`만 주면 폭이 제각각이 된다(실측 70.1px과 78.1px이 섞여 있었다). flex 항목의
    `min-width`는 기본이 `auto`라 입력창의 min-content(브라우저가 `size` 기본값으로 잡는
@@ -2201,7 +2219,8 @@ body {
 .input-rule-num {
   width: 4.5rem;
   flex: none;
-  text-align: right;
+  /* 액자 가운데에 놓는다 — 오른쪽으로 몰면 나무 캡에 바짝 붙어 보인다 */
+  text-align: center;
 }
 
 /* 대기실의 규칙 입력(GameRulesInputs) — 라벨과 점선으로 이어진 오른쪽 끝 숫자칸.
