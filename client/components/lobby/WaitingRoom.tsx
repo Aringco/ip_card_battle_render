@@ -222,7 +222,7 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
   return (
     <div className="text-center">
       <p className="text-lg text-board-muted">방 코드</p>
-      <p className="text-6xl font-mono font-bold text-green-700 tracking-widest">{roomId}</p>
+      <p className="text-6xl font-bold text-green-700 tracking-widest">{roomId}</p>
       <div className="flex flex-wrap gap-2 justify-center mt-3">
         <button
           onClick={() => copy('link')}

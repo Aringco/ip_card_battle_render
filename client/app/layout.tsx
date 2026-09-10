@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import "./globals.css";
@@ -36,11 +35,6 @@ const cafe24 = localFont({
   // 그래서 막지 않고 그대로 둔다.
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: '한국특허정보원 카드배틀',
   description: '🐑🐰🧜‍♀️🐯 실용신양·상표토끼·디자인어·특허랑이 팀 대전 카드 게임',
@@ -59,7 +53,7 @@ export default function RootLayout({
     // 자식 트리의 하이드레이션 검사는 그대로 유지된다.
     <html
       lang="en"
-      className={`${cafe24.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${cafe24.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

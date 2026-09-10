@@ -206,7 +206,7 @@ export function GameEndScreen({
               <span className="text-board-ink whitespace-nowrap">
                 {ANIMAL_INFO[a].emoji} {ANIMAL_INFO[a].name}
               </span>
-              <div className="flex gap-5 tabular-nums font-mono">
+              <div className="flex gap-5 tabular-nums">
                 <span
                   className={`font-bold w-14 text-right ${
                     gameState.teams.A.exp[a] >= gameState.teams.B.exp[a]
@@ -255,7 +255,7 @@ export function GameEndScreen({
                   return (
                     <div key={a} className="flex items-center justify-between gap-3 text-sm text-board-ink">
                       <span className="whitespace-nowrap">{ANIMAL_INFO[a].emoji} {ANIMAL_INFO[a].name}</span>
-                      <span className="tabular-nums font-mono whitespace-nowrap">
+                      <span className="tabular-nums whitespace-nowrap">
                         {stat.count}회 (합 Lv.{stat.totalLevel})
                       </span>
                     </div>

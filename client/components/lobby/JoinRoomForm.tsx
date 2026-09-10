@@ -64,7 +64,7 @@ export function JoinRoomForm({
           onChange={e => onRoomCode(e.target.value.toUpperCase())}
           placeholder="예: ABCD"
           maxLength={4}
-          className="input-base font-mono tracking-widest"
+          className="input-base tracking-widest"
         />
       </Field>
 

@@ -164,9 +164,16 @@ for (const vp of VIEWPORTS) {
   await page.waitForSelector('.lobby-safe', { timeout: 60000 });
   await sleep(1000 + SETTLE);
   const invite = await measure(page, `join+invite@${tag}`);
-  const inviteOk = await page.evaluate(() =>
-    [...document.querySelectorAll('.stage-form-join p')].some(p => p.textContent.includes('초대 링크로 들어왔어요'))
-    && document.querySelector('.stage-form-join input.font-mono')?.value === 'ABCD');
+  // ⚠️ 방 코드 칸은 **placeholder로 찾는다.** 예전에는 `input.font-mono`로 집었는데,
+  //    2026-09-09에 글꼴을 한 벌로 합치며 그 클래스를 걷어내자 곧바로 3건이 거짓 경보로
+  //    떴다. 겉모습을 나타내는 클래스는 언제든 사라진다 — 화면에 보이는 값으로 짚을 것.
+  const inviteOk = await page.evaluate(() => {
+    const banner = [...document.querySelectorAll('.stage-form-join p')]
+      .some(p => p.textContent.includes('초대 링크로 들어왔어요'));
+    const code = [...document.querySelectorAll('.stage-form-join input')]
+      .find(i => (i.placeholder || '').includes('ABCD'));
+    return banner && code?.value === 'ABCD';
+  });
   invite.note = inviteOk ? '' : '*** 안내/코드 채움 실패';
   results.push(invite);                                           await shot('7-join-invite');
 

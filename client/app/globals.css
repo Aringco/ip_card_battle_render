@@ -19,7 +19,10 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-cafe24);
-  --font-mono: var(--font-geist-mono);
+  /* 이 프로젝트에는 **글꼴이 하나뿐이다.** 예전에는 방 코드·타이머 숫자에
+     Geist Mono를 썼는데, 화면에서 그 부분만 다른 글꼴로 튀어 보였다(2026-09-09).
+     `font-mono` 유틸리티가 남아 있어도 같은 글꼴이 나오도록 여기서도 Cafe24를 가리킨다. */
+  --font-mono: var(--font-cafe24);
 
   /* 정글 팔레트 */
   --color-jungle-50:  #f0fdf4;

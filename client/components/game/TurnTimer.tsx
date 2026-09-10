@@ -54,7 +54,7 @@ export function TurnTimer({
         />
       </div>
       <span
-        className={`font-mono text-right tabular-nums ${big ? 'text-xl w-9' : 'text-sm w-7'} ${
+        className={`text-right tabular-nums ${big ? 'text-xl w-9' : 'text-sm w-7'} ${
           isUrgent ? 'text-red-600 font-bold' : isWarn ? 'text-orange-500 font-bold' : 'text-sky-700 font-bold'
         }`}
       >
