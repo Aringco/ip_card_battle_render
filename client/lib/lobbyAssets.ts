@@ -7,10 +7,11 @@
 
 export const LOBBY_ASSETS = {
   /**
-   * 로비 전체 배경 — 카드테이블 일러스트 (3072×1649 WebP, 약 374KB).
-   * 원본 4096×2198 PNG는 12.9MB라 매 접속마다 내려받기엔 너무 무거워 WebP로 줄였다.
-   * 원본이 필요하면 git 이력에서 꺼낼 수 있다:
-   *   git show b14caba:client/public/lobby/table_bg.png > table_bg.png
+   * 로비 전체 배경 — 카드테이블 일러스트 (2560×1392 WebP, 약 255KB).
+   * 2026-09-11에 새 타이틀 그림으로 교체했다. 이번에는 원본을 줄이지 않고 webp q80으로만
+   * 바꿔 넣었는데도 예전 3072px판(374KB)보다 가볍다.
+   * 예전 배경이 필요하면 git 이력에서 꺼낼 수 있다:
+   *   git show b377777:client/public/lobby/table_bg.webp > table_bg.webp
    * 안전영역 좌표는 globals.css의 .lobby-table 변수에 있다 (public/lobby/README.md 참조).
    */
   table: '/lobby/table_bg.webp',
