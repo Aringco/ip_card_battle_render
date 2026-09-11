@@ -126,7 +126,7 @@ export function GameLayout({
 
   return (
     <div
-      className={`h-screen bg-jungle-50 flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
+      className={`h-screen play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
     >
       {/* 모서리 잎사귀 장식 — 좌상단은 왼쪽 팀 패널 바로 위라 다른 세 모서리보다 커

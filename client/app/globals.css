@@ -3717,6 +3717,16 @@ body {
    ⚠️ 테 두께와 슬라이스의 비가 곧 축소 배율이다. wf_card는 나무폭 39 / 모서리 70이라
       테 26px이면 나무가 14px로 보인다(39 × 26/70). **크기를 바꾸면 이 짝을 다시 맞출 것.**
    ══════════════════════════════════════════════════════════════════════════ */
+/* 플레이 화면 배경 — 숲길 그림. 판들이 불투명해 실제로 보이는 곳은 판 사이의 틈이다.
+   바탕색은 그림이 도착하기 전 한 프레임을 채운다(예전 bg-jungle-50 자리). */
+.play-bg {
+  background-color: #eaf6e4;
+  background-image: url('/play/play_bg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .wood-panel {
   position: relative;
   isolation: isolate;
