@@ -7,7 +7,7 @@ function StepPill({ label, active }: { label: string; active: boolean }) {
     // 가로 안여백(px-2.5)을 뺀 것은 그림의 마구리가 이미 그 몫을 하기 때문이다 —
     // 남겨 두면 알약이 글씨보다 20px 넓어져 헤더 가운데가 밀린다.
     <span
-      className={`play-pill ${active ? 'play-pill-green' : 'play-pill-wood'} py-0.5 text-xs font-bold whitespace-nowrap`}
+      className={`play-pill ${active ? 'play-pill-green' : 'play-pill-wood'} py-1 text-sm font-bold whitespace-nowrap`}
     >
       {label}
     </span>
@@ -41,7 +41,7 @@ export function GameHeader({
   displayedActivePlayerIndex: number;
   isSettling: boolean;
 }) {
-  const teamLabel = `${displayedActiveTeam === 'A' ? '🟢' : '🔵'} ${gameState.teamNames[displayedActiveTeam]}`;
+  const teamLabel = gameState.teamNames[displayedActiveTeam];
   const nickname = gameState.teams[displayedActiveTeam].members[displayedActivePlayerIndex] ?? '';
 
   // "지금 이 차례가 나(우리팀)인지 상대인지" + "장소 선택 → 행동 선택" 중 어느 단계인지를
@@ -67,16 +67,19 @@ export function GameHeader({
   return (
     // 그림자(shadow-md)를 뺐다 — 들보는 양 끝이 덩굴로 마무리된 **모양 있는 그림**인데
     // box-shadow는 상자의 네모를 따라 그려져, 투명한 자리에 네모난 그늘이 드러난다.
-    <header className="play-beam relative text-white pl-12 pr-12 py-1 flex items-center shrink-0 min-h-[3.25rem]">
-      {/* 양피지 이름표 위에 앉으므로 글자색이 나무 위(크림)가 아니라 **잉크 갈색**이다 */}
-      <div className="play-nameplate text-sm hidden sm:block">
-        <span style={spectatorLabelStyle}>{teamLabel}</span>{' '}
-        <span className="font-semibold text-[#3f2d18]">{nickname}</span> 차례
+    // 높이 42 → 76px. 가안의 상단 바가 그만큼 두껍고, 그래야 이름표에 두 줄
+    // (팀 이름 / "○○ 차례")이 들어간다. 아래 본판은 flex-1이라 그만큼 줄어든다.
+    <header className="play-beam relative text-white pl-16 pr-16 py-1.5 flex items-center shrink-0 min-h-[76px]">
+      {/* 양피지 이름표 위에 앉으므로 글자색이 나무 위(크림)가 아니라 **잉크 갈색**이다.
+          두 줄로 나눈 것은 가안 그대로다 — 팀 이름이 크고, 그 아래 누구 차례인지. */}
+      <div className="play-nameplate self-stretch hidden sm:flex flex-col items-center justify-center text-center whitespace-nowrap">
+        <span className="text-base font-black" style={spectatorLabelStyle}>{teamLabel}</span>
+        <span className="text-xs font-bold text-[#5b4526]">{nickname} 차례</span>
       </div>
 
       {/* 나뭇잎 장식이 화면 좌우 모서리를 가리므로, 턴/단계 표시는 항상 잘 보이도록 중앙에 고정 */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
-        <span className="text-sm font-bold tabular-nums whitespace-nowrap">
+        <span className="text-base font-bold tabular-nums whitespace-nowrap">
           {gameState.turn} / {MAX_TURN}턴
         </span>
         <div className="step-flow flex items-center gap-1.5 px-2 py-1 rounded-full">

@@ -107,7 +107,8 @@ export function GameBoard({
       // 나무 액자로 바뀌면서 border-color 맥동(.board-my-turn)은 보이지 않게 됐다 —
       // border-image가 테두리 색을 대신 그리기 때문이다. 대신 같은 애니메이션의
       // box-shadow(바깥 링)가 그대로 살아 있어 "지금 여기를 보라"는 신호는 유지된다.
-      className={`wood-panel wood-panel-card flex-1 relative p-1 grid gap-2 ${borderClass}`}
+      // 안여백 0 — 나무테가 내용과 딱 맞물려야 한다는 요청. 칸 사이 간격(gap)만 남긴다.
+      className={`wood-panel wood-panel-card flex-1 relative grid gap-2 ${borderClass}`}
       style={{
         gridTemplateAreas: '"house center center dock" "forest center center river"',
         gridTemplateColumns: '1fr 1.15fr 1.15fr 1fr',

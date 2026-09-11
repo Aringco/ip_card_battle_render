@@ -3516,12 +3516,14 @@ body {
       처럼 연출이 매달린 클래스를 지우지 말 것.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* 상단 들보 — 헤더(높이 42px) 바닥. 2190×209, 덩굴 마구리 200px.
-   42/209 = 0.201 → 캡 200×0.201 ≈ 40px */
+/* 상단 통나무 — 헤더(높이 76px) 바닥. 1382×162, 쪼갠 마구리 110px.
+   76/162 = 0.469 → 캡 110×0.469 ≈ 52px.
+   ⚠️ 덩굴 달린 `beam.webp`에서 **민짜 통나무 `log_bar`로 갈아탔다** — 가안의 상단 바가
+   그것이고, 헤더가 76px로 두꺼워지면서 덩굴 잎이 과하게 커 보였다. */
 .play-beam {
   border-style: solid;
-  border-width: 0 40px;
-  border-image: url('/play/beam.webp') 0 200 fill stretch;
+  border-width: 0 52px;
+  border-image: url('/play/log_bar.webp') 0 110 fill stretch;
   border-radius: 0;
   background: none;
 }
@@ -3530,14 +3532,21 @@ body {
    26/239 = 0.109 → 좌 15px, 우 14px */
 .play-nameplate {
   border-style: solid;
-  border-width: 0 15px 0 17px;
+  /* 헤더가 76px로 두꺼워지며 이름표도 두 줄(팀 이름 / "○○ 차례")을 담는다.
+     self-stretch로 헤더 안높이(66px)를 꽉 채우므로 66/239 = 0.276
+     → 좌 140×0.276 ≈ 39px, 우 120×0.276 ≈ 33px. */
+  border-width: 0 33px 0 39px;
   border-image: url('/play/nameplate.webp') 0 120 0 140 fill stretch;
   border-radius: 0;
   background: none;
-  /* 위아래 안여백이 곧 이름표의 키다 — 그림에서 양피지는 높이의 60% 남짓이라,
-     글자 줄높이만큼만 두면 글씨가 양피지 밖 나무틀 위로 걸린다(실제로 걸렸다). */
-  padding: 9px 2px;
-  line-height: 1;
+  /* ⚠️ **글자가 앉을 수 있는 자리는 생각보다 훨씬 좁다.** 그림(490×239)의 세로 밝기를
+     재보면 크림 양피지는 y 71~179, 곧 **29.7%~75%**로 높이의 45%뿐이고 나머지는
+     나무틀이다. 헤더 안높이 66px 기준으로는 19.6~49.4px, 즉 **30px**만 쓸 수 있다 —
+     두 줄을 `text-base`(15.4px) + `text-xs`(11.5px) = 27px로 잡은 이유다.
+     위 안여백 3px은 양피지 한가운데(52.3%)가 판 한가운데보다 살짝 아래인 몫이다.
+     **글씨를 키우려면 이름표(=헤더)를 먼저 키워야 한다.** */
+  padding: 3px 6px 0;
+  line-height: 1.2;
   color: #4a3728;
 }
 
@@ -3729,7 +3738,9 @@ body {
 
 /* 세로 카드 — 팀 패널·카드판. 테 22px이면 나무가 12px로 보인다(39 × 22/70) */
 .wood-panel-card { border-width: 22px; border-image: url('/play/wf_card.webp') 70 stretch; }
-.wood-panel-card::before { border-width: 12px; border-image: url('/play/pg_card.webp') 34 fill stretch; }
+/* ⚠️ 종이 테두리를 12 → 6px로 줄였다. 이 값이 곧 **나무테와 내용 사이에 뜨는
+   크림색 띠**의 두께다 — 12px일 때 액자와 내용이 떨어져 보인다는 지적을 받았다. */
+.wood-panel-card::before { border-width: 6px; border-image: url('/play/pg_card.webp') 34 fill stretch; }
 
 /* 낮고 긴 띠 — 해설판. wf_strip은 나무폭 22 / 모서리 22라 슬라이스 44면 넉넉하다 */
 .wood-panel-strip { border-width: 16px; border-image: url('/play/wf_strip.webp') 44 stretch; }

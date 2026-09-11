@@ -45,9 +45,10 @@ export function PlaceTile({
         data-place-key={place}
         onClick={handleClick}
         disabled={blocked}
-        // play-photo-frame이 ::after로 나무 액자를 사진 **위에** 두른다 — 사진·라벨
-        // 이미지는 그대로 두고 가장자리만 덮으므로 기존 그림이 바뀌지 않는다.
-        className={`play-photo-frame relative w-full h-full rounded-2xl overflow-hidden select-none ${
+        // 나무 액자를 걷었다 — 카드판 자체가 이미 액자에 담겨 있어, 그 안의 네 칸까지
+        // 액자를 두르면 나무가 두 겹이 된다(가안도 장소 칸은 사진만 둔다).
+        // play-frame-inset은 남겨 둔다 — --frame-inset이 없으면 0이라 사진이 칸을 꽉 채운다.
+        className={`relative w-full h-full rounded-2xl overflow-hidden select-none ${
           blocked ? 'pointer-events-none' : 'cursor-pointer'
         } ${pressed ? 'place-tile-pressed' : ''}`}
       >

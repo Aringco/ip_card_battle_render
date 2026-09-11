@@ -71,8 +71,9 @@ export function TeamPanel({
       <LeafDecoration position="tr" size={40} swaying={justActed} />
       <LeafDecoration position="bl" size={32} swaying={justActed} />
 
-      {/* 나무테가 이미 26px을 가져가므로 안여백을 p-4 → p-2로 줄인다 */}
-      <div className="relative z-[1] h-full min-h-0 p-2 flex flex-col gap-2 overflow-y-auto">
+      {/* 나무테가 이미 22px을 가져간다. 그 안쪽으로 여백을 더 두면 액자와 내용이
+          떨어져 보이므로 p-1(3px)까지만 남긴다. */}
+      <div className="relative z-[1] h-full min-h-0 p-1 flex flex-col gap-1.5 overflow-y-auto">
         <div
           className={`text-base font-bold ${teamColor} flex items-center gap-1.5 flex-wrap`}
           style={spectating ? { color: SPECTATOR_TEAM_PALETTE[team].deep } : undefined}
