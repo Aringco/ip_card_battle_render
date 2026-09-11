@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { startPreload, subscribePreload, type PreloadProgress } from '@/lib/preload';
+import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
 const TIPS = [
   '같은 동물 카드가 짝수 장 모이는 순간, 그 동물 카드를 통째로 가져옵니다.',
@@ -40,26 +41,36 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
   const percent = Math.round(progress.ratio * 100);
 
   return (
-    <div className="fixed inset-0 z-50 bg-green-50 flex flex-col items-center justify-center p-6">
-      <h1 className="text-4xl mb-2 animate-pulse">🐑🐰🧜‍♀️🐯</h1>
-      <h2 className="text-xl font-semibold text-green-800 mb-8">한국특허정보원 카드배틀</h2>
+    // 바탕색은 그림이 도착하기 전 한 프레임을 채운다 — 밝은 초록(bg-green-50)에서
+    // 짙은 숲색으로 바꿨다. 위에 얹는 글자가 흰 계열이라 밝은 바탕에서는 첫 프레임에
+    // 글씨가 사라진 것처럼 보인다.
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-start p-6 pt-8 sm:pt-12 bg-[#1d3b2a] bg-cover bg-center"
+      style={{ backgroundImage: `url(${LOBBY_ASSETS.loading})` }}
+    >
+      {/* 진행 상황과 문구는 **위쪽**에 모아 둔다. 그림의 주인공 넷이 가운데 아래에
+          있어, 가운데 정렬로 두면 그 위를 덮는다.
+          반투명 판을 까는 것은 배경이 하늘(밝음)과 나무(어두움)로 갈려 맨글씨로는
+          어느 쪽에서도 읽히지 않기 때문이다. */}
+      <div className="w-full max-w-md rounded-2xl bg-black/45 px-6 py-4 text-center shadow-lg backdrop-blur-[2px]">
+        <h1 className="text-3xl animate-pulse">🐑🐰🧜‍♀️🐯</h1>
+        <h2 className="mb-3 text-xl font-black text-[#fdf3dd]">한국특허정보원 카드배틀</h2>
 
-      <div className="w-full max-w-xs">
-        <div className="h-3 rounded-full bg-green-200 overflow-hidden">
+        <div className="h-3 overflow-hidden rounded-full bg-black/45">
           <div
-            className="h-full bg-green-600 rounded-full transition-[width] duration-200 ease-out"
+            className="h-full rounded-full bg-lime-400 transition-[width] duration-200 ease-out"
             style={{ width: `${percent}%` }}
           />
         </div>
-        <p className="mt-2 text-center text-sm text-green-700 font-semibold tabular-nums">
+        <p className="mt-2 text-sm font-semibold tabular-nums text-[#f4e6c4]">
           카드와 소리를 준비하는 중… {percent}%
-          <span className="ml-1 text-green-600/70 font-normal">
+          <span className="ml-1 font-normal text-[#f4e6c4]/70">
             ({progress.loaded}/{progress.total})
           </span>
         </p>
-      </div>
 
-      <p className="mt-8 max-w-sm text-center text-xs text-green-700/80 leading-relaxed">💡 {tip}</p>
+        <p className="mt-3 text-xs leading-relaxed text-[#ecdcba]/90">💡 {tip}</p>
+      </div>
     </div>
   );
 }

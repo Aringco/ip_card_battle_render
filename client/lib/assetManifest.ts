@@ -85,6 +85,7 @@ export const IMAGE_FILES: string[] = [
   "/howto/how_IPs.png",
   "/howto/how_places.png",
   "/howto/how_skills.png",
+  "/lobby/loading_bg.webp",
   "/lobby/logo.png",
   "/lobby/panel_create.webp",
   "/lobby/panel_join.webp",
