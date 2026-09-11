@@ -3725,11 +3725,24 @@ body {
   border-radius: 0;
   background: none;
 }
+/* ⚠️ **양피지는 테두리 띠 안쪽까지 파고들어야 한다.**
+   `border-image`는 테두리 띠를 그림의 슬라이스로 채우는데, 그림에서 나무가 차지하는
+   두께가 슬라이스보다 얇으면 **나머지는 투명하게 남는다.** wf_card는 나무 39 / 슬라이스
+   70이라 22px 띠에 나무가 12.3px만 그려지고 **9.7px이 빈 채로 남아** 그 뒤 페이지 배경이
+   흰 띠로 비쳤다 — 액자 안쪽에 흰 줄이 생기던 원인이다.
+
+   `inset: 0`은 padding box(= 띠 **안쪽**)라 그 빈 띠에 닿지 못한다. 그래서 `--wood-gap`
+   만큼 **바깥으로** 밀어 빈 띠를 종이로 메운다. 이 층은 z-index가 음수라 요소의 테두리
+   **위에** 그려지므로(CSS 페인트 순서: 배경·테두리 → 음수 z-index 자식), 값이 조금
+   넘쳐도 나무 안쪽 가장자리를 1px 덮을 뿐 밖으로는 새지 않는다.
+
+   ⚠️ **빈 띠 = border-width × (1 − 나무두께/슬라이스).** 셋 중 하나라도 바꾸면
+   `--wood-gap`을 다시 계산할 것. */
 .wood-panel::before,
 .wood-panel::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: calc(var(--wood-gap, 0px) * -1);
   z-index: -1;
   pointer-events: none;
 }
@@ -3739,14 +3752,16 @@ body {
 }
 .wood-panel::after { background: var(--panel-tint, transparent); }
 
-/* 세로 카드 — 팀 패널·카드판. 테 22px이면 나무가 12px로 보인다(39 × 22/70) */
-.wood-panel-card { border-width: 22px; border-image: url('/play/wf_card.webp') 70 stretch; }
+/* 세로 카드 — 팀 패널·카드판. 테 22px이면 나무가 12.3px로 보이므로(39 × 22/70)
+   빈 띠는 22 − 12.3 = 9.7px → --wood-gap 10px */
+.wood-panel-card { border-width: 22px; --wood-gap: 10px; border-image: url('/play/wf_card.webp') 70 stretch; }
 /* ⚠️ 종이 테두리를 12 → 6px로 줄였다. 이 값이 곧 **나무테와 내용 사이에 뜨는
    크림색 띠**의 두께다 — 12px일 때 액자와 내용이 떨어져 보인다는 지적을 받았다. */
 .wood-panel-card::before { border-width: 6px; border-image: url('/play/pg_card.webp') 34 fill stretch; }
 
-/* 낮고 긴 띠 — 해설판. wf_strip은 나무폭 22 / 모서리 22라 슬라이스 44면 넉넉하다 */
-.wood-panel-strip { border-width: 16px; border-image: url('/play/wf_strip.webp') 44 stretch; }
+/* 낮고 긴 띠 — 해설판. wf_strip은 나무폭 22 / 슬라이스 44라 16px 띠에 나무가 8px,
+   빈 띠도 8px → --wood-gap 8px */
+.wood-panel-strip { border-width: 16px; --wood-gap: 8px; border-image: url('/play/wf_strip.webp') 44 stretch; }
 .wood-panel-strip::before { border-width: 10px; border-image: url('/play/pg_strip.webp') 30 fill stretch; }
 
 /* 양피지만 깔 때 — 가운데 스택 네 줄. 나무테 없이 종이 질감만 쓴다 */
