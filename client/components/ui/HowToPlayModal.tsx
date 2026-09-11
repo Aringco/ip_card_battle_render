@@ -157,27 +157,24 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
             아래라 두 덩어리가 따로 노는 머리말이 두 개인 꼴이었다. */}
         <div className="howto-title">
           <div className="howto-title-text">
-            <span className="block font-black tracking-[0.18em] text-[clamp(0.62rem,1.35vw,0.95rem)] text-[#f0dcb4]">
-              HOW TO PLAY
-            </span>
+            <span className="howto-title-kicker">HOW TO PLAY</span>
             {/* 두 낱말은 각자 네모난 판 위에 얹는다 — 에셋을 입히기 전 모습이고,
                 나뭇결 위에서 글자만으로는 "두 번"이라는 덩어리가 눈에 잡히지 않는다. */}
-            <span className="flex items-center justify-center gap-[0.35em] font-black leading-tight text-[clamp(0.95rem,2.3vw,1.6rem)]">
+            <span className="howto-title-lead">
               <span className="howto-title-plate">카드 뽑기</span>
-              <span className="text-[#e8c98d]">→</span>
+              <span className="howto-title-arrow">→</span>
               <span className="howto-title-plate">행동 하기</span>
             </span>
-            <span className="block font-bold leading-tight text-[clamp(0.6rem,1.3vw,0.92rem)] text-[#f0dcb4]">
-              이 두 번이면 내 차례 끝! 🎉
-            </span>
+            <span className="howto-title-tail">이 두 번이면 내 차례 끝! 🎉</span>
           </div>
         </div>
 
         <button
           onClick={onClose}
-          // 나무테 위에 앉으므로 밝은 색이어야 보인다 — 양피지용 갈색은 여기서 묻힌다
-          className="absolute top-1 right-3 z-[2] text-3xl leading-none text-[#f6e6c8]/70 hover:text-[#f6e6c8]
-                     drop-shadow-[0_1px_2px_rgba(50,30,15,0.9)]"
+          // 판 **바깥**, 오른쪽 위 어두운 배경에 앉힌다 — 나무테에 걸치면 결 무늬에 섞여
+          // 눈에 안 띈다. 팻말이 판 위로 걸치는 만큼(margin-top) 그 자리는 이미 비어 있다.
+          className="absolute -top-8 right-1 z-[2] text-3xl leading-none text-[#f6e6c8]/80 hover:text-[#f6e6c8]
+                     drop-shadow-[0_1px_3px_rgba(20,12,4,0.95)]"
           aria-label="닫기"
         >
           ✕

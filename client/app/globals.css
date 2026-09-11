@@ -3214,7 +3214,11 @@ body {
      ⚠️ 그림을 다시 자르면 --howto-orn도 함께 환산할 것 — 잎 크기를 그대로 유지하려면
      `새 캔버스 폭 × (예전 --howto-orn / 예전 캔버스 폭)`이다(307 × 190/360 = 162). */
   --howto-orn: 162px;
-  --howto-overhang: 10px;
+  /* 덩굴은 액자 **바깥으로 걸쳐야** 한다 — 10px일 때는 나무테(46px) 안쪽에 얌전히
+     들어앉아 양피지 위에 붙인 스티커처럼 보였다. 24px이면 나무테의 바깥 절반을
+     덮고 그 너머로 조금 넘어간다. ⚠️ 창 바깥 여백(모달의 p-4 ≈ 13px)보다 크면
+     좁은 화면에서 잘리므로, 모바일은 액자가 얇은 만큼(26px) 12px로 낮춘다. */
+  --howto-overhang: 24px;
   position: relative;
   isolation: isolate;
   /* 나무 두께를 지나 양피지 안쪽까지 */
@@ -3270,10 +3274,18 @@ body {
 }
 /* 팻말에 새기는 세 줄(HOW TO PLAY / 카드 뽑기 → 행동 하기 / 이 두 번이면 끝).
    판자 그림의 **안쪽 홈**에만 앉아야 한다 — 좌우로는 마구리(둥근 끝)와 잎이, 위아래로는
-   테두리가 있어 그 위로 넘어가면 글자가 나뭇결에 묻힌다. 폭 74% / 높이 62%가 그 홈이다. */
+   도드라진 테두리가 있어 그 위로 넘어가면 글자가 나뭇결에 묻힌다.
+
+   ⚠️ **홈은 판자 한가운데가 아니다.** 그림(768×229)의 세로 밝기를 재보면 위 테두리가
+   두꺼워 홈이 y 55~197px, 곧 **24%~86%**에 있다 — 가운데 정렬로 두면 5%가 위로
+   치우쳐 윗줄 위에만 빈 자리가 크게 남는다(그렇게 보였다). 그래서 가운데 정렬 대신
+   네 변을 직접 못박는다. 퍼센트 top/bottom은 부모 높이 기준이라 팻말이 커져도 맞는다. */
 .howto-title-text {
-  width: 74%;
-  height: 62%;
+  position: absolute;
+  left: 13%;
+  right: 13%;
+  top: 24%;
+  bottom: 14%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3281,6 +3293,34 @@ body {
   text-align: center;
   gap: 0.12em;
   text-shadow: 0 2px 2px rgba(60, 38, 20, 0.85);
+}
+/* 세 줄의 글씨 크기는 **팻말 폭에서 곧바로 뽑는다.** 팻말은 비율이 고정(768:229)이라
+   폭 하나로 높이까지 정해지므로, 이러면 어느 화면에서도 홈을 채우는 비율이 같다.
+   vw 기준 clamp로 잡으면 화면 폭과 팻말 폭이 서로 다른 곡선으로 움직여, 어떤 폭에서는
+   글씨가 홈에 못 미치고 어떤 폭에서는 넘친다(넘치기 직전까지 줄여 두느라 늘 헐거웠다).
+   지금 값은 세 줄 합이 홈 높이의 약 86%다 — 나머지는 위아래 숨통이다. */
+.howto-title-kicker {
+  font-size: calc(var(--howto-title-w, 300px) * 0.034);
+  letter-spacing: 0.18em;
+  font-weight: 900;
+  line-height: 1.2;
+  color: #f0dcb4;
+}
+.howto-title-lead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  font-size: calc(var(--howto-title-w, 300px) * 0.055);
+  font-weight: 900;
+  line-height: 1.15;
+}
+.howto-title-arrow { color: #e8c98d; }
+.howto-title-tail {
+  font-size: calc(var(--howto-title-w, 300px) * 0.036);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #f0dcb4;
 }
 /* 팻말 둘째 줄의 낱말 판 — 여백·모서리를 em으로 잡아 글자 크기(clamp)를 따라 늘어난다.
    px로 잡으면 좁은 화면에서 판만 두꺼워져 세 줄이 홈(높이 62%)을 넘친다. */
@@ -3308,7 +3348,7 @@ body {
   .howto-board {
     --howto-edge: 26px;
     --howto-orn: 103px;   /* 307 × 121/360 — 새 캔버스로 환산 */
-    --howto-overhang: 6px;
+    --howto-overhang: 12px;
   }
 }
 
