@@ -45,10 +45,10 @@ cd client && node scripts/cutPlaySheet.mjs
 | `.play-acorn-bar` | `acorn_bar` | 621×164 | 3분할 | 캡 22·13 / 180·110 | 축제 배지 (20px) |
 | `.play-strip` | `board_h` | 754×550 | 3분할 | 캡 17 / 150 | 해설판 (64px) |
 | `.play-note-card` | `label_small` | 255×180 | 9분할 | 두께 20 / 66 | 안내 쪽지 |
-| `.play-photo-frame` | `board_v` | 271×376 | 9분할·**fill 없음** | 두께 28 / 90 | 장소 타일 |
+| `.play-photo-frame` | `board_v` | 271×376 | 9분할·**fill 없음** | 두께 24 / 90 · inset 22 | 장소 타일 |
 | `.play-gauge-track` | `gauge_track` | 168×54 | 3분할 | 캡 7 / 30 | 타이머 (12px) |
 | `.play-gauge-fill` | `gauge_fill` | 239×53 | 3분할 | 캡 7 / 30 | 타이머 채움 |
-| `.play-card-frame::after` | `card_frame` | 826×687 | 9분할·**fill 없음** | 두께 11 / 60 | 기술 카드 5칸 |
+| `.play-card-frame::after` | `card_frame` | 826×687 | 9분할·**fill 없음** | 두께 11 / 60 · inset 11 | 기술 카드 5칸 |
 | `.play-card-frame::before` | `card_corner_*` · `leaf_decal_2` | ~200² · 124×201 | 고정 크기 | 26px · 18px | 같은 칸의 네 모서리 |
 
 ### 되돌린 선택 두 가지 (같은 실수를 반복하지 않기 위해)
@@ -59,6 +59,25 @@ cd client && node scripts/cutPlaySheet.mjs
 * **사진을 덮는 액자에는 `fill`을 쓰지 않는다.** 가운데 조각까지 그리면 양피지가
   장소 사진을 통째로 덮습니다. `fill` 없이 쓰면 여덟 조각(네 변·네 모서리)만 그려져
   사진 가장자리에 액자만 얹힙니다.
+
+### ⚠️ 액자가 바깥, 그림이 안쪽 — 순서를 뒤집지 말 것
+
+**그림을 상자에 꽉 채우고 액자를 그 위에 덮으면 안 됩니다.** 그러면 그림이 액자
+밖으로 비어져 나온 것처럼 보입니다(실제로 그렇게 만들었다가 고쳤습니다).
+액자가 상자 가장자리를 차지하고, 그림은 그 **안쪽 사각형**에 들어가야 합니다.
+
+```
+액자 클래스   → --frame-inset: <테두리 두께보다 2px 작게>
+그림 레이어   → class="play-frame-inset absolute"   (inset-0 이 아니다)
+```
+
+`.play-frame-inset { inset: var(--frame-inset, 0); }` 한 줄이고, 액자 클래스가
+자기 두께에 맞춰 그 값을 정해 줍니다. **새 액자를 만들 때 이 짝을 함께 둘 것.**
+
+> ⚠️ **`<img>`를 직접 `play-frame-inset`으로 앉히지 마세요.** 절대배치된 **대체 요소**의
+> `width: auto`는 네 변(inset)이 아니라 그림의 **내재 크기**로 풀립니다 — `object-contain`이
+> 먹지 않고 라벨이 잘립니다(장소 라벨에서 실제로 잘렸습니다). `<div>`로 한 겹 감싸고
+> 그 안의 `<img>`에 `w-full h-full object-contain`을 줍니다.
 
 ### 금색 액자는 왜 두께 11px인가
 

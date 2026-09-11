@@ -91,10 +91,10 @@ export function SkillChoiceBar({
                   버튼 전체에 filter를 걸면 그 위에 z-index로 얹은 자막(제목·설명·레벨
                   표시)까지 함께 어두워져 "레벨 부족"일 때 글자가 거의 안 보였다. */}
               <div
-                className={`skill-choice-bg absolute inset-0 ${eligible ? '' : 'skill-choice-bg-disabled'}`}
+                className={`skill-choice-bg play-frame-inset absolute ${eligible ? '' : 'skill-choice-bg-disabled'}`}
                 style={{ backgroundImage: `url(/skills/${animal}_skill.png)` }}
               />
-              <div className="skill-choice-dim absolute inset-0" />
+              <div className="skill-choice-dim play-frame-inset absolute" />
               {/* 레벨이 있을 때는(활성) 이 자리에 "레벨 N 소모" 대신 실제 효과(카드 추가
                   뽑기·체력 강탈 등, 노란색)를 보여준다 — 레벨이 없으면(비활성) 흰색
                   "레벨 부족"으로 돌아간다. 예전엔 효과 문구를 좌상단에 따로 뒀는데, 우상단
@@ -145,8 +145,8 @@ export function SkillChoiceBar({
             interactive ? 'skill-choice-glow' : ''
           }`}
         >
-          <div className="skill-choice-bg pass-panel-bg absolute inset-0" />
-          <div className="skill-choice-dim absolute inset-0" />
+          <div className="skill-choice-bg pass-panel-bg play-frame-inset absolute" />
+          <div className="skill-choice-dim play-frame-inset absolute" />
           <div className="relative z-10 flex flex-col gap-1.5 p-3 min-h-[9rem]">
             <h3 className="skill-outline-text text-xl font-extrabold text-jungle-200">[턴 마치기]</h3>
             <p className="skill-outline-text text-base text-white leading-snug whitespace-pre-line">

@@ -55,20 +55,24 @@ export function PlaceTile({
             걸면 그 위의 장소 라벨까지 함께 어두워져 거의 안 보인다(스킬 선택 패널에서
             겪었던 것과 같은 문제). forbidden은 disabled 취급하지 않는다 — 아래 검은
             오버레이 하나로 충분해서, 배경 이미지 자체를 또 흐리게 하면 이중으로 탁해진다. */}
+        {/* play-frame-inset — 사진은 액자 **안쪽** 사각형에 들어간다. inset-0으로 두면
+            사진이 상자를 꽉 채우고 액자가 그 위를 덮어, 사진이 액자 밖으로 비어져
+            나온 것처럼 보인다. */}
         <div
-          className={`place-tile absolute inset-0 ${disabled ? 'place-tile-disabled' : 'place-tile-active'}`}
+          className={`place-tile play-frame-inset absolute ${disabled ? 'place-tile-disabled' : 'place-tile-active'}`}
           style={{ backgroundImage: `url(/places/${place}.png)` }}
         />
 
         {/* 장소 설명 라벨 — object-contain으로 타일 너비/높이에 맞춰 함께 축소·확대된다 */}
-        <img
-          src={`/places/${place}_text.png`}
-          alt=""
-          className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
-        />
+        {/* ⚠️ 래퍼가 필요하다. `<img>`를 직접 `play-frame-inset`으로 앉히면 안 된다 —
+            절대배치된 **대체 요소**의 `width: auto`는 네 변(inset)이 아니라 그림의
+            **내재 크기**로 풀려, object-contain이 먹지 않고 라벨이 잘린다(실제로 잘렸다). */}
+        <div className="play-frame-inset absolute pointer-events-none select-none">
+          <img src={`/places/${place}_text.png`} alt="" className="w-full h-full object-contain" />
+        </div>
 
         {forbidden && (
-          <div className="place-forbidden-overlay absolute inset-0 flex items-center justify-center" aria-hidden>
+          <div className="place-forbidden-overlay play-frame-inset absolute flex items-center justify-center" aria-hidden>
             <svg viewBox="0 0 100 100" className="place-forbidden-mark">
               <circle cx="50" cy="50" r="40" fill="none" stroke="#ffffff" strokeWidth="11" />
               <line x1="21" y1="21" x2="79" y2="79" stroke="#ffffff" strokeWidth="11" strokeLinecap="round" />

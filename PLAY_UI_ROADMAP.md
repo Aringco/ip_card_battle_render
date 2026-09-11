@@ -24,6 +24,7 @@
 | 2 | **레이아웃 배치를 바꾸지 않는다** | `GameLayout`의 3열 그리드(`19rem 1fr 19rem` × `1.25fr auto 1fr`)와 각 `gridColumn/gridRow`는 고정. 새 클래스는 **기존 요소에 추가**하고, 새 래퍼 `div`는 넣지 않는다(넣으면 그리드 자식이 바뀐다) |
 | 3 | **글씨가 들어가는 에셋은 가로 3분할** (좌 마구리 │ 늘어나는 가운데 │ 우 마구리) | `border-width: 0 Npx` + `border-image: url(...) 0 S fill stretch` |
 | 4 | **상자·이미지 영역은 9분할** (네 모서리 유지, 상하·좌우 가운데만 늘림) | `border-width: Npx` + `border-image: url(...) S fill stretch` |
+| 5 | **액자가 바깥, 그림이 안쪽** — 그림이 액자 밖으로 나오면 안 된다 | 그림 레이어에 `inset: 0`이 아니라 `inset: var(--frame-inset)`을 준다(`.play-frame-inset`). 액자 클래스가 자기 두께에 맞춰 그 값을 정한다 |
 
 ### 1-1. 3분할과 9분할, 어느 쪽을 고르는가
 
