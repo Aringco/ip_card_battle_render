@@ -84,7 +84,9 @@ export function ActionPrompt({
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-      <div className="bg-white rounded-xl px-5 py-2 flex flex-col items-center gap-1 shadow-sm">
+      {/* 그림자(shadow-sm)를 뺐다 — 쪽지는 귀퉁이에 잎이 달린 모양 있는 그림이라
+          box-shadow가 그 바깥 네모를 따라 그려져 그늘이 드러난다. */}
+      <div className="play-note-card px-1 flex flex-col items-center gap-1">
         {firstTeamNote && (
           <p className="text-xs text-jungle-500 whitespace-nowrap">{firstTeamNote}</p>
         )}

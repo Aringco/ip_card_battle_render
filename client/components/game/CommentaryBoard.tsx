@@ -22,8 +22,9 @@ export function CommentaryBoard({
     el.scrollTop = el.scrollHeight;
   }, [lines]);
 
+  // 양피지 띠 — 가로 안여백(px-4)을 뺐다. 그림의 마구리가 이미 그 몫을 한다.
   return (
-    <div className="relative h-20 shrink-0 bg-white rounded-2xl border border-jungle-200 px-4 py-2 overflow-hidden">
+    <div className="play-strip relative h-20 shrink-0 py-2 overflow-hidden">
       <div ref={scrollRef} className="h-full overflow-y-auto">
         {lines.length === 0 ? (
           <p className="text-sm text-jungle-300">아직 소식이 없습니다.</p>

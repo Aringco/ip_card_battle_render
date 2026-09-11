@@ -34,22 +34,24 @@ export function TurnTimer({
   const isUrgent = remaining <= Math.min(5, maxSeconds);
   const isWarn = remaining <= Math.min(10, maxSeconds);
 
-  // 평소 상태 색은 연두색이 흰 배경(해설판 오버레이) 위에서 잘 안 보인다는 피드백을
-  // 반영해, 대비가 뚜렷한 하늘색으로 바꿨다(위험 단계인 주황/빨강과도 확실히 구분된다).
-  const barColor = isUrgent
-    ? 'bg-red-500'
+  // 채움 그림(gauge_fill)은 초록 한 벌뿐이라, 경고·위험 단계는 CSS가 색을 돌려 만든다.
+  const fillTone = isUrgent
+    ? 'play-gauge-fill-urgent'
     : isWarn
-    ? 'bg-orange-400'
-    : 'bg-sky-500';
+    ? 'play-gauge-fill-warn'
+    : '';
 
   return (
     <div className={`flex items-center ${big ? 'gap-3 min-w-[260px]' : 'gap-2 min-w-[180px]'}`}>
       <span className={isUrgent ? 'hourglass-shake' : ''} style={{ fontSize: big ? '1.7rem' : '1rem' }}>
         ⏳
       </span>
-      <div className={`flex-1 bg-jungle-950 rounded-full overflow-hidden ${big ? 'h-4' : 'h-2.5'}`}>
+      {/* 트랙·채움 모두 가로 3분할이라 캡슐 끝 모양이 폭을 따라가지 않고 유지된다.
+          ⚠️ 트랙에 overflow-hidden을 걸지 않는다 — 채움이 자기 오른쪽 마구리(둥근 끝)를
+          그리는데, 잘라내면 그 자리가 각지게 끊긴다. */}
+      <div className={`play-gauge-track flex-1 ${big ? 'h-4' : 'h-3'}`}>
         <div
-          className={`h-full rounded-full transition-[width] duration-100 ${barColor}`}
+          className={`play-gauge-fill h-full transition-[width] duration-100 ${fillTone}`}
           style={{ width: `${pct}%` }}
         />
       </div>

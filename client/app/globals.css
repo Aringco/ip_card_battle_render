@@ -3492,3 +3492,130 @@ body {
     grid-template-rows: 0fr 1fr;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   플레이 화면 — 나무 UI (PLAY_UI_ROADMAP.md)
+
+   에셋은 시트 한 장에서 잘라낸 `public/play/*.webp`이고, 경로는
+   `lib/playAssets.ts` 한 곳에 모여 있다. 여기에는 **분할 값**만 둔다.
+
+   ── 두 가지 분할과 그 산수 ──────────────────────────────────────────────
+   ① 글씨가 들어가는 것(팻말·알약·게이지) = **가로 3분할**
+        border-width: 0 <캡>px;  border-image: url(…) 0 <슬라이스> fill stretch;
+      위·아래 테두리가 0이므로 나무 레일은 **가운데 조각이 세로로 늘어나며** 그려지고,
+      두께가 요소 높이에 비례한다. 마구리(양 끝)가 안 찌그러지려면
+        캡px / 슬라이스 = 요소높이 / 그림높이
+      가 맞아야 한다 — 아래 각 규칙에 그 산수를 적어 뒀다.
+      **요소 높이를 바꾸면 캡도 함께 고칠 것.**
+   ② 상자·이미지 영역 = **9분할**
+        border-width: <두께>px;  border-image: url(…) <슬라이스> fill stretch;
+      모서리 조각은 언제나 `두께 × 두께`로 그려지므로, 귀퉁이 잎이 안 눌리려면
+      마찬가지로 `두께 / 슬라이스`가 의도한 축소 배율과 같아야 한다.
+
+   ⚠️ 이 클래스들은 **덧붙이는 것**이다. `.place-tile-*`·`.skill-choice-*`·`.hp-orb-*`
+      처럼 연출이 매달린 클래스를 지우지 말 것.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 상단 들보 — 헤더(높이 42px) 바닥. 2190×209, 덩굴 마구리 200px.
+   42/209 = 0.201 → 캡 200×0.201 ≈ 40px */
+.play-beam {
+  border-style: solid;
+  border-width: 0 40px;
+  border-image: url('/play/beam.webp') 0 200 fill stretch;
+  border-radius: 0;
+  background: none;
+}
+
+/* 이름표 — 헤더 왼쪽 "○○ 차례". 490×239, 좌 마구리 140 / 우 120.
+   26/239 = 0.109 → 좌 15px, 우 14px */
+.play-nameplate {
+  border-style: solid;
+  border-width: 0 15px 0 17px;
+  border-image: url('/play/nameplate.webp') 0 120 0 140 fill stretch;
+  border-radius: 0;
+  background: none;
+  /* 위아래 안여백이 곧 이름표의 키다 — 그림에서 양피지는 높이의 60% 남짓이라,
+     글자 줄높이만큼만 두면 글씨가 양피지 밖 나무틀 위로 걸린다(실제로 걸렸다). */
+  padding: 9px 2px;
+  line-height: 1;
+  color: #4a3728;
+}
+
+/* 알약 3종 — 단계 표시·이름표. 캡은 16px 높이 기준(border-width/슬라이스 ≈ 0.14) */
+.play-pill {
+  border-style: solid;
+  border-radius: 0;
+  background: none;
+  padding: 0 3px;
+}
+.play-pill-green { border-width: 0 10px; border-image: url('/play/pill_green.webp') 0 70 fill stretch; color: #08361c; }
+.play-pill-gold  { border-width: 0 10px; border-image: url('/play/pill_gold.webp')  0 70 fill stretch; color: #5b3a05; }
+.play-pill-wood  { border-width: 0 7px;  border-image: url('/play/pill_wood.webp')  0 50 fill stretch; color: #f3e6cb; }
+
+/* 도토리 축제 바 — 621×164, 좌(도토리+잎) 180 / 우(덩굴) 110.
+   20/164 = 0.122 → 좌 22px, 우 13px */
+.play-acorn-bar {
+  border-style: solid;
+  border-width: 0 13px 0 22px;
+  border-image: url('/play/acorn_bar.webp') 0 110 0 180 fill stretch;
+  border-radius: 0;
+  background: none;
+  padding: 1px 2px;
+  color: #f6e3bd;
+}
+
+/* 사진 위에 두르는 나무 액자 — 장소 타일·행동 칸.
+   ⚠️ `fill`을 쓰지 않는다. 가운데 조각까지 그리면 양피지가 사진을 통째로 덮는다.
+   슬라이스가 정사각(90×90)이고 네 변 두께가 같으므로 **귀퉁이 잎은 눌리지 않고
+   작아질 뿐**이다(90 → 28px, 가로·세로 같은 배율). 두께만 바꿔도 안전하다. */
+.play-photo-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 28px solid transparent;
+  border-image: url('/play/board_v.webp') 90 stretch;
+}
+
+/* 양피지 쪽지 — 해설판 가운데 안내 문구가 앉는다.
+   255×180, 슬라이스 66 / 두께 20px(0.30배)라 귀퉁이 잎이 제 비율로 작아진다. */
+.play-note-card {
+  border-style: solid;
+  border-width: 20px;
+  border-image: url('/play/label_small.webp') 66 fill stretch;
+  border-radius: 0;
+  background: none;
+  color: #4a3728;
+}
+
+/* 모래시계 게이지 — 트랙과 채움을 따로 그린다(색을 바꿔 단계를 알리기 위해).
+   168×54 / 239×53, 마구리 30. 높이 12px 기준 12/54 = 0.22 → 캡 30×0.22 ≈ 7px */
+.play-gauge-track,
+.play-gauge-fill {
+  border-style: solid;
+  border-width: 0 7px;
+  border-radius: 0;
+  background: none;
+}
+.play-gauge-track { border-image: url('/play/gauge_track.webp') 0 30 fill stretch; }
+.play-gauge-fill  { border-image: url('/play/gauge_fill.webp')  0 30 fill stretch; }
+/* 채움 그림은 초록 한 벌뿐이라, 경고·위험 단계는 색을 돌려 만든다.
+   ⚠️ `filter`는 자식 전체에 걸리므로 **채움 요소에만** 건다. */
+.play-gauge-fill-warn   { filter: hue-rotate(-95deg) saturate(1.5); }
+.play-gauge-fill-urgent { filter: hue-rotate(-125deg) saturate(1.7) brightness(1.05); }
+
+/* 가로로 긴 양피지 띠 — 해설판(높이 64px). **가로 3분할**이다.
+   9분할로 쓰면 위아래 테두리가 40px을 먹어 세 줄이 안 들어간다.
+
+   ⚠️ 그림은 `label_small`이 아니라 `board_h`를 쓴다. 처음에 label_small로 했다가
+   되돌렸는데, 그 그림은 위아래에 잎이 삐져나온 **투명 여백**이 커서 세로로 눌러 담으면
+   양피지가 띠의 아래 3분의 2에만 깔리고 **글자 첫 줄이 그 위 허공에 뜬다**(실제로 떴다).
+   board_h는 양피지가 그림 높이의 대부분을 차지해 띠 전체가 종이로 덮인다.
+   754×550, 캡 150 → 64/550 = 0.116배 → 캡 150×0.116 ≈ 17px. */
+.play-strip {
+  border-style: solid;
+  border-width: 0 17px;
+  border-image: url('/play/board_h.webp') 0 150 fill stretch;
+  border-radius: 0;
+  background: none;
+}

@@ -4,10 +4,10 @@ import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 
 function StepPill({ label, active }: { label: string; active: boolean }) {
   return (
+    // 가로 안여백(px-2.5)을 뺀 것은 그림의 마구리가 이미 그 몫을 하기 때문이다 —
+    // 남겨 두면 알약이 글씨보다 20px 넓어져 헤더 가운데가 밀린다.
     <span
-      className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-        active ? 'step-pill-active' : 'step-pill-inactive'
-      }`}
+      className={`play-pill ${active ? 'play-pill-green' : 'play-pill-wood'} py-0.5 text-xs font-bold whitespace-nowrap`}
     >
       {label}
     </span>
@@ -65,10 +65,13 @@ export function GameHeader({
   const festivalInfo = festivalDrawInfoAt(gameState.turn, gameState.settings);
 
   return (
-    <header className="relative bg-jungle-800 text-white px-5 py-2.5 flex items-center shadow-md shrink-0 min-h-[3.25rem]">
-      <div className="text-sm text-jungle-200 hidden sm:block">
+    // 그림자(shadow-md)를 뺐다 — 들보는 양 끝이 덩굴로 마무리된 **모양 있는 그림**인데
+    // box-shadow는 상자의 네모를 따라 그려져, 투명한 자리에 네모난 그늘이 드러난다.
+    <header className="play-beam relative text-white pl-12 pr-12 py-1 flex items-center shrink-0 min-h-[3.25rem]">
+      {/* 양피지 이름표 위에 앉으므로 글자색이 나무 위(크림)가 아니라 **잉크 갈색**이다 */}
+      <div className="play-nameplate text-sm hidden sm:block">
         <span style={spectatorLabelStyle}>{teamLabel}</span>{' '}
-        <span className="font-semibold text-white">{nickname}</span> 차례
+        <span className="font-semibold text-[#3f2d18]">{nickname}</span> 차례
       </div>
 
       {/* 나뭇잎 장식이 화면 좌우 모서리를 가리므로, 턴/단계 표시는 항상 잘 보이도록 중앙에 고정 */}
@@ -85,7 +88,7 @@ export function GameHeader({
           <StepPill label="행동 선택" active={isChoicePhase} />
         </div>
         {gameState.festival && (
-          <span className="festival-header-badge text-sm font-bold whitespace-nowrap">
+          <span className="play-acorn-bar festival-header-badge text-sm font-bold whitespace-nowrap">
             🌰 도토리 축제 진행 중! 보너스 랜덤 뽑기 +{festivalInfo.count}회!
             {/* 강화 주기가 남은 턴보다 커서 다시 오를 일이 없으면 예고 자체를 감춘다. */}
             {festivalInfo.turnsToNextStage !== null && (
