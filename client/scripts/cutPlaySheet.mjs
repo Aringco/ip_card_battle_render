@@ -115,6 +115,33 @@ const SHEETS = [
       { name: 'leaf_decal_4', at: [1746, 762, 126, 176] },
     ],
   },
+  {
+    // 목재 프레임 + 양피지 시트 — 2560×1360.
+    // 프레임과 양피지가 **따로** 그려져 있다(합쳐진 것은 "조합 예시"일 뿐이다).
+    // 그래서 프레임은 9분할로 두르고, 양피지는 그 안쪽을 9분할로 채운다.
+    // ⚠️ 프레임은 전부 `hollow` — 나무가 사방을 막아 테두리발 flood fill이 안쪽에 못 닿는다.
+    src: 'frame_sheet.png',
+    pieces: [
+      // 양피지(내부 영역)
+      { name: 'pg_card', at: [46, 135, 310, 509] },     // 세로 카드
+      { name: 'pg_bar_lg', at: [384, 135, 895, 164] },  // 가로 넓은 띠
+      { name: 'pg_bar_md', at: [384, 317, 895, 151] },
+      { name: 'pg_bar_sm', at: [384, 487, 601, 155] },
+      { name: 'pg_square', at: [1014, 487, 257, 262] }, // 작은 정사각
+      { name: 'pg_strip', at: [50, 668, 930, 87] },     // 가늘고 긴 띠
+
+      // 목재 프레임(외곽 영역)
+      { name: 'wf_card', at: [1357, 126, 401, 622], hollow: true },
+      { name: 'wf_bar_lg', at: [1785, 128, 740, 173], hollow: true },
+      { name: 'wf_bar_md', at: [1783, 322, 741, 148], hollow: true },
+      { name: 'wf_strip', at: [1785, 487, 441, 87], hollow: true },
+      { name: 'wf_square', at: [2248, 486, 271, 266], hollow: true },
+      { name: 'wf_plaque', at: [1795, 624, 411, 111] }, // 짙은 나무 명패(속이 찬 판)
+
+      // 목재 장식 바
+      { name: 'log_bar', at: [29, 967, 1382, 162] },
+    ],
+  },
 ];
 
 const isChecker = (r, g, b) => {

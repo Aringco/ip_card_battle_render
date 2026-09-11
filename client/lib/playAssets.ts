@@ -89,4 +89,29 @@ export const PLAY_ASSETS = {
   leafDecal4: '/play/leaf_decal_4.webp',
   /** 금색 액자에 딸린 이름표 칸 — **아직 쓰지 않는다**(요청에 따라 에셋만 만들어 둠) */
   cardPlaque: '/play/card_plaque.webp',
+
+  /**
+   * 목재 프레임 + 양피지 (`frame_sheet.png`).
+   *
+   * 이 시트의 요령은 **나무테와 양피지가 따로 그려져 있다**는 것이다(시트의 "조합 예시"는
+   * 둘을 겹쳐 본 견본일 뿐, 그런 파일이 따로 있는 게 아니다). 그래서 CSS에서도 두 층으로
+   * 쌓는다 — 나무테는 요소의 진짜 `border`, 양피지는 그 안쪽(padding box)을 채우는
+   * `::before`다. globals.css의 `.wood-panel` 참고.
+   *
+   * ⚠️ 나무테(`wf_*`)는 자를 때 **가운데를 뚫어야 한다**(cutPlaySheet의 `hollow`) —
+   * 나무가 사방을 막고 있어 테두리에서 출발하는 flood fill이 안쪽에 닿지 못한다.
+   */
+  pgCard: '/play/pg_card.webp',       // 양피지 — 세로 카드
+  pgBarLg: '/play/pg_bar_lg.webp',
+  pgBarMd: '/play/pg_bar_md.webp',    // 가운데 스택 네 줄이 쓴다
+  pgBarSm: '/play/pg_bar_sm.webp',
+  pgSquare: '/play/pg_square.webp',
+  pgStrip: '/play/pg_strip.webp',     // 해설판이 쓴다(가늘고 긴 종이)
+  wfCard: '/play/wf_card.webp',       // 나무테 — 팀 패널·카드판·장소 타일
+  wfBarLg: '/play/wf_bar_lg.webp',
+  wfBarMd: '/play/wf_bar_md.webp',
+  wfStrip: '/play/wf_strip.webp',
+  wfSquare: '/play/wf_square.webp',
+  wfPlaque: '/play/wf_plaque.webp',   // 짙은 나무 명패(속이 찬 판)
+  logBar: '/play/log_bar.webp',       // 긴 통나무 장식 바
 } as const;

@@ -160,11 +160,18 @@ export const IMAGE_FILES: string[] = [
   "/play/leaf_decal_2.webp",
   "/play/leaf_decal_3.webp",
   "/play/leaf_decal_4.webp",
+  "/play/log_bar.webp",
   "/play/nameplate.webp",
   "/play/note_green.webp",
   "/play/note_green_rows.webp",
   "/play/note_pink.webp",
   "/play/note_pink_rows.webp",
+  "/play/pg_bar_lg.webp",
+  "/play/pg_bar_md.webp",
+  "/play/pg_bar_sm.webp",
+  "/play/pg_card.webp",
+  "/play/pg_square.webp",
+  "/play/pg_strip.webp",
   "/play/pill_gold.webp",
   "/play/pill_green.webp",
   "/play/pill_leaf.webp",
@@ -172,7 +179,13 @@ export const IMAGE_FILES: string[] = [
   "/play/pill_sm_green.webp",
   "/play/pill_sm_wood.webp",
   "/play/pill_wood.webp",
-  "/play/plank.webp"
+  "/play/plank.webp",
+  "/play/wf_bar_lg.webp",
+  "/play/wf_bar_md.webp",
+  "/play/wf_card.webp",
+  "/play/wf_plaque.webp",
+  "/play/wf_square.webp",
+  "/play/wf_strip.webp"
 ];
 
 /** 프리로드 대상 전체(효과음 + 이미지) */

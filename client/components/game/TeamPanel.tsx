@@ -55,13 +55,24 @@ export function TeamPanel({
   return (
     <div
       data-rabbit-target={team}
-      className={`relative w-full h-full min-h-0 shrink-0 ${bgClass} rounded-2xl border border-jungle-200 ${teamRing} ${recoilClass} ${hitShakeClass} ${rabbitPressureClass} transition-colors transition-shadow`}
-      style={spectating ? spectatorTeamVars(team) : undefined}
+      // 나무테(진짜 border) + 양피지(::before) + 팀 색(::after). 예전의 bgClass(연두/분홍)
+      // 대신 양피지 **위에 옅게 얹는** --panel-tint로 팀을 가린다 — 종이 질감을 살리면서
+      // 어느 쪽 팀인지는 그대로 읽히게 하려는 것이다.
+      className={`wood-panel wood-panel-card relative w-full h-full min-h-0 shrink-0 ${teamRing} ${recoilClass} ${hitShakeClass} ${rabbitPressureClass} transition-shadow`}
+      style={{
+        ...(spectating ? spectatorTeamVars(team) : null),
+        ['--panel-tint' as string]: spectating
+          ? 'color-mix(in srgb, var(--spec-base) 16%, transparent)'
+          : isMine
+            ? 'rgba(132, 204, 22, 0.20)'
+            : 'rgba(244, 63, 94, 0.16)',
+      }}
     >
       <LeafDecoration position="tr" size={40} swaying={justActed} />
       <LeafDecoration position="bl" size={32} swaying={justActed} />
 
-      <div className="relative z-[1] h-full min-h-0 p-4 flex flex-col gap-3 overflow-y-auto">
+      {/* 나무테가 이미 26px을 가져가므로 안여백을 p-4 → p-2로 줄인다 */}
+      <div className="relative z-[1] h-full min-h-0 p-2 flex flex-col gap-2 overflow-y-auto">
         <div
           className={`text-base font-bold ${teamColor} flex items-center gap-1.5 flex-wrap`}
           style={spectating ? { color: SPECTATOR_TEAM_PALETTE[team].deep } : undefined}

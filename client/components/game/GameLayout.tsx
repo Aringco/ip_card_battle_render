@@ -159,7 +159,9 @@ export function GameLayout({
       <main
         className="flex-1 grid gap-2 pt-[1.35rem] pr-2 pb-2 pl-2 min-h-0 overflow-hidden"
         style={{
-          gridTemplateColumns: '19rem 1fr 19rem',
+          // 19rem → 21rem. 팀 패널에 나무 액자(좌우 22px씩)가 들어오며 안쪽이 그만큼
+          // 좁아져 팀 이름 줄("○○ 기사단 ⭐내 팀")이 잘렸다 — 액자가 먹는 폭을 돌려준다.
+          gridTemplateColumns: '21rem 1fr 21rem',
           gridTemplateRows: 'minmax(0, 1.25fr) auto minmax(0, 1fr)',
         }}
       >

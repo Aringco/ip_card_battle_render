@@ -43,11 +43,14 @@ cd client && node scripts/cutPlaySheet.mjs
 | `.play-pill-gold` | `pill_gold` | 191×116 | 3분할 | 캡 10 / 70 | (예비) |
 | `.play-pill-wood` | `pill_wood` | 247×100 | 3분할 | 캡 7 / 50 | 단계 알약(비활성) |
 | `.play-acorn-bar` | `acorn_bar` | 621×164 | 3분할 | 캡 22·13 / 180·110 | 축제 배지 (20px) |
-| `.play-strip` | `board_h` | 754×550 | 3분할 | 캡 17 / 150 | 해설판 (64px) |
 | `.play-note-card` | `label_small` | 255×180 | 9분할 | 두께 20 / 66 | 안내 쪽지 |
-| `.play-photo-frame` | `board_v` | 271×376 | 9분할·**fill 없음** | 두께 24 / 90 · inset 22 | 장소 타일 |
 | `.play-gauge-track` | `gauge_track` | 168×54 | 3분할 | 캡 7 / 30 | 타이머 (12px) |
 | `.play-gauge-fill` | `gauge_fill` | 239×53 | 3분할 | 캡 7 / 30 | 타이머 채움 |
+| `.wood-panel-card` | `wf_card` + `pg_card` | 401×622 · 310×509 | 9분할 | 테 22 / 70 · 종이 12 / 34 | 팀 패널 · 카드판 |
+| `.wood-panel-strip` | `wf_strip` + `pg_strip` | 441×87 · 930×87 | 9분할 | 테 16 / 44 · 종이 10 / 30 | (예비) |
+| `.parchment-row` | `pg_bar_md` | 895×151 | 9분할 | 10 / 28 | 가운데 스택 네 줄 |
+| `.play-photo-frame` | `wf_card` | 401×622 | 9분할·**fill 없음** | 두께 18 / 70 · inset 16 | 장소 타일 |
+| `.play-strip` | `pg_strip` | 930×87 | 3분할 | 캡 10 / 30 | 해설판 |
 | `.play-card-frame` | **그림 없음(CSS 그라데이션)** | — | 진짜 `border` | 5px · radius 10px | 기술 카드 5칸 |
 | `.play-card-frame::before` | `card_corner_*` | ~200² | 고정 크기 | 39px | 같은 칸의 네 모서리 |
 
@@ -78,6 +81,28 @@ cd client && node scripts/cutPlaySheet.mjs
 > `width: auto`는 네 변(inset)이 아니라 그림의 **내재 크기**로 풀립니다 — `object-contain`이
 > 먹지 않고 라벨이 잘립니다(장소 라벨에서 실제로 잘렸습니다). `<div>`로 한 겹 감싸고
 > 그 안의 `<img>`에 `w-full h-full object-contain`을 줍니다.
+
+### 나무테와 양피지는 따로 그려져 있다 — 두 층으로 쌓는다
+
+`frame_sheet.png`의 요령입니다. 시트에 있는 "조합 예시"는 둘을 겹쳐 본 **견본**일 뿐,
+그런 파일이 따로 있는 게 아닙니다. CSS에서도 두 층으로 쌓습니다.
+
+```
+나무테 … 요소의 진짜 border        → 안쪽 내용이 저절로 테 안에 들어간다
+양피지 … ::before가 padding box를 9분할로 채운다
+팀 색  … ::after가 그 위에 옅게 얹는다 (--panel-tint)
+```
+
+* **나무테에는 `fill`을 쓰지 않습니다** — 쓰면 가운데 나뭇결이 양피지를 덮습니다.
+* `isolation: isolate`가 있어야 `z-index: -1`인 두 층이 판 밖으로 새지 않습니다.
+* 팀 색을 옛날처럼 `bg-lime-100`으로 깔면 **종이 질감이 죽습니다.** 양피지 **위에**
+  옅게 얹는 `--panel-tint`로 바꿔, 종이를 살리면서 어느 팀인지도 읽히게 했습니다.
+* ⚠️ 나무테를 자를 때는 **가운데를 뚫어야 합니다**(`hollow`) — 나무가 사방을 막아
+  테두리에서 출발하는 flood fill이 안쪽에 닿지 못합니다.
+
+> ⚠️ **액자가 들어오면 안쪽이 그만큼 좁아집니다.** 팀 패널에 좌우 22px씩 액자가
+> 들어오자 팀 이름 줄("○○ 기사단 ⭐내 팀")이 잘렸습니다 — 그리드 열을
+> `19rem` → `21rem`으로 넓혀 액자가 먹는 폭을 돌려줬습니다.
 
 ### 기술 카드 테두리는 그림이 아니라 CSS다
 
