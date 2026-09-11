@@ -99,8 +99,11 @@ export function SkillChoiceBar({
                   뽑기·체력 강탈 등, 노란색)를 보여준다 — 레벨이 없으면(비활성) 흰색
                   "레벨 부족"으로 돌아간다. 예전엔 효과 문구를 좌상단에 따로 뒀는데, 우상단
                   한 곳으로 합쳐 중복 표시를 없앴다. */}
+              {/* ⚠️ 모서리 장식(39px) **아래로** 내려 앉힌다. top-2에 두면 우상단 장식이
+                  "레벨 부족"의 끝글자를, 긴 효과 문구는 좌상단 장식이 첫글자를 덮는다
+                  (장식을 1.5배로 키우자 실제로 그렇게 됐다). */}
               <span
-                className={`skill-outline-text absolute top-2 right-3 z-10 text-lg font-bold ${
+                className={`skill-outline-text absolute top-[42px] right-3 z-10 text-lg font-bold ${
                   eligible ? 'text-amber-300' : 'text-white'
                 }`}
               >

@@ -3633,32 +3633,43 @@ body {
   background: none;
 }
 
-/* ── 기술 카드 금색 액자 (card_frame 시트) ───────────────────────────────────
-   826×687 · 금색 막대 43px · 모서리 반지름 54px(실측).
-   슬라이스 60은 그 반지름을 겨우 감싸는 값이고, 두께 11px은 막대가 8px로 보이는
-   배율이다(43 × 11/60 ≈ 8). **카드 높이를 크게 바꾸면 이 짝을 다시 맞출 것.**
-   ⚠️ 14px로 뒀다가 줄였다 — 자막 안여백이 12px이라 그보다 두꺼우면 맨 아랫줄이
-      금색 막대에 깔린다.
+/* ── 기술 카드 금색 테두리 ───────────────────────────────────────────────────
+   **그림 액자(card_frame.webp)를 쓰다가 CSS 테두리로 되돌렸다**(2026-09-11).
+   9분할 액자는 카드가 217px밖에 안 되는 자리에서 금색 막대가 뭉툭하게 보였고,
+   두께를 줄이면 모서리 곡선까지 함께 작아져 조절할 여지가 없었다. CSS 그라데이션은
+   두께·둥글기를 따로 정할 수 있다. (`card_frame.webp`는 지우지 않고 남겨 둔다)
 
-   ⚠️ `fill`을 쓰지 않는다 — 가운데 조각까지 그리면 기술 컷신이 통째로 덮인다.
-   ⚠️ 액자보다 **위**(z-index 20)에 둔다. 자막이 z-10이라 그보다 낮으면 액자가
-      글자 뒤로 숨는다. 글자는 안여백 12px에서 시작하므로 10px 막대에 가리지 않는다. */
-/* 그림이 들어갈 안쪽 사각형 — 금색 막대가 8px(43 × 11/60)이라 그만큼만 비우면
-   막대와 그림이 맞붙는다. 11px이면 3px이 숨통으로 남는다. */
-.play-card-frame { --frame-inset: 11px; }
-.play-card-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-  border: 11px solid transparent;
-  border-image: url('/play/card_frame.webp') 60 stretch;
+   ⚠️ **진짜 `border`라서 그림 레이어를 따로 밀어낼 필요가 없다.** 절대배치 자식의
+   기준 상자는 부모의 **padding box**라, `inset: 0`이 곧 테두리 안쪽이다 — 액자가
+   바깥, 그림이 안쪽이라는 규칙이 공짜로 지켜진다(그래서 --frame-inset이 0이다).
+
+   금색은 `background-image`로 깔고 테두리를 투명하게 둬서 그 띠에만 비치게 한다.
+   `background-origin: border-box`가 있어야 그라데이션이 테두리까지 이어진다 —
+   기본값(padding-box)이면 안쪽 상자 크기로 그린 뒤 테두리 밑으로 늘어나 이음매가 진다.
+
+   ⚠️ `overflow: hidden`이 필요하다. 그림 레이어는 네 귀퉁이가 각진 사각형이라,
+   `border-radius`만 주면 둥근 모서리 밖으로 그림 귀가 삐져나온다. */
+.play-card-frame {
+  --frame-inset: 0;
+  border: 5px solid transparent;
+  border-radius: 10px;
+  overflow: hidden;
+  background-image: linear-gradient(
+    158deg,
+    #fbeda0 0%,
+    #e7b53a 18%,
+    #a8701a 38%,
+    #f6dd86 54%,
+    #c9911f 74%,
+    #7d5210 100%
+  );
+  background-origin: border-box;
 }
 
-/* 네 모서리 장식 + 잎 데칼 — **액자 그림에 합치지 않는다.** 합치면 모서리 조각이
-   14px에 통째로 눌려 금색 얼룩이 된다(로비 back_board에서 겪은 것과 같은 함정).
-   고정 크기 배경으로 따로 얹으면 카드가 커지든 작아지든 늘 또렷하다. */
+/* 네 모서리 장식 — **테두리에 합치지 않는다.** 고정 크기 배경으로 따로 얹어야
+   카드가 커지든 작아지든 늘 또렷하다.
+   39px은 예전 26px의 1.5배다. 장식이 테두리 안쪽(padding box)에 앉으므로 금색 띠에
+   살짝 물려 "테두리에 박힌 장식"처럼 보인다. */
 .play-card-frame::before {
   content: '';
   position: absolute;
@@ -3667,11 +3678,8 @@ body {
   pointer-events: none;
   background-image:
     url('/play/card_corner_tl.webp'), url('/play/card_corner_tr.webp'),
-    url('/play/card_corner_bl.webp'), url('/play/card_corner_br.webp'),
-    url('/play/leaf_decal_2.webp');
-  background-position: left top, right top, left bottom, right bottom, center top;
+    url('/play/card_corner_bl.webp'), url('/play/card_corner_br.webp');
+  background-position: left top, right top, left bottom, right bottom;
   background-repeat: no-repeat;
-  /* ⚠️ 40px로 뒀다가 26px로 줄였다 — 카드가 217px밖에 안 되는데 40px짜리 장식 넷을
-     얹으니 우상단 "레벨 부족" 표시가 잎에 덮였다. */
-  background-size: 26px 26px, 26px 26px, 26px 26px, 26px 26px, 18px auto;
+  background-size: 39px 39px;
 }

@@ -48,8 +48,8 @@ cd client && node scripts/cutPlaySheet.mjs
 | `.play-photo-frame` | `board_v` | 271×376 | 9분할·**fill 없음** | 두께 24 / 90 · inset 22 | 장소 타일 |
 | `.play-gauge-track` | `gauge_track` | 168×54 | 3분할 | 캡 7 / 30 | 타이머 (12px) |
 | `.play-gauge-fill` | `gauge_fill` | 239×53 | 3분할 | 캡 7 / 30 | 타이머 채움 |
-| `.play-card-frame::after` | `card_frame` | 826×687 | 9분할·**fill 없음** | 두께 11 / 60 · inset 11 | 기술 카드 5칸 |
-| `.play-card-frame::before` | `card_corner_*` · `leaf_decal_2` | ~200² · 124×201 | 고정 크기 | 26px · 18px | 같은 칸의 네 모서리 |
+| `.play-card-frame` | **그림 없음(CSS 그라데이션)** | — | 진짜 `border` | 5px · radius 10px | 기술 카드 5칸 |
+| `.play-card-frame::before` | `card_corner_*` | ~200² | 고정 크기 | 39px | 같은 칸의 네 모서리 |
 
 ### 되돌린 선택 두 가지 (같은 실수를 반복하지 않기 위해)
 
@@ -79,12 +79,26 @@ cd client && node scripts/cutPlaySheet.mjs
 > 먹지 않고 라벨이 잘립니다(장소 라벨에서 실제로 잘렸습니다). `<div>`로 한 겹 감싸고
 > 그 안의 `<img>`에 `w-full h-full object-contain`을 줍니다.
 
-### 금색 액자는 왜 두께 11px인가
+### 기술 카드 테두리는 그림이 아니라 CSS다
 
-자막 안여백이 12px입니다. 처음에 14px로 뒀더니 막대가 10px로 그려져 **설명 맨 아랫줄이
-금색 막대에 깔렸습니다.** 11px이면 막대가 8px이라 4px이 남습니다.
-모서리 장식도 40px로 뒀다가 26px로 줄였습니다 — 카드가 217px밖에 안 되는데 40px짜리
-잎 덩어리 넷을 얹으니 우상단 "레벨 부족" 표시가 덮였습니다.
+`card_frame.webp`를 9분할로 두르다가 **CSS 그라데이션 테두리로 되돌렸습니다**(2026-09-11).
+카드가 217px밖에 안 되는 자리에서 금색 막대가 뭉툭했고, 두께를 줄이면 모서리 곡선까지
+함께 작아져 조절할 여지가 없었습니다. CSS는 두께(5px)와 둥글기(10px)를 따로 정합니다.
+`card_frame.webp`는 지우지 않고 남겨 뒀습니다.
+
+```css
+border: 5px solid transparent;            /* 띠는 투명하게 비워 두고 */
+background-image: linear-gradient(…);      /* 그 자리에 금색을 깔아 비치게 한다 */
+background-origin: border-box;             /* ← 없으면 테두리에서 이음매가 진다 */
+overflow: hidden;                          /* ← 없으면 그림 귀가 둥근 모서리 밖으로 나온다 */
+```
+
+**진짜 `border`라서 `--frame-inset`이 0입니다.** 절대배치 자식의 기준 상자는 부모의
+**padding box**라, `inset: 0`이 곧 테두리 안쪽입니다 — "액자가 바깥, 그림이 안쪽"이
+공짜로 지켜집니다.
+
+> ⚠️ 모서리 장식을 26 → **39px**(1.5배)로 키우자 우상단 "레벨 부족" 표시와 긴 효과
+> 문구가 덮였습니다. 그 줄을 `top-2`에서 `top-[42px]`로 내려 장식 아래에 앉혔습니다.
 
 ### 안이 막힌 액자는 가운데를 따로 뚫는다
 
@@ -105,7 +119,8 @@ cd client && node scripts/cutPlaySheet.mjs
 `board_sq` · `note_*` 4종 · `bar_dark` · `bar_light` · `bar_sm` · `plank` ·
 `pill_leaf` · `pill_sm_*` 3종 · `arrow_green` · `arrow_wood` · `badge_crown` ·
 `icon_lock` · `icon_acorn` · `icon_cog` · `decor_*` 7종 ·
-`card_plaque`(요청에 따라 **보류** — 에셋만 만들어 둠) · `leaf_decal_1/3/4`.
+`card_plaque`(요청에 따라 **보류** — 에셋만 만들어 둠) · `leaf_decal_*` 4종 ·
+`card_frame`(CSS 테두리로 대체됐지만 되돌릴 수 있게 남겨 둠).
 
 쓸 자리는 `PLAY_UI_ROADMAP.md` §4 표에 적혀 있습니다. 특히 `icon_lock`은 장소
 금지 마크(지금은 SVG 원+사선)를, `decor_*`는 화면 네 귀퉁이를 위한 것입니다.
