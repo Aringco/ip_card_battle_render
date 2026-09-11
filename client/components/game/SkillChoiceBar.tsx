@@ -81,7 +81,9 @@ export function SkillChoiceBar({
             <button
               onClick={() => clickable && onChoose(animal)}
               disabled={!clickable}
-              className={`skill-choice-panel group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
+              // play-card-frame이 ::after로 금색 액자를, ::before로 네 모서리 장식과
+              // 잎 데칼을 얹는다 — 컷신 이미지 위에 덧그릴 뿐 그림은 그대로다.
+              className={`play-card-frame skill-choice-panel group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
                 i === 0 ? 'rounded-l-2xl overflow-hidden' : ''
               } ${clickable ? 'skill-choice-glow' : ''}`}
             >
@@ -139,7 +141,7 @@ export function SkillChoiceBar({
         <button
           onClick={() => interactive && onPass()}
           disabled={!interactive}
-          className={`skill-choice-panel group relative flex flex-col items-stretch justify-end text-left rounded-r-2xl overflow-hidden w-full h-full ${
+          className={`play-card-frame skill-choice-panel group relative flex flex-col items-stretch justify-end text-left rounded-r-2xl overflow-hidden w-full h-full ${
             interactive ? 'skill-choice-glow' : ''
           }`}
         >

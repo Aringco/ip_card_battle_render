@@ -3619,3 +3619,43 @@ body {
   border-radius: 0;
   background: none;
 }
+
+/* ── 기술 카드 금색 액자 (card_frame 시트) ───────────────────────────────────
+   826×687 · 금색 막대 43px · 모서리 반지름 54px(실측).
+   슬라이스 60은 그 반지름을 겨우 감싸는 값이고, 두께 11px은 막대가 8px로 보이는
+   배율이다(43 × 11/60 ≈ 8). **카드 높이를 크게 바꾸면 이 짝을 다시 맞출 것.**
+   ⚠️ 14px로 뒀다가 줄였다 — 자막 안여백이 12px이라 그보다 두꺼우면 맨 아랫줄이
+      금색 막대에 깔린다.
+
+   ⚠️ `fill`을 쓰지 않는다 — 가운데 조각까지 그리면 기술 컷신이 통째로 덮인다.
+   ⚠️ 액자보다 **위**(z-index 20)에 둔다. 자막이 z-10이라 그보다 낮으면 액자가
+      글자 뒤로 숨는다. 글자는 안여백 12px에서 시작하므로 10px 막대에 가리지 않는다. */
+.play-card-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  border: 11px solid transparent;
+  border-image: url('/play/card_frame.webp') 60 stretch;
+}
+
+/* 네 모서리 장식 + 잎 데칼 — **액자 그림에 합치지 않는다.** 합치면 모서리 조각이
+   14px에 통째로 눌려 금색 얼룩이 된다(로비 back_board에서 겪은 것과 같은 함정).
+   고정 크기 배경으로 따로 얹으면 카드가 커지든 작아지든 늘 또렷하다. */
+.play-card-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 21;
+  pointer-events: none;
+  background-image:
+    url('/play/card_corner_tl.webp'), url('/play/card_corner_tr.webp'),
+    url('/play/card_corner_bl.webp'), url('/play/card_corner_br.webp'),
+    url('/play/leaf_decal_2.webp');
+  background-position: left top, right top, left bottom, right bottom, center top;
+  background-repeat: no-repeat;
+  /* ⚠️ 40px로 뒀다가 26px로 줄였다 — 카드가 217px밖에 안 되는데 40px짜리 장식 넷을
+     얹으니 우상단 "레벨 부족" 표시가 잎에 덮였다. */
+  background-size: 26px 26px, 26px 26px, 26px 26px, 26px 26px, 18px auto;
+}

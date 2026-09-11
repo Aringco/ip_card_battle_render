@@ -48,6 +48,8 @@ cd client && node scripts/cutPlaySheet.mjs
 | `.play-photo-frame` | `board_v` | 271×376 | 9분할·**fill 없음** | 두께 28 / 90 | 장소 타일 |
 | `.play-gauge-track` | `gauge_track` | 168×54 | 3분할 | 캡 7 / 30 | 타이머 (12px) |
 | `.play-gauge-fill` | `gauge_fill` | 239×53 | 3분할 | 캡 7 / 30 | 타이머 채움 |
+| `.play-card-frame::after` | `card_frame` | 826×687 | 9분할·**fill 없음** | 두께 11 / 60 | 기술 카드 5칸 |
+| `.play-card-frame::before` | `card_corner_*` · `leaf_decal_2` | ~200² · 124×201 | 고정 크기 | 26px · 18px | 같은 칸의 네 모서리 |
 
 ### 되돌린 선택 두 가지 (같은 실수를 반복하지 않기 위해)
 
@@ -57,6 +59,20 @@ cd client && node scripts/cutPlaySheet.mjs
 * **사진을 덮는 액자에는 `fill`을 쓰지 않는다.** 가운데 조각까지 그리면 양피지가
   장소 사진을 통째로 덮습니다. `fill` 없이 쓰면 여덟 조각(네 변·네 모서리)만 그려져
   사진 가장자리에 액자만 얹힙니다.
+
+### 금색 액자는 왜 두께 11px인가
+
+자막 안여백이 12px입니다. 처음에 14px로 뒀더니 막대가 10px로 그려져 **설명 맨 아랫줄이
+금색 막대에 깔렸습니다.** 11px이면 막대가 8px이라 4px이 남습니다.
+모서리 장식도 40px로 뒀다가 26px로 줄였습니다 — 카드가 217px밖에 안 되는데 40px짜리
+잎 덩어리 넷을 얹으니 우상단 "레벨 부족" 표시가 덮였습니다.
+
+### 안이 막힌 액자는 가운데를 따로 뚫는다
+
+`card_frame`은 금색 막대가 사방을 둘러싸고 있어 **테두리에서 출발하는 flood fill이
+안쪽에 닿지 못합니다.** 그대로 두면 액자 속이 체커보드로 꽉 찬 불투명 판이 되어
+기술 컷신을 통째로 가립니다(실제로 막대 두께를 재니 826px이 나왔습니다).
+`cutPlaySheet.mjs`의 `hollow: true`가 가운데에서 한 번 더 fill해 비웁니다.
 
 ### 귀퉁이 잎이 눌리지 않는 조건
 
@@ -69,7 +85,8 @@ cd client && node scripts/cutPlaySheet.mjs
 
 `board_sq` · `note_*` 4종 · `bar_dark` · `bar_light` · `bar_sm` · `plank` ·
 `pill_leaf` · `pill_sm_*` 3종 · `arrow_green` · `arrow_wood` · `badge_crown` ·
-`icon_lock` · `icon_acorn` · `icon_cog` · `decor_*` 7종.
+`icon_lock` · `icon_acorn` · `icon_cog` · `decor_*` 7종 ·
+`card_plaque`(요청에 따라 **보류** — 에셋만 만들어 둠) · `leaf_decal_1/3/4`.
 
 쓸 자리는 `PLAY_UI_ROADMAP.md` §4 표에 적혀 있습니다. 특히 `icon_lock`은 장소
 금지 마크(지금은 SVG 원+사선)를, `decor_*`는 화면 네 귀퉁이를 위한 것입니다.

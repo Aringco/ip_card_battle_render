@@ -66,4 +66,27 @@ export const PLAY_ASSETS = {
   decorCattail: '/play/decor_cattail.webp',
   decorStones: '/play/decor_stones.webp',
   decorMushroom: '/play/decor_mushroom.webp',
+
+  /**
+   * 카드(기술 칸)를 감싸는 **금색 액자** — 별도 시트(`card_frame_sheet.png`)에서 잘랐다.
+   *
+   * ⚠️ 액자와 모서리 장식을 **합치지 않는다.** 액자는 9분할로 늘어나야 하는데, 장식을
+   * 거기 합쳐 넣으면 모서리 조각(두께 × 두께 = 11px)에 통째로 눌려 금색 얼룩이 된다.
+   * 장식은 고정 크기 배경으로 따로 얹는다(globals.css의 `.play-card-frame`).
+   *
+   * ⚠️ 이 시트의 액자는 **안쪽이 막혀 있어** 테두리에서 출발하는 flood fill이 닿지
+   * 못했다 — 가운데에서 한 번 더 뚫었다(cutPlaySheet의 `hollow`).
+   */
+  cardFrame: '/play/card_frame.webp',
+  cardCornerTL: '/play/card_corner_tl.webp',
+  cardCornerTR: '/play/card_corner_tr.webp',
+  cardCornerBL: '/play/card_corner_bl.webp',
+  cardCornerBR: '/play/card_corner_br.webp',
+  /** 잎 데칼 4종 — 액자 변 한가운데에 얹는 작은 장식 */
+  leafDecal1: '/play/leaf_decal_1.webp',
+  leafDecal2: '/play/leaf_decal_2.webp',
+  leafDecal3: '/play/leaf_decal_3.webp',
+  leafDecal4: '/play/leaf_decal_4.webp',
+  /** 금색 액자에 딸린 이름표 칸 — **아직 쓰지 않는다**(요청에 따라 에셋만 만들어 둠) */
+  cardPlaque: '/play/card_plaque.webp',
 } as const;
