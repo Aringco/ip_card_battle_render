@@ -3652,7 +3652,7 @@ body {
 .play-card-frame {
   --frame-inset: 0;
   border: 5px solid transparent;
-  border-radius: 10px;
+  border-radius: 16px;
   overflow: hidden;
   background-image: linear-gradient(
     158deg,

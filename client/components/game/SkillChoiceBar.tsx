@@ -57,7 +57,9 @@ export function SkillChoiceBar({
     // 밖으로 튀어나갈 수 있어야 한다 — 그래서 여기서는 overflow-hidden을 쓰지 않는다
     // (전체 띠의 둥근 모서리는 대신 양 끝 버튼 각각에 rounded-l/r-2xl + overflow-hidden으로 준다).
     <div
-      className={`h-full min-h-0 bg-jungle-950 rounded-2xl grid grid-cols-5 divide-x-2 divide-jungle-700 ${glowClass}`}
+      // 칸 사이를 가르던 divide-x를 걷고 **여백(gap+padding)** 으로 바꿨다 — 다섯 칸이
+      // 맞붙은 한 덩어리가 아니라, 낱장으로 떨어진 카드 다섯 장처럼 보이게 하려는 것이다.
+      className={`h-full min-h-0 bg-jungle-950 rounded-2xl grid grid-cols-5 gap-2 p-2 ${glowClass}`}
       style={spectatorGuideTeam ? spectatorTeamVars(spectatorGuideTeam) : undefined}
     >
       {ANIMAL_ORDER.map((animal, i) => {
@@ -109,7 +111,9 @@ export function SkillChoiceBar({
               >
                 {eligible ? effectParts.join(', ') : '레벨 부족'}
               </span>
-              <div className="relative z-10 flex flex-col gap-2 p-3 min-h-[9rem]">
+              {/* ⚠️ 아래 안여백이 34px인 것은 **아래쪽 모서리 장식(39px)** 때문이다.
+                  9.6px(p-3)으로 두면 대사 마지막 줄이 잎 뒤로 숨는다(실제로 숨었다). */}
+              <div className="relative z-10 flex flex-col gap-2 p-3 pb-[34px] min-h-[9rem]">
                 <h3
                   className="skill-outline-text text-xl font-extrabold"
                   style={{ color: SKILL_COLOR[animal] }}
@@ -150,7 +154,7 @@ export function SkillChoiceBar({
         >
           <div className="skill-choice-bg pass-panel-bg play-frame-inset absolute" />
           <div className="skill-choice-dim play-frame-inset absolute" />
-          <div className="relative z-10 flex flex-col gap-1.5 p-3 min-h-[9rem]">
+          <div className="relative z-10 flex flex-col gap-1.5 p-3 pb-[34px] min-h-[9rem]">
             <h3 className="skill-outline-text text-xl font-extrabold text-jungle-200">[턴 마치기]</h3>
             <p className="skill-outline-text text-base text-white leading-snug whitespace-pre-line">
               {'지금은 할 수 있는게 없네요.\n레벨을 높이고,\n한 번에 몰아치는 방법도 좋답니다.'}
