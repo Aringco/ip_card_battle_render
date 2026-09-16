@@ -36,6 +36,12 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  *              덩굴로 이어져 한 성분이 된 경우에만 쓴다.
  *   mirrorCap… 왼쪽 끝을 오른쪽 끝의 좌우 반전으로 만들어 붙인다(들보 전용).
  *   trimTop  … 위쪽 몇 줄을 버린다(옆 조각에서 가늘게 이어진 부스러기 제거용).
+ * 시트 단위 옵션
+ *   stripTop … 시트 맨 위 몇 줄을 통째로 지운다. 배경 제거가 남긴 **가장자리 띠**
+ *              전용이다 — 폭 전체를 가로지르므로 그대로 두면 그 줄이 닿는 조각이
+ *              전부 한 성분으로 붙어 버린다(실제로 상단 바가 시트 전체 폭으로 잡혔다).
+ *
+ * 조각 단위 옵션
  *   hollow   … **가운데를 뚫는다.** 테두리에서 출발하는 flood fill은 액자 **안쪽**에
  *              닿지 못해(금색 막대가 막는다) 체커보드가 그대로 남는다 — 가운데에서
  *              한 번 더 fill해 비운다. 안이 비어야 하는 액자에만 쓴다.
@@ -46,59 +52,60 @@ const SHEETS = [
     // (알파가 제대로 살아 있고, 예전 것은 체커보드가 구워져 있어 경계상자가 2~4px씩
     // 달랐다). 상단 바까지 이 한 장에서 나오므로 예전 시트 둘은 걷어냈다.
     src: 'master_sheet.png',
+    stripTop: 6,
     pieces: [
       // 맨 윗줄 통째 = 상단 바(팻말 + 들보 + 덩굴 마무리가 한 몸)
-      { name: 'upper_bar', at: [31, 16, 2502, 237] },
+      { name: 'upper_bar', at: [34, 6, 2500, 233] },
 
       // ── 나무 액자 + 양피지 (9분할) ──
-      { name: 'board_h', at: [19, 235, 753, 549] },
-      { name: 'board_sq', at: [1566, 393, 503, 456] },
-      { name: 'board_v', at: [768, 439, 272, 375] },
+      { name: 'board_h', at: [21, 221, 752, 552] },
+      { name: 'board_sq', at: [1568, 379, 502, 459] },
+      { name: 'board_v', at: [769, 425, 271, 378] },
 
       // ── 줄 노트 (9분할) ──
-      { name: 'note_green', at: [633, 957, 265, 367] },
-      { name: 'note_pink', at: [915, 957, 272, 375] },
-      { name: 'note_green_rows', at: [22, 936, 289, 403] },
-      { name: 'note_pink_rows', at: [326, 935, 293, 405] },
+      { name: 'note_green', at: [633, 947, 266, 370] },
+      { name: 'note_pink', at: [916, 947, 272, 377] },
+      { name: 'note_green_rows', at: [23, 925, 289, 406] },
+      { name: 'note_pink_rows', at: [327, 925, 293, 407] },
 
       // ── 알약·띠 (가로 3분할) ──
-      { name: 'pill_green', at: [1336, 253, 210, 116] },
-      { name: 'pill_gold', at: [1568, 251, 194, 119] },
-      { name: 'pill_wood', at: [1783, 259, 247, 100] },
-      { name: 'pill_leaf', at: [2047, 244, 279, 125] },
-      { name: 'pill_sm_green', at: [1060, 765, 156, 81] },
-      { name: 'pill_sm_wood', at: [1235, 765, 153, 80] },
-      { name: 'pill_sm_gold', at: [1405, 760, 146, 83] },
-      { name: 'acorn_bar', at: [26, 772, 620, 163] },
-      { name: 'bar_dark', at: [1049, 428, 510, 187] },
-      { name: 'bar_light', at: [1044, 604, 517, 146] },
-      { name: 'bar_sm', at: [664, 824, 373, 118] },
-      { name: 'plank', at: [779, 245, 536, 196] },
-      { name: 'label_small', at: [2269, 617, 256, 180] },
+      { name: 'pill_green', at: [1337, 240, 211, 116] },
+      { name: 'pill_gold', at: [1569, 238, 194, 118] },
+      { name: 'pill_wood', at: [1784, 244, 248, 101] },
+      { name: 'pill_leaf', at: [2049, 230, 278, 125] },
+      { name: 'pill_sm_green', at: [1061, 754, 156, 81] },
+      { name: 'pill_sm_wood', at: [1235, 754, 154, 80] },
+      { name: 'pill_sm_gold', at: [1406, 748, 146, 84] },
+      { name: 'acorn_bar', at: [28, 760, 619, 164] },
+      { name: 'bar_dark', at: [1050, 415, 510, 186] },
+      { name: 'bar_light', at: [1044, 592, 518, 146] },
+      { name: 'bar_sm', at: [665, 813, 373, 119] },
+      { name: 'plank', at: [781, 230, 535, 196] },
+      { name: 'label_small', at: [2269, 604, 256, 182] },
 
       // ── 게이지 ──
       // 예전 시트에서는 옆 조각의 흰 부스러기가 붙어 trimTop이 필요했는데,
       // 이 재수출본은 깨끗해서 그럴 일이 없다(y가 855 → 867로 그 몫만큼 내려왔다).
-      { name: 'gauge', at: [1063, 868, 503, 59] },
-      { name: 'gauge_fill', at: [1595, 872, 240, 52] },
-      { name: 'gauge_track', at: [1857, 872, 169, 53] },
+      { name: 'gauge', at: [1064, 857, 502, 59] },
+      { name: 'gauge_fill', at: [1596, 861, 239, 53] },
+      { name: 'gauge_track', at: [1857, 861, 170, 53] },
 
       // ── 고정 크기 ──
-      { name: 'arrow_green', at: [2350, 260, 196, 112] },
-      { name: 'arrow_wood', at: [2134, 386, 362, 222] },
-      { name: 'badge_crown', at: [2067, 630, 183, 183] },
-      { name: 'icon_lock', at: [1376, 1232, 94, 113] },
-      { name: 'icon_acorn', at: [1241, 1241, 75, 98] },
-      { name: 'icon_cog', at: [1678, 1241, 100, 103] },
+      { name: 'arrow_green', at: [2351, 245, 197, 113] },
+      { name: 'arrow_wood', at: [2135, 373, 362, 221] },
+      { name: 'badge_crown', at: [2068, 616, 183, 186] },
+      { name: 'icon_lock', at: [1377, 1223, 94, 114] },
+      { name: 'icon_acorn', at: [1242, 1232, 75, 100] },
+      { name: 'icon_cog', at: [1679, 1233, 100, 103] },
 
       // ── 귀퉁이 장식 ──
-      { name: 'decor_log', at: [1207, 946, 406, 136] },
-      { name: 'decor_bush', at: [2105, 975, 171, 152] },
-      { name: 'decor_grass', at: [1216, 1085, 203, 136] },
-      { name: 'decor_stump', at: [2213, 848, 142, 118] },
-      { name: 'decor_cattail', at: [2367, 802, 167, 172] },
-      { name: 'decor_stones', at: [2384, 1257, 150, 71] },
-      { name: 'decor_mushroom', at: [2022, 1205, 127, 137] },
+      { name: 'decor_log', at: [1207, 935, 407, 138] },
+      { name: 'decor_bush', at: [2106, 965, 171, 152] },
+      { name: 'decor_grass', at: [1217, 1076, 203, 137] },
+      { name: 'decor_stump', at: [2214, 836, 141, 120] },
+      { name: 'decor_cattail', at: [2368, 791, 167, 173] },
+      { name: 'decor_stones', at: [2385, 1248, 152, 73] },
+      { name: 'decor_mushroom', at: [2022, 1196, 127, 138] },
     ],
   },
   {
@@ -154,7 +161,7 @@ const isChecker = (r, g, b) => {
 };
 
 /** 시트 하나를 읽어 알파를 되살리고 연결 성분까지 계산한다. */
-async function loadSheet(file) {
+async function loadSheet(file, { stripTop = 0 } = {}) {
   const { data, info } = await sharp(path.join(SRC_DIR, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const W = info.width, H = info.height, C = info.channels, N = W * H;
 
@@ -165,6 +172,14 @@ async function loadSheet(file) {
   // 채워 주므로 이 줄을 바꿔도 예전 동작과 똑같다.
   const alpha = new Uint8Array(N);
   for (let i = 0; i < N; i++) alpha[i] = data[i * C + 3];
+
+  // ── ①-a 가장자리 띠 지우기 ──
+  // 배경을 지운 시트에 **폭 전체를 가로지르는 불투명한 줄**이 남아 오는 일이 있다
+  // (색 보정본에서 맨 위 6줄이 거의 검은색 alpha 255로 왔다). 체커보드가 아니라서
+  // 위의 flood fill로는 지워지지 않고, 그 줄에 닿는 조각이 전부 한 성분으로 붙는다.
+  // 성분을 세기 **전에** 지워야 한다.
+  for (let y = 0; y < stripTop; y++) for (let x = 0; x < W; x++) alpha[y * W + x] = 0;
+
   const seen = new Uint8Array(N);
   const stack = [];
   const push = (x, y) => {
@@ -248,7 +263,9 @@ function extractComp(sheet, compId, rect) {
 const listIdx = process.argv.indexOf('--list');
 if (listIdx !== -1) {
   const file = process.argv[listIdx + 1];
-  const sheet = await loadSheet(file);
+  // 그 시트에 등록된 옵션을 그대로 적용한다 — 안 그러면 목록과 실제 자르기가 어긋난다
+  // (stripTop 없이 훑으면 가장자리 띠 때문에 조각들이 한 성분으로 붙어 나온다).
+  const sheet = await loadSheet(file, SHEETS.find(s => s.src === file) ?? {});
   const rows = sheet.boxes
     .map(b => ({ x: b[0], y: b[1], w: b[2], h: b[3], a: b[2] * b[3] }))
     .filter(b => b.a > 3000)
@@ -261,8 +278,8 @@ if (listIdx !== -1) {
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const report = [];
 
-for (const { src, pieces } of SHEETS) {
-  const sheet = await loadSheet(src);
+for (const { src, pieces, ...sheetOpts } of SHEETS) {
+  const sheet = await loadSheet(src, sheetOpts);
   const findComp = ([x, y, w, h]) => {
     const i = sheet.boxes.findIndex(b => b[0] === x && b[1] === y && b[2] === w && b[3] === h);
     if (i === -1) throw new Error(`${src}에서 성분을 못 찾음: ${x},${y},${w},${h} — 시트가 바뀌었으면 경계상자를 다시 찍을 것`);
