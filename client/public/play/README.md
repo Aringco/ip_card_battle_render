@@ -1,7 +1,16 @@
 # `public/play/` — 플레이 화면 나무 UI 에셋
 
-시트 한 장(`client/assets-src/play_ui_sheet.png` — `public/` **밖**입니다. 안에 두면
-쓰이지도 않으면서 빌드 산출물에 복사돼 배포에 실립니다)에서 잘라낸 38조각입니다.
+시트 세 장(`client/assets-src/` — `public/` **밖**입니다. 안에 두면 쓰이지도 않으면서
+빌드 산출물에 복사돼 배포에 실립니다)에서 잘라낸 조각들입니다.
+
+| 시트 | 무엇이 들어 있나 |
+| --- | --- |
+| `master_sheet.png` | 상단 바 · 액자 · 알약 · 게이지 · 노트 · 화살표 · 장식 (37조각) |
+| `frame_sheet.png` | 나무테(`wf_*`)와 양피지(`pg_*`)가 **따로** 그려진 시트 |
+| `card_frame_sheet.png` | 기술 카드 금색 액자와 모서리 장식 |
+
+> ⚠️ `master_sheet.png`는 예전 `play_ui_sheet.png`·`upper_bar_sheet.png` 두 장을
+> 대체한 **깨끗한 재수출본**입니다(알파가 제대로 살아 있습니다). 예전 두 장은 지웠습니다.
 경로는 `client/lib/playAssets.ts`, 분할 값은 `client/app/globals.css`의
 **"플레이 화면 — 나무 UI"** 절에 있습니다. 설계 배경은 `PLAY_UI_ROADMAP.md`.
 
@@ -22,8 +31,16 @@ cd client && node scripts/cutPlaySheet.mjs
 3. **경계상자에 바짝 자른다.** `border-image`의 슬라이스는 그림 가장자리부터 재므로
    투명 여백이 끼면 그만큼 어긋납니다.
 
-> ⚠️ 시트를 새로 받으면 `PIECES`의 경계상자가 전부 달라집니다. 스크립트가
-> "성분을 못 찾음"으로 멈추니, 그때는 성분 목록을 다시 찍어 좌표를 갱신하세요.
+> ⚠️ 시트를 새로 받으면 경계상자가 전부 달라집니다. 스크립트가 "성분을 못 찾음"으로
+> 멈추면 아래 명령으로 좌표를 다시 찍으세요.
+>
+> ```bash
+> node scripts/cutPlaySheet.mjs --list master_sheet.png
+> ```
+>
+> ⚠️ **눈으로 잰 경계상자를 그대로 쓰면 안 됩니다.** 자르기 전에 경계 한 겹의 알파를
+> 깎는 보정이 들어가서, 원본을 그냥 훑어 잰 값과 1~2px 어긋납니다 — 실제로 상단 바가
+> 그 차이로 "성분을 못 찾음"이 났습니다. 반드시 `--list`로 찍은 값을 쓸 것.
 
 ## 분할 값 — 크기를 바꾸면 함께 고쳐야 하는 짝
 
@@ -37,8 +54,8 @@ cd client && node scripts/cutPlaySheet.mjs
 
 | 클래스 | 그림 | 크기 | 분할 | 값 | 쓰는 곳(높이) |
 | --- | --- | --- | --- | --- | --- |
-| `.play-beam::before` | **`upper_bar`** | 1955×189 | 3분할 | 캡 420·150 (전부 `--beam-h` 비례) | 상단 바 (92~124px) |
-| `.play-nameplate` | (그림 없음 — 팻말이 `upper_bar` 안에 있다) | — | 절대 배치 | x 103 / y 57 / 237×84 (÷189) | 팻말 위 두 줄 |
+| `.play-beam::before` | **`upper_bar`** | 2502×237 | 3분할 | 캡 1540·552 (전부 `--beam-h` 비례) | 상단 바 (92~124px) |
+| `.play-nameplate` | (그림 없음 — 팻말이 `upper_bar` 안에 있다) | — | 절대 배치 | x 129 / y 71 / 304×107 (÷237) | 팻말 위 두 줄 |
 | `.play-pill-green` | `pill_green` | 208×115 | 3분할 | 캡 10 / 70 | 단계 알약 (16px) |
 | `.play-pill-gold` | `pill_gold` | 191×116 | 3분할 | 캡 10 / 70 | (예비) |
 | `.play-pill-wood` | `pill_wood` | 247×100 | 3분할 | 캡 7 / 50 | 단계 알약(비활성) |
@@ -80,6 +97,20 @@ cd client && node scripts/cutPlaySheet.mjs
 > `width: auto`는 네 변(inset)이 아니라 그림의 **내재 크기**로 풀립니다 — `object-contain`이
 > 먹지 않고 라벨이 잘립니다(장소 라벨에서 실제로 잘렸습니다). `<div>`로 한 겹 감싸고
 > 그 안의 `<img>`에 `w-full h-full object-contain`을 줍니다.
+
+### ⚠️ 늘어나는 자리는 "무늬 없는 나뭇결"로 고른다 — 비율 유지
+
+3분할·9분할은 모서리를 지켜 주지만 **가운데는 어차피 늘어납니다.** 거기에 잎사귀 같은
+**모양**이 들어 있으면 배율이 달라지는 만큼 그대로 찌그러집니다.
+
+상단 바는 잎 봉우리가 x 35~524 · 721~819 · 1099~1182 · 1434~1520 · 1948~2029 ·
+2305~2454로 **불규칙**해서, 반복 타일링(`border-image-repeat: round`)을 하면 이음매가
+드러납니다. 대신 늘어나는 가운데를 **1540~1950 사이 민짜 나뭇결**로 잡았습니다 —
+잎·팻말·덩굴 마무리는 전부 원래 비율 그대로 그려지고, 늘어나는 것은 결무늬뿐이라
+1.0배(1366px)든 2배(1920px)든 티가 나지 않습니다.
+
+> 마구리 합이 `--beam-h`의 8.8배입니다(1600×900에서 954px). 화면 폭이 그보다 좁으면
+> 마구리끼리 겹칩니다 — 최소 지원 폭 1366px에서는 400px 남습니다.
 
 ### ⚠️ 마구리가 두꺼운 3분할은 `border`가 아니라 `::before`로 그린다
 
@@ -217,7 +248,7 @@ overflow: hidden;                          /* ← 없으면 그림 귀가 둥근
 
 ## 아직 쓰지 않은 조각
 
-`board_sq` · `note_*` 4종 · `bar_dark` · `bar_light` · `bar_sm` · `plank` ·
+`board_h` · `board_sq` · `board_v` · `note_*` 4종 · `bar_dark` · `bar_light` · `bar_sm` · `plank` ·
 `pill_leaf` · `pill_sm_*` 3종 · `arrow_green` · `arrow_wood` · `badge_crown` ·
 `icon_lock` · `icon_acorn` · `icon_cog` · `decor_*` 7종 ·
 `card_plaque`(요청에 따라 **보류** — 에셋만 만들어 둠) · `leaf_decal_*` 4종 ·

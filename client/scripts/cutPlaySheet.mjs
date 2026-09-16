@@ -42,61 +42,63 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  */
 const SHEETS = [
   {
-    src: 'play_ui_sheet.png',
+    // 마스터 시트 — 2560×1376. `play_ui_sheet.png`와 **같은 배치의 깨끗한 재수출본**이다
+    // (알파가 제대로 살아 있고, 예전 것은 체커보드가 구워져 있어 경계상자가 2~4px씩
+    // 달랐다). 상단 바까지 이 한 장에서 나오므로 예전 시트 둘은 걷어냈다.
+    src: 'master_sheet.png',
     pieces: [
-      // ── 맨 윗줄: 이름표 + 긴 들보가 덩굴로 이어져 한 성분(2499×239)이다 ──
-      { name: 'nameplate', at: [31, 14, 2499, 239], sub: [31, 14, 490, 239] },
-      { name: 'beam', at: [31, 14, 2499, 239], sub: [540, 14, 1990, 239], mirrorCap: 200 },
+      // 맨 윗줄 통째 = 상단 바(팻말 + 들보 + 덩굴 마무리가 한 몸)
+      { name: 'upper_bar', at: [31, 16, 2502, 237] },
 
       // ── 나무 액자 + 양피지 (9분할) ──
-      { name: 'board_h', at: [19, 235, 754, 550] },   // 가로형 큰 판
-      { name: 'board_sq', at: [1566, 394, 503, 456] }, // 정사각에 가까운 판
-      { name: 'board_v', at: [768, 439, 271, 376] },   // 세로형 작은 판
+      { name: 'board_h', at: [19, 235, 753, 549] },
+      { name: 'board_sq', at: [1566, 393, 503, 456] },
+      { name: 'board_v', at: [768, 439, 272, 375] },
 
       // ── 줄 노트 (9분할) ──
-      { name: 'note_green', at: [632, 958, 266, 365] },
-      { name: 'note_pink', at: [915, 957, 271, 375] },
+      { name: 'note_green', at: [633, 957, 265, 367] },
+      { name: 'note_pink', at: [915, 957, 272, 375] },
       { name: 'note_green_rows', at: [22, 936, 289, 403] },
-      { name: 'note_pink_rows', at: [327, 936, 293, 404] },
+      { name: 'note_pink_rows', at: [326, 935, 293, 405] },
 
       // ── 알약·띠 (가로 3분할) ──
-      { name: 'pill_green', at: [1336, 255, 208, 115] },
-      { name: 'pill_gold', at: [1568, 255, 191, 116] },
-      { name: 'pill_wood', at: [1782, 260, 247, 100] },
-      { name: 'pill_leaf', at: [2047, 245, 278, 125] },
-      { name: 'pill_sm_green', at: [1060, 766, 156, 81] },
-      { name: 'pill_sm_wood', at: [1234, 766, 154, 80] },
-      { name: 'pill_sm_gold', at: [1405, 760, 146, 85] },
-      { name: 'acorn_bar', at: [25, 772, 621, 164] },
-      { name: 'bar_dark', at: [1048, 430, 511, 186] },
-      { name: 'bar_light', at: [1044, 612, 517, 139] },
-      { name: 'bar_sm', at: [665, 824, 373, 119] },
-      { name: 'plank', at: [781, 245, 532, 197] },
-      { name: 'label_small', at: [2268, 617, 255, 180] },
+      { name: 'pill_green', at: [1336, 253, 210, 116] },
+      { name: 'pill_gold', at: [1568, 251, 194, 119] },
+      { name: 'pill_wood', at: [1783, 259, 247, 100] },
+      { name: 'pill_leaf', at: [2047, 244, 279, 125] },
+      { name: 'pill_sm_green', at: [1060, 765, 156, 81] },
+      { name: 'pill_sm_wood', at: [1235, 765, 153, 80] },
+      { name: 'pill_sm_gold', at: [1405, 760, 146, 83] },
+      { name: 'acorn_bar', at: [26, 772, 620, 163] },
+      { name: 'bar_dark', at: [1049, 428, 510, 187] },
+      { name: 'bar_light', at: [1044, 604, 517, 146] },
+      { name: 'bar_sm', at: [664, 824, 373, 118] },
+      { name: 'plank', at: [779, 245, 536, 196] },
+      { name: 'label_small', at: [2269, 617, 256, 180] },
 
       // ── 게이지 ──
-      // ⚠️ 위 13줄은 캡슐이 아니라 옆 조각에서 가늘게 이어진 흰 부스러기 둘이다
-      //    (성분이 얇은 다리로 붙어 있어 성분 단위로 걸러도 남는다) — 잘라낸다.
-      { name: 'gauge', at: [1063, 855, 502, 73], trimTop: 13 }, // 모래시계 + 트랙 + 파란 채움 한 벌
-      { name: 'gauge_fill', at: [1595, 872, 239, 53] },  // 초록 캡슐(채움만)
-      { name: 'gauge_track', at: [1856, 872, 168, 54] }, // 빈 크림 캡슐(트랙만)
+      // 예전 시트에서는 옆 조각의 흰 부스러기가 붙어 trimTop이 필요했는데,
+      // 이 재수출본은 깨끗해서 그럴 일이 없다(y가 855 → 867로 그 몫만큼 내려왔다).
+      { name: 'gauge', at: [1063, 868, 503, 59] },
+      { name: 'gauge_fill', at: [1595, 872, 240, 52] },
+      { name: 'gauge_track', at: [1857, 872, 169, 53] },
 
       // ── 고정 크기 ──
-      { name: 'arrow_green', at: [2350, 260, 195, 113] },
-      { name: 'arrow_wood', at: [2134, 387, 361, 221] },
-      { name: 'badge_crown', at: [2067, 631, 182, 182] },
-      { name: 'icon_lock', at: [1375, 1232, 94, 113] },
-      { name: 'icon_acorn', at: [1240, 1240, 76, 99] },
-      { name: 'icon_cog', at: [1678, 1241, 99, 103] },
+      { name: 'arrow_green', at: [2350, 260, 196, 112] },
+      { name: 'arrow_wood', at: [2134, 386, 362, 222] },
+      { name: 'badge_crown', at: [2067, 630, 183, 183] },
+      { name: 'icon_lock', at: [1376, 1232, 94, 113] },
+      { name: 'icon_acorn', at: [1241, 1241, 75, 98] },
+      { name: 'icon_cog', at: [1678, 1241, 100, 103] },
 
       // ── 귀퉁이 장식 ──
-      { name: 'decor_log', at: [1206, 946, 407, 136] },
+      { name: 'decor_log', at: [1207, 946, 406, 136] },
       { name: 'decor_bush', at: [2105, 975, 171, 152] },
-      { name: 'decor_grass', at: [1216, 1085, 204, 136] },
-      { name: 'decor_stump', at: [2213, 848, 142, 119] },
-      { name: 'decor_cattail', at: [2366, 803, 168, 172] },
-      { name: 'decor_stones', at: [2383, 1256, 150, 72] },
-      { name: 'decor_mushroom', at: [2021, 1205, 127, 137] },
+      { name: 'decor_grass', at: [1216, 1085, 203, 136] },
+      { name: 'decor_stump', at: [2213, 848, 142, 118] },
+      { name: 'decor_cattail', at: [2367, 802, 167, 172] },
+      { name: 'decor_stones', at: [2384, 1257, 150, 71] },
+      { name: 'decor_mushroom', at: [2022, 1205, 127, 137] },
     ],
   },
   {
@@ -141,15 +143,6 @@ const SHEETS = [
       // 목재 장식 바
       { name: 'log_bar', at: [29, 967, 1382, 162] },
     ],
-  },
-  {
-    // 상단 바 — 팻말이 **그림 안에 붙어 있는** 통짜 들보(2000×216, 알파가 살아 있다).
-    // 예전에는 들보(log_bar)와 이름표(nameplate)를 따로 얹었는데, 이 그림은 둘이 한 몸이라
-    // 가로 3분할의 **왼쪽 마구리가 곧 팻말**이 된다(globals.css의 .play-beam 참조).
-    src: 'upper_bar_sheet.png',
-    // ⚠️ 아래쪽에 1~7px짜리 먼지 성분이 여섯 개 붙어 있다 — 성분 단위로 고르므로
-    // 자동으로 걸러진다(사각형으로 잘랐다면 그대로 딸려 왔을 것이다).
-    pieces: [{ name: 'upper_bar', at: [23, 11, 1955, 189] }],
   },
 ];
 
@@ -246,6 +239,23 @@ function extractComp(sheet, compId, rect) {
   return { buf, w, h };
 }
 
+// ── `--list <시트>` — 그 시트의 성분 경계상자를 그대로 찍는다 ─────────────────
+// ⚠️ 눈으로 잰 경계상자를 그대로 쓰면 안 된다. 위 loadSheet는 체커보드를 지운 뒤
+// **경계 한 겹의 알파를 깎는** 보정까지 하므로, 원본을 그냥 훑어 잰 값과 1~2px 어긋난다
+// (실제로 상단 바가 그 차이로 "성분을 못 찾음"이 났다). 반드시 이 명령으로 찍을 것.
+const listIdx = process.argv.indexOf('--list');
+if (listIdx !== -1) {
+  const file = process.argv[listIdx + 1];
+  const sheet = await loadSheet(file);
+  const rows = sheet.boxes
+    .map(b => ({ x: b[0], y: b[1], w: b[2], h: b[3], a: b[2] * b[3] }))
+    .filter(b => b.a > 3000)
+    .sort((p, q) => p.y - q.y || p.x - q.x);
+  console.log(`${file} — 성분 ${sheet.boxes.length}개 중 3000px 초과 ${rows.length}개`);
+  for (const b of rows) console.log(`  { at: [${b.x}, ${b.y}, ${b.w}, ${b.h}] },`);
+  process.exit(0);
+}
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const report = [];
 
@@ -316,7 +326,4 @@ for (const [n, w, h, size] of report) {
 console.log(`\n조각 ${report.length}개 · 합계 ${(total / 1024).toFixed(0)}KB → ${OUT_DIR}`);
 
 // ── 새 시트의 경계상자를 찍으려면 ────────────────────────────────────────────
-//   const s = await loadSheet('새시트.png');
-//   s.boxes.map((b, i) => [i, ...b])
-//          .filter(b => b[3] * b[4] > 1500)
-//          .forEach(b => console.log(b.join('\t')));
+//   node scripts/cutPlaySheet.mjs --list 새시트.png

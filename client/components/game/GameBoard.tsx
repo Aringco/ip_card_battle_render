@@ -108,7 +108,13 @@ export function GameBoard({
       // border-image가 테두리 색을 대신 그리기 때문이다. 대신 같은 애니메이션의
       // box-shadow(바깥 링)가 그대로 살아 있어 "지금 여기를 보라"는 신호는 유지된다.
       // 안여백 0 — 나무테가 내용과 딱 맞물려야 한다는 요청. 칸 사이 간격(gap)만 남긴다.
-      className={`wood-panel wood-panel-card flex-1 relative grid gap-2 ${borderClass}`}
+      //
+      // ⚠️ `min-h-0`이 꼭 있어야 한다. flex 항목의 기본값 `min-height: auto`는 내용보다
+      // 작아지기를 거부하는데, 스택에 카드가 한 장이라도 쌓이면 그 카드(rem 고정 높이)가
+      // 바닥을 만들어 **판이 액자 밖으로 밀려난다** — 장소 타일이 잘리고 해설판 위로
+      // 겹쳐 그려졌다. 세로 여유가 빠듯할 때만 드러나는 잠복 버그라, 상단 바가 두꺼워진
+      // 뒤에야 1366×768에서 보였다(보드가 행 286px인데 329px로 버텼다).
+      className={`wood-panel wood-panel-card flex-1 min-h-0 relative grid gap-2 ${borderClass}`}
       style={{
         gridTemplateAreas: '"house center center dock" "forest center center river"',
         gridTemplateColumns: '1fr 1.15fr 1.15fr 1fr',

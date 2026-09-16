@@ -3525,13 +3525,21 @@ body {
 
    그래서 치수를 전부 `--beam-h` 하나에서 파생시킨다 — 높이가 화면 따라 바뀌는데
    `border-width`를 고정 px로 두면 마구리(팻말)만 홀로 찌그러지기 때문이다.
-   실측(잘라낸 1955×189 기준):
-       왼쪽 마구리(잎+팻말) 420px  ·  오른쪽 마구리(덩굴) 150px
-       팻말 양피지  x 103~339(237px)  ·  y 57~140(84px)
-   **그림을 다시 자르면 이 숫자 네 벌을 함께 고칠 것.**
+   실측(잘라낸 2502×237 기준):
+       왼쪽 마구리 1540px  ·  오른쪽 마구리 552px
+       팻말 양피지  x 129~432(304px)  ·  y 71~177(107px)
+   **그림을 다시 자르면 이 숫자 네 벌을 함께 고칠 것**
+   (`node scripts/cutPlaySheet.mjs --list <시트>`로 경계상자를 먼저 찍는다).
 
-   ⚠️ 가운데 조각에는 잎사귀가 일정 간격으로 박혀 있어 늘어나면 함께 늘어난다.
-   1366px에서 0.75배까지 눌리는데 그 정도는 눈에 띄지 않는다 — 더 좁아지면 다시 볼 것. */
+   ⚠️ **마구리를 잎사귀 사이가 아니라 "무늬 없는 나뭇결" 앞뒤로 잘랐다.**
+   잎 봉우리가 x 35~524 · 721~819 · 1099~1182 · 1434~1520 · 1948~2029 · 2305~2454로
+   **불규칙**하게 박혀 있어, 반복 타일링(`round`)을 하면 이음매가 드러난다. 대신 늘어나는
+   가운데를 1540~1950 사이 **민짜 구간**으로 잡으면, 잎·팻말·덩굴 마무리는 전부 원래
+   비율 그대로 그려지고 **늘어나는 것은 나뭇결뿐**이라 배율이 달라져도 티가 안 난다
+   (1366px에서 1.0배, 1600px에서 1.6배, 1920px에서 2배로 늘어난다).
+
+   ⚠️ 마구리 합이 `--beam-h`의 8.8배다(1600×900에서 954px). 화면 폭이 그보다 좁아지면
+   마구리끼리 겹친다 — 이 게임의 최소 지원 폭(1366px)에서는 여유가 400px 남는다. */
 .play-beam {
   --beam-h: clamp(92px, 12vh, 124px);
   position: relative;
@@ -3551,8 +3559,8 @@ body {
   pointer-events: none;
   border-style: solid;
   border-color: transparent;
-  border-width: 0 calc(var(--beam-h) * 150 / 189) 0 calc(var(--beam-h) * 420 / 189);
-  border-image: url('/play/upper_bar.webp') 0 150 0 420 fill stretch;
+  border-width: 0 calc(var(--beam-h) * 552 / 237) 0 calc(var(--beam-h) * 1540 / 237);
+  border-image: url('/play/upper_bar.webp') 0 552 0 1540 fill stretch;
 }
 
 /* 팻말에 새기는 두 줄 — 그림 속 양피지 자리에 **정확히** 얹는다.
@@ -3563,10 +3571,10 @@ body {
    글자가 팻말을 넘어 나무 위로 흘러간다. */
 .play-nameplate {
   position: absolute;
-  left: calc(var(--beam-h) * 103 / 189);
-  top: calc(var(--beam-h) * 57 / 189);
-  width: calc(var(--beam-h) * 237 / 189);
-  height: calc(var(--beam-h) * 84 / 189);
+  left: calc(var(--beam-h) * 129 / 237);
+  top: calc(var(--beam-h) * 71 / 237);
+  width: calc(var(--beam-h) * 304 / 237);
+  height: calc(var(--beam-h) * 107 / 237);
   display: flex;
   flex-direction: column;
   align-items: center;

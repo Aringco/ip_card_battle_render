@@ -32,10 +32,6 @@ export const PLAY_ASSETS = {
    * 자리까지 불투명으로 잡혀 조각이 그림 전체 크기로 잘린다.
    */
   upperBar: '/play/upper_bar.webp',
-  /** 예전 상단 바 — `upperBar` 한 장으로 대체됐다. 되돌릴 수 있게 남겨 둔다 */
-  beam: '/play/beam.webp',
-  /** 예전 이름표(따로 얹던 3분할 팻말) — 지금은 `upperBar` 그림 안에 들어 있다 */
-  nameplate: '/play/nameplate.webp',
 
   /** 나무 액자 + 양피지 — 9분할로 늘린다. 네 귀퉁이에 잎 덩어리가 함께 그려져 있다 */
   boardH: '/play/board_h.webp',   // 가로형 큰 판 (754×550)
