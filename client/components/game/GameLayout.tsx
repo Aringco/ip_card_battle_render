@@ -167,7 +167,10 @@ export function GameLayout({
           gridTemplateRows: 'minmax(0, 1.25fr) auto minmax(0, 1fr)',
         }}
       >
-        <div style={{ gridColumn: 1, gridRow: 1 }} className="min-h-0">
+        {/* 좌우 판을 가운데로 30px 밀어 넣어 액자끼리 맞물리게 한다(요청: 겹침 허용).
+            그림의 투명 여백(팀 패널 16px + 카드판 11px)이 그대로 틈이 되기 때문이다.
+            판이 그만큼 넓어져, 액자를 1.4배로 키우며 잃은 안쪽 폭도 함께 돌아온다. */}
+        <div style={{ gridColumn: 1, gridRow: 1 }} className="min-h-0 -mr-[30px]">
           <TeamPanel team="A" myTeam={myTeam} gameState={gameState} animState={animState} />
         </div>
 
@@ -195,7 +198,7 @@ export function GameLayout({
           />
         </div>
 
-        <div style={{ gridColumn: 3, gridRow: 1 }} className="min-h-0">
+        <div style={{ gridColumn: 3, gridRow: 1 }} className="min-h-0 -ml-[30px]">
           <TeamPanel team="B" myTeam={myTeam} gameState={gameState} animState={animState} />
         </div>
 
