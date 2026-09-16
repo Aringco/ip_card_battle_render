@@ -157,7 +157,9 @@ export function GameLayout({
           장소(오두막·부둣가)의 손가락 가이드가 타일 밖 위로 튀어나오며 까딱거리는데,
           그 여유 공간이 없으면 바로 아래 overflow-hidden에 손가락 끝이 잘린다. */}
       <main
-        className="flex-1 grid gap-2 pt-[1.35rem] pr-2 pb-2 pl-2 min-h-0 overflow-hidden"
+        // 판 사이 여백을 없앤다(요청) — 액자끼리 맞닿아야 하므로 gap도 안여백도 0이다.
+        // 손가락 가이드가 타일 위로 튀어나오는 자리는 카드판 액자의 padding이 대신 낸다.
+        className="flex-1 grid gap-0 min-h-0 overflow-hidden"
         style={{
           // 19rem → 21rem. 팀 패널에 나무 액자(좌우 22px씩)가 들어오며 안쪽이 그만큼
           // 좁아져 팀 이름 줄("○○ 기사단 ⭐내 팀")이 잘렸다 — 액자가 먹는 폭을 돌려준다.
