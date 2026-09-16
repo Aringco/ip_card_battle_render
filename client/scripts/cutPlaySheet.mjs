@@ -142,6 +142,15 @@ const SHEETS = [
       { name: 'log_bar', at: [29, 967, 1382, 162] },
     ],
   },
+  {
+    // 상단 바 — 팻말이 **그림 안에 붙어 있는** 통짜 들보(2000×216, 알파가 살아 있다).
+    // 예전에는 들보(log_bar)와 이름표(nameplate)를 따로 얹었는데, 이 그림은 둘이 한 몸이라
+    // 가로 3분할의 **왼쪽 마구리가 곧 팻말**이 된다(globals.css의 .play-beam 참조).
+    src: 'upper_bar_sheet.png',
+    // ⚠️ 아래쪽에 1~7px짜리 먼지 성분이 여섯 개 붙어 있다 — 성분 단위로 고르므로
+    // 자동으로 걸러진다(사각형으로 잘랐다면 그대로 딸려 왔을 것이다).
+    pieces: [{ name: 'upper_bar', at: [23, 11, 1955, 189] }],
+  },
 ];
 
 const isChecker = (r, g, b) => {
@@ -155,7 +164,12 @@ async function loadSheet(file) {
   const W = info.width, H = info.height, C = info.channels, N = W * H;
 
   // ── ① 체커보드 지우기 (테두리에서 연결된 것만) ──
-  const alpha = new Uint8Array(N).fill(255);
+  // ⚠️ **소스의 알파를 그대로 물려받고 시작한다.** 255로 채우고 시작하면 알파가 이미
+  // 살아 있는 4채널 시트(체커보드가 안 구워진 원본)를 받았을 때 투명한 자리까지 전부
+  // 불투명으로 잡혀, 조각이 그림 전체 크기로 잘린다. 3채널 시트는 ensureAlpha가 255를
+  // 채워 주므로 이 줄을 바꿔도 예전 동작과 똑같다.
+  const alpha = new Uint8Array(N);
+  for (let i = 0; i < N; i++) alpha[i] = data[i * C + 3];
   const seen = new Uint8Array(N);
   const stack = [];
   const push = (x, y) => {

@@ -3519,38 +3519,72 @@ body {
       처럼 연출이 매달린 클래스를 지우지 말 것.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* 상단 통나무 — 헤더(높이 76px) 바닥. 1382×162, 쪼갠 마구리 110px.
-   76/162 = 0.469 → 캡 110×0.469 ≈ 52px.
-   ⚠️ 덩굴 달린 `beam.webp`에서 **민짜 통나무 `log_bar`로 갈아탔다** — 가안의 상단 바가
-   그것이고, 헤더가 76px로 두꺼워지면서 덩굴 잎이 과하게 커 보였다. */
+/* ── 상단 바 — 팻말이 그림에 붙어 있는 통짜 들보 ───────────────────────────
+   `upper_bar.webp`(1955×189)는 **들보와 팻말이 한 몸**이다. 예전에는 들보(log_bar)와
+   이름표(nameplate)를 따로 얹었는데, 이 그림은 가로 3분할의 **왼쪽 마구리가 곧 팻말**이다.
+
+   그래서 치수를 전부 `--beam-h` 하나에서 파생시킨다 — 높이가 화면 따라 바뀌는데
+   `border-width`를 고정 px로 두면 마구리(팻말)만 홀로 찌그러지기 때문이다.
+   실측(잘라낸 1955×189 기준):
+       왼쪽 마구리(잎+팻말) 420px  ·  오른쪽 마구리(덩굴) 150px
+       팻말 양피지  x 103~339(237px)  ·  y 57~140(84px)
+   **그림을 다시 자르면 이 숫자 네 벌을 함께 고칠 것.**
+
+   ⚠️ 가운데 조각에는 잎사귀가 일정 간격으로 박혀 있어 늘어나면 함께 늘어난다.
+   1366px에서 0.75배까지 눌리는데 그 정도는 눈에 띄지 않는다 — 더 좁아지면 다시 볼 것. */
 .play-beam {
-  border-style: solid;
-  border-width: 0 52px;
-  border-image: url('/play/log_bar.webp') 0 110 fill stretch;
-  border-radius: 0;
+  --beam-h: clamp(92px, 12vh, 124px);
+  position: relative;
+  height: var(--beam-h);
   background: none;
 }
-
-/* 이름표 — 헤더 왼쪽 "○○ 차례". 490×239, 좌 마구리 140 / 우 120.
-   26/239 = 0.109 → 좌 15px, 우 14px */
-.play-nameplate {
+/* ⚠️ 들보를 헤더 **자신의** border로 그리면 안 된다. 왼쪽 마구리가 240px짜리
+   `border-left`가 되는데, 절대배치 자식의 기준 상자는 부모의 **padding box**라
+   그만큼 통째로 밀린다 — 팻말 좌표를 정확히 계산해도 글자가 240px 오른쪽 나무 위에
+   얹혔다(실제로 그렇게 나왔다). `::before`로 옮기면 헤더는 테두리가 없는 상자로
+   남아 padding box = border box가 되고, 팻말 좌표가 그대로 맞는다.
+   z-index를 주지 않는다 — 의사요소는 첫 자식이라 뒤따르는 글자·알약이 저절로 위에 온다. */
+.play-beam::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   border-style: solid;
-  /* 헤더가 76px로 두꺼워지며 이름표도 두 줄(팀 이름 / "○○ 차례")을 담는다.
-     self-stretch로 헤더 안높이(66px)를 꽉 채우므로 66/239 = 0.276
-     → 좌 140×0.276 ≈ 39px, 우 120×0.276 ≈ 33px. */
-  border-width: 0 33px 0 39px;
-  border-image: url('/play/nameplate.webp') 0 120 0 140 fill stretch;
-  border-radius: 0;
-  background: none;
-  /* ⚠️ **글자가 앉을 수 있는 자리는 생각보다 훨씬 좁다.** 그림(490×239)의 세로 밝기를
-     재보면 크림 양피지는 y 71~179, 곧 **29.7%~75%**로 높이의 45%뿐이고 나머지는
-     나무틀이다. 헤더 안높이 66px 기준으로는 19.6~49.4px, 즉 **30px**만 쓸 수 있다 —
-     두 줄을 `text-base`(15.4px) + `text-xs`(11.5px) = 27px로 잡은 이유다.
-     위 안여백 3px은 양피지 한가운데(52.3%)가 판 한가운데보다 살짝 아래인 몫이다.
-     **글씨를 키우려면 이름표(=헤더)를 먼저 키워야 한다.** */
-  padding: 3px 6px 0;
-  line-height: 1.2;
+  border-color: transparent;
+  border-width: 0 calc(var(--beam-h) * 150 / 189) 0 calc(var(--beam-h) * 420 / 189);
+  border-image: url('/play/upper_bar.webp') 0 150 0 420 fill stretch;
+}
+
+/* 팻말에 새기는 두 줄 — 그림 속 양피지 자리에 **정확히** 얹는다.
+   배경도 테두리도 없다(팻말은 이미 들보 그림에 그려져 있다).
+
+   ⚠️ 예전 이름표는 3분할이라 글자가 길면 판이 함께 늘어났지만, 지금 팻말은 **그림에
+   박힌 고정 크기**다. 긴 이름은 늘어날 자리가 없으니 말줄임으로 자른다 — 안 그러면
+   글자가 팻말을 넘어 나무 위로 흘러간다. */
+.play-nameplate {
+  position: absolute;
+  left: calc(var(--beam-h) * 103 / 189);
+  top: calc(var(--beam-h) * 57 / 189);
+  width: calc(var(--beam-h) * 237 / 189);
+  height: calc(var(--beam-h) * 84 / 189);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--beam-h) * 0.015);
+  overflow: hidden;
+  line-height: 1.15;
   color: #4a3728;
+}
+/* 글자도 들보 높이를 따라간다 — 두 줄 합이 팻말 높이(0.444×beam-h)의 약 70%다 */
+.play-nameplate-team { font-size: calc(var(--beam-h) * 0.155); }
+.play-nameplate-turn { font-size: calc(var(--beam-h) * 0.115); color: #6b5230; }
+.play-nameplate-team,
+.play-nameplate-turn {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 알약 3종 — 단계 표시·이름표. 캡은 16px 높이 기준(border-width/슬라이스 ≈ 0.14) */
@@ -3668,6 +3702,11 @@ body {
    `border-radius`만 주면 둥근 모서리 밖으로 그림 귀가 삐져나온다. */
 .play-card-frame {
   --frame-inset: 0;
+  /* ⚠️ 상단 바가 화면 높이의 20%를 가져가면서 카드가 짧아졌다(1366×768에서 278 → 228px).
+     장식·글자 자리를 고정 px로 두면 짧은 카드에서 서로 겹친다 — 실제로 효과 문구가
+     제목 위로 올라탔다. 그래서 **장식 크기 하나(--deco)를 화면 높이에 묶고**
+     글자를 밀어낼 거리를 전부 거기서 뽑는다. 카드가 줄면 장식도 함께 준다. */
+  --deco: clamp(24px, 3.4vh, 39px);
   border: 5px solid transparent;
   border-radius: 16px;
   overflow: hidden;
@@ -3698,8 +3737,17 @@ body {
     url('/play/card_corner_bl.webp'), url('/play/card_corner_br.webp');
   background-position: left top, right top, left bottom, right bottom;
   background-repeat: no-repeat;
-  background-size: 39px 39px;
+  background-size: var(--deco) var(--deco);
 }
+
+/* 우상단 효과 문구 — 위쪽 장식 **아래**에 앉힌다(장식에 끝글자가 덮이던 자리) */
+.skill-effect-label { top: calc(var(--deco) * 1.08); }
+/* 자막 상자 — 아래쪽 장식만큼 비워 대사 마지막 줄이 잎 뒤로 숨지 않게 한다 */
+.skill-text-block { padding-bottom: calc(var(--deco) * 0.88); }
+/* 짧은 카드에서는 글자도 함께 줄인다 — 제목·설명·대사 세 줄이 카드를 넘기지 않도록 */
+.skill-text-title { font-size: clamp(0.95rem, 2vh, 1.25rem); }
+.skill-text-desc  { font-size: clamp(0.72rem, 1.55vh, 1rem); }
+.skill-text-quote { font-size: clamp(0.64rem, 1.35vh, 0.875rem); }
 
 /* ══════════════════════════════════════════════════════════════════════════
    나무 액자 판 (frame_sheet) — 팀 패널 · 카드판 · 해설판

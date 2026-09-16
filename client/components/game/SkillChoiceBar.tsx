@@ -101,30 +101,30 @@ export function SkillChoiceBar({
                   뽑기·체력 강탈 등, 노란색)를 보여준다 — 레벨이 없으면(비활성) 흰색
                   "레벨 부족"으로 돌아간다. 예전엔 효과 문구를 좌상단에 따로 뒀는데, 우상단
                   한 곳으로 합쳐 중복 표시를 없앴다. */}
-              {/* ⚠️ 모서리 장식(39px) **아래로** 내려 앉힌다. top-2에 두면 우상단 장식이
-                  "레벨 부족"의 끝글자를, 긴 효과 문구는 좌상단 장식이 첫글자를 덮는다
-                  (장식을 1.5배로 키우자 실제로 그렇게 됐다). */}
+              {/* ⚠️ 모서리 장식 **아래로** 내려 앉힌다. top-2에 두면 우상단 장식이
+                  "레벨 부족"의 끝글자를, 긴 효과 문구는 좌상단 장식이 첫글자를 덮는다.
+                  거리는 --deco에서 뽑으므로 카드가 짧아지면 함께 올라온다. */}
               <span
-                className={`skill-outline-text absolute top-[42px] right-3 z-10 text-lg font-bold ${
+                className={`skill-effect-label skill-outline-text absolute right-3 z-10 text-lg font-bold ${
                   eligible ? 'text-amber-300' : 'text-white'
                 }`}
               >
                 {eligible ? effectParts.join(', ') : '레벨 부족'}
               </span>
-              {/* ⚠️ 아래 안여백이 34px인 것은 **아래쪽 모서리 장식(39px)** 때문이다.
-                  9.6px(p-3)으로 두면 대사 마지막 줄이 잎 뒤로 숨는다(실제로 숨었다). */}
-              <div className="relative z-10 flex flex-col gap-2 p-3 pb-[34px] min-h-[9rem]">
+              {/* 아래 안여백은 **아래쪽 모서리 장식**만큼이다(.skill-text-block) —
+                  p-3으로만 두면 대사 마지막 줄이 잎 뒤로 숨는다(실제로 숨었다). */}
+              <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
                 <h3
-                  className="skill-outline-text text-xl font-extrabold"
+                  className="skill-text-title skill-outline-text font-extrabold"
                   style={{ color: SKILL_COLOR[animal] }}
                 >
                   [{SKILL_TITLE[animal]}]
                 </h3>
-                <p className="skill-outline-text text-base text-white leading-snug whitespace-pre-line">
+                <p className="skill-text-desc skill-outline-text text-white leading-snug whitespace-pre-line">
                   {desc.effect}
                 </p>
                 <p
-                  className="skill-outline-text text-sm font-bold leading-snug"
+                  className="skill-text-quote skill-outline-text font-bold leading-snug"
                   style={{ color: SKILL_COLOR[animal] }}
                 >
                   &quot;{desc.catchphrase}&quot;
@@ -154,9 +154,9 @@ export function SkillChoiceBar({
         >
           <div className="skill-choice-bg pass-panel-bg play-frame-inset absolute" />
           <div className="skill-choice-dim play-frame-inset absolute" />
-          <div className="relative z-10 flex flex-col gap-1.5 p-3 pb-[34px] min-h-[9rem]">
-            <h3 className="skill-outline-text text-xl font-extrabold text-jungle-200">[턴 마치기]</h3>
-            <p className="skill-outline-text text-base text-white leading-snug whitespace-pre-line">
+          <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
+            <h3 className="skill-text-title skill-outline-text font-extrabold text-jungle-200">[턴 마치기]</h3>
+            <p className="skill-text-desc skill-outline-text text-white leading-snug whitespace-pre-line">
               {'지금은 할 수 있는게 없네요.\n레벨을 높이고,\n한 번에 몰아치는 방법도 좋답니다.'}
             </p>
           </div>
