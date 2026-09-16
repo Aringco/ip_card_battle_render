@@ -118,10 +118,8 @@ const SHEETS = [
     ],
   },
   {
-    // 목재 프레임 + 양피지 시트 — 2560×1360.
-    // 프레임과 양피지가 **따로** 그려져 있다(합쳐진 것은 "조합 예시"일 뿐이다).
-    // 그래서 프레임은 9분할로 두르고, 양피지는 그 안쪽을 9분할로 채운다.
-    // ⚠️ 프레임은 전부 `hollow` — 나무가 사방을 막아 테두리발 flood fill이 안쪽에 못 닿는다.
+    // 양피지 시트 — 2560×1360. 여기 있던 나무테(`wf_*`)와 통나무 바(`log_bar`)는
+    // `frames_sheet.png`의 액자 3종으로 대체돼 걷어냈다. 지금은 종이만 남는다.
     src: 'frame_sheet.png',
     pieces: [
       // 양피지(내부 영역)
@@ -131,17 +129,21 @@ const SHEETS = [
       { name: 'pg_bar_sm', at: [384, 487, 601, 155] },
       { name: 'pg_square', at: [1014, 487, 257, 262] }, // 작은 정사각
       { name: 'pg_strip', at: [50, 668, 930, 87] },     // 가늘고 긴 띠
-
-      // 목재 프레임(외곽 영역)
-      { name: 'wf_card', at: [1357, 126, 401, 622], hollow: true },
-      { name: 'wf_bar_lg', at: [1785, 128, 740, 173], hollow: true },
-      { name: 'wf_bar_md', at: [1783, 322, 741, 148], hollow: true },
-      { name: 'wf_strip', at: [1785, 487, 441, 87], hollow: true },
-      { name: 'wf_square', at: [2248, 486, 271, 266], hollow: true },
-      { name: 'wf_plaque', at: [1795, 624, 411, 111] }, // 짙은 나무 명패(속이 찬 판)
-
-      // 목재 장식 바
-      { name: 'log_bar', at: [29, 967, 1382, 162] },
+    ],
+  },
+  {
+    // 나무 액자 3종 + 양피지 3종 — 2560×1856. **액자와 종이가 따로** 그려져 있고,
+    // 가로/정사각/세로 세 비율이 한 벌씩이라 **쓸 자리의 비율에 맞춰 고른다**
+    // (늘여서 맞추는 게 아니라 비슷한 비율을 골라 9분할로 조금만 늘리기 위해서다).
+    // ⚠️ 액자는 전부 `hollow` — 나무가 사방을 막아 테두리발 flood fill이 안쪽에 못 닿는다.
+    src: 'frames_sheet.png',
+    pieces: [
+      { name: 'frame_wide', at: [27, 127, 1153, 752], hollow: true },
+      { name: 'frame_square', at: [1234, 94, 703, 782], hollow: true },
+      { name: 'frame_tall', at: [2053, 51, 482, 861], hollow: true },
+      { name: 'paper_wide', at: [51, 999, 1100, 729] },
+      { name: 'paper_square', at: [1258, 1003, 643, 737] },
+      { name: 'paper_tall', at: [2050, 991, 453, 759] },
     ],
   },
 ];

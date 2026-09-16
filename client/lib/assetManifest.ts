@@ -149,6 +149,9 @@ export const IMAGE_FILES: string[] = [
   "/play/decor_mushroom.webp",
   "/play/decor_stones.webp",
   "/play/decor_stump.webp",
+  "/play/frame_square.webp",
+  "/play/frame_tall.webp",
+  "/play/frame_wide.webp",
   "/play/gauge.webp",
   "/play/gauge_fill.webp",
   "/play/gauge_track.webp",
@@ -164,6 +167,9 @@ export const IMAGE_FILES: string[] = [
   "/play/note_green_rows.webp",
   "/play/note_pink.webp",
   "/play/note_pink_rows.webp",
+  "/play/paper_square.webp",
+  "/play/paper_tall.webp",
+  "/play/paper_wide.webp",
   "/play/pg_bar_lg.webp",
   "/play/pg_bar_md.webp",
   "/play/pg_bar_sm.webp",
@@ -179,13 +185,7 @@ export const IMAGE_FILES: string[] = [
   "/play/pill_wood.webp",
   "/play/plank.webp",
   "/play/play_bg.webp",
-  "/play/upper_bar.webp",
-  "/play/wf_bar_lg.webp",
-  "/play/wf_bar_md.webp",
-  "/play/wf_card.webp",
-  "/play/wf_plaque.webp",
-  "/play/wf_square.webp",
-  "/play/wf_strip.webp"
+  "/play/upper_bar.webp"
 ];
 
 /** 프리로드 대상 전체(효과음 + 이미지) */

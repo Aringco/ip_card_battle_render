@@ -108,27 +108,32 @@ export const PLAY_ASSETS = {
   cardPlaque: '/play/card_plaque.webp',
 
   /**
-   * 목재 프레임 + 양피지 (`frame_sheet.png`).
+   * 나무 액자 3종 + 양피지 3종 (`frames_sheet.png`).
    *
-   * 이 시트의 요령은 **나무테와 양피지가 따로 그려져 있다**는 것이다(시트의 "조합 예시"는
-   * 둘을 겹쳐 본 견본일 뿐, 그런 파일이 따로 있는 게 아니다). 그래서 CSS에서도 두 층으로
-   * 쌓는다 — 나무테는 요소의 진짜 `border`, 양피지는 그 안쪽(padding box)을 채우는
-   * `::before`다. globals.css의 `.wood-panel` 참고.
+   * **액자와 종이가 따로** 그려져 있고, 가로/정사각/세로 세 비율이 한 벌씩이라
+   * 쓸 자리의 비율에 가까운 것을 골라야 9분할로 조금만 늘리고 끝난다.
    *
-   * ⚠️ 나무테(`wf_*`)는 자를 때 **가운데를 뚫어야 한다**(cutPlaySheet의 `hollow`) —
+   * ⚠️ 이 액자는 **모서리 잎 덩어리가 나무 개구부보다 훨씬 크다**(정사각 기준 215 vs 125).
+   * 그래서 요소의 `border`로 그리면 내용이 필요 이상으로 밀린다 — 액자는 `::after`로
+   * 띄워 그리고 내용이 시작하는 자리는 `padding`이 따로 정한다.
+   * 자세한 계산은 globals.css의 `.wood-panel` 절에 있다.
+   *
+   * ⚠️ 액자는 자를 때 **가운데를 뚫어야 한다**(cutPlaySheet의 `hollow`) —
    * 나무가 사방을 막고 있어 테두리에서 출발하는 flood fill이 안쪽에 닿지 못한다.
    */
-  pgCard: '/play/pg_card.webp',       // 양피지 — 세로 카드
+  frameWide: '/play/frame_wide.webp',     // 1153×752 — 카드판
+  frameSquare: '/play/frame_square.webp', // 703×782 — 팀 패널
+  frameTall: '/play/frame_tall.webp',     // 482×861 — (예비)
+  paperWide: '/play/paper_wide.webp',
+  paperSquare: '/play/paper_square.webp',
+  paperTall: '/play/paper_tall.webp',     // (예비)
+
+  /** 양피지만 따로 있는 예전 시트(`frame_sheet.png`). 나무테(`wf_*`)와 통나무 바는
+   *  위 액자 3종으로 대체돼 걷어냈고, 종이 여섯 장만 남아 아직 쓰인다. */
+  pgCard: '/play/pg_card.webp',
   pgBarLg: '/play/pg_bar_lg.webp',
   pgBarMd: '/play/pg_bar_md.webp',    // 가운데 스택 네 줄이 쓴다
   pgBarSm: '/play/pg_bar_sm.webp',
   pgSquare: '/play/pg_square.webp',
   pgStrip: '/play/pg_strip.webp',     // 해설판이 쓴다(가늘고 긴 종이)
-  wfCard: '/play/wf_card.webp',       // 나무테 — 팀 패널·카드판·장소 타일
-  wfBarLg: '/play/wf_bar_lg.webp',
-  wfBarMd: '/play/wf_bar_md.webp',
-  wfStrip: '/play/wf_strip.webp',
-  wfSquare: '/play/wf_square.webp',
-  wfPlaque: '/play/wf_plaque.webp',   // 짙은 나무 명패(속이 찬 판)
-  logBar: '/play/log_bar.webp',       // 긴 통나무 장식 바
 } as const;

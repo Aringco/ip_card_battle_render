@@ -114,7 +114,7 @@ export function GameBoard({
       // 바닥을 만들어 **판이 액자 밖으로 밀려난다** — 장소 타일이 잘리고 해설판 위로
       // 겹쳐 그려졌다. 세로 여유가 빠듯할 때만 드러나는 잠복 버그라, 상단 바가 두꺼워진
       // 뒤에야 1366×768에서 보였다(보드가 행 286px인데 329px로 버텼다).
-      className={`wood-panel wood-panel-card flex-1 min-h-0 relative grid gap-2 ${borderClass}`}
+      className={`wood-panel wood-panel-wide flex-1 min-h-0 relative grid gap-2 ${borderClass}`}
       style={{
         gridTemplateAreas: '"house center center dock" "forest center center river"',
         gridTemplateColumns: '1fr 1.15fr 1.15fr 1fr',
