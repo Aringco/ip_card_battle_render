@@ -3547,6 +3547,12 @@ body {
   width: var(--beam-w);
   height: var(--beam-h);
   margin-inline: auto;
+  /* ⚠️ 그림의 아래 18.6%는 **거의 비어 있다.** 나무 몸통은 y 76~192뿐이고 그 아래 44px은
+     양 끝(팻말·덩굴)에서 늘어진 잎만 드문드문 있다. 상자는 그림 비율대로 잡히므로 그
+     빈 구간이 그대로 아래 UI와의 여백이 된다 — 1600×900에서 28px이 뜬다.
+     그만큼 아래를 끌어올려 판이 나무 바로 밑에 붙게 한다.
+     늘어진 잎은 판에 가려지는데, 원화에서도 그 자리는 판 뒤로 들어가는 그림이다. */
+  margin-bottom: calc(var(--beam-h) * -44 / 237);
   background-image: url('/play/upper_bar.webp');
   background-size: 100% 100%;
   background-repeat: no-repeat;
