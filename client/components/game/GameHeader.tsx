@@ -67,10 +67,10 @@ export function GameHeader({
   return (
     // 그림자(shadow-md)를 뺐다 — 들보는 양 끝이 덩굴로 마무리된 **모양 있는 그림**인데
     // box-shadow는 상자의 네모를 따라 그려져, 투명한 자리에 네모난 그늘이 드러난다.
-    // 화면 위쪽에 8vh를 비우고 들보를 띄운다 — 그 틈으로 숲 배경이 보인다.
+    // 화면 위쪽에 5vh를 비우고 들보를 띄운다 — 그 틈으로 숲 배경이 보인다.
     // 높이는 .play-beam의 --beam-h가 정하므로 여기서 min-h를 잡지 않는다(잡으면 둘이
     // 어긋나 팻말 좌표가 통째로 밀린다). 아래 본판은 flex-1이라 그만큼 줄어든다.
-    <header className="play-beam relative text-white shrink-0 mt-[8vh]">
+    <header className="play-beam relative text-white shrink-0 mt-[5vh]">
       {/* 팻말은 이제 들보 그림 **안에** 그려져 있다. 그 양피지 자리에 글자만 얹는다 —
           좌표·글자 크기 모두 .play-nameplate가 --beam-h에서 뽑는다. */}
       <div className="play-nameplate hidden sm:flex text-center">

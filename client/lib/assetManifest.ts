@@ -160,7 +160,6 @@ export const IMAGE_FILES: string[] = [
   "/play/leaf_decal_2.webp",
   "/play/leaf_decal_3.webp",
   "/play/leaf_decal_4.webp",
-  "/play/log_bar.webp",
   "/play/note_green.webp",
   "/play/note_green_rows.webp",
   "/play/note_pink.webp",
