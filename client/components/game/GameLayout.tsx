@@ -163,14 +163,15 @@ export function GameLayout({
         style={{
           // 19rem → 21rem. 팀 패널에 나무 액자(좌우 22px씩)가 들어오며 안쪽이 그만큼
           // 좁아져 팀 이름 줄("○○ 기사단 ⭐내 팀")이 잘렸다 — 액자가 먹는 폭을 돌려준다.
-          gridTemplateColumns: '21rem 1fr 21rem',
+          // 21rem × **1.2배**(요청) = 25.2rem. 액자를 2배로 키우며 좁아진 안쪽을 돌려준다.
+          gridTemplateColumns: '25.2rem 1fr 25.2rem',
           gridTemplateRows: 'minmax(0, 1.25fr) auto minmax(0, 1fr)',
         }}
       >
-        {/* 좌우 판을 가운데로 30px 밀어 넣어 액자끼리 맞물리게 한다(요청: 겹침 허용).
-            그림의 투명 여백(팀 패널 16px + 카드판 11px)이 그대로 틈이 되기 때문이다.
-            판이 그만큼 넓어져, 액자를 1.4배로 키우며 잃은 안쪽 폭도 함께 돌아온다. */}
-        <div style={{ gridColumn: 1, gridRow: 1 }} className="min-h-0 -mr-[30px]">
+        {/* 좌우 판을 가운데로 밀어 넣어 액자끼리 맞물리게 한다(요청: 겹침 허용).
+            파고드는 폭은 globals.css가 액자 두께에서 뽑는다(.panel-overlap-*) —
+            그림의 투명 여백이 그대로 틈이 되므로 액자가 두꺼워지면 그 틈도 함께 벌어진다. */}
+        <div style={{ gridColumn: 1, gridRow: 1 }} className="min-h-0 panel-overlap-r">
           <TeamPanel team="A" myTeam={myTeam} gameState={gameState} animState={animState} />
         </div>
 
@@ -198,7 +199,7 @@ export function GameLayout({
           />
         </div>
 
-        <div style={{ gridColumn: 3, gridRow: 1 }} className="min-h-0 -ml-[30px]">
+        <div style={{ gridColumn: 3, gridRow: 1 }} className="min-h-0 panel-overlap-l">
           <TeamPanel team="B" myTeam={myTeam} gameState={gameState} animState={animState} />
         </div>
 
