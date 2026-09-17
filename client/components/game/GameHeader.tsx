@@ -89,15 +89,12 @@ export function GameHeader({
           왼쪽 끝이 팻말 위로 올라탄다(예전 크기에서는 좁아서 드러나지 않았다). */}
       <div className="play-hdr-group absolute -translate-x-1/2 -translate-y-1/2 flex items-center">
         {/* 턴 — 작은 나무 띠(bar_sm)를 어둡게 깔고 그 위에 숫자 */}
-        <span className="play-turn-bar whitespace-nowrap">
-          {/* 어두운 칸을 따로 둬야 나무 띠는 제 색을 지키고, 둘 사이 여백이 보인다 */}
-          <span className="play-turn-inner font-bold tabular-nums">
-            {gameState.turn} / {MAX_TURN}턴
-          </span>
-        </span>
-
         {/* 팀 · 장소 선택 → 행동 선택 — 짙은 나무 띠(bar_dark) 위에 알약 셋 */}
         <div className="play-step-bar flex items-center gap-1.5 py-1">
+          {/* 턴 — 알약이 아니라 둥근 어두운 칸. 같은 판 안에서 성격이 다름을 보인다 */}
+          <span className="play-turn-inner font-bold tabular-nums whitespace-nowrap">
+            {gameState.turn} / {MAX_TURN}턴
+          </span>
           <span className={`play-pill ${teamPillClass} font-bold whitespace-nowrap`} style={spectatorLabelStyle}>
             {relativeLabel}
           </span>

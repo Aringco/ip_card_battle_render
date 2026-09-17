@@ -785,56 +785,28 @@ body {
 .play-step-bar {
   position: relative;
   /* 그림·이음매 처리는 "가로 3분할 그림 공통" 규칙이 맡는다. 여기서는 변수만 준다. */
-  --s3-img: url('/play/bar_dark.webp'); --s3-sl: 110; --s3-sr: 165;
-  --s3-cl: calc(var(--hdr-h) * 110 / 186); --s3-cr: calc(var(--hdr-h) * 165 / 186);
+  /* ⚠️ 슬라이스를 **좌우 같은 값(165)** 으로 자른다.
+     예전 110/165는 서로 달라, 왼쪽 마구리가 좁은 만큼 판 그림 자체가 좌우 비대칭이었다.
+     165는 양 끝 장식이 다 들어가는 최솟값이다 — 실측 왼쪽 124px · 오른쪽 160px.
+     510 − 165×2 = 180px이 늘어나는 가운데로 남는다(민짜 결무늬라 늘려도 티가 없다). */
+  --s3-img: url('/play/bar_dark.webp'); --s3-sl: 165; --s3-sr: 165;
+  --s3-cl: calc(var(--hdr-h) * 165 / 186); --s3-cr: calc(var(--hdr-h) * 165 / 186);
   --s3-shadow: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
   /* ⚠️ 키를 **못 박는다.** 안여백만 주면 실제 높이가 "안여백 + 내용"으로 정해져,
-     내용이 다른 턴 표시 판과 높이가 어긋난다. 이 키가 헤더 판의 기준(--hdr-h)이고,
-     턴 판은 이 판의 **보이는 나무 두께**에 맞춘다(.play-turn-bar 주석). */
+     내용에 따라 높이가 들쭉날쭉해진다. 이 키가 헤더 판의 기준(--hdr-h)이다. */
   height: var(--hdr-h);
   align-items: center;
   padding-block: 0;
-  /* 양쪽 같게(넓은 쪽 마구리) — 알약 묶음이 판 전체의 가운데에 온다 */
+  /* 마구리와 같은 안여백 — 슬라이스가 좌우 같으므로 내용이 판 한가운데에 온다 */
   padding-inline: var(--s3-cr);
   gap: calc(var(--pill-h) * 0.12);
 }
 
-/* ── 턴 표시 띠 — bar_sm(373×119)을 **어둡게 깔고** 그 위에 글씨 ──────────────
-   ⚠️ 그림을 요소의 border-image로 그리면 filter가 글씨까지 함께 어둡게 만든다.
-   그래서 그림만 ::before로 내려 깔고 거기에만 filter를 건다.
-   z-index: 0이 있어야 그 음수 층이 헤더 배경 뒤로 새지 않는다.
-     마구리  좌 60 / 우 100 · 배율 0.20 (띠 높이 24px 기준) */
-/* 턴 표시 — 나무 띠는 **원본 색 그대로** 두고(요청 1), 어두운 칸을 그 안에 따로 둔다.
-   예전에는 그림 전체에 filter: brightness(0.46)을 걸어 어둡게 했는데, 그러면 양 끝
-   잎사귀까지 함께 죽어 다른 띠들과 색이 따로 놀았다.
-   지금은 띠가 액자 노릇만 하고, 글씨는 둥근 어두운 칸 안에 앉는다 — 띠와 칸 사이에
-   안여백이 있어 "안에 들어있다"가 눈에 보인다. */
-/* ⚠️ **상자 키가 같아도 보이는 나무 두께는 다르다.** 두 그림은 위아래 투명 여백이
-   달라, 실측한 나무가 bar_sm은 그림 높이의 **74.8%**(y 11~99 / 119, 중심 46.2%),
-   bar_dark는 **62.9%**(y 40~156 / 186, 중심 52.7%)다. 예전에는 둘 다
-   `height: var(--hdr-h)`로 못 박아 상자는 같았지만, 화면에서는 턴 판이 더 두껍고
-   위로 올라가 보였다(1920에서 68.7px 대 57.8px).
-   그래서 턴 판은 **나무 두께가 단계 판과 같아지는 키**로 잡고,
-     키 = --hdr-h × (117/186) ÷ (89/119) = --hdr-h × 0.8410
-   나무 **중심**도 맞추도록 아래로 민다. 두 상자는 세로 가운데 정렬이므로
-     단계 판 나무 중심 = 상자 중심 + (0.527 − 0.5) × --hdr-h   = +0.0269
-     턴 판 나무 중심   = 상자 중심 + (0.462 − 0.5) × 0.8410 × --hdr-h = −0.0318
-     → 차이 0.0587 × --hdr-h 만큼 턴 판을 내린다. */
-.play-turn-bar {
-  --turn-h: calc(var(--hdr-h) * 0.8410);
-  --s3-img: url('/play/bar_sm.webp'); --s3-sl: 60; --s3-sr: 100;
-  --s3-cl: calc(var(--turn-h) * 60 / 119); --s3-cr: calc(var(--turn-h) * 100 / 119);
-  --s3-shadow: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
-  position: relative;
-  top: calc(var(--hdr-h) * 0.0587);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: var(--turn-h);
-  padding-block: 0;
-  /* 양쪽 같게(넓은 쪽 마구리) — 턴 숫자 칸이 판 **전체**의 가운데에 온다 */
-  padding-inline: var(--s3-cr);
-}
+/* 턴 표시 — 제 나무 띠(`bar_sm`)를 갖지 않고 **단계 판 안에** 들어간다(요청).
+   판이 둘이면 마구리와 사이 여백이 두 번 들어가 폭만 먹고, 어디가 가운데인지도 흐려졌다.
+   둥근 어두운 칸만 남겨, 알약 셋과 나란히 서면서도 성격이 다름(숫자 정보)을 보인다.
+   ⚠️ 예전에는 두 그림의 나무 두께·중심이 달라 턴 판의 키(0.8410배)와 top(0.0587배)을
+      따로 보정하고 있었다. 판이 하나가 되면서 그 보정이 통째로 필요 없어졌다. */
 .play-turn-inner {
   display: inline-block;
   line-height: 1;
@@ -3808,7 +3780,6 @@ body {
       마구리에 맞춰 같게** 준다. 글씨가 마구리 그림(잎·덩굴)을 침범하지 않으면서
       세 영역을 합친 상자의 한가운데에 온다. */
 .play-pill,
-.play-turn-bar,
 .play-step-bar,
 .play-acorn-bar {
   border: 0;
@@ -3819,10 +3790,8 @@ body {
    ⚠️ `.play-acorn-bar`는 넣지 않는다 — 이미 `fixed`라 맥락이 있고, 여기서 0을 주면
       Tailwind의 `z-40`(레이어 안이라 우선순위가 낮다)을 덮어 띠가 보드 뒤로 숨는다. */
 .play-pill,
-.play-turn-bar,
 .play-step-bar { z-index: 0; }
 .play-pill::before, .play-pill::after,
-.play-turn-bar::before, .play-turn-bar::after,
 .play-step-bar::before, .play-step-bar::after,
 .play-acorn-bar::before, .play-acorn-bar::after {
   content: '';
@@ -3834,11 +3803,11 @@ body {
   border-image-slice: 0 var(--s3-sr) 0 var(--s3-sl) fill;
   border-image-repeat: stretch;
 }
-.play-pill::before, .play-turn-bar::before, .play-step-bar::before, .play-acorn-bar::before {
+.play-pill::before, .play-step-bar::before, .play-acorn-bar::before {
   z-index: -1;
   border-width: 0 var(--s3-cr) 0 var(--s3-cl);
 }
-.play-pill::after, .play-turn-bar::after, .play-step-bar::after, .play-acorn-bar::after {
+.play-pill::after, .play-step-bar::after, .play-acorn-bar::after {
   z-index: -2;
   border-width: 0 calc(var(--s3-cr) - 1px) 0 calc(var(--s3-cl) - 1px);
   filter: var(--s3-shadow, none);
