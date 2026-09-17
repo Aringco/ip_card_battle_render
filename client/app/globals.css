@@ -509,18 +509,39 @@ body {
   justify-content: center;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), inset 0 2px 3px rgba(255, 255, 255, 0.4);
 }
+/* ⚠️ 세 구슬 모두 **원래 그라디언트를 반투명으로 낮추고** 그 밑에 양피지를 깐다(요청 3).
+   불투명한 채로 두면 질감이 한 점도 안 보인다.
+   pg_square(257×262)는 **높이를 128%로** 키워 깐다. 구슬이 폭보다 두 배 넘게 길어
+   세로로 반복하면 이음매마다 **찢긴 갈색 변**이 가로줄로 그어지고, 딱 맞춰 늘리면
+   위아래 변이 그대로 드러난다. 높이를 키우면 폭도 함께 넘쳐 **가로로도 꽉 차고**
+   (요청: 너비를 맞추어) 찢긴 네 변은 전부 상자 밖으로 나간다.
+   ⚠️ 채워진 부분(.hp-orb-liquid)은 그대로 불투명하다 — 거기는 체력을 읽는 자리라
+   질감이 끼면 오히려 방해가 된다. */
+.hp-orb-mine,
+.hp-orb-enemy,
+.hp-orb-spectator {
+  background-size: 100% 100%, auto 128%;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+}
 .hp-orb-mine {
-  background: linear-gradient(155deg, #f7fee7 0%, #ecfccb 100%);
+  background-image:
+    linear-gradient(155deg, rgba(247, 254, 231, 0.74) 0%, rgba(236, 252, 203, 0.74) 100%),
+    url('/play/pg_square.webp');
   border: 2px solid #4d7c0f;
 }
 .hp-orb-enemy {
-  background: linear-gradient(155deg, #fff1f2 0%, #ffe4e6 100%);
+  background-image:
+    linear-gradient(155deg, rgba(255, 241, 242, 0.74) 0%, rgba(255, 228, 230, 0.74) 100%),
+    url('/play/pg_square.webp');
   border: 2px solid #9f1239;
 }
 /* 관전자 시점 — "우리 팀/상대 팀"이 없으므로 두 구슬을 각 팀 색(기본: 민트·핑크)으로
    칠한다. 색 값은 --spec-*(client/lib/teamColors.ts) 변수에서 온다. */
 .hp-orb-spectator {
-  background: linear-gradient(155deg, #ffffff 0%, var(--spec-soft-edge) 100%);
+  background-image:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.74) 0%, var(--spec-soft-edge) 100%),
+    url('/play/pg_square.webp');
   border: 2px solid var(--spec-strong);
 }
 .hp-orb-liquid {
@@ -4158,6 +4179,28 @@ body {
   width: 64.529%;
   height: 34.200%;
 }
+/* ── 기술 카드 뒤를 메우는 양피지 ────────────────────────────────────────────
+   ⚠️ **보이라고 넣는 층이 아니다.** 카드에 마우스를 올리면 `translateY(-16px)
+   scale(1.06)`으로 떠오르는데, 위로 뜬 만큼 **아래쪽에 칸의 빈자리가 드러난다**
+   (카드 높이 320px 기준 세로로 6px 커져도 아래는 5px쯤 비어 나무 구멍이 보인다).
+   그 구멍을 막는 것이 전부라 눈에 띄지 않는 편이 낫다.
+
+   ⚠️ 띠 전체(.play-cards)가 아니라 **칸마다** 깐다 — 띠에 한 장으로 깔면 칸 사이
+   간격까지 덮여 액자의 나무 칸막이가 종이에 가려진다.
+
+   ⚠️ **가장자리를 잘라 낸다.** 이 양피지들은 네 변이 **찢긴 짙은 갈색**이다
+   (가운데 rgb(254,234,184) 대 가장자리 rgb(165,110,65)). 상자에 딱 맞춰 깔면 그 갈색 테가
+   그대로 드러난다 — 실제로 카드 틈(7px)에 갈색 줄이 그어졌다.
+   그래서 **128%로 키워 가운데만** 쓴다(background-position: center). 결 무늬라 키워도
+   티가 나지 않고, 찢긴 변은 상자 밖으로 밀려난다. */
+.play-cards-grid > * {
+  border-radius: var(--cell-r);
+  background-image: url('/play/pg_card.webp');
+  background-size: 128% 128%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .play-cards-grid {
   display: grid;
   grid-template-columns: 242fr 244fr 244fr 245fr 243fr;
@@ -4192,11 +4235,26 @@ body {
 
 /* 팀 패널 본체 — 칸이 이미 양피지를 깔았으므로 여기서는 팀 색만 옅게 얹는다
    (예전 `.wood-panel::after`가 하던 일). */
+/* 팀 경험치 판 — 양피지 질감 위에 팀 색을 옅게 얹는다(요청 2).
+   ⚠️ 의사요소가 아니라 **배경 레이어 셋**으로 쌓는다. ::before에 z-index를 주면
+   `.play-panel-turn`의 inset box-shadow(지금 차례 표시)가 그 위에 덮여 흐려진다 —
+   배경끼리 쌓으면 그림자는 언제나 배경 **위에** 그려져 또렷하게 남는다.
+     맨 위  팀 색(--panel-tint, 이미 반투명)
+     가운데 흰 막 — 양피지를 옅게 눌러 글씨가 읽히게 한다(질감만 남는 정도)
+     맨 아래 양피지 pg_card */
 .play-panel-body {
   position: relative;
   width: 100%;
   height: 100%;
-  background: var(--panel-tint, transparent);
+  background-color: transparent;
+  background-image:
+    linear-gradient(var(--panel-tint, transparent), var(--panel-tint, transparent)),
+    linear-gradient(rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.66)),
+    url('/play/pg_card.webp');
+  /* 양피지만 128%로 키워 찢긴 변을 상자 밖으로 밀어낸다(위 주석 참고) */
+  background-size: 100% 100%, 100% 100%, 128% 128%;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* 지금 차례인 팀 표시 — 예전의 `ring-[3px]`는 **바깥으로** 그려서 칸의
