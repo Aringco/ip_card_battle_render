@@ -1,13 +1,17 @@
 import type { ClientGameState, Team } from 'shared';
 import { MAX_TURN, festivalDrawInfoAt } from 'shared';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
+import { PLAY_ASSETS } from '@/lib/playAssets';
 
 function StepPill({ label, active }: { label: string; active: boolean }) {
   return (
     // 가로 안여백(px-2.5)을 뺀 것은 그림의 마구리가 이미 그 몫을 하기 때문이다 —
     // 남겨 두면 알약이 글씨보다 20px 넓어져 헤더 가운데가 밀린다.
+    //
+    // 지금 단계는 **금색**, 지난/다음 단계는 나무색이다. 연두는 바로 왼쪽의 팀 알약이
+    // 쓰므로(같은 띠 안에서 둘이 같은 색이면 무엇이 "지금"인지 흐려진다) 비워 뒀다.
     <span
-      className={`play-pill ${active ? 'play-pill-green' : 'play-pill-wood'} py-1 text-sm font-bold whitespace-nowrap`}
+      className={`play-pill ${active ? 'play-pill-gold' : 'play-pill-wood'} py-1 text-sm font-bold whitespace-nowrap`}
     >
       {label}
     </span>
@@ -80,20 +84,28 @@ export function GameHeader({
 
       {/* 나뭇잎 장식이 화면 좌우 모서리를 가리므로, 턴/단계 표시는 항상 잘 보이도록 중앙에 고정 */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
-        <span className="text-base font-bold tabular-nums whitespace-nowrap">
+        {/* 턴 — 작은 나무 띠(bar_sm)를 어둡게 깔고 그 위에 숫자 */}
+        <span className="play-turn-bar text-base font-bold tabular-nums whitespace-nowrap">
           {gameState.turn} / {MAX_TURN}턴
         </span>
-        <div className="step-flow flex items-center gap-1.5 px-2 py-1 rounded-full">
-          <span className="text-xs font-bold text-jungle-200 whitespace-nowrap" style={spectatorLabelStyle}>
-            [{relativeLabel}]
+
+        {/* 팀 · 장소 선택 → 행동 선택 — 짙은 나무 띠(bar_dark) 위에 알약 셋 */}
+        <div className="play-step-bar flex items-center gap-1.5 py-1">
+          <span className="play-pill play-pill-green py-1 text-xs font-bold whitespace-nowrap" style={spectatorLabelStyle}>
+            {relativeLabel}
           </span>
           <StepPill label="장소 선택" active={isDrawPhase} />
           <FlowArrow />
           <StepPill label="행동 선택" active={isChoicePhase} />
         </div>
         {gameState.festival && (
-          <span className="play-acorn-bar festival-header-badge text-sm font-bold whitespace-nowrap">
-            🌰 도토리 축제 진행 중! 보너스 랜덤 뽑기 +{festivalInfo.count}회!
+          <span className="festival-running text-sm font-bold whitespace-nowrap">
+            {/* 도토리는 이모지가 아니라 에셋 한 장 — 주변 나무 띠들과 같은 그림체로 맞춘다 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PLAY_ASSETS.iconAcorn} alt="" className="festival-running-icon" />
+            <span className="festival-header-badge">
+              도토리 축제 진행 중! 보너스 랜덤 뽑기 +{festivalInfo.count}회!
+            </span>
             {/* 강화 주기가 남은 턴보다 커서 다시 오를 일이 없으면 예고 자체를 감춘다. */}
             {festivalInfo.turnsToNextStage !== null && (
               // 예고는 본문보다 한 단계 물러나 보여야 하므로 알약 전체를 반투명(opacity-50)으로

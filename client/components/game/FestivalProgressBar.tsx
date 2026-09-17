@@ -1,7 +1,9 @@
 import type { FestivalProgress } from '@/hooks/useAnimationQueue';
 
 // 도토리 축제로 예약된 추가 뽑기가 지금 이번 액션에서 몇 번째까지 소모됐는지 보여준다.
-// SheepProgressBar와 완전히 같은 자리·같은 모양을 쓰되(둘은 동시에 뜨지 않는다), 문구만 다르다.
+// 자리는 SheepProgressBar와 같지만(둘은 동시에 뜨지 않는다) **생김새는 다르다** —
+// 이쪽만 도토리가 그려진 나무 띠(acorn_bar)를 쓴다. 축제 전용 그림이라 무슨 일이
+// 벌어지는지 글을 읽기 전에 알아볼 수 있다.
 export function FestivalProgressBar({ progress }: { progress: FestivalProgress | null }) {
   if (!progress) return null;
 
@@ -9,12 +11,14 @@ export function FestivalProgressBar({ progress }: { progress: FestivalProgress |
   const remaining = Math.max(0, progress.total - progress.current);
 
   return (
-    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-40 bg-jungle-950/90 text-white rounded-full px-4 py-1.5 shadow-lg flex items-center gap-2 text-sm font-bold pointer-events-none">
-      <span>🌰 {teamLabel} 도토리 축제 추가 뽑기</span>
-      <span className="tabular-nums text-amber-300">
+    // ⚠️ 🌰를 글에 쓰지 않는다 — 띠 그림의 왼쪽 마구리에 도토리 두 알이 이미 그려져 있어
+    // 같이 두면 도토리가 넷으로 보인다.
+    <div className="play-acorn-bar fixed top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 text-sm font-bold pointer-events-none">
+      <span>{teamLabel} 도토리 축제 추가 뽑기</span>
+      <span className="tabular-nums text-amber-200">
         {progress.current} / {progress.total}
       </span>
-      {remaining > 0 && <span className="text-jungle-200">(남은 {remaining}회)</span>}
+      {remaining > 0 && <span className="text-amber-100/70">(남은 {remaining}회)</span>}
     </div>
   );
 }

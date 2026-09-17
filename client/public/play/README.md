@@ -86,7 +86,9 @@ cd client && node scripts/cutPlaySheet.mjs
 | `.play-pill-green` | `pill_green` | 211×116 | 3분할 | 캡 10 / 70 | 단계 알약 (16px) |
 | `.play-pill-gold` | `pill_gold` | 194×118 | 3분할 | 캡 10 / 70 | (예비) |
 | `.play-pill-wood` | `pill_wood` | 248×101 | 3분할 | 캡 7 / 50 | 단계 알약(비활성) |
-| `.play-acorn-bar` | `acorn_bar` | 619×164 | 3분할 | 캡 22·13 / 180·110 | 축제 배지 (20px) |
+| `.play-acorn-bar` | `acorn_bar` | 619×164 | 3분할 | 캡 33·20 / 180·110 | 축제 **추가 뽑기 진행도** (30px) |
+| `.play-step-bar` | `bar_dark` | 510×186 | 3분할 | 캡 17·25 / 110·165 | 헤더 단계 도식 (28px) |
+| `.play-turn-bar::before` | `bar_sm` | 373×119 | 3분할 | 캡 12·20 / 60·100 | 헤더 턴 표시 (24px) |
 | `.play-note-card` | `label_small` | 256×182 | 9분할 | 두께 20 / 66 | 안내 쪽지 |
 | `.play-gauge-track` | `gauge_track` | 170×53 | 3분할 | 캡 7 / 30 | 타이머 (12px) |
 | `.play-gauge-fill` | `gauge_fill` | 239×53 | 3분할 | 캡 7 / 30 | 타이머 채움 |
