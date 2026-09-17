@@ -80,7 +80,7 @@ cd client && node scripts/cutPlaySheet.mjs
 | 클래스 | 그림 | 크기 | 분할 | 값 | 쓰는 곳(높이) |
 | --- | --- | --- | --- | --- | --- |
 | `.play-beam` | **`upper_bar`** | 2500×233 | **분할 없음 — 통째 확대** | 상자 비율을 그림 비율에 맞춤 | 상단 바 (너비의 1/10.73) |
-| `.play-frame` | **`play_frame`** | 1943×892 | **분할 없음 — 통째 확대** | 칸 좌표를 %로 (`.play-cell-*`) | 플레이 화면 전체 |
+| `.play-frame` | **`play_frame`** | 1368×690 | **분할 없음 — 통째 확대** | 칸 좌표를 %로 (`.play-cell-*`) | 플레이 화면 전체 |
 | `.play-nameplate` | (그림 없음 — 팻말이 `upper_bar` 안에 있다) | — | 절대 배치 | x 129 / y 71 / 304×107 (÷237) | 팻말 위 두 줄 |
 | `.play-pill-green` | `pill_green` | 211×116 | 3분할 | 캡 10 / 70 | 단계 알약 (16px) |
 | `.play-pill-gold` | `pill_gold` | 194×118 | 3분할 | 캡 10 / 70 | (예비) |

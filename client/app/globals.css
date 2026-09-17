@@ -1,11 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  /* 상단 바가 실제로 차지하는 높이 — .play-bg에도 같은 값이 있지만, position: fixed인
-     설정 버튼은 body의 자식으로 그려져 .play-bg의 변수를 물려받지 못한다. */
-  --beam-w: min(100vw, calc(24vh * 2500 / 233));
-  --beam-h: calc(var(--beam-w) * 233 / 2500);
-  --beam-vis: calc(var(--beam-h) * 189 / 233);
+  /* ══ 플레이 화면 무대 치수 — 상단 바와 액자가 **같은 값 하나**를 쓴다 ═══════════
+     예전에는 둘이 각자 `min(100vw, …)`으로 폭을 정했다. 화면 비율에 따라 두 식의
+     승자가 갈려 **폭이 서로 달라졌고**, F11 전체화면에서는 둘 다 100vw에 붙어
+     화면 끝에서 끝까지 맞닿았다.
+
+     폭은 **세로 예산**이 정한다 — 둘을 쌓은 높이가 화면을 넘으면 안 되므로:
+       상단 바 보이는 높이   W × 189/2500 = 0.0756 W
+       액자 높이             W × 690/1368 = 0.5044 W
+       합                                 ≈ 0.580 W  ≤ 98vh
+     가로로는 --stage-pad만큼 양옆을 비운다 — 화면을 꽉 채우지 않는다.
+
+     ⚠️ 액자 그림을 갈아끼우면 690/1368과 0.58을 **함께** 고칠 것. 비율만 고치고
+     0.58을 두면 세로가 넘치거나 아래가 크게 남는다. */
+  --stage-pad: 2.5vw;
+  --stage-w: min(calc(100vw - var(--stage-pad) * 2), calc(98vh / 0.58));
+  /* 상단 바와 액자 사이 숨통 — 0이면 두 나무가 맞닿아 한 덩어리로 보인다 */
+  --stage-gap: 0.8vh;
+  --beam-h: calc(var(--stage-w) * 233 / 2500);
+  /* 상단 바가 **실제로 차지하는 높이** — 그림 아래 44/233은 비어 있어 음수 margin으로
+     걷어내므로, 그 몫을 뺀 189/233에 사이 숨통을 더한 만큼만 자리를 차지한다. */
+  --beam-vis: calc(var(--beam-h) * 189 / 233 + var(--stage-gap));
   --background: #f0fdf4;
   --foreground: #171717;
   /* 글씨 크기 배수 — layout.tsx의 인라인 스크립트가 첫 페인트 전에 곧바로 덮어쓰므로
@@ -3550,7 +3566,7 @@ body {
    1600×900에서 상한 폭이 2090px이라 100vw가 먼저 걸린다. */
 .play-beam {
   position: relative;
-  width: var(--beam-w);
+  width: var(--stage-w);   /* ⚠️ 액자와 **같은 값**이다(:root의 --stage-w) */
   height: var(--beam-h);
   margin-inline: auto;
   /* 판들 위에 얹는다 — 아래 UI를 끌어올려 겹쳐 놓았으므로(아래 margin-bottom 참고)
@@ -3563,7 +3579,7 @@ body {
      빈 구간이 그대로 아래 UI와의 여백이 된다 — 1600×900에서 28px이 뜬다.
      그만큼 아래를 끌어올려 판이 나무 바로 밑에 붙게 한다.
      늘어진 잎은 판에 가려지는데, 원화에서도 그 자리는 판 뒤로 들어가는 그림이다. */
-  margin-bottom: calc(var(--beam-h) * -44 / 233);
+  margin-bottom: calc(var(--beam-h) * -44 / 233 + var(--stage-gap));
   background-image: url('/play/upper_bar.webp');
   background-size: 100% 100%;
   background-repeat: no-repeat;
@@ -3759,17 +3775,6 @@ body {
      그대로 고정하면 768 높이에서 팀 패널 안쪽 세로가 151px밖에 안 남아 경험치 줄이
      잘린다(실제로 잘렸다). 그래서 768에서 1.4배(69/77px)로 물러나도록 기울기를 잡았다.
        1080 → 138 (2배)  ·  900 → 99  ·  768 → 70 (1.4배) */
-  /* ── 상단 바의 치수 — **액자도 읽어야 해서** .play-beam이 아니라 여기 둔다 ───────
-     액자는 "상단 바가 먹고 남은 높이"에 맞춰 크기를 정하는데, 형제 요소의 변수는
-     읽을 수 없기 때문이다(둘의 공통 조상이 .play-bg다).
-     --beam-vis는 **실제로 차지하는 높이**다 — 그림 아래 44/233은 비어 있어 음수
-     margin으로 걷어냈으므로, 그 몫을 뺀 189/233만 자리를 차지한다. */
-  --beam-w: min(100vw, calc(24vh * 2500 / 233));
-  --beam-h: calc(var(--beam-w) * 233 / 2500);
-  /* ⚠️ `:root`에도 같은 값을 둔다(아래) — 설정 버튼은 `position: fixed`라 body의
-     자식으로 그려져 `.play-bg`의 변수를 물려받지 못한다. */
-  --beam-vis: calc(var(--beam-h) * 189 / 233);
-
   --fb-card: clamp(69px, calc(22.1vh - 100px), 138px);
   --fb-wide: clamp(77px, calc(24.7vh - 112px), 154px);
 
@@ -3802,13 +3807,13 @@ body {
    색 `#fee9bb`는 `paper_square`/`paper_wide` 가운데 60%의 평균이다.
    ══════════════════════════════════════════════════════════════════════════ */
 .play-frame {
-  /* 상단 바가 먹고 **남은 높이**에 맞춰 폭을 정한다 — 폭을 먼저 정하면 세로가 넘친다.
-     `--beam-vis`는 상단 바가 실제로 차지하는 높이다(그림 아래 44/233은 비어 있어 음수
-     margin으로 걷어냈으므로 그만큼 빼야 맞다). 값은 `.play-bg`가 준다. */
-  --pf-w: min(100vw, calc((100vh - var(--beam-vis)) * 1943 / 892));
-  --pf-h: calc(var(--pf-w) * 892 / 1943);
-  /* 칸 모서리 둥글기 — 그림에서 잰 값이 칸마다 20~30px이라 26px 하나로 묶고 배율만큼 줄인다 */
-  --cell-r: calc(var(--pf-w) * 26 / 1943);
+  /* ⚠️ 상단 바와 **같은 폭**을 쓴다 — 여기서 따로 계산하면 화면 비율에 따라 둘의
+     폭이 어긋난다. 세로가 넘치지 않는 것은 --stage-w가 이미 "상단 바 + 액자"를
+     함께 세어 정하기 때문이다(:root 주석 참고). */
+  --pf-w: var(--stage-w);
+  --pf-h: calc(var(--pf-w) * 690 / 1368);
+  /* 칸 모서리 둥글기 — 그림에서 잰 값이 칸마다 14~31px이라 22px 하나로 묶고 배율만큼 줄인다 */
+  --cell-r: calc(var(--pf-w) * 22 / 1368);
 
   position: relative;
   width: var(--pf-w);
@@ -3830,28 +3835,28 @@ body {
 }
 
 /* 윗줄 */
-.play-cell-exp-a { left:  2.265%; top:  5.717%; width: 12.558%; height: 48.655%; }
-.play-cell-board { left: 16.933%; top:  5.717%; width: 66.392%; height: 55.830%; }
-.play-cell-exp-b { left: 85.486%; top:  5.717%; width: 12.198%; height: 48.655%; }
+.play-cell-exp-a { left:  2.705%; top:  5.797%; width: 12.500%; height: 48.261%; }
+.play-cell-board { left: 17.398%; top:  5.797%; width: 64.839%; height: 48.261%; }
+.play-cell-exp-b { left: 84.430%; top:  5.942%; width: 12.427%; height: 48.116%; }
 
 /* 아랫줄 양 끝 — 체력. 좌우가 몇 px 다른데 손으로 그린 액자라 그림 그대로 둔다 */
-.play-cell-hp-a  { left:  2.316%; top: 64.462%; width:  9.367%; height: 30.269%; }
-.play-cell-hp-b  { left: 88.626%; top: 64.574%; width:  9.058%; height: 29.933%; }
+.play-cell-hp-a  { left:  2.705%; top: 59.275%; width:  8.553%; height: 34.928%; }
+.play-cell-hp-b  { left: 87.281%; top: 59.130%; width:  9.576%; height: 35.072%; }
 
 /* 기술 카드 다섯 칸 — 낱장으로 흩어 놓지 않고 **띠 하나**로 덮은 뒤 그 안에서 나눈다.
    ⚠️ 칸 폭이 248~267px로 제각각이라 `fr`에 실측값을 그대로 넣었다 — 균등 분할하면
    가운데로 갈수록 나무 구멍과 어긋난다(양 끝은 맞는데 3번 칸이 3px씩 밀린다). */
 .play-cards {
   position: absolute;
-  left: 13.381%;
-  top: 65.807%;
-  width: 73.443%;
-  height: 28.924%;
+  left: 13.377%;
+  top: 59.275%;
+  width: 71.711%;
+  height: 34.928%;
 }
 .play-cards-grid {
   display: grid;
-  grid-template-columns: 248fr 264fr 267fr 266fr 248fr;
-  gap: 2.348%;            /* 칸 사이 네 곳의 평균 33.5px */
+  grid-template-columns: 174fr 174fr 172fr 173fr 169fr;
+  gap: 3.033%;            /* 칸 사이 네 곳의 평균 29.75px */
   height: 100%;
 }
 /* 카드 한 장 — 칸과 **같은** 둥글기여야 나무 구멍과 어긋나 보이지 않는다.
@@ -3870,10 +3875,10 @@ body {
    넘쳐 표지판처럼 걸린다 — 가리는 면적이 가장 작은 자리다. */
 .play-prompt-strip {
   position: absolute;
-  left: 16.933%;
-  width: 66.392%;
-  top: 61.547%;
-  height: 4.26%;
+  left: 17.398%;
+  width: 64.839%;
+  top: 54.058%;    /* 보드 칸 바로 아래(5.797 + 48.261) */
+  height: 5.217%;  /* 카드 줄(59.275)까지 */
   z-index: 22;
   pointer-events: none;
 }
@@ -3898,47 +3903,6 @@ body {
     inset 0 0 20px 3px var(--turn-glow, rgba(132, 204, 22, 0.32));
 }
 
-/* 설정 버튼(⚙)을 **오른쪽 나무 기둥** 위로 — 요청 6.
-   버튼은 layout.tsx에 전역으로 뜨는 `position: fixed` 요소라 액자의 자식이 아니다.
-   그래서 %가 아니라 **액자와 같은 식**으로 자리를 다시 계산한다:
-     액자 오른쪽 끝 = 화면 가운데 + --pf-w/2,  기둥 한가운데 = 그보다 23px(1943 기준) 안쪽.
-   ⚠️ `--pf-w`는 `.play-frame`에만 있으므로 여기서 같은 식을 한 번 더 쓴다 —
-   상단 바 비율이 바뀌면 `.play-frame`과 **함께** 고칠 것. */
-body:has(.play-frame) .settings-fab {
-  --pf-w: min(100vw, calc((100vh - var(--beam-vis, 0px)) * 1943 / 892));
-  bottom: auto;
-  right: auto;
-  left: calc(50% + var(--pf-w) / 2 - var(--pf-w) * 23 / 1943);
-  top: calc(var(--beam-vis, 0px) + (100vh - var(--beam-vis, 0px)) * 0.46);
-  transform: translate(-50%, -50%);
-}
-/* 안내 말풍선도 버튼을 따라간다 — 안 옮기면 버튼은 기둥에, 말풍선은 화면 모서리에
-   따로 떠서 무엇을 가리키는지 알 수 없다. */
-body:has(.play-frame) .settings-hint-popup {
-  --pf-w: min(100vw, calc((100vh - var(--beam-vis, 0px)) * 1943 / 892));
-  bottom: auto;
-  right: calc(50% - var(--pf-w) / 2 + var(--pf-w) * 46 / 1943);
-  top: calc(var(--beam-vis, 0px) + (100vh - var(--beam-vis, 0px)) * 0.46);
-  transform: translateY(-50%);
-}
-
-/* 말풍선 꼬리는 원래 **아래**를 가리킨다(버튼이 화면 오른쪽 아래 모서리에 있을 때).
-   버튼이 기둥 중간으로 옮겨오면 말풍선이 그 **왼쪽**에 서므로 꼬리도 오른쪽을 봐야 한다. */
-body:has(.play-frame) .settings-hint-arrow {
-  bottom: auto;
-  top: 50%;
-  right: -8px;
-  transform: translateY(-50%) rotate(-45deg);
-}
-
-/* 펼친 설정 패널은 기둥보다 훨씬 넓다 — 기둥 옆(왼쪽)으로 붙여 화면 밖으로 안 나가게 */
-body:has(.play-frame) .settings-fab-panel {
-  --pf-w: min(100vw, calc((100vh - var(--beam-vis, 0px)) * 1943 / 892));
-  bottom: auto;
-  right: calc(50% - var(--pf-w) / 2 + var(--pf-w) * 46 / 1943);
-  top: calc(var(--beam-vis, 0px) + (100vh - var(--beam-vis, 0px)) * 0.46);
-  transform: translateY(-50%);
-}
 
 /* 양피지만 깔 때 — 가운데 스택 네 줄. 나무테 없이 종이 질감만 쓴다 */
 .parchment-row {
