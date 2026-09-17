@@ -3778,15 +3778,54 @@ body {
    좌 마구리 180에 **도토리 두 알이 이미 그려져 있다** — 그래서 글에 🌰를 또 쓰지 않는다.
    우 마구리 110은 덩굴 마무리. 배율 30/164 ≈ 0.183 → 좌 33px, 우 20px.
    ⚠️ 좌우 두께는 같은 배율에서 나온 짝이다 — 한쪽만 바꾸면 그쪽 그림만 눌린다. */
+/* ── 추가 뽑기 진행도가 앉는 자리 — 액자(play_frame) 윗머리에 걸친다 ──────────────
+   예전에는 `top: 4rem` 고정이라 들보 한가운데에 떠서 **단계 띠의 "행동 선택"을 가렸다.**
+   이제 액자의 윗변을 기준으로 잡아, 띠의 아랫단만 액자에 걸치고 대부분은 그 위에 뜬다.
+
+   ⚠️ 액자는 `main` 안에서 세로 가운데 정렬이라 화면 위에서의 위치가 고정이 아니다.
+   `.play-frame`과 **같은 식**으로 다시 계산한다(fixed 요소라 그 변수를 물려받지 못한다):
+     액자 높이 = --stage-w × 690/1352
+     액자 윗변 = 상단 바가 먹은 높이 + (남은 높이 − 액자 높이) / 2
+   ⚠️ 액자 그림을 갈아끼우면 690/1352를 `.play-frame`과 **함께** 고칠 것. */
+.play-progress-top {
+  --pf-h: calc(var(--stage-w) * 690 / 1352);
+  --frame-top: calc(var(--beam-vis) + (100vh - var(--beam-vis) - var(--pf-h)) / 2);
+  /* 액자 윗변에 **반쯤 걸친다** — 절반은 그 위로 뜬다.
+     ⚠️ 더 위로 올리면 단계 판의 알약("행동 선택")을 가린다. 판이 들보를 거의 꽉
+     채우게 되면서 판과 액자 사이에 빈 띠가 13px밖에 없기 때문이다 — 그래서 판의
+     아랫단 나무에는 걸치되 **알약 위로는 올라가지 않는** 0.5로 잡았다
+     (1920에서 알약 아랫변 115 · 띠 윗변 125로 10px 여유). */
+  top: calc(var(--frame-top) - var(--bar-h) * 0.5);
+}
+
+/* 도토리 축제 추가 뽑기 진행도 — acorn_bar(619×164).
+   좌 마구리 180에 **도토리 두 알이 이미 그려져 있다** — 그래서 글에 🌰를 또 쓰지 않는다.
+   우 마구리 110은 덩굴 마무리.
+   ⚠️ 캡은 띠 높이에 비례시킨다(슬라이스 × 키 ÷ 164). 고정 px로 두면 띠를 키울수록
+   도토리와 덩굴만 그대로라 납작하게 눌린다 — 예전 20/33px이 그랬다. */
 .play-acorn-bar {
+  /* 1920에서 54px — 예전 30px의 **1.8배**(요청: 1.6배 이상) */
+  --bar-h: calc(var(--stage-w) * 0.03);
+  height: var(--bar-h);
   border-style: solid;
-  border-width: 0 20px 0 33px;
+  border-width: 0 calc(var(--bar-h) * 110 / 164) 0 calc(var(--bar-h) * 180 / 164);
   border-image: url('/play/acorn_bar.webp') 0 110 0 180 fill stretch;
   border-radius: 0;
   background: none;
-  padding: 3px 4px;
+  padding: 0;
+  font-size: calc(var(--bar-h) * 0.4);
   color: #f7e6c2;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  filter: drop-shadow(0 calc(var(--bar-h) * 0.06) calc(var(--bar-h) * 0.07) rgba(0, 0, 0, 0.5));
+}
+
+/* 실용신양 예약 뽑기 진행도 — 그림 없이 CSS. 도토리 쪽과 **같은 자리**를 쓴다
+   (둘은 동시에 뜨지 않는다). 키는 acorn_bar와 맞춰 둘이 번갈아 떠도 화면이 안 튄다. */
+.play-sheep-bar {
+  --bar-h: calc(var(--stage-w) * 0.03);
+  height: var(--bar-h);
+  font-size: calc(var(--bar-h) * 0.4);
+  padding-inline: calc(var(--bar-h) * 0.45);
 }
 
 /* ── 액자와 그림의 층 순서 ───────────────────────────────────────────────

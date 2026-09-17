@@ -13,7 +13,7 @@ export function FestivalProgressBar({ progress }: { progress: FestivalProgress |
   return (
     // ⚠️ 🌰를 글에 쓰지 않는다 — 띠 그림의 왼쪽 마구리에 도토리 두 알이 이미 그려져 있어
     // 같이 두면 도토리가 넷으로 보인다.
-    <div className="play-acorn-bar fixed top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 text-sm font-bold pointer-events-none">
+    <div className="play-acorn-bar play-progress-top fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 font-bold pointer-events-none">
       <span>{teamLabel} 도토리 축제 추가 뽑기</span>
       <span className="tabular-nums text-amber-200">
         {progress.current} / {progress.total}
