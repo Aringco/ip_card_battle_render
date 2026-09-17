@@ -45,6 +45,8 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  *   hollow   … **가운데를 뚫는다.** 테두리에서 출발하는 flood fill은 액자 **안쪽**에
  *              닿지 못해(금색 막대가 막는다) 체커보드가 그대로 남는다 — 가운데에서
  *              한 번 더 fill해 비운다. 안이 비어야 하는 액자에만 쓴다.
+ *   holes    … **둘러싸인 흰 칸을 전부 뚫는다**(칸막이가 그려진 통짜 액자용).
+ *              true면 넓이 2000px 이상인 흰 덩어리를 칸으로 본다. 숫자를 주면 그 값이 하한.
  */
 const SHEETS = [
   {
@@ -169,10 +171,11 @@ const SHEETS = [
     // ⚠️ **9분할로 늘릴 수 없다.** 안쪽 칸막이가 늘어나는 가운데 영역에 들어 있어,
     //    늘리면 칸막이 간격이 따로 논다. 상단 바와 같은 방식으로 **통째로 확대**하고
     //    내용은 그림 좌표의 비율로 절대배치한다(globals.css의 `.play-frame` 절).
-    //    그래서 여기서 나오는 크기 1654×847는 **CSS의 aspect-ratio와 짝**이다.
+    //    그래서 여기서 나오는 크기 1965×1000은 **CSS의 aspect-ratio와 짝**이다.
+    //    흰 배경 JPEG로 받아 칸 10개가 흰 판으로 채워져 있다 — holes로 전부 뚫는다.
     src: 'play_frame.png',
     pieces: [
-      { name: 'play_frame', at: [0, 45, 1654, 847] },
+      { name: 'play_frame', at: [23, 32, 1965, 1000], holes: true },
     ],
   },
 ];
@@ -330,6 +333,44 @@ for (const { src, pieces, ...sheetOpts } of SHEETS) {
         if (y > 0) q.push(i - w);
         if (y < h - 1) q.push(i + w);
       }
+    }
+
+    if (piece.holes) {
+      // 나무에 **둘러싸인 흰 칸을 전부** 뚫는다(칸막이가 그려진 통짜 액자용).
+      // hollow는 가운데에서 한 번만 채우므로 칸이 여러 개면 가운데 칸만 비고 나머지는
+      // 흰 판으로 남는다. 여기서는 흰 덩어리를 모두 세어, 일정 넓이 이상이면 칸으로 본다 —
+      // 나뭇결의 밝은 점 몇 개가 뚫리지 않도록 넓이 하한을 둔다.
+      const seen = new Uint8Array(w * h);
+      const minArea = piece.holes === true ? 2000 : piece.holes;
+      let holeCount = 0;
+      for (let s = 0; s < w * h; s++) {
+        if (seen[s] || buf[s * 4 + 3] === 0 || !isChecker(buf[s * 4], buf[s * 4 + 1], buf[s * 4 + 2])) continue;
+        const region = [s]; seen[s] = 1;
+        for (let k = 0; k < region.length; k++) {
+          const i = region[k], x = i % w, y = (i / w) | 0;
+          for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+            if (j < 0 || seen[j] || buf[j * 4 + 3] === 0) continue;
+            if (!isChecker(buf[j * 4], buf[j * 4 + 1], buf[j * 4 + 2])) continue;
+            seen[j] = 1; region.push(j);
+          }
+        }
+        if (region.length < minArea) continue;
+        holeCount++;
+        for (const i of region) buf[i * 4 + 3] = 0;
+      }
+      // 칸 가장자리 한 겹은 흰색과 나무가 섞인 화소라 그대로 두면 흰 테가 남는다 —
+      // 바깥 배경을 지울 때(loadSheet)와 같은 식으로 밝을수록 많이 깎는다.
+      const soften = [];
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        if (!buf[i * 4 + 3]) continue;
+        if (buf[(i - 1) * 4 + 3] && buf[(i + 1) * 4 + 3] && buf[(i - w) * 4 + 3] && buf[(i + w) * 4 + 3]) continue;
+        const r = buf[i * 4], g = buf[i * 4 + 1], b = buf[i * 4 + 2];
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), br = (r + g + b) / 3;
+        if (mx - mn <= 20 && br >= 175) soften.push([i, Math.max(0, Math.round(255 * (1 - (br - 175) / 80)))]);
+      }
+      for (const [i, a] of soften) buf[i * 4 + 3] = Math.min(buf[i * 4 + 3], a);
+      console.log(`  ${piece.name}: 칸 ${holeCount}개를 뚫음`);
     }
 
     if (piece.trimTop) {

@@ -7,8 +7,7 @@
 | --- | --- |
 | `master_sheet.png` | 상단 바 · 알약 · 게이지 · 노트 · 화살표 · 장식 (36조각) — **색 보정본**(2560×1339) |
 | `team_pills.png` | 팀 이름표 알약 두 장 (연두·빨강) |
-| `play_frame_src.png` | 플레이 화면 통짜 액자 — **받은 원본**(좌우 비대칭) |
-| `play_frame.png` | 위를 좌우 대칭으로 만든 것 — `node scripts/mirrorPlayFrame.mjs assets-src/play_frame_src.png assets-src/play_frame.png` |
+| `play_frame.png` | 플레이 화면 통짜 액자 — **받은 그림 그대로**(2000×1088, 흰 배경). 칸 10개를 `holes`로 뚫는다. 2026-09-18 교체 — 좌우 차이가 1~2px라 뒤집어 붙이지 않았다 |
 | `frames_sheet.png` | **나무 액자 3종 + 양피지 3종** — 가로·정사각·세로 한 벌씩 |
 | `frame_sheet.png` | 양피지(`pg_*`) 여섯 장. 여기 있던 나무테(`wf_*`)·통나무 바는 걷어냈다 |
 | `card_frame_sheet.png` | 기술 카드 금색 액자와 모서리 장식 |
@@ -82,7 +81,7 @@ cd client && node scripts/cutPlaySheet.mjs
 | 클래스 | 그림 | 크기 | 분할 | 값 | 쓰는 곳(높이) |
 | --- | --- | --- | --- | --- | --- |
 | `.play-beam` | **`upper_bar`** | 2500×233 | **분할 없음 — 통째 확대** | 상자 비율을 그림 비율에 맞춤 | 상단 바 (너비의 1/10.73) |
-| `.play-frame` | **`play_frame`** | 1654×847 | **분할 없음 — 통째 확대** | 칸 좌표를 %로 (`.play-cell-*`) | 플레이 화면 전체 |
+| `.play-frame` | **`play_frame`** | 1965×1000 | **분할 없음 — 통째 확대** | 칸 좌표를 %로 (`.play-cell-*`) | 플레이 화면 전체 |
 | `.play-nameplate` | (그림 없음 — 팻말이 `upper_bar` 안에 있다) | — | 절대 배치 | x 129 / y 71 / 304×107 (÷237) | 팻말 위 두 줄 |
 | `.play-pill-green` | `pill_green` | 410×227 | 3분할 | 캡 **`--pill-h`×109·92/227** | 팀 알약(우리) |
 | `.play-pill-red` | `pill_red` | 412×228 | 3분할 | 캡 **`--pill-h`×110·91/228** | 팀 알약(상대) |
