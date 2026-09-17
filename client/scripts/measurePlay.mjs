@@ -31,19 +31,24 @@ const VIEWPORTS = [
   [1366, 768],
 ];
 
-// 재는 대상 — 셀렉터와 사람이 읽을 이름. **그리드 칸을 이루는 상자**를 우선으로 골랐다.
+// 재는 대상 — 셀렉터와 사람이 읽을 이름. **액자의 칸**을 우선으로 골랐다.
 // 배치가 밀리면 여기 숫자가 먼저 움직인다.
+//
+// ⚠️ `main > div:nth-child(n)` 같은 **자리 기반 셀렉터를 쓰지 말 것.** 예전에 그렇게
+// 뒀다가, 통짜 액자로 바꾸며 자식 순서가 달라지자 네 칸이 조용히 "(없음)"이 됐다 —
+// 스크립트는 "문제: 없음"이라고 계속 말했다. 지금은 전부 클래스/데이터 속성으로 짚는다.
 const TARGETS = [
   ['header', 'header'],
+  ['액자', '.play-frame'],
   ['보드', '[data-board-root]'],
   ['팀패널A', '[data-rabbit-target="A"]'],
   ['팀패널B', '[data-rabbit-target="B"]'],
   ['장소-오두막', '[data-place-key="house"]'],
   ['장소-강가', '[data-place-key="river_road"]'],
-  ['해설판', 'main > div:nth-child(4) > div'],
-  ['행동띠', 'main > div:nth-child(6) > div'],
-  ['체력판A', 'main > div:nth-child(5) > div'],
-  ['체력판B', 'main > div:nth-child(7) > div'],
+  ['카드띠', '.play-cards'],
+  ['체력판A', '.play-cell-hp-a'],
+  ['체력판B', '.play-cell-hp-b'],
+  ['안내쪽지', '.play-prompt-strip'],
 ];
 
 const args = process.argv.slice(2);

@@ -27,13 +27,14 @@ export function TeamPanel({
   // 칠해, 배경색만 보고도 어느 쪽이 어느 팀인지 구분할 수 있게 한다.
   const spectating = myTeam === null;
   const teamColor = spectating ? '' : team === 'A' ? 'text-team-a' : 'text-team-b';
+  // ⚠️ 바깥으로 그리는 `ring`은 쓸 수 없다 — 칸(.play-cell)이 `overflow: hidden`이라
+  // 통째로 잘린다. 안쪽으로 넣는 `.play-panel-turn`(inset box-shadow)으로 바꿨고,
+  // 덤으로 각진 테 대신 둥근 모서리를 따라 번지는 빛이 되어 액자와 부딪히지 않는다.
   const teamRing = !isActiveTeam
     ? ''
     : spectating
-      ? 'spectator-team-panel-active'
-      : team === 'A'
-        ? 'ring-[3px] ring-team-a shadow-lg'
-        : 'ring-[3px] ring-team-b shadow-lg';
+      ? 'spectator-team-panel-active play-panel-turn'
+      : 'play-panel-turn';
 
   // 배경색은 "지금 누구 차례인지"가 아니라 "이 영역이 어느 팀인지"로 고정한다
   // (우리팀 = 연두, 상대팀 = 연붉은) — 차례 표시는 위 teamRing(테두리)만 담당한다.
@@ -58,9 +59,12 @@ export function TeamPanel({
       // 나무테(진짜 border) + 양피지(::before) + 팀 색(::after). 예전의 bgClass(연두/분홍)
       // 대신 양피지 **위에 옅게 얹는** --panel-tint로 팀을 가린다 — 종이 질감을 살리면서
       // 어느 쪽 팀인지는 그대로 읽히게 하려는 것이다.
-      className={`wood-panel wood-panel-card relative w-full h-full min-h-0 shrink-0 ${teamRing} ${recoilClass} ${hitShakeClass} ${rabbitPressureClass} transition-shadow`}
+      className={`play-panel-body min-h-0 ${teamRing} ${recoilClass} ${hitShakeClass} ${rabbitPressureClass} transition-shadow`}
       style={{
         ...(spectating ? spectatorTeamVars(team) : null),
+        // 지금 차례 표시(.play-panel-turn)가 읽는 색 — 팀마다 달라야 한다
+        ['--turn-ring' as string]: team === 'A' ? 'rgba(132, 204, 22, 0.9)' : 'rgba(244, 63, 94, 0.85)',
+        ['--turn-glow' as string]: team === 'A' ? 'rgba(132, 204, 22, 0.32)' : 'rgba(244, 63, 94, 0.30)',
         ['--panel-tint' as string]: spectating
           ? 'color-mix(in srgb, var(--spec-base) 16%, transparent)'
           : isMine
@@ -73,7 +77,8 @@ export function TeamPanel({
 
       {/* 나무테가 이미 22px을 가져간다. 그 안쪽으로 여백을 더 두면 액자와 내용이
           떨어져 보이므로 p-1(3px)까지만 남긴다. */}
-      <div className="relative z-[1] h-full min-h-0 flex flex-col gap-1.5 overflow-y-auto">
+      {/* 칸이 좁고 길어졌다(244×434) — 안여백은 나무 구멍과 글자가 붙지 않을 만큼만 */}
+      <div className="relative z-[1] h-full min-h-0 flex flex-col gap-1.5 overflow-y-auto p-2">
         <div
           className={`text-base font-bold ${teamColor} flex items-center gap-1.5 flex-wrap`}
           style={spectating ? { color: SPECTATOR_TEAM_PALETTE[team].deep } : undefined}

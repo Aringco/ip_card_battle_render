@@ -19,10 +19,6 @@ const ACTION_PHRASES: Record<Animal, string[]> = {
   mermaid: ['보기좋은 떡이 먹기도 좋다', '디자인의 힘!'],
   tiger: ['특허권의 독점력!'],
 };
-function randomActionPhrase(animal: Animal): string {
-  const phrases = ACTION_PHRASES[animal];
-  return phrases[Math.floor(Math.random() * phrases.length)];
-}
 
 export interface FloatingTextItem {
   id: number;
@@ -30,12 +26,6 @@ export interface FloatingTextItem {
   team: Team;
   type: 'bonus' | 'penalty';
   animal?: Animal;
-}
-
-export interface CommentaryLine {
-  id: number;
-  text: string;
-  team: Team | null; // null = 중립 (예: 턴 전환)
 }
 
 export interface SheepCombo {
@@ -174,7 +164,6 @@ export interface AnimationState {
   festivalFlash: boolean; // 축제 진입 순간 보드 전체 섬광
   festivalBurst: boolean; // 축제 진입 순간 보드 여기저기 도토리 폭죽(15발)
   festivalStartInfo: FestivalStartInfo | null; // 축제 진입 순간 "이제부터 K턴마다 N회!" 규칙 안내 배너
-  commentary: CommentaryLine[];
   captions: CaptionItem[];
   emoticons: PlayerEmoticon[];
   placeFocusBursts: PlaceFocusItem[];
@@ -200,7 +189,6 @@ const EMPTY_GAP = 80;
 const SCORE_FLASH_DUR = 500;
 const HP_PULSE_DUR = 700;
 const EFFECT_DUR = 1200;
-const COMMENTARY_MAX = 40;
 const SHEEP_COMBO_DUR = 1400;
 const SHAKE_PULSE_DUR = 300;
 // 화면 흔들림 레벨(GameLayout의 shakeScale이 이 숫자로 진폭을 계산한다) — 두 가지 용도로 쓴다:
@@ -257,7 +245,6 @@ export function useAnimationQueue(
   const [festivalFlash, setFestivalFlash] = useState(false);
   const [festivalBurst, setFestivalBurst] = useState(false);
   const [festivalStartInfo, setFestivalStartInfo] = useState<FestivalStartInfo | null>(null);
-  const [commentary, setCommentary] = useState<CommentaryLine[]>([]);
   const [captions, setCaptions] = useState<CaptionItem[]>([]);
   const [emoticons, setEmoticons] = useState<PlayerEmoticon[]>([]);
   const [placeFocusBursts, setPlaceFocusBursts] = useState<PlaceFocusItem[]>([]);
@@ -568,74 +555,6 @@ export function useAnimationQueue(
       });
 
       setCollectingCardIds(prev => (prev.size === 0 ? prev : EMPTY_ID_SET));
-    }
-
-    // ── Pass 0: 해설판 커멘터리 생성 (즉시 반영, 통합 로그) ─────────────────
-    if (gameState) {
-      // A팀/B팀이 아니라 방 생성 시 입력한 실제 팀 이름을 그대로 쓴다. 뒤에 "팀"을
-      // 덧붙이면 이미 "팀"으로 끝나는 이름이 "개발팀팀"처럼 겹쳐 보인다.
-      const teamLabel = (t: Team) => `[${gameState.teamNames[t]}]`;
-
-      const newLines: { team: Team | null; text: string }[] = [];
-      lastEvents.forEach(ev => {
-        if (ev.type === 'collect') {
-          // 동물 이름은 넣지 않는다 — 이모지가 이미 그 동물을 가리키는데 바로 뒤에
-          // 이름까지 또 적으면("🐰 상표토끼") 같은 것을 두 번 말하는 것처럼 보인다.
-          newLines.push({
-            team: ev.team,
-            text: `${teamLabel(ev.team)} ${ANIMAL_INFO[ev.animal].emoji} 경험치 +${ev.exp}!`,
-          });
-        } else if (ev.type === 'bonusDraws') {
-          newLines.push({
-            team: ev.team,
-            text: `${teamLabel(ev.team)} 예약된 카드 ${ev.count}장 뽑기!`,
-          });
-        } else if (ev.type === 'festivalDraws') {
-          newLines.push({
-            team: ev.team,
-            text: `${teamLabel(ev.team)} 🌰 도토리 축제 효과! 랜덤 뽑기 ${ev.count}회!`,
-          });
-        } else if (ev.type === 'skillApplied' && ev.level > 0) {
-          const parts: string[] = [
-            `${teamLabel(ev.team)} ${ANIMAL_INFO[ev.animal].emoji} ${randomActionPhrase(ev.animal)}`,
-          ];
-          if (ev.animal === 'mermaid') {
-            parts.push(`다음 행동 ×${ev.multiplierAfter}배로!`);
-          } else {
-            if (ev.myHpDelta > 0) parts.push(`체력 +${ev.myHpDelta}`);
-            if (ev.oppHpDelta < 0) parts.push(`상대 체력 ${ev.oppHpDelta}`);
-            if (ev.extraDrawsQueued > 0) parts.push(`다음 턴 추가 뽑기 ${ev.extraDrawsQueued}회 예약`);
-          }
-          newLines.push({ team: ev.team, text: parts.join(' ') });
-        } else if (ev.type === 'skillPassed' && !ev.auto) {
-          newLines.push({ team: ev.team, text: `${teamLabel(ev.team)} 다음 기회를 노리기로 했습니다.` });
-        } else if (ev.type === 'festival') {
-          newLines.push({ team: null, text: '🌰 도토리 축제 시작!!' });
-        } else if (ev.type === 'timeoutChoice') {
-          newLines.push({
-            team: null,
-            text: ev.animal
-              ? `시간 초과로 서버가 대신 ${ANIMAL_INFO[ev.animal].name} 행동을 선택했습니다.`
-              : '시간 초과로 아무 행동도 선택되지 않아 턴이 넘어갔습니다.',
-          });
-        } else if (ev.type === 'gameEnd') {
-          const reasonText = ev.reason === 'knockout' ? '체력 승부 GAME OVER!' : '제한 턴 종료 — 체력 비교';
-          newLines.push({
-            team: null,
-            text: ev.winner === 'draw' ? `무승부! (${reasonText})` : `${teamLabel(ev.winner)} 승리! (${reasonText})`,
-          });
-        }
-      });
-
-      if (newLines.length > 0) {
-        setCommentary(prev => {
-          const appended = [
-            ...prev,
-            ...newLines.map(line => ({ id: ++floatIdCounter, text: line.text, team: line.team })),
-          ];
-          return appended.slice(-COMMENTARY_MAX);
-        });
-      }
     }
 
     // ── Pass 1: 뽑기(draw) + 예약된 추가 뽑기(bonusDraws=실용신양, festivalDraws=도토리 축제) 애니메이션 ────────
@@ -1183,7 +1102,6 @@ export function useAnimationQueue(
     festivalFlash,
     festivalBurst,
     festivalStartInfo,
-    commentary,
     captions,
     emoticons,
     placeFocusBursts,

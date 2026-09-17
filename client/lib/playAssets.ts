@@ -33,6 +33,19 @@ export const PLAY_ASSETS = {
    */
   upperBar: '/play/upper_bar.webp',
 
+  /**
+   * 플레이 화면 **통짜 액자**(1943×892) — 칸막이까지 그려진 한 장.
+   *
+   * 칸 10개(윗줄 3 · 아랫줄 7)의 자리가 그림 안에 이미 정해져 있어, 화면 배치를
+   * 정하는 주체가 CSS가 아니라 **이 그림**이다. 칸 좌표는 globals.css의
+   * `.play-cell-*`에 %로 적혀 있다.
+   *
+   * ⚠️ **9분할로 늘리지 않는다.** 칸막이가 늘어나는 가운데 영역에 있어 칸 간격이
+   * 따로 논다 — 상단 바처럼 통째로 확대한다.
+   * ⚠️ 칸은 **투명**이다. 양피지 바탕은 칸마다 CSS가 따로 깐다.
+   */
+  playFrame: '/play/play_frame.webp',
+
   /** 나무 액자 + 양피지 — 9분할로 늘린다. 네 귀퉁이에 잎 덩어리가 함께 그려져 있다 */
   boardH: '/play/board_h.webp',   // 가로형 큰 판 (754×550)
   boardSq: '/play/board_sq.webp', // 정사각에 가까운 판 (503×456)
@@ -121,8 +134,11 @@ export const PLAY_ASSETS = {
    * ⚠️ 액자는 자를 때 **가운데를 뚫어야 한다**(cutPlaySheet의 `hollow`) —
    * 나무가 사방을 막고 있어 테두리에서 출발하는 flood fill이 안쪽에 닿지 못한다.
    */
-  frameWide: '/play/frame_wide.webp',     // 1153×752 — 카드판
-  frameSquare: '/play/frame_square.webp', // 703×782 — 팀 패널
+  /** ⚠️ 액자 셋은 **더 이상 화면에 쓰이지 않는다.** 팀 패널·카드판을 따로 두르던
+   *  방식이 통짜 액자(`playFrame`) 한 장으로 대체됐다. 양피지 색(#fee9bb)을 여기서
+   *  뽑았고 되돌릴 여지가 있어 조각은 남겨 둔다. */
+  frameWide: '/play/frame_wide.webp',     // 1153×752 — (미사용)
+  frameSquare: '/play/frame_square.webp', // 703×782 — (미사용)
   frameTall: '/play/frame_tall.webp',     // 482×861 — (예비)
   paperWide: '/play/paper_wide.webp',
   paperSquare: '/play/paper_square.webp',

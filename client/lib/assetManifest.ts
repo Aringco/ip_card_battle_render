@@ -185,6 +185,7 @@ export const IMAGE_FILES: string[] = [
   "/play/pill_wood.webp",
   "/play/plank.webp",
   "/play/play_bg.webp",
+  "/play/play_frame.webp",
   "/play/upper_bar.webp"
 ];
 

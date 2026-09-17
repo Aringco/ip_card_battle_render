@@ -59,7 +59,10 @@ export function SkillChoiceBar({
     <div
       // 칸 사이를 가르던 divide-x를 걷고 **여백(gap+padding)** 으로 바꿨다 — 다섯 칸이
       // 맞붙은 한 덩어리가 아니라, 낱장으로 떨어진 카드 다섯 장처럼 보이게 하려는 것이다.
-      className={`h-full min-h-0 bg-jungle-950 rounded-2xl grid grid-cols-5 gap-2 p-2 ${glowClass}`}
+      // ⚠️ 바탕도 안여백도 없다. 칸 다섯 개의 자리와 폭은 액자 그림이 정하므로
+      // (globals.css의 .play-cards-grid — 칸마다 폭이 248~267px로 다르다) 여기서
+      // grid-cols-5로 균등 분할하면 가운데 칸이 나무 구멍과 어긋난다.
+      className={`play-cards-grid min-h-0 ${glowClass}`}
       style={spectatorGuideTeam ? spectatorTeamVars(spectatorGuideTeam) : undefined}
     >
       {ANIMAL_ORDER.map((animal, i) => {
@@ -85,9 +88,11 @@ export function SkillChoiceBar({
               disabled={!clickable}
               // play-card-frame이 ::after로 금색 액자를, ::before로 네 모서리 장식과
               // 잎 데칼을 얹는다 — 컷신 이미지 위에 덧그릴 뿐 그림은 그대로다.
-              className={`play-card-frame skill-choice-panel group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
-                i === 0 ? 'rounded-l-2xl overflow-hidden' : ''
-              } ${clickable ? 'skill-choice-glow' : ''}`}
+              // 다섯 장이 각자 제 나무 구멍에 앉으므로 **모두** 같은 둥글기를 쓴다
+              // (예전에는 한 덩어리 띠라 양 끝만 둥글렸다).
+              className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
+                clickable ? 'skill-choice-glow' : ''
+              }`}
             >
               {/* 컷신 이미지 어둡게 하는 filter는 이 배경 레이어에만 걸어야 한다 — 예전처럼
                   버튼 전체에 filter를 걸면 그 위에 z-index로 얹은 자막(제목·설명·레벨
@@ -148,7 +153,7 @@ export function SkillChoiceBar({
         <button
           onClick={() => interactive && onPass()}
           disabled={!interactive}
-          className={`play-card-frame skill-choice-panel group relative flex flex-col items-stretch justify-end text-left rounded-r-2xl overflow-hidden w-full h-full ${
+          className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
             interactive ? 'skill-choice-glow' : ''
           }`}
         >

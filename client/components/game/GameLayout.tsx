@@ -21,7 +21,6 @@ import { TeamPanel } from './TeamPanel';
 import { GameBoard } from './GameBoard';
 import { SheepProgressBar } from './SheepProgressBar';
 import { FestivalProgressBar } from './FestivalProgressBar';
-import { CommentaryBoard } from './CommentaryBoard';
 import { SkillChoiceBar } from './SkillChoiceBar';
 import { TeamTotalPanel } from './TeamTotalPanel';
 import { ActionPrompt } from './ActionPrompt';
@@ -144,117 +143,100 @@ export function GameLayout({
         isSettling={animState.isSettling}
       />
 
+      {/* ⚠️ 흐름에 끼우지 않고 **띄운다.** 액자는 "100vh − 상단 바"로 제 높이를 잡는데,
+          여기서 한 줄이라도 자리를 차지하면 그만큼 액자가 화면 밖으로 밀린다. */}
       {error && (
-        <div className="bg-red-100 border-b border-red-200 text-red-700 text-sm text-center py-1.5 px-4 shrink-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[60] bg-red-100 border border-red-200 rounded-b-xl text-red-700 text-sm text-center py-1.5 px-4">
           {error}
         </div>
       )}
 
-      {/* 3열 × (본판 / 해설(+행동 안내 오버레이) / 합계·행동선택) 그리드 —
-          화면 높이를 넘지 않도록 board·skill 행은 남는 공간을 나눠 갖는 fr 비율로,
-          해설 행만 고정 높이(3줄)로 둔다.
-          위쪽 패딩만 다른 세 방향(0.5rem)보다 넉넉히(1.35rem) 준다 — 보드 맨 윗줄
-          장소(오두막·부둣가)의 손가락 가이드가 타일 밖 위로 튀어나오며 까딱거리는데,
-          그 여유 공간이 없으면 바로 아래 overflow-hidden에 손가락 끝이 잘린다. */}
-      <main
-        // 판 사이 여백을 없앤다(요청) — 액자끼리 맞닿아야 하므로 gap도 안여백도 0이다.
-        // 손가락 가이드가 타일 위로 튀어나오는 자리는 카드판 액자의 padding이 대신 낸다.
-        className="flex-1 grid gap-0 min-h-0 overflow-hidden"
-        style={{
-          // 19rem → 21rem. 팀 패널에 나무 액자(좌우 22px씩)가 들어오며 안쪽이 그만큼
-          // 좁아져 팀 이름 줄("○○ 기사단 ⭐내 팀")이 잘렸다 — 액자가 먹는 폭을 돌려준다.
-          // 21rem × **1.2배**(요청) = 25.2rem. 액자를 2배로 키우며 좁아진 안쪽을 돌려준다.
-          gridTemplateColumns: '25.2rem 1fr 25.2rem',
-          gridTemplateRows: 'minmax(0, 1.25fr) auto minmax(0, 1fr)',
-        }}
-      >
-        {/* 좌우 판을 가운데로 밀어 넣어 액자끼리 맞물리게 한다(요청: 겹침 허용).
-            파고드는 폭은 globals.css가 액자 두께에서 뽑는다(.panel-overlap-*) —
-            그림의 투명 여백이 그대로 틈이 되므로 액자가 두꺼워지면 그 틈도 함께 벌어진다. */}
-        <div style={{ gridColumn: 1, gridRow: 1 }} className="min-h-0 panel-overlap-r">
-          <TeamPanel team="A" myTeam={myTeam} gameState={gameState} animState={animState} />
-        </div>
+      {/* ══ 통짜 액자 한 장 위에 칸 10개 ═══════════════════════════════════════
+          예전에는 3열 그리드가 자리를 정하고 판마다 제 액자를 둘렀지만, 이제 액자
+          그림 하나가 칸막이까지 들고 있다. 그래서 **자리를 정하는 주체가 그림**이고,
+          여기서는 그림에서 잰 %(globals.css의 .play-cell-*)에 내용을 얹기만 한다.
 
-        <div style={{ gridColumn: 2, gridRow: 1 }} className="min-h-0 flex flex-col">
-          <GameBoard
-            gameState={gameState}
-            myTeam={myTeam}
-            canAct={isMyDrawTurn}
-            onPlaceClick={onPlaceClick}
-            captions={animState.captions}
-            placeFocusBursts={animState.placeFocusBursts}
-            drawSlots={animState.drawSlots}
-            woolBalls={animState.woolBalls}
-            acornBalls={animState.acornBalls}
-            collectingCardIds={animState.collectingCardIds}
-            shakingPile={animState.shakingPile}
-            newCardId={animState.newCardId}
-            stackCards={animState.stackCards}
-            displayedActiveTeam={animState.displayedActiveTeam}
-            festivalFlash={animState.festivalFlash}
-            festivalBurst={animState.festivalBurst}
-            mermaidPopup={animState.mermaidPopup}
-            spectatorGuideTeam={spectatorDrawGuideTeam}
-            turnGlow={boardTurnGlow}
-          />
-        </div>
+          ⚠️ 칸 좌표를 컴포넌트에 흩어 두지 말 것 — 그림을 갈아끼우면 한 번에 고쳐야
+          하므로 globals.css 한 곳에 모아 둔다. */}
+      <main className="flex-1 min-h-0 relative flex items-center">
+        <div className="play-frame">
+          {/* ── 윗줄 왼쪽 · 오른쪽 — 팀별 동물 경험치 현황(요청 1) */}
+          <div className="play-cell play-cell-exp-a">
+            <TeamPanel team="A" myTeam={myTeam} gameState={gameState} animState={animState} />
+          </div>
 
-        <div style={{ gridColumn: 3, gridRow: 1 }} className="min-h-0 panel-overlap-l">
-          <TeamPanel team="B" myTeam={myTeam} gameState={gameState} animState={animState} />
-        </div>
+          {/* ── 윗줄 가운데 — 장소 선택과 카드(요청 2) */}
+          <div className="play-cell play-cell-board">
+            <GameBoard
+              gameState={gameState}
+              myTeam={myTeam}
+              canAct={isMyDrawTurn}
+              onPlaceClick={onPlaceClick}
+              captions={animState.captions}
+              placeFocusBursts={animState.placeFocusBursts}
+              drawSlots={animState.drawSlots}
+              woolBalls={animState.woolBalls}
+              acornBalls={animState.acornBalls}
+              collectingCardIds={animState.collectingCardIds}
+              shakingPile={animState.shakingPile}
+              newCardId={animState.newCardId}
+              stackCards={animState.stackCards}
+              displayedActiveTeam={animState.displayedActiveTeam}
+              festivalFlash={animState.festivalFlash}
+              festivalBurst={animState.festivalBurst}
+              mermaidPopup={animState.mermaidPopup}
+              spectatorGuideTeam={spectatorDrawGuideTeam}
+              turnGlow={boardTurnGlow}
+            />
 
-        {/* 해설판 — 모래시계/타이머/차례 안내는 이 안의 가운데 오버레이로 얹힌다 */}
-        <div style={{ gridColumn: '1 / -1', gridRow: 2 }}>
-          <CommentaryBoard
-            lines={animState.commentary}
-            overlay={
-              <ActionPrompt
-                myTeam={myTeam}
-                playerId={playerId}
-                displayedActiveTeam={animState.displayedActiveTeam}
-                displayedActivePlayerIndex={animState.displayedActivePlayerIndex}
-                memberIds={gameState.memberIds}
-                isMyDrawTurn={isMyDrawTurn}
-                interactive={isMyChoiceTurn}
-                noEligible={noEligible}
-                turnDeadline={turnDeadline}
-                turnTotalMs={gameState.turnTotalMs}
-                turn={gameState.turn}
-                startingTeam={gameState.startingTeam}
-                startingTeamReason={gameState.startingTeamReason}
-                teamNames={gameState.teamNames}
-              />
-            }
-          />
-        </div>
+          </div>
 
-        {/* 체력 구슬(연두=우리팀/붉은=상대팀) — 사이에 턴 종료 행동 선택 영역 */}
-        <div style={{ gridColumn: 1, gridRow: 3 }} className="min-h-0">
-          <TeamTotalPanel
-            team="A"
-            gameState={gameState}
-            myTeam={myTeam}
-            pulse={animState.hpPulse.get('A') ?? null}
-          />
-        </div>
-        <div style={{ gridColumn: 2, gridRow: 3 }} className="min-h-0">
-          <SkillChoiceBar
-            gameState={skillPreviewGameState}
-            team={skillPreviewTeam}
-            interactive={isMyChoiceTurn}
-            spectatorGuideTeam={spectatorChoiceGuideTeam}
-            myTeamChoosing={myTeamChoosing}
-            onChoose={onChooseSkill}
-            onPass={onPassSkill}
-          />
-        </div>
-        <div style={{ gridColumn: 3, gridRow: 3 }} className="min-h-0">
-          <TeamTotalPanel
-            team="B"
-            gameState={gameState}
-            myTeam={myTeam}
-            pulse={animState.hpPulse.get('B') ?? null}
-          />
+          <div className="play-cell play-cell-exp-b">
+            <TeamPanel team="B" myTeam={myTeam} gameState={gameState} animState={animState} />
+          </div>
+
+          {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3) */}
+          <div className="play-cell play-cell-hp-a">
+            <TeamTotalPanel team="A" gameState={gameState} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} />
+          </div>
+
+          {/* ── 아랫줄 가운데 다섯 칸 — 기술 카드 4장 + 턴 마치기(요청 4) */}
+          <div className="play-cards">
+            <SkillChoiceBar
+              gameState={skillPreviewGameState}
+              team={skillPreviewTeam}
+              interactive={isMyChoiceTurn}
+              spectatorGuideTeam={spectatorChoiceGuideTeam}
+              myTeamChoosing={myTeamChoosing}
+              onChoose={onChooseSkill}
+              onPass={onPassSkill}
+            />
+          </div>
+
+          <div className="play-cell play-cell-hp-b">
+            <TeamTotalPanel team="B" gameState={gameState} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} />
+          </div>
+          {/* 모래시계·남은 시간·차례 안내 — 해설판(채팅로그)을 걷어냈으므로(요청 5)
+              그 안에 얹혀 있던 이 오버레이만 따로 살려 보드 아래쪽에 띄운다.
+              타이머는 없어지면 안 되는 기능이라 "로그 제거"에 딸려 보낼 수 없다. */}
+          <div className="play-prompt-strip">
+            <ActionPrompt
+              myTeam={myTeam}
+              playerId={playerId}
+              displayedActiveTeam={animState.displayedActiveTeam}
+              displayedActivePlayerIndex={animState.displayedActivePlayerIndex}
+              memberIds={gameState.memberIds}
+              isMyDrawTurn={isMyDrawTurn}
+              interactive={isMyChoiceTurn}
+              noEligible={noEligible}
+              turnDeadline={turnDeadline}
+              turnTotalMs={gameState.turnTotalMs}
+              turn={gameState.turn}
+              startingTeam={gameState.startingTeam}
+              startingTeamReason={gameState.startingTeamReason}
+              teamNames={gameState.teamNames}
+            />
+          </div>
         </div>
       </main>
 
