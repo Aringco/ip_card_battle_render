@@ -56,7 +56,8 @@ function AnimalTable({
   }, [level]);
 
   const face = (
-    <div className="w-16 h-16 shrink-0 flex items-center justify-center">
+    // 크기는 칸 폭에서 뽑는다(.exp-row-face) — 고정 px면 좁은 칸에서 숫자를 덮는다
+    <div className="exp-row-face shrink-0 flex items-center justify-center">
       <img
         src={`/emoticon/${animal}_${level > 0 ? 'happy' : 'focus'}.png`}
         alt={animal}
@@ -68,9 +69,9 @@ function AnimalTable({
   // 레벨 영역은 글자 주변만이 아니라 이 칸에 배정된 공간 전체(위아래 끝까지)를
   // 옅게 다른 색으로 채워, 얼굴/경험치와 시각적으로 확실히 구분되는 하나의 구역처럼 보이게 한다.
   const levelBadge = (
-    <div className="self-stretch shrink-0 flex flex-col items-center justify-center gap-0 px-2.5 bg-jungle-100 rounded-md">
-      <span className="text-2xs font-bold text-jungle-500 leading-none">Lv.</span>
-      <span className="text-2xl font-black text-jungle-700 leading-none tabular-nums">{level}</span>
+    <div className="exp-row-lv self-stretch shrink-0 flex flex-col items-center justify-center gap-0 bg-jungle-100 rounded-md">
+      <span className="exp-row-lv-cap font-bold text-jungle-500 leading-none">Lv.</span>
+      <span className="exp-row-lv-num font-black text-jungle-700 leading-none tabular-nums">{level}</span>
     </div>
   );
 
@@ -98,7 +99,7 @@ function AnimalTable({
       )}
 
       <div
-        className={`h-full border border-gray-200 rounded-lg overflow-hidden bg-white flex items-center gap-2 px-2 ${
+        className={`exp-row h-full border border-gray-200 rounded-lg overflow-hidden bg-white flex items-center ${
           isLevelUp ? 'level-up-shake' : ''
         }`}
         onMouseEnter={handleMouseEnter}
@@ -110,12 +111,12 @@ function AnimalTable({
           {/* 분자(현재 경험치)와 분모(레벨업 기준)는 같은 크기·굵기로 두고 색으로만
               구분한다 — 크기까지 다르면 분모가 부가정보처럼 작아져 잘 안 읽힌다. */}
           <p
-            className={`font-extrabold text-jungle-900 tabular-nums leading-tight text-xl ${isPopping ? 'score-pop' : ''}`}
+            className={`exp-row-value font-extrabold text-jungle-900 tabular-nums leading-tight ${isPopping ? 'score-pop' : ''}`}
             style={isFlashing ? { color: '#22c55e' } : undefined}
           >
             {expInLevel}<span className="text-jungle-400 ml-0.5">/{threshold}</span>
           </p>
-          <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden">
+          <div className="exp-row-bar w-full bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-jungle-500 transition-[width] duration-300"
               style={{ width: `${progressPct}%` }}

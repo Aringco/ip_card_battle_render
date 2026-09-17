@@ -34,7 +34,7 @@ export const PLAY_ASSETS = {
   upperBar: '/play/upper_bar.webp',
 
   /**
-   * 플레이 화면 **통짜 액자**(1352×690) — 칸막이까지 그려진 한 장.
+   * 플레이 화면 **통짜 액자**(1654×847) — 칸막이까지 그려진 한 장.
    *
    * ⚠️ 받은 원본(`play_frame_src.png`)은 **좌우가 비대칭**이었다(체력칸 117 대 131).
    * `scripts/mirrorPlayFrame.mjs`가 왼쪽 절반을 뒤집어 붙여 대칭본을 만든다 —
