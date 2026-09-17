@@ -8,14 +8,14 @@
 
      폭은 **세로 예산**이 정한다 — 둘을 쌓은 높이가 화면을 넘으면 안 되므로:
        상단 바 보이는 높이   W × 189/2500 = 0.0756 W
-       액자 높이             W × 690/1368 = 0.5044 W
-       합                                 ≈ 0.580 W  ≤ 98vh
+       액자 높이             W × 690/1352 = 0.5104 W
+       합                                 ≈ 0.586 W  ≤ 98vh
      가로로는 --stage-pad만큼 양옆을 비운다 — 화면을 꽉 채우지 않는다.
 
-     ⚠️ 액자 그림을 갈아끼우면 690/1368과 0.58을 **함께** 고칠 것. 비율만 고치고
-     0.58을 두면 세로가 넘치거나 아래가 크게 남는다. */
+     ⚠️ 액자 그림을 갈아끼우면 690/1352과 0.586을 **함께** 고칠 것. 비율만 고치고
+     0.586을 두면 세로가 넘치거나 아래가 크게 남는다. */
   --stage-pad: 2.5vw;
-  --stage-w: min(calc(100vw - var(--stage-pad) * 2), calc(98vh / 0.58));
+  --stage-w: min(calc(100vw - var(--stage-pad) * 2), calc(98vh / 0.586));
   /* 상단 바와 액자 사이 숨통 — 0이면 두 나무가 맞닿아 한 덩어리로 보인다 */
   --stage-gap: 0.8vh;
   --beam-h: calc(var(--stage-w) * 233 / 2500);
@@ -3811,9 +3811,9 @@ body {
      폭이 어긋난다. 세로가 넘치지 않는 것은 --stage-w가 이미 "상단 바 + 액자"를
      함께 세어 정하기 때문이다(:root 주석 참고). */
   --pf-w: var(--stage-w);
-  --pf-h: calc(var(--pf-w) * 690 / 1368);
+  --pf-h: calc(var(--pf-w) * 690 / 1352);
   /* 칸 모서리 둥글기 — 그림에서 잰 값이 칸마다 14~31px이라 22px 하나로 묶고 배율만큼 줄인다 */
-  --cell-r: calc(var(--pf-w) * 22 / 1368);
+  --cell-r: calc(var(--pf-w) * 22 / 1352);
 
   position: relative;
   width: var(--pf-w);
@@ -3834,29 +3834,29 @@ body {
   background: var(--cell-paper, #fee9bb);
 }
 
-/* 윗줄 */
-.play-cell-exp-a { left:  2.705%; top:  5.797%; width: 12.500%; height: 48.261%; }
-.play-cell-board { left: 17.398%; top:  5.797%; width: 64.839%; height: 48.261%; }
-.play-cell-exp-b { left: 84.430%; top:  5.942%; width: 12.427%; height: 48.116%; }
+/* 윗줄 — 좌우 여백이 2.737%로 **같다**(왼쪽 절반을 뒤집어 붙인 그림이라 정의상 대칭) */
+.play-cell-exp-a { left:  2.737%; top:  5.797%; width: 12.648%; height: 48.261%; }
+.play-cell-board { left: 17.604%; top:  5.797%; width: 64.793%; height: 48.261%; }
+.play-cell-exp-b { left: 84.615%; top:  5.797%; width: 12.648%; height: 48.261%; }
 
-/* 아랫줄 양 끝 — 체력. 좌우가 몇 px 다른데 손으로 그린 액자라 그림 그대로 둔다 */
-.play-cell-hp-a  { left:  2.705%; top: 59.275%; width:  8.553%; height: 34.928%; }
-.play-cell-hp-b  { left: 87.281%; top: 59.130%; width:  9.576%; height: 35.072%; }
+/* 아랫줄 양 끝 — 체력. 카드칸(12.87%)보다 좁아야 한다는 조건은 그대로다(8.654%) */
+.play-cell-hp-a  { left:  2.737%; top: 59.275%; width:  8.654%; height: 34.928%; }
+.play-cell-hp-b  { left: 88.609%; top: 59.275%; width:  8.654%; height: 34.928%; }
 
 /* 기술 카드 다섯 칸 — 낱장으로 흩어 놓지 않고 **띠 하나**로 덮은 뒤 그 안에서 나눈다.
    ⚠️ 칸 폭이 248~267px로 제각각이라 `fr`에 실측값을 그대로 넣었다 — 균등 분할하면
    가운데로 갈수록 나무 구멍과 어긋난다(양 끝은 맞는데 3번 칸이 3px씩 밀린다). */
 .play-cards {
   position: absolute;
-  left: 13.377%;
+  left: 13.536%;
   top: 59.275%;
-  width: 71.711%;
+  width: 72.929%;
   height: 34.928%;
 }
 .play-cards-grid {
   display: grid;
-  grid-template-columns: 174fr 174fr 172fr 173fr 169fr;
-  gap: 3.033%;            /* 칸 사이 네 곳의 평균 29.75px */
+  grid-template-columns: 174fr 174fr 172fr 174fr 174fr;
+  gap: 2.992%;            /* 칸 사이 네 곳의 평균 29.5px */
   height: 100%;
 }
 /* 카드 한 장 — 칸과 **같은** 둥글기여야 나무 구멍과 어긋나 보이지 않는다.
@@ -3875,8 +3875,8 @@ body {
    넘쳐 표지판처럼 걸린다 — 가리는 면적이 가장 작은 자리다. */
 .play-prompt-strip {
   position: absolute;
-  left: 17.398%;
-  width: 64.839%;
+  left: 17.604%;
+  width: 64.793%;
   top: 54.058%;    /* 보드 칸 바로 아래(5.797 + 48.261) */
   height: 5.217%;  /* 카드 줄(59.275)까지 */
   z-index: 22;
