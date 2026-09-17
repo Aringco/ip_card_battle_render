@@ -3754,30 +3754,12 @@ body {
   /* 0.53 = 0.66 × **0.8배**(요청) — 글씨가 알약을 꽉 채우던 것을 물렸다 */
   font-size: calc(var(--pill-h) * 0.53);
 }
-.play-pill-green { border-width: 0 calc(var(--pill-h) * 70 / 116); border-image: url('/play/pill_green.webp') 0 70 fill stretch; color: #08361c; }
+/* 팀 이름표 두 장 — 한 벌로 그려져 와서 좌우 마구리가 서로 다르다(잎 배치가 다르다).
+   실측(연두 좌 107·우 90 / 빨강 좌 108·우 89)에 2px씩 얹어 잎이 캡 안에 다 들어가게 했다. */
+.play-pill-green { border-width: 0 calc(var(--pill-h) * 92 / 227) 0 calc(var(--pill-h) * 109 / 227); border-image: url('/play/pill_green.webp') 0 92 0 109 fill stretch; color: #08361c; }
+.play-pill-red   { border-width: 0 calc(var(--pill-h) * 91 / 228) 0 calc(var(--pill-h) * 110 / 228); border-image: url('/play/pill_red.webp')   0 91 0 110 fill stretch; color: #45060f; }
 .play-pill-gold  { border-width: 0 calc(var(--pill-h) * 70 / 118); border-image: url('/play/pill_gold.webp')  0 70 fill stretch; color: #5b3a05; }
 .play-pill-wood  { border-width: 0 calc(var(--pill-h) * 50 / 101); border-image: url('/play/pill_wood.webp')  0 50 fill stretch; color: #f3e6cb; }
-
-/* 상대 팀 알약 — 빨간 그림이 따로 없어 **연두 알약의 색을 돌려** 쓴다(요청 2).
-   ⚠️ filter를 알약 자신에 걸면 **글씨까지** 함께 돌아 팀 이름이 파랗게 뜬다.
-   그래서 그림만 ::before로 내려 깔고 거기에만 건다(턴 표시 띠와 같은 수법).
-   연두의 색상각이 154°라 그만큼 되돌리면 빨강 부근이 된다. */
-.play-pill-red {
-  position: relative;
-  z-index: 0;
-  border: 0;
-  color: #4a0410;
-}
-.play-pill-red::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-style: solid;
-  border-width: 0 calc(var(--pill-h) * 70 / 116);
-  border-image: url('/play/pill_green.webp') 0 70 fill stretch;
-  filter: hue-rotate(-150deg) saturate(1.5);
-}
 
 /* 도토리 축제 **추가 뽑기 진행도** 띠 — acorn_bar(619×164).
    좌 마구리 180에 **도토리 두 알이 이미 그려져 있다** — 그래서 글에 🌰를 또 쓰지 않는다.

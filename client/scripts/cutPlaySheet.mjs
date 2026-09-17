@@ -69,7 +69,6 @@ const SHEETS = [
       { name: 'note_pink_rows', at: [327, 925, 293, 407] },
 
       // ── 알약·띠 (가로 3분할) ──
-      { name: 'pill_green', at: [1337, 240, 211, 116] },
       { name: 'pill_gold', at: [1569, 238, 194, 118] },
       { name: 'pill_wood', at: [1784, 244, 248, 101] },
       { name: 'pill_leaf', at: [2049, 230, 278, 125] },
@@ -151,6 +150,17 @@ const SHEETS = [
       { name: 'paper_wide', at: [51, 999, 1100, 729] },
       { name: 'paper_square', at: [1258, 1003, 643, 737] },
       { name: 'paper_tall', at: [2050, 991, 453, 759] },
+    ],
+  },
+  {
+    // 팀 이름표 알약 두 장 — 우리팀(연두) · 상대팀(빨강).
+    //
+    // ⚠️ 예전에는 연두 알약 하나에 `hue-rotate`를 걸어 빨강을 만들었는데, 그러면 양 끝
+    //    **잎사귀까지 함께 돌아 분홍**이 됐다. 이제 빨강이 그림으로 따로 와서 잎이 제 색이다.
+    src: 'team_pills.png',
+    pieces: [
+      { name: 'pill_green', at: [34, 255, 410, 227] },
+      { name: 'pill_red', at: [463, 255, 412, 228] },
     ],
   },
   {

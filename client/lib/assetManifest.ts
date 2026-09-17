@@ -179,6 +179,7 @@ export const IMAGE_FILES: string[] = [
   "/play/pill_gold.webp",
   "/play/pill_green.webp",
   "/play/pill_leaf.webp",
+  "/play/pill_red.webp",
   "/play/pill_sm_gold.webp",
   "/play/pill_sm_green.webp",
   "/play/pill_sm_wood.webp",

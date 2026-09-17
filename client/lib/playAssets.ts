@@ -64,8 +64,13 @@ export const PLAY_ASSETS = {
   noteGreenRows: '/play/note_green_rows.webp',
   notePinkRows: '/play/note_pink_rows.webp',
 
-  /** 알약 — 단계 표시·플레이어 이름표. 글씨가 들어가므로 가로 3분할 */
+  /** 알약 — 단계 표시·플레이어 이름표. 글씨가 들어가므로 가로 3분할.
+   *
+   *  `pillGreen`/`pillRed`는 팀 이름표로, **다른 시트**(`team_pills.png`)에서 한 벌로
+   *  잘라낸 것이다. 예전에는 연두 하나에 `hue-rotate`를 걸어 빨강을 만들었는데 양 끝
+   *  잎사귀까지 함께 돌아 분홍이 됐다 — 이제 빨강이 그림으로 따로 와서 잎이 제 색이다. */
   pillGreen: '/play/pill_green.webp',
+  pillRed: '/play/pill_red.webp',
   pillGold: '/play/pill_gold.webp',
   pillWood: '/play/pill_wood.webp',
   pillLeaf: '/play/pill_leaf.webp',
