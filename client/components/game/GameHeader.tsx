@@ -87,10 +87,13 @@ export function GameHeader({
       {/* ⚠️ 들보의 가운데(50%)가 아니라 **빈 나무 자리의 가운데**에 둔다.
           왼쪽 5~17%는 팻말이 차지하고 오른쪽 끝은 덩굴이라, 50%에 두고 콘텐츠를 키우면
           왼쪽 끝이 팻말 위로 올라탄다(예전 크기에서는 좁아서 드러나지 않았다). */}
-      <div className="play-hdr-group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+      <div className="play-hdr-group absolute -translate-x-1/2 -translate-y-1/2 flex items-center">
         {/* 턴 — 작은 나무 띠(bar_sm)를 어둡게 깔고 그 위에 숫자 */}
-        <span className="play-turn-bar font-bold tabular-nums whitespace-nowrap">
-          {gameState.turn} / {MAX_TURN}턴
+        <span className="play-turn-bar whitespace-nowrap">
+          {/* 어두운 칸을 따로 둬야 나무 띠는 제 색을 지키고, 둘 사이 여백이 보인다 */}
+          <span className="play-turn-inner font-bold tabular-nums">
+            {gameState.turn} / {MAX_TURN}턴
+          </span>
         </span>
 
         {/* 팀 · 장소 선택 → 행동 선택 — 짙은 나무 띠(bar_dark) 위에 알약 셋 */}
