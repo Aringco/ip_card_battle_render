@@ -1786,57 +1786,10 @@ body {
    장소(오두막·부둣가)는 타일 바로 위가 곧 게임 화면 자체의 위쪽 경계라, 이 손가락이
    튀어나오는 만큼의 여유 공간을 GameLayout.tsx의 <main> 위쪽 패딩(pt-12)에서
    미리 확보해둔다 — 그 패딩이 부족해지면 이 손가락 끝이 다시 잘려 보인다. */
-@keyframes guideFingerBounce {
-  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
-  50%      { transform: translate(-50%, -50%) translateY(-14px); }
-}
-.place-guide-finger {
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 4.5rem;
-  z-index: 95;
-  pointer-events: none;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
-  animation: guideFingerBounce 0.8s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .place-guide-finger { animation: none; }
-}
-/* 관전자 시점의 손가락 — 관전자는 아무것도 누를 수 없으므로 "여길 누르세요"가 아니라
-   "지금 이 팀이 여기서 고르는 중"이라는 중계 표시다. 그래서 양 팀 차례에 모두 뜨고,
-   지금 차례인 팀의 색으로 물들여 어느 쪽 차례인지까지 알려준다.
-   색은 --spec-base(= client/lib/teamColors.ts의 팔레트)에서 온다. 이모지는 글자색으로
-   물들일 수 없으므로(색이 글리프에 박혀 있다) 뒤에 그 팀 색 후광을 깔아 "민트 손가락 /
-   핑크 손가락"으로 읽히게 한다.
-
-   후광과 손가락은 반드시 서로 다른 요소여야 한다 — 바깥 span 하나에 filter나 opacity를
-   걸면 그 효과가 둘 모두에 적용돼서, 후광만 옅게/작게 만들 수가 없다(특히 filter의
-   drop-shadow가 후광에까지 겹쳐 크게 번졌다). 그래서 바깥은 filter를 끄고, 후광
-   (.place-guide-finger-halo)과 손가락(.place-guide-finger-glyph)이 각자의 크기·투명도를
-   따로 가진다. */
-.place-guide-finger-spectator {
-  filter: none;
-}
-/* 후광 — 손가락보다 한 뼘만 크게, 절반쯤 비치게. */
-.place-guide-finger-halo {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 1.15em;
-  height: 1.15em;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--spec-base) 0%, var(--spec-glow) 55%, transparent 75%);
-  opacity: 0.5;
-}
-/* 손가락 — 후광과 달리 완전히 또렷하게. 팀 색 테두리 빛만 아주 얇게 둘러 후광과 이어
-   보이게 하고, 어두운 그림자로 배경에서 떼어놓는다. */
-.place-guide-finger-glyph {
-  position: relative;
-  filter: drop-shadow(0 0 4px var(--spec-base)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
-}
+/* ⚠️ 예전에 주인 없는 자리를 그리던 👇 **이모지** 손가락 규칙들
+   (.place-guide-finger·-spectator·-halo·-glyph와 guideFingerBounce)은 걷어냈다 —
+   그 자리도 이제 그림(hand_point)을 쓰므로 위의 .place-guide-hand 하나로 충분하다.
+   이모지는 OS마다 모양이 달라 보는 사람에 따라 화면이 달라졌다. */
 
 /* ── 무작위 주사위 버튼 ────────────────────────────────────────────────
    닉네임·팀 이름을 다시 뽑는 버튼. 예전에는 🎲 이모지에 초록 테두리 상자를 둘렀지만,
@@ -1920,6 +1873,16 @@ body {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
   animation: guideHandBounce 0.8s ease-in-out infinite;
 }
+/* ⚠️ **장소 타일용은 더 낮게 앉힌다.** 타일은 보드 칸(.play-cell-board) 안에 있고 그
+   칸은 둥근 모서리 때문에 `overflow: hidden`이라, 칸 위로 삐져나온 만큼 손이 **잘린다**
+   (기본 −82%로 두면 1920에서 65px 중 25px, 38%가 잘렸다).
+   행동 카드는 잘리지 않는 래퍼에 있어 기본값을 그대로 쓴다 — 그래서 값을 나눠 둔다.
+   ⚠️ **`transform`으로는 못 내린다.** 통통 튀는 애니메이션(guideHandBounce)이 매 프레임
+      transform을 덮어써서, 여기에 무엇을 적어도 한 프레임도 적용되지 않는다(실제로
+      -36%를 줘 봤지만 잘린 비율이 그대로였다). 애니메이션이 건드리지 않는 `top`을 옮긴다.
+     필요 조건: 타일 높이 × top% − 0.82 × 손 높이(65px) ≥ −(보드 안여백 8px)
+     가장 빠듯한 1366(타일 165px)에서 top ≥ 27.5% → 여유를 둬 30% */
+.place-guide-hand-tile { top: 30%; }
 .place-guide-hand img {
   display: block;
   width: 100%;

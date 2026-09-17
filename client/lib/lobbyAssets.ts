@@ -88,10 +88,14 @@ export const LOBBY_ASSETS = {
    * 그래서 이모지처럼 가운데를 기준점에 맞추면 안 되고, **손끝**이 칸 위쪽에 오도록
    * 아래쪽 기준으로 앉힌다(globals.css의 `.place-guide-hand` 참고).
    */
-  handSheep: '/ui/hand_sheep.webp',      // 실용신양 — 털 달린 가죽장갑
-  handMermaid: '/ui/hand_mermaid.webp',  // 디자인어 — 초록 손수건
-  handRabbit: '/ui/hand_rabbit.webp',    // 상표토끼 — 도토리를 맨 분홍 앞발
-  handTiger: '/ui/hand_tiger.webp',      // 특허랑이 — 톱니 장식의 줄무늬 손
+  handSheep: '/ui/hand_sheep.webp',      // 실용신양 — 양털 + 가죽 벨트
+  handMermaid: '/ui/hand_mermaid.webp',  // 디자인어 — 초록 손수건 + 산호
+  handRabbit: '/ui/hand_rabbit.webp',    // 상표토끼 — 분홍 털 + 도토리
+  handTiger: '/ui/hand_tiger.webp',      // 특허랑이 — 줄무늬 + 톱니
+  handComputer: '/ui/hand_computer.webp', // 모이퓨터 — 금속 손 (**아직 쓰는 곳 없음**)
+  /** 주인이 없는 자리(장소 타일)가 쓰는 기본 손 — 예전 👇 이모지를 대신한다.
+   *  이모지는 OS마다 모양이 달라 보는 사람에 따라 화면이 달라졌다. */
+  handPoint: '/ui/hand_point.webp',
 
   /**
    * 자리·선 플레이어를 고르는 **그림 버튼** 4종.

@@ -82,7 +82,8 @@ export function PlaceTile({
         )}
       </button>
 
-      {showGuide && <GuideFinger team={guideTeam} />}
+      {/* 타일은 보드 칸 안이라 위로 삐져나온 손이 잘린다 — 더 낮게 앉히는 변형을 쓴다 */}
+      {showGuide && <GuideFinger team={guideTeam} variant="tile" />}
     </div>
   );
 }
