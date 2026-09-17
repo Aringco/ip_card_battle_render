@@ -744,7 +744,7 @@ body {
 .play-hdr-group {
   left: 55%;
   top: calc(var(--beam-h) * 128.5 / 233);
-  gap: calc(var(--hdr-h) * 0.2);
+  gap: calc(var(--hdr-h) * 0.1);
 }
 
 /* 다음 강화 예고 — 배지 본문보다 한 단계 더 작게 */
@@ -763,8 +763,12 @@ body {
 .play-step-bar {
   position: relative;
   z-index: 0;
-  /* 알약이 띠의 위아래·좌우 나무에 닿지 않도록 (요청 2 — 여백이 보이게) */
-  padding-block: calc((var(--hdr-h) - var(--pill-h)) / 2);
+  /* ⚠️ 키를 **못 박는다.** 안여백만 주면 실제 높이가 "안여백 + 내용"으로 정해져,
+     내용이 다른 턴 표시 판과 높이가 어긋난다(실제로 76px 대 52px로 어긋나 있었다).
+     못 박아 두면 두 판이 같은 높이가 되고, 캡 두께도 렌더 높이와 정확히 비례한다. */
+  height: var(--hdr-h);
+  align-items: center;
+  padding-block: 0;
   padding-inline: calc(var(--hdr-h) * 110 / 186) calc(var(--hdr-h) * 165 / 186);
   gap: calc(var(--pill-h) * 0.12);
 }
@@ -792,12 +796,14 @@ body {
 .play-turn-bar {
   display: inline-flex;
   align-items: center;
+  /* 단계 판과 **같은 키**(요청 1) — 캡도 그 키에 비례시켜야 마구리가 안 눌린다 */
+  height: var(--hdr-h);
   border-style: solid;
-  border-width: 0 calc(var(--pill-h) * 100 / 119) 0 calc(var(--pill-h) * 60 / 119);
+  border-width: 0 calc(var(--hdr-h) * 100 / 119) 0 calc(var(--hdr-h) * 60 / 119);
   border-image: url('/play/bar_sm.webp') 0 100 0 60 fill stretch;
   border-radius: 0;
   background: none;
-  padding-block: calc(var(--pill-h) * 0.11);
+  padding-block: 0;
   filter: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
 }
 .play-turn-inner {
@@ -850,7 +856,7 @@ body {
   /* ⚠️ 알약(0.66)보다 **작게** 잡는다. 이 배지는 문구가 길어서 같은 배율로 키우면
      턴·단계 띠와 합친 폭이 들보의 빈 나무 자리(17%~93%)를 넘는다 — 왼쪽은 팻말을,
      오른쪽은 덩굴을 타고 올라간다. 문구도 함께 줄였다("진행 중"·"보너스"를 뺐다). */
-  font-size: calc(var(--pill-h) * 0.4);
+  font-size: calc(var(--pill-h) * 0.34);
   gap: calc(var(--pill-h) * 0.11);
   padding: calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.3) calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.16);
   border-radius: 999px;
@@ -3679,11 +3685,18 @@ body {
      ⚠️ 화면이 작아지면 함께 작아진다 — 고정 배율(2.5배)로 두면 1366에서 콘텐츠가
      들보 밖으로 나간다(실제로 2.5배면 폭이 1860px로 들보 1284px를 넘는다).
 
-     0.96 = 0.8 × **1.2배**(요청) — 감싸는 띠를 키워 배경 그림과 양 끝 잎을 키운다. */
-  --hdr-h: calc(var(--beam-h) * 119 / 233 * 0.96);
-  /* 띠 안에 앉는 알약의 키 — 나머지가 위아래 안여백이 된다.
-     0.72 → **0.62**로 낮췄다: 띠는 커지고 알약은 작아져야 "안에 들어있다"가 보인다. */
-  --pill-h: calc(var(--hdr-h) * 0.62);
+     1.067 = 감싸는 판의 키. 예전 0.96에서 **1.2배**(요청)한 값이다 —
+     다만 옛 판은 "안여백 + 내용"으로 키가 정해져 실제 렌더 높이가 --hdr-h보다 작았다.
+     지금은 두 판 모두 `height: var(--hdr-h)`로 **못 박으므로** 이 값이 곧 실제 높이다.
+       1920: 나무 몸통 86px → 판 91.7px (예전 76.4px의 1.2배)
+
+     ⚠️ 판이 나무 몸통(86px)보다 살짝 크다 — 위아래로 3px씩 걸친다. 들보에 덧댄
+     표지판처럼 보이도록 그림자를 함께 두었다. 더 키우면 걸침이 눈에 띄기 시작한다. */
+  --hdr-h: calc(var(--beam-h) * 119 / 233 * 1.067);
+  /* 판 안에 앉는 내용의 기준 키 — 판이 커져도 **내용은 그대로**여야 하므로(요청 2·3)
+     계수를 함께 낮춰 절대 크기를 유지한다(0.62 ÷ 1.2 ≈ 0.557).
+     판과의 차이가 곧 위아래 여백이 된다: (91.7 − 45) / 2 ≈ 23px. */
+  --pill-h: calc(var(--hdr-h) * 0.557);
 
   position: relative;
   width: var(--stage-w);   /* ⚠️ 액자와 **같은 값**이다(:root의 --stage-w) */
