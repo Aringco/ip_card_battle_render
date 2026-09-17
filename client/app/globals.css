@@ -757,30 +757,25 @@ body {
 
 /* ⚠️ 띠 그림은 **::before로 내려 깐다**(요소의 border-image가 아니라).
    `bar_dark`의 가운데 나무색이 들보와 거의 같아, 그냥 얹으면 감싸는 띠가 있는지조차
-   안 보인다. 따로 깔아야 그 층에만 그림자를 걸어 들보에서 띄울 수 있다 —
+   안 보인다. 따로 깔아야 그림 층에만 그림자를 걸어 들보에서 띄울 수 있다
+   (그림자는 두 겹 중 **밑층(::after)**에 건다 — 공통 규칙 주석 참고) —
    색은 원본 그대로 두고 **그림자로만** 분리한다(턴 표시와 같은 원칙).
    drop-shadow는 상자가 아니라 **알파 모양**을 따라가므로 양 끝 잎에도 그늘이 진다. */
 .play-step-bar {
   position: relative;
-  z-index: 0;
+  /* 그림·이음매 처리는 "가로 3분할 그림 공통" 규칙이 맡는다. 여기서는 변수만 준다. */
+  --s3-img: url('/play/bar_dark.webp'); --s3-sl: 110; --s3-sr: 165;
+  --s3-cl: calc(var(--hdr-h) * 110 / 186); --s3-cr: calc(var(--hdr-h) * 165 / 186);
+  --s3-shadow: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
   /* ⚠️ 키를 **못 박는다.** 안여백만 주면 실제 높이가 "안여백 + 내용"으로 정해져,
-     내용이 다른 턴 표시 판과 높이가 어긋난다(실제로 76px 대 52px로 어긋나 있었다).
-     못 박아 두면 두 판이 같은 높이가 되고, 캡 두께도 렌더 높이와 정확히 비례한다. */
+     내용이 다른 턴 표시 판과 높이가 어긋난다. 이 키가 헤더 판의 기준(--hdr-h)이고,
+     턴 판은 이 판의 **보이는 나무 두께**에 맞춘다(.play-turn-bar 주석). */
   height: var(--hdr-h);
   align-items: center;
   padding-block: 0;
-  padding-inline: calc(var(--hdr-h) * 110 / 186) calc(var(--hdr-h) * 165 / 186);
+  /* 양쪽 같게(넓은 쪽 마구리) — 알약 묶음이 판 전체의 가운데에 온다 */
+  padding-inline: var(--s3-cr);
   gap: calc(var(--pill-h) * 0.12);
-}
-.play-step-bar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-style: solid;
-  border-width: 0 calc(var(--hdr-h) * 165 / 186) 0 calc(var(--hdr-h) * 110 / 186);
-  border-image: url('/play/bar_dark.webp') 0 165 0 110 fill stretch;
-  filter: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
 }
 
 /* ── 턴 표시 띠 — bar_sm(373×119)을 **어둡게 깔고** 그 위에 글씨 ──────────────
@@ -793,18 +788,31 @@ body {
    잎사귀까지 함께 죽어 다른 띠들과 색이 따로 놀았다.
    지금은 띠가 액자 노릇만 하고, 글씨는 둥근 어두운 칸 안에 앉는다 — 띠와 칸 사이에
    안여백이 있어 "안에 들어있다"가 눈에 보인다. */
+/* ⚠️ **상자 키가 같아도 보이는 나무 두께는 다르다.** 두 그림은 위아래 투명 여백이
+   달라, 실측한 나무가 bar_sm은 그림 높이의 **74.8%**(y 11~99 / 119, 중심 46.2%),
+   bar_dark는 **62.9%**(y 40~156 / 186, 중심 52.7%)다. 예전에는 둘 다
+   `height: var(--hdr-h)`로 못 박아 상자는 같았지만, 화면에서는 턴 판이 더 두껍고
+   위로 올라가 보였다(1920에서 68.7px 대 57.8px).
+   그래서 턴 판은 **나무 두께가 단계 판과 같아지는 키**로 잡고,
+     키 = --hdr-h × (117/186) ÷ (89/119) = --hdr-h × 0.8410
+   나무 **중심**도 맞추도록 아래로 민다. 두 상자는 세로 가운데 정렬이므로
+     단계 판 나무 중심 = 상자 중심 + (0.527 − 0.5) × --hdr-h   = +0.0269
+     턴 판 나무 중심   = 상자 중심 + (0.462 − 0.5) × 0.8410 × --hdr-h = −0.0318
+     → 차이 0.0587 × --hdr-h 만큼 턴 판을 내린다. */
 .play-turn-bar {
+  --turn-h: calc(var(--hdr-h) * 0.8410);
+  --s3-img: url('/play/bar_sm.webp'); --s3-sl: 60; --s3-sr: 100;
+  --s3-cl: calc(var(--turn-h) * 60 / 119); --s3-cr: calc(var(--turn-h) * 100 / 119);
+  --s3-shadow: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
+  position: relative;
+  top: calc(var(--hdr-h) * 0.0587);
   display: inline-flex;
   align-items: center;
-  /* 단계 판과 **같은 키**(요청 1) — 캡도 그 키에 비례시켜야 마구리가 안 눌린다 */
-  height: var(--hdr-h);
-  border-style: solid;
-  border-width: 0 calc(var(--hdr-h) * 100 / 119) 0 calc(var(--hdr-h) * 60 / 119);
-  border-image: url('/play/bar_sm.webp') 0 100 0 60 fill stretch;
-  border-radius: 0;
-  background: none;
+  justify-content: center;
+  height: var(--turn-h);
   padding-block: 0;
-  filter: drop-shadow(0 calc(var(--hdr-h) * 0.05) calc(var(--hdr-h) * 0.06) rgba(0, 0, 0, 0.5));
+  /* 양쪽 같게(넓은 쪽 마구리) — 턴 숫자 칸이 판 **전체**의 가운데에 온다 */
+  padding-inline: var(--s3-cr);
 }
 .play-turn-inner {
   display: inline-block;
@@ -3757,22 +3765,102 @@ body {
    ⚠️ 마구리 두께는 **알약 키에서 뽑는다**(슬라이스 × 키 ÷ 그림 높이). 고정 px로 두면
    알약이 커질수록 마구리만 그대로라 둥근 끝이 납작하게 눌린다.
      pill_green 211×116 · pill_gold 194×118 · pill_wood 248×101 */
-.play-pill {
-  border-style: solid;
+/* ══ 가로 3분할 그림 공통 — 이음매 없이 그리고, 글씨는 **세 영역 전체의** 가운데에 ═══
+   헤더의 턴 판·단계 판·알약 넷, 축제 진행도 띠가 이 규칙을 함께 쓴다.
+   각자 정하는 것은 변수뿐이다:
+     --s3-img  그림        --s3-sl / --s3-sr  원본 좌·우 슬라이스(px, 단위 없이)
+     --s3-cl / --s3-cr     화면에서의 좌·우 마구리 두께(= 슬라이스 × 요소 높이 ÷ 그림 높이)
+
+   ⚠️ **이음매(세로 선)** — 요소 위치가 소수점 픽셀이면 마구리와 가운데 조각이 만나는
+      자리에서 **두 조각이 모두 반투명하게 걸쳐** 1px 틈이 생기고, 그 틈으로 뒤가 비쳐
+      선으로 보인다. 그림자(drop-shadow)가 걸린 판은 틈 밑의 그림자까지 비쳐 더 짙다.
+      그래서 그림을 **두 겹** 깐다.
+        ::before  (위)  원래 두께 그대로
+        ::after   (밑)  마구리만 **1px 좁게** — 가운데 조각이 1px씩 더 넓게 깔린다
+      위층의 틈 밑에는 밑층의 **가운데 조각**이 있어 같은 나무·같은 색이 비치고,
+      밑층의 틈(1px 안쪽)은 위층의 불투명한 마구리가 덮는다.
+      그림자는 **밑층에만** 건다 — 위층에 걸면 위층 틈 자리에서 그림자가 비친다.
+
+   ⚠️ **가운데 정렬** — 그림을 요소 자신의 border로 그리면 글씨가 **가운데 조각 안에서만**
+      가운데라, 좌우 마구리 두께가 다른 그림(턴 판 60:100)에서는 글씨가 한쪽으로 쏠린다.
+      그림을 가상 요소로 내리고 요소에는 border를 두지 않은 뒤, **양쪽 안여백을 넓은
+      마구리에 맞춰 같게** 준다. 글씨가 마구리 그림(잎·덩굴)을 침범하지 않으면서
+      세 영역을 합친 상자의 한가운데에 온다. */
+.play-pill,
+.play-turn-bar,
+.play-step-bar,
+.play-acorn-bar {
+  border: 0;
   border-radius: 0;
   background: none;
+}
+/* 가상 요소의 음수 z-index가 요소 밖(헤더 배경 뒤)으로 새지 않도록 쌓임 맥락을 만든다.
+   ⚠️ `.play-acorn-bar`는 넣지 않는다 — 이미 `fixed`라 맥락이 있고, 여기서 0을 주면
+      Tailwind의 `z-40`(레이어 안이라 우선순위가 낮다)을 덮어 띠가 보드 뒤로 숨는다. */
+.play-pill,
+.play-turn-bar,
+.play-step-bar { z-index: 0; }
+.play-pill::before, .play-pill::after,
+.play-turn-bar::before, .play-turn-bar::after,
+.play-step-bar::before, .play-step-bar::after,
+.play-acorn-bar::before, .play-acorn-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-style: solid;
+  border-image-source: var(--s3-img);
+  border-image-slice: 0 var(--s3-sr) 0 var(--s3-sl) fill;
+  border-image-repeat: stretch;
+}
+.play-pill::before, .play-turn-bar::before, .play-step-bar::before, .play-acorn-bar::before {
+  z-index: -1;
+  border-width: 0 var(--s3-cr) 0 var(--s3-cl);
+}
+.play-pill::after, .play-turn-bar::after, .play-step-bar::after, .play-acorn-bar::after {
+  z-index: -2;
+  border-width: 0 calc(var(--s3-cr) - 1px) 0 calc(var(--s3-cl) - 1px);
+  filter: var(--s3-shadow, none);
+}
+
+.play-pill {
+  /* 알약 **상자** 키. 예전에는 인라인 요소라 실제로 그려진 키가 44.5px(1920)로 --pill-h
+     (51.2px)보다 작았다. 키를 못 박으면서 보이는 크기가 커지지 않도록 그 비율(0.87)을 둔다.
+     마구리도 이 키에서 뽑는다 — 예전에는 --pill-h에서 뽑아 둥근 끝이 옆으로 조금 늘어져 있었다. */
+  --pill-box-h: calc(var(--pill-h) * 0.87);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* 키를 못 박는다 — 마구리 두께가 이 키에서 나오므로 둘이 어긋나면 둥근 끝이 눌린다 */
+  height: var(--pill-box-h);
   line-height: 1;
-  padding-block: calc(var(--pill-h) * 0.17);
-  padding-inline: calc(var(--pill-h) * 0.08);
+  padding-block: 0;
+  padding-inline: calc(max(var(--s3-cl), var(--s3-cr)) + var(--pill-h) * 0.08);
   /* 0.53 = 0.66 × **0.8배**(요청) — 글씨가 알약을 꽉 채우던 것을 물렸다 */
   font-size: calc(var(--pill-h) * 0.53);
 }
 /* 팀 이름표 두 장 — 한 벌로 그려져 와서 좌우 마구리가 서로 다르다(잎 배치가 다르다).
    실측(연두 좌 107·우 90 / 빨강 좌 108·우 89)에 2px씩 얹어 잎이 캡 안에 다 들어가게 했다. */
-.play-pill-green { border-width: 0 calc(var(--pill-h) * 92 / 227) 0 calc(var(--pill-h) * 109 / 227); border-image: url('/play/pill_green.webp') 0 92 0 109 fill stretch; color: #08361c; }
-.play-pill-red   { border-width: 0 calc(var(--pill-h) * 91 / 228) 0 calc(var(--pill-h) * 110 / 228); border-image: url('/play/pill_red.webp')   0 91 0 110 fill stretch; color: #45060f; }
-.play-pill-gold  { border-width: 0 calc(var(--pill-h) * 70 / 118); border-image: url('/play/pill_gold.webp')  0 70 fill stretch; color: #5b3a05; }
-.play-pill-wood  { border-width: 0 calc(var(--pill-h) * 50 / 101); border-image: url('/play/pill_wood.webp')  0 50 fill stretch; color: #f3e6cb; }
+.play-pill-green {
+  --s3-img: url('/play/pill_green.webp'); --s3-sl: 109; --s3-sr: 92;
+  --s3-cl: calc(var(--pill-box-h) * 109 / 227); --s3-cr: calc(var(--pill-box-h) * 92 / 227);
+  color: #08361c;
+}
+.play-pill-red {
+  --s3-img: url('/play/pill_red.webp'); --s3-sl: 110; --s3-sr: 91;
+  --s3-cl: calc(var(--pill-box-h) * 110 / 228); --s3-cr: calc(var(--pill-box-h) * 91 / 228);
+  color: #45060f;
+}
+.play-pill-gold {
+  --s3-img: url('/play/pill_gold.webp'); --s3-sl: 70; --s3-sr: 70;
+  --s3-cl: calc(var(--pill-box-h) * 70 / 118); --s3-cr: var(--s3-cl);
+  color: #5b3a05;
+}
+.play-pill-wood {
+  --s3-img: url('/play/pill_wood.webp'); --s3-sl: 50; --s3-sr: 50;
+  --s3-cl: calc(var(--pill-box-h) * 50 / 101); --s3-cr: var(--s3-cl);
+  color: #f3e6cb;
+}
 
 /* 도토리 축제 **추가 뽑기 진행도** 띠 — acorn_bar(619×164).
    좌 마구리 180에 **도토리 두 알이 이미 그려져 있다** — 그래서 글에 🌰를 또 쓰지 않는다.
@@ -3806,17 +3894,19 @@ body {
 .play-acorn-bar {
   /* 1920에서 54px — 예전 30px의 **1.8배**(요청: 1.6배 이상) */
   --bar-h: calc(var(--stage-w) * 0.03);
+  /* 그림·이음매 처리는 "가로 3분할 그림 공통" 규칙이 맡는다 */
+  --s3-img: url('/play/acorn_bar.webp'); --s3-sl: 180; --s3-sr: 110;
+  --s3-cl: calc(var(--bar-h) * 180 / 164); --s3-cr: calc(var(--bar-h) * 110 / 164);
+  --s3-shadow: drop-shadow(0 calc(var(--bar-h) * 0.06) calc(var(--bar-h) * 0.07) rgba(0, 0, 0, 0.5));
   height: var(--bar-h);
-  border-style: solid;
-  border-width: 0 calc(var(--bar-h) * 110 / 164) 0 calc(var(--bar-h) * 180 / 164);
-  border-image: url('/play/acorn_bar.webp') 0 110 0 180 fill stretch;
-  border-radius: 0;
-  background: none;
-  padding: 0;
+  /* ⚠️ 이 띠만은 안여백을 **좌우 다르게** 둔다 — 왼쪽 마구리에 도토리 두 알이 그려져
+     있어, 글씨는 그 오른쪽(가운데 조각)에 앉아야 한다. 헤더 판들처럼 전체 가운데에
+     두면 글씨가 도토리를 덮는다. */
+  padding-block: 0;
+  padding-inline: var(--s3-cl) var(--s3-cr);
   font-size: calc(var(--bar-h) * 0.4);
   color: #f7e6c2;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  filter: drop-shadow(0 calc(var(--bar-h) * 0.06) calc(var(--bar-h) * 0.07) rgba(0, 0, 0, 0.5));
 }
 
 /* 실용신양 예약 뽑기 진행도 — 그림 없이 CSS. 도토리 쪽과 **같은 자리**를 쓴다
