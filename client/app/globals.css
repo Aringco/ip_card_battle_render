@@ -736,12 +736,30 @@ body {
      마구리  좌 110(잎+덩굴) / 우 165(잎+덩굴) · 가운데 235가 민짜
      배율    두께 ÷ 슬라이스 = 0.15 (띠 높이 28px 기준)
    ⚠️ 좌우 두께를 바꾸면 **같은 배율**을 유지할 것 — 한쪽만 바꾸면 그쪽 잎만 눌린다. */
+/* 콘텐츠 묶음 — 들보의 **빈 나무 자리**(그림의 17%~93%) 한가운데에 둔다.
+   그 한가운데가 55%다. 50%에 두면 왼쪽 끝이 팻말 위로 올라탄다. */
+.play-hdr-group {
+  left: 55%;
+  gap: calc(var(--hdr-h) * 0.2);
+}
+
+/* 다음 강화 예고 — 배지 본문보다 한 단계 더 작게 */
+.festival-next-badge {
+  margin-left: calc(var(--pill-h) * 0.18);
+  padding: calc(var(--pill-h) * 0.04) calc(var(--pill-h) * 0.16);
+  font-size: calc(var(--pill-h) * 0.3);
+  gap: calc(var(--pill-h) * 0.08);
+}
+
 .play-step-bar {
   border-style: solid;
-  border-width: 0 25px 0 17px;
+  border-width: 0 calc(var(--hdr-h) * 165 / 186) 0 calc(var(--hdr-h) * 110 / 186);
   border-image: url('/play/bar_dark.webp') 0 165 0 110 fill stretch;
   border-radius: 0;
   background: none;
+  /* 요청 3 — 알약이 띠의 위아래 나무에 닿지 않도록 (--hdr-h − --pill-h) / 2 */
+  padding-block: calc((var(--hdr-h) - var(--pill-h)) / 2);
+  gap: calc(var(--pill-h) * 0.12);
 }
 
 /* ── 턴 표시 띠 — bar_sm(373×119)을 **어둡게 깔고** 그 위에 글씨 ──────────────
@@ -752,7 +770,10 @@ body {
 .play-turn-bar {
   position: relative;
   z-index: 0;
-  padding: 2px 8px;
+  line-height: 1;
+  padding-block: calc(var(--pill-h) * 0.14);
+  padding-inline: calc(var(--pill-h) * 0.1);
+  font-size: calc(var(--pill-h) * 0.72);
   color: #ffe6ad;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
@@ -762,7 +783,7 @@ body {
   inset: 0;
   z-index: -1;
   border-style: solid;
-  border-width: 0 20px 0 12px;
+  border-width: 0 calc(var(--pill-h) * 100 / 119) 0 calc(var(--pill-h) * 60 / 119);
   border-image: url('/play/bar_sm.webp') 0 100 0 60 fill stretch;
   filter: brightness(0.46) saturate(0.85);
 }
@@ -785,7 +806,7 @@ body {
 .step-chevron {
   display: inline-block;
   font-weight: 900;
-  font-size: 0.8rem;
+  font-size: calc(var(--pill-h) * 0.4);
   line-height: 1;
   animation: stepChevronFlow 1.1s ease-in-out infinite;
 }
@@ -800,8 +821,13 @@ body {
 .festival-running {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 2px 12px 2px 7px;
+  line-height: 1;
+  /* ⚠️ 알약(0.66)보다 **작게** 잡는다. 이 배지는 문구가 길어서 같은 배율로 키우면
+     턴·단계 띠와 합친 폭이 들보의 빈 나무 자리(17%~93%)를 넘는다 — 왼쪽은 팻말을,
+     오른쪽은 덩굴을 타고 올라간다. 문구도 함께 줄였다("진행 중"·"보너스"를 뺐다). */
+  font-size: calc(var(--pill-h) * 0.4);
+  gap: calc(var(--pill-h) * 0.11);
+  padding: calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.3) calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.16);
   border-radius: 999px;
   border: 1.5px solid rgba(214, 158, 74, 0.7);
   background: linear-gradient(180deg, #4b2c12 0%, #2a1607 100%);
@@ -3618,6 +3644,19 @@ body {
    좁혀서 막으므로 비율은 그대로다). 보통 화면에서는 이 상한에 닿지 않는다 —
    1600×900에서 상한 폭이 2090px이라 100vw가 먼저 걸린다. */
 .play-beam {
+  /* ── 들보 안 콘텐츠의 키 ────────────────────────────────────────────────
+     예전엔 text-sm·px-2 같은 **고정 크기**라 들보가 커져도 글씨는 그대로여서,
+     1920에서 들보 높이의 15%밖에 안 됐다.
+     이제 나무 몸통 높이(그림의 119/233)의 **80%**를 콘텐츠 블록 높이로 잡고,
+     글씨·안여백·마구리 두께를 전부 거기서 파생시킨다.
+       1920 → 몸통 86px · 콘텐츠 69px (예전 26px의 2.65배)
+       1366 → 몸통 61px · 콘텐츠 49px
+     ⚠️ 화면이 작아지면 함께 작아진다 — 고정 배율(2.5배)로 두면 1366에서 콘텐츠가
+     들보 밖으로 나간다(실제로 2.5배면 폭이 1860px로 들보 1284px를 넘는다). */
+  --hdr-h: calc(var(--beam-h) * 119 / 233 * 0.8);
+  /* 띠 안에 앉는 알약의 키 — 위아래 안여백(요청 3)을 뺀 나머지 */
+  --pill-h: calc(var(--hdr-h) * 0.72);
+
   position: relative;
   width: var(--stage-w);   /* ⚠️ 액자와 **같은 값**이다(:root의 --stage-w) */
   height: var(--beam-h);
@@ -3673,16 +3712,43 @@ body {
   white-space: nowrap;
 }
 
-/* 알약 3종 — 단계 표시·이름표. 캡은 16px 높이 기준(border-width/슬라이스 ≈ 0.14) */
+/* 알약 — 단계 표시·이름표.
+   ⚠️ 마구리 두께는 **알약 키에서 뽑는다**(슬라이스 × 키 ÷ 그림 높이). 고정 px로 두면
+   알약이 커질수록 마구리만 그대로라 둥근 끝이 납작하게 눌린다.
+     pill_green 211×116 · pill_gold 194×118 · pill_wood 248×101 */
 .play-pill {
   border-style: solid;
   border-radius: 0;
   background: none;
-  padding: 0 3px;
+  line-height: 1;
+  padding-block: calc(var(--pill-h) * 0.17);
+  padding-inline: calc(var(--pill-h) * 0.06);
+  font-size: calc(var(--pill-h) * 0.66);
 }
-.play-pill-green { border-width: 0 10px; border-image: url('/play/pill_green.webp') 0 70 fill stretch; color: #08361c; }
-.play-pill-gold  { border-width: 0 10px; border-image: url('/play/pill_gold.webp')  0 70 fill stretch; color: #5b3a05; }
-.play-pill-wood  { border-width: 0 7px;  border-image: url('/play/pill_wood.webp')  0 50 fill stretch; color: #f3e6cb; }
+.play-pill-green { border-width: 0 calc(var(--pill-h) * 70 / 116); border-image: url('/play/pill_green.webp') 0 70 fill stretch; color: #08361c; }
+.play-pill-gold  { border-width: 0 calc(var(--pill-h) * 70 / 118); border-image: url('/play/pill_gold.webp')  0 70 fill stretch; color: #5b3a05; }
+.play-pill-wood  { border-width: 0 calc(var(--pill-h) * 50 / 101); border-image: url('/play/pill_wood.webp')  0 50 fill stretch; color: #f3e6cb; }
+
+/* 상대 팀 알약 — 빨간 그림이 따로 없어 **연두 알약의 색을 돌려** 쓴다(요청 2).
+   ⚠️ filter를 알약 자신에 걸면 **글씨까지** 함께 돌아 팀 이름이 파랗게 뜬다.
+   그래서 그림만 ::before로 내려 깔고 거기에만 건다(턴 표시 띠와 같은 수법).
+   연두의 색상각이 154°라 그만큼 되돌리면 빨강 부근이 된다. */
+.play-pill-red {
+  position: relative;
+  z-index: 0;
+  border: 0;
+  color: #4a0410;
+}
+.play-pill-red::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-style: solid;
+  border-width: 0 calc(var(--pill-h) * 70 / 116);
+  border-image: url('/play/pill_green.webp') 0 70 fill stretch;
+  filter: hue-rotate(-150deg) saturate(1.5);
+}
 
 /* 도토리 축제 **추가 뽑기 진행도** 띠 — acorn_bar(619×164).
    좌 마구리 180에 **도토리 두 알이 이미 그려져 있다** — 그래서 글에 🌰를 또 쓰지 않는다.

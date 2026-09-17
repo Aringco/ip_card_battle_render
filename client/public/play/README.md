@@ -83,12 +83,21 @@ cd client && node scripts/cutPlaySheet.mjs
 | `.play-beam` | **`upper_bar`** | 2500×233 | **분할 없음 — 통째 확대** | 상자 비율을 그림 비율에 맞춤 | 상단 바 (너비의 1/10.73) |
 | `.play-frame` | **`play_frame`** | 1352×690 | **분할 없음 — 통째 확대** | 칸 좌표를 %로 (`.play-cell-*`) | 플레이 화면 전체 |
 | `.play-nameplate` | (그림 없음 — 팻말이 `upper_bar` 안에 있다) | — | 절대 배치 | x 129 / y 71 / 304×107 (÷237) | 팻말 위 두 줄 |
-| `.play-pill-green` | `pill_green` | 211×116 | 3분할 | 캡 10 / 70 | 단계 알약 (16px) |
-| `.play-pill-gold` | `pill_gold` | 194×118 | 3분할 | 캡 10 / 70 | (예비) |
-| `.play-pill-wood` | `pill_wood` | 248×101 | 3분할 | 캡 7 / 50 | 단계 알약(비활성) |
+| `.play-pill-green` | `pill_green` | 211×116 | 3분할 | 캡 **`--pill-h`×70/116** / 70 | 팀 알약(우리) |
+| `.play-pill-red` | `pill_green` + `hue-rotate(-150deg)` | 211×116 | 3분할 | 같음 | 팀 알약(상대) |
+| `.play-pill-gold` | `pill_gold` | 194×118 | 3분할 | 캡 **`--pill-h`×70/118** / 70 | 지금 단계 |
+| `.play-pill-wood` | `pill_wood` | 248×101 | 3분할 | 캡 **`--pill-h`×50/101** / 50 | 다음/지난 단계 |
 | `.play-acorn-bar` | `acorn_bar` | 619×164 | 3분할 | 캡 33·20 / 180·110 | 축제 **추가 뽑기 진행도** (30px) |
-| `.play-step-bar` | `bar_dark` | 510×186 | 3분할 | 캡 17·25 / 110·165 | 헤더 단계 도식 (28px) |
-| `.play-turn-bar::before` | `bar_sm` | 373×119 | 3분할 | 캡 12·20 / 60·100 | 헤더 턴 표시 (24px) |
+| `.play-step-bar` | `bar_dark` | 510×186 | 3분할 | 캡 **`--hdr-h`×110·165/186** | 헤더 단계 도식 |
+| `.play-turn-bar::before` | `bar_sm` | 373×119 | 3분할 | 캡 **`--pill-h`×60·100/119** | 헤더 턴 표시 |
+
+> ⚠️ **들보 안 조각의 캡은 고정 px이 아니라 `--hdr-h`/`--pill-h`에서 뽑는다.** 고정으로
+> 두면 들보가 커질수록 마구리만 그대로라 알약의 둥근 끝이 납작하게 눌린다. 두 변수는
+> `.play-beam`이 정하고, 값은 **나무 몸통 높이(그림의 119/233)의 80%**다.
+>
+> ⚠️ 콘텐츠 묶음(`.play-hdr-group`)은 들보의 50%가 아니라 **55%**에 둔다 — 왼쪽
+> 5~17%는 팻말이라, 50%에 두고 키우면 왼쪽 끝이 팻말 위로 올라탄다. 쓸 수 있는 폭은
+> 17%~93%뿐이므로 **셋을 합친 폭이 그 안에 들어가는지** 확인하고 키울 것.
 | `.play-note-card` | `label_small` | 256×182 | 9분할 | 두께 20 / 66 | 안내 쪽지 |
 | `.play-gauge-track` | `gauge_track` | 170×53 | 3분할 | 캡 7 / 30 | 타이머 (12px) |
 | `.play-gauge-fill` | `gauge_fill` | 239×53 | 3분할 | 캡 7 / 30 | 타이머 채움 |

@@ -10,9 +10,7 @@ function StepPill({ label, active }: { label: string; active: boolean }) {
     //
     // 지금 단계는 **금색**, 지난/다음 단계는 나무색이다. 연두는 바로 왼쪽의 팀 알약이
     // 쓰므로(같은 띠 안에서 둘이 같은 색이면 무엇이 "지금"인지 흐려진다) 비워 뒀다.
-    <span
-      className={`play-pill ${active ? 'play-pill-gold' : 'play-pill-wood'} py-1 text-sm font-bold whitespace-nowrap`}
-    >
+    <span className={`play-pill ${active ? 'play-pill-gold' : 'play-pill-wood'} font-bold whitespace-nowrap`}>
       {label}
     </span>
   );
@@ -58,6 +56,10 @@ export function GameHeader({
   const spectatorLabelStyle = spectating
     ? { color: SPECTATOR_TEAM_PALETTE[displayedActiveTeam].base }
     : undefined;
+  // 팀 알약 색 — 우리 차례면 연두, 상대 차례면 빨강(요청 2).
+  // 관전 시점에는 "우리/상대"라는 기준이 없으므로 연두 하나로 두고, 대신 글자색을
+  // 그 팀의 중립색(민트·핑크)으로 칠해 화면 다른 곳과 같은 기준으로 읽히게 한다.
+  const teamPillClass = spectating || displayedActiveTeam === myTeam ? 'play-pill-green' : 'play-pill-red';
   // 서버가 이미 pendingChoice를 세워도(=장소 뽑기 자체는 끝났어도), 카드가 날아가고
   // 경험치·레벨이 반영되는 정산 연출이 다 끝나기 전까지는 아직 "행동 선택" 단계가
   // 아니다 — 그 앞 단계(장소 선택)가 마무리되는 그림을 계속 보여준다.
@@ -82,16 +84,18 @@ export function GameHeader({
         <span className="play-nameplate-turn font-bold">{nickname} 차례</span>
       </div>
 
-      {/* 나뭇잎 장식이 화면 좌우 모서리를 가리므로, 턴/단계 표시는 항상 잘 보이도록 중앙에 고정 */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
+      {/* ⚠️ 들보의 가운데(50%)가 아니라 **빈 나무 자리의 가운데**에 둔다.
+          왼쪽 5~17%는 팻말이 차지하고 오른쪽 끝은 덩굴이라, 50%에 두고 콘텐츠를 키우면
+          왼쪽 끝이 팻말 위로 올라탄다(예전 크기에서는 좁아서 드러나지 않았다). */}
+      <div className="play-hdr-group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
         {/* 턴 — 작은 나무 띠(bar_sm)를 어둡게 깔고 그 위에 숫자 */}
-        <span className="play-turn-bar text-base font-bold tabular-nums whitespace-nowrap">
+        <span className="play-turn-bar font-bold tabular-nums whitespace-nowrap">
           {gameState.turn} / {MAX_TURN}턴
         </span>
 
         {/* 팀 · 장소 선택 → 행동 선택 — 짙은 나무 띠(bar_dark) 위에 알약 셋 */}
         <div className="play-step-bar flex items-center gap-1.5 py-1">
-          <span className="play-pill play-pill-green py-1 text-xs font-bold whitespace-nowrap" style={spectatorLabelStyle}>
+          <span className={`play-pill ${teamPillClass} font-bold whitespace-nowrap`} style={spectatorLabelStyle}>
             {relativeLabel}
           </span>
           <StepPill label="장소 선택" active={isDrawPhase} />
@@ -99,19 +103,19 @@ export function GameHeader({
           <StepPill label="행동 선택" active={isChoicePhase} />
         </div>
         {gameState.festival && (
-          <span className="festival-running text-sm font-bold whitespace-nowrap">
+          <span className="festival-running font-bold whitespace-nowrap">
             {/* 도토리는 이모지가 아니라 에셋 한 장 — 주변 나무 띠들과 같은 그림체로 맞춘다 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={PLAY_ASSETS.iconAcorn} alt="" className="festival-running-icon" />
             <span className="festival-header-badge">
-              도토리 축제 진행 중! 보너스 랜덤 뽑기 +{festivalInfo.count}회!
+              도토리 축제! 랜덤 뽑기 +{festivalInfo.count}회
             </span>
             {/* 강화 주기가 남은 턴보다 커서 다시 오를 일이 없으면 예고 자체를 감춘다. */}
             {festivalInfo.turnsToNextStage !== null && (
               // 예고는 본문보다 한 단계 물러나 보여야 하므로 알약 전체를 반투명(opacity-50)으로
               // 깐다. 색(text-amber-100)을 직접 주는 것도 중요한데, 그러지 않으면 부모의
               // 깜빡임 애니메이션이 상속돼 숫자까지 함께 명멸한다.
-              <span className="ml-2 inline-flex items-baseline gap-1 rounded-full border border-amber-300/70 bg-amber-900 px-2 py-px text-xs font-bold text-amber-100 opacity-50 align-middle">
+              <span className="festival-next-badge inline-flex items-baseline gap-1 rounded-full border border-amber-300/70 bg-amber-900 font-bold text-amber-100 opacity-50 align-middle">
                 <span className="tabular-nums">{festivalInfo.turnsToNextStage}턴 후</span>
                 <span className="tabular-nums">
                   +{festivalInfo.count} → +{festivalInfo.nextCount}
