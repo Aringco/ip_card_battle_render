@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PLAY_ASSETS } from '@/lib/playAssets';
 
 export function TurnTimer({
   deadline,
@@ -41,9 +42,13 @@ export function TurnTimer({
   // 세 조각(모래시계 · 남은 시간 막대 · 남은 초)만 그린다.
   return (
     <>
-      <span className={`play-timer-icon ${isUrgent ? 'hourglass-shake' : ''}`} aria-hidden>
-        ⏳
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={PLAY_ASSETS.iconHourglass}
+        alt=""
+        className={`play-timer-icon ${isUrgent ? 'hourglass-shake' : ''}`}
+        draggable={false}
+      />
       <span className="play-timer-bar">
         <span
           className={`play-timer-fill ${tone ? `play-timer-fill-${tone}` : ''}`}

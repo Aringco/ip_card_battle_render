@@ -159,6 +159,7 @@ export const IMAGE_FILES: string[] = [
   "/play/gauge_track.webp",
   "/play/icon_acorn.webp",
   "/play/icon_cog.webp",
+  "/play/icon_hourglass.webp",
   "/play/icon_lock.webp",
   "/play/label_small.webp",
   "/play/leaf_decal_1.webp",

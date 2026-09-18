@@ -865,7 +865,13 @@ body {
      오른쪽은 덩굴을 타고 올라간다. 문구도 함께 줄였다("진행 중"·"보너스"를 뺐다). */
   font-size: calc(var(--pill-h) * 0.34 * var(--font-scale));
   gap: calc(var(--pill-h) * 0.11);
-  padding: calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.3) calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.16);
+  /* ⚠️ **줄어들지 않게 막는다.** 묶음(.play-hdr-group)이 flex라 자리가 빠듯하면 이 배지가
+     먼저 눌리는데, 안의 글자는 `nowrap`이라 그대로여서 **안여백을 침범해** 예고 배지가
+     통의 오른쪽 끝에 딱 붙어 버렸다(padding-right가 23.5px인데 실제 여백은 6px이었다).
+     안여백을 키우는 것만으로는 안 고쳐진다 — 눌리는 것 자체를 막아야 한다. */
+  flex-shrink: 0;
+  /* 오른쪽을 넉넉히 — "N턴 후 +2 → +3" 예고 배지가 통의 오른쪽 끝에 딱 붙어 있었다(요청) */
+  padding: calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.46) calc(var(--pill-h) * 0.13) calc(var(--pill-h) * 0.16);
   border-radius: 999px;
   border: 1.5px solid rgba(214, 158, 74, 0.7);
   background: linear-gradient(180deg, #4b2c12 0%, #2a1607 100%);
@@ -3941,11 +3947,16 @@ body {
   /* 문구 길이에 따라 창이 들쭉날쭉하지 않도록 최소 길이를 잡는다(요청: 충분히 길게).
      짧은 문구("상대 턴이에요.")에서도 창이 같은 크기로 남는다. */
   min-width: calc(var(--timer-h) * 7);
-  border-style: solid;
-  border-width: 0 calc(var(--timer-h) * 30 / 53);
-  border-image: url('/play/gauge_track.webp') 0 30 fill stretch;
-  border-radius: 0;
-  background: none;
+  /* ⚠️ 창은 **그림이 아니라 CSS**로 그린다(요청) — 예전에는 `gauge_track`을 크게 늘려
+     썼는데, 원본이 170×53짜리 작은 캡슐이라 100~150px로 키우면 외곽선과 광택이
+     뭉개졌다. 크림색 + 좌우 둥근 모서리 + 검은 테두리는 CSS가 어느 크기에서도
+     또렷하게 그린다.
+     테두리 두께도 창 높이에 비례시킨다 — 고정 px이면 창이 커질수록 선만 가늘어진다. */
+  border: calc(var(--timer-h) * 0.035) solid #211505;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff6df 0%, #fbe9c2 55%, #f2d9a6 100%);
+  box-shadow: inset 0 calc(var(--timer-h) * 0.03) 0 rgba(255, 255, 255, 0.75);
+  padding-inline: calc(var(--timer-h) * 0.22);
   color: #4a3728;
   /* ⚠️ 창이 100~150px이라 들보(38px)보다 훨씬 커서 위아래로 넘친다 — 어딘가는 가린다.
      가운데에 두면 아래로 넘친 만큼이 기술 카드의 "레벨 부족" 문구를 덮으므로,
@@ -3955,15 +3966,27 @@ body {
   filter: drop-shadow(0 calc(var(--timer-h) * 0.03) calc(var(--timer-h) * 0.04) rgba(0, 0, 0, 0.35));
 }
 /* 모래시계 */
-.play-timer-icon { font-size: calc(var(--timer-h) * 0.34 * var(--font-scale)); line-height: 1; }
+/* 모래시계 — ⏳ 이모지 대신 그린 아이콘(icon_hourglass). 이모지는 OS마다 모양이 달라
+   보는 사람에 따라 화면이 달라졌다. 막대와 키를 맞춰 나란히 선다. */
+.play-timer-icon {
+  height: calc(var(--timer-h) * 0.58);
+  width: auto;
+  flex-shrink: 0;
+  filter: drop-shadow(0 calc(var(--timer-h) * 0.015) calc(var(--timer-h) * 0.02) rgba(0, 0, 0, 0.4));
+}
 /* 남은 시간 막대 — 트랙은 창 안쪽을 파낸 홈처럼, 채움은 단계별 색 그라디언트 */
+/* 막대 — **창 높이에 맞춘다**(요청). 예전 0.2배는 창에 비해 너무 얇아 창 안이 비어
+   보였다. 창 안쪽(테두리·안여백을 뺀 자리)을 거의 채우는 0.46배로 잡는다. */
 .play-timer-bar {
   flex: 1;
-  height: calc(var(--timer-h) * 0.2);
-  min-width: calc(var(--timer-h) * 1.6);
+  height: calc(var(--timer-h) * 0.46);
+  /* ⚠️ 최소 길이를 넉넉히. `flex: 1`이지만 문구가 길어 창이 내용 크기로 늘어나면
+     남는 자리가 없어 막대가 이 값 그대로 짧게 그려진다(실제로 짧게 나왔다). */
+  min-width: calc(var(--timer-h) * 3.2);
   border-radius: 999px;
-  background: rgba(120, 90, 50, 0.22);
-  box-shadow: inset 0 1px 3px rgba(80, 55, 20, 0.45);
+  border: calc(var(--timer-h) * 0.022) solid #6b4a22;
+  background: rgba(120, 90, 50, 0.25);
+  box-shadow: inset 0 calc(var(--timer-h) * 0.015) calc(var(--timer-h) * 0.03) rgba(80, 55, 20, 0.5);
   overflow: hidden;
 }
 /* ⚠️ `display: block`이 꼭 있어야 한다. 이 채움은 `<span>`이라 기본이 inline인데,

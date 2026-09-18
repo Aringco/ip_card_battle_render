@@ -98,6 +98,8 @@ export const PLAY_ASSETS = {
   badgeCrown: '/play/badge_crown.webp',
   iconLock: '/play/icon_lock.webp',
   iconAcorn: '/play/icon_acorn.webp',
+  /** 타이머 창의 모래시계 — 원본이 960×1316이라 자를 때 256px로 줄였다(cutPlaySheet의 resizeH) */
+  iconHourglass: '/play/icon_hourglass.webp',
   iconCog: '/play/icon_cog.webp',
 
   decorLog: '/play/decor_log.webp',

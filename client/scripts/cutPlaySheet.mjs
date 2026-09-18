@@ -36,6 +36,8 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  *              덩굴로 이어져 한 성분이 된 경우에만 쓴다.
  *   mirrorCap… 왼쪽 끝을 오른쪽 끝의 좌우 반전으로 만들어 붙인다(들보 전용).
  *   trimTop  … 위쪽 몇 줄을 버린다(옆 조각에서 가늘게 이어진 부스러기 제거용).
+ *   resizeH  … 잘라낸 뒤 이 높이로 줄인다. 원본이 화면에서 쓰는 크기보다 훨씬 클 때
+ *              쓴다 — 그냥 두면 쓰지도 않는 해상도가 그대로 빌드에 실린다.
  * 시트 단위 옵션
  *   stripTop … 시트 맨 위 몇 줄을 통째로 지운다. 배경 제거가 남긴 **가장자리 띠**
  *              전용이다 — 폭 전체를 가로지르므로 그대로 두면 그 줄이 닿는 조각이
@@ -163,6 +165,16 @@ const SHEETS = [
     pieces: [
       { name: 'pill_green', at: [34, 255, 410, 227] },
       { name: 'pill_red', at: [463, 255, 412, 228] },
+    ],
+  },
+  {
+    // 타이머 창의 모래시계 — 한 장짜리 그림(흰 배경).
+    // ⚠️ 알파가 없는 3채널로 왔지만, 테두리에서 출발하는 flood fill이 흰 배경을 지운다.
+    //    유리 안쪽의 흰 부분은 검은 외곽선이 막아 줘서 뚫리지 않는다.
+    // ⚠️ 원본이 960×1316인데 화면에서는 40px 남짓으로 그려진다 — resizeH로 줄인다.
+    src: 'sand_timer.png',
+    pieces: [
+      { name: 'icon_hourglass', at: [800, 285, 960, 1316], resizeH: 256 },
     ],
   },
   {
@@ -393,8 +405,15 @@ for (const { src, pieces, ...sheetOpts } of SHEETS) {
       w += cap;
     }
 
+    let out = sharp(buf, { raw: { width: w, height: h, channels: 4 } });
+    if (piece.resizeH) { out = out.resize({ height: piece.resizeH }); }
+
     const file = path.join(OUT_DIR, `${piece.name}.webp`);
-    await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).webp({ quality: 92 }).toFile(file);
+    await out.webp({ quality: 92 }).toFile(file);
+    if (piece.resizeH) {
+      const m = await sharp(file).metadata();
+      w = m.width; h = m.height;
+    }
     report.push([piece.name, w, h, fs.statSync(file).size]);
   }
 }
