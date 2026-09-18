@@ -78,7 +78,7 @@ export default function RootLayout({
             같아야 한다 — 이 파일은 순수 문자열이라 그쪽 상수를 import해서 쓸 수 없다. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var s=[0.85,0.92,1,1.12,1.25,1.4,1.55][(+localStorage.getItem('cardBattle_fontStep')||4)-1];if(s)document.documentElement.style.setProperty('--font-scale',s)}catch(e){}`,
+            __html: `try{var s=[0.94,1,1.06,1.12,1.18,1.24,1.3][(+localStorage.getItem('cardBattle_fontStep')||4)-1];if(s)document.documentElement.style.setProperty('--font-scale',s)}catch(e){}`,
           }}
         />
         {children}

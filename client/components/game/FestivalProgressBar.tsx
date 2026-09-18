@@ -8,17 +8,17 @@ export function FestivalProgressBar({ progress }: { progress: FestivalProgress |
   if (!progress) return null;
 
   const teamLabel = progress.team === 'A' ? '🟢' : '🔵';
-  const remaining = Math.max(0, progress.total - progress.current);
 
   return (
     // ⚠️ 🌰를 글에 쓰지 않는다 — 띠 그림의 왼쪽 마구리에 도토리 두 알이 이미 그려져 있어
     // 같이 두면 도토리가 넷으로 보인다.
-    <div className="play-acorn-bar play-progress-top fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 font-bold pointer-events-none">
+    // 자리는 오른쪽 — 들보의 "도토리 축제! 랜덤 뽑기" 배지 **바로 밑**이다(요청).
+    // 실용신양 진행도(가운데)와 나란히 서도 서로 겹치지 않는다.
+    <div className="play-acorn-bar play-progress-top play-progress-right fixed z-40 flex items-center gap-2 font-bold pointer-events-none">
       <span>{teamLabel} 도토리 축제 추가 뽑기</span>
       <span className="tabular-nums text-amber-200">
         {progress.current} / {progress.total}
       </span>
-      {remaining > 0 && <span className="text-amber-100/70">(남은 {remaining}회)</span>}
     </div>
   );
 }

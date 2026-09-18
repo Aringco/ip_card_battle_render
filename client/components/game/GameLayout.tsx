@@ -7,8 +7,6 @@ import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { MainComboBanner } from '@/components/effects/MainComboBanner';
-import { SheepLoadedBanner } from '@/components/effects/SheepLoadedBanner';
-import { FestivalLoadedBanner } from '@/components/effects/FestivalLoadedBanner';
 import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
@@ -246,11 +244,10 @@ export function GameLayout({
         floatingTexts={animState.floatingTexts}
       />
 
-      {/* 실용신양 발동 예고 — "예약된 카드 N장 뽑기!" */}
-      <SheepLoadedBanner loaded={animState.sheepLoaded} />
-
-      {/* 도토리 축제 랜덤 뽑기 발동 예고 — "도토리 축제 효과! 랜덤 뽑기 N회!" */}
-      <FestivalLoadedBanner loaded={animState.festivalLoaded} />
+      {/* ⚠️ 발동 예고 배너 둘("예약된 카드 N장 뽑기!" · "도토리 축제 효과! 랜덤 뽑기 N회!")은
+          걷어냈다(요청) — 같은 내용을 진행도 팝업이 **뽑는 내내** 보여주므로, 화면 가운데를
+          잠깐 덮는 배너가 겹쳐 뜨면 그 팝업을 오히려 가렸다.
+          축제 **시작** 배너는 남긴다 — 진입 순간 딱 한 번, 방 규칙을 알리는 다른 역할이다. */}
       <FestivalStartBanner info={animState.festivalStartInfo} />
 
       {/* 예약된 추가 뽑기 콤보 텍스트 (fixed, 화면 전역) */}
