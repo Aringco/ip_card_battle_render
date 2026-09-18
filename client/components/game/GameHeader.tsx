@@ -3,6 +3,28 @@ import { MAX_TURN, festivalDrawInfoAt } from 'shared';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 import { PLAY_ASSETS } from '@/lib/playAssets';
 
+/**
+ * 팻말 글자가 길면 **글자 수에 반비례해 줄인다.**
+ *
+ * 팀 이름·닉네임은 최대 12자인데(shared/constants.ts) 제 크기로는 팻말에 일곱 자
+ * 남짓만 들어가, 그보다 길면 "…"으로 잘렸다. 짧은 이름은 그대로 크게 두고 긴 이름만
+ * 줄이려면 글자 수를 세는 수밖에 없다 — CSS에는 "글자 수"라는 개념이 없다.
+ *
+ * ⚠️ 기준 글자수는 **글씨 크기 설정만큼 나눠 써야 한다.** 설정을 올리면 같은 팻말에
+ * 들어가는 글자가 그만큼 줄기 때문이다. 그 나눗셈은 CSS가 `--font-scale`을 곱하는
+ * 쪽에서 이미 일어나므로, 여기서는 배율만 넘기고 CSS가 둘을 함께 곱한다.
+ */
+function nameFit(text: string, fitChars: number): React.CSSProperties {
+  const len = Math.max(1, [...text].length);
+  return { ['--name-fit' as string]: Math.min(1, fitChars / len) };
+}
+
+/** 팻말 폭 ÷ 글자 크기에서 나온 값 — 둘 다 --beam-h 비례라 해상도가 달라져도 같다.
+ *  윗줄  (308/233) ÷ 0.165 ÷ 1.12(기본 글씨 배수) ≈ 7.2
+ *  아랫줄 (308/233) ÷ 0.122 ÷ 1.12               ≈ 9.7  ("○○ 차례"의 세 글자를 포함한다) */
+const TEAM_FIT_CHARS = 7;
+const TURN_FIT_CHARS = 9;
+
 function StepPill({ label, active }: { label: string; active: boolean }) {
   return (
     // 가로 안여백(px-2.5)을 뺀 것은 그림의 마구리가 이미 그 몫을 하기 때문이다 —
@@ -45,6 +67,8 @@ export function GameHeader({
 }) {
   const teamLabel = gameState.teamNames[displayedActiveTeam];
   const nickname = gameState.teams[displayedActiveTeam].members[displayedActivePlayerIndex] ?? '';
+  // 아랫줄은 "○○ 차례" 통째로 재야 한다 — 닉네임만 세면 뒤의 세 글자만큼 넘친다.
+  const turnLine = `${nickname} 차례`;
 
   // "지금 이 차례가 나(우리팀)인지 상대인지" + "장소 선택 → 행동 선택" 중 어느 단계인지를
   // 도식으로 보여준다. 실제 타이머는 해설판 가운데 오버레이(ActionPrompt)가 담당하므로
@@ -80,8 +104,15 @@ export function GameHeader({
       {/* 팻말은 이제 들보 그림 **안에** 그려져 있다. 그 양피지 자리에 글자만 얹는다 —
           좌표·글자 크기 모두 .play-nameplate가 --beam-h에서 뽑는다. */}
       <div className="play-nameplate hidden sm:flex text-center">
-        <span className="play-nameplate-team font-black" style={spectatorLabelStyle}>{teamLabel}</span>
-        <span className="play-nameplate-turn font-bold">{nickname} 차례</span>
+        <span
+          className="play-nameplate-team font-black"
+          style={{ ...spectatorLabelStyle, ...nameFit(teamLabel, TEAM_FIT_CHARS) }}
+        >
+          {teamLabel}
+        </span>
+        <span className="play-nameplate-turn font-bold" style={nameFit(turnLine, TURN_FIT_CHARS)}>
+          {turnLine}
+        </span>
       </div>
 
       {/* ⚠️ 들보의 가운데(50%)가 아니라 **빈 나무 자리의 가운데**에 둔다.

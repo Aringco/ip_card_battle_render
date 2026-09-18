@@ -3715,12 +3715,22 @@ body {
   line-height: 1.15;
   color: #4a3728;
 }
-/* 글자도 들보 높이를 따라간다 — 두 줄 합이 팻말 높이(0.444×beam-h)의 약 70%다 */
 /* 글자 크기는 **팻말 높이에 매인 값**이다(팀 0.343 · 차례 0.255 배).
-   새 그림에서 팻말이 상대적으로 커져(높이÷그림 0.451 → 0.481) 그만큼 함께 키웠다 —
-   안 키우면 팻말만 커지고 글자는 그대로라 양피지에 여백이 뜬다. */
-.play-nameplate-team { font-size: calc(var(--beam-h) * 0.165 * var(--font-scale)); }
-.play-nameplate-turn { font-size: calc(var(--beam-h) * 0.122 * var(--font-scale)); color: #6b5230; }
+   ⚠️ 거기에 **글자 수에 따른 배율(--name-fit)**을 한 번 더 곱한다.
+   팀 이름·닉네임은 최대 12자인데(shared/constants.ts) 제 크기로는 7자 남짓만 팻말에
+   들어가, 그보다 길면 "…"으로 잘렸다. GameHeader가 줄마다 글자 수를 세어
+   `min(1, 기준글자수 / 실제글자수)`를 넘겨주므로, 짧은 이름은 그대로 크고 긴 이름만
+   줄어든다. 기준 글자수는 팻말 폭 ÷ 글자 크기에서 나온 값이다(둘 다 --beam-h 비례라
+   해상도가 달라져도 같은 수가 나온다).
+   ⚠️ 글씨 크기 설정(--font-scale)을 올리면 들어가는 글자 수가 줄어든다 —
+   기준 글자수를 그 배수로 나눠 쓰는 것은 GameHeader 쪽에 있다. */
+.play-nameplate-team {
+  font-size: calc(var(--beam-h) * 0.165 * var(--font-scale) * var(--name-fit, 1));
+}
+.play-nameplate-turn {
+  font-size: calc(var(--beam-h) * 0.122 * var(--font-scale) * var(--name-fit, 1));
+  color: #6b5230;
+}
 .play-nameplate-team,
 .play-nameplate-turn {
   max-width: 100%;
@@ -3934,8 +3944,9 @@ body {
    함께 돌아 단계마다 재질이 달라 보였다. 이제 CSS 그라디언트로 그려 단계별 색을
    **그대로 지정**한다. */
 .play-timer-window {
-  /* 100~150px 사이(요청). 화면이 작아지면 함께 줄도록 vh에 물린다 */
-  --timer-h: clamp(100px, 11.5vh, 150px);
+/* ⚠️ 두께를 **절반으로** 줄였다(요청: 0.5배). 안의 모래시계·막대·글자·안여백이 전부
+   이 값의 배수라 하나만 고치면 **같은 비율로 함께** 작아진다 — 그게 이 변수를 둔 이유다. */
+  --timer-h: clamp(50px, 5.75vh, 75px);
   display: inline-flex;
   align-items: center;
   /* 상대 턴처럼 **타이머가 없는** 때는 문구만 남는데, 최소 길이 때문에 창은 그대로라
@@ -3956,7 +3967,11 @@ body {
   border-radius: 999px;
   background: linear-gradient(180deg, #fff6df 0%, #fbe9c2 55%, #f2d9a6 100%);
   box-shadow: inset 0 calc(var(--timer-h) * 0.03) 0 rgba(255, 255, 255, 0.75);
-  padding-inline: calc(var(--timer-h) * 0.22);
+  /* 좌우 여백을 넉넉히(요청) — 문구가 길어져도 글자가 둥근 끝에 닿지 않는다 */
+  padding-inline: calc(var(--timer-h) * 0.7);
+  /* ⚠️ 문구가 길어도 액자를 벗어나지 않게 상한을 둔다. 창은 내용 크기로 늘어나는데,
+     팀 이름이 최대 12자라 첫 턴 안내가 서른 자를 넘길 수 있다. */
+  max-width: calc(var(--pf-w) * 0.92);
   color: #4a3728;
   /* ⚠️ 창이 100~150px이라 들보(38px)보다 훨씬 커서 위아래로 넘친다 — 어딘가는 가린다.
      가운데에 두면 아래로 넘친 만큼이 기술 카드의 "레벨 부족" 문구를 덮으므로,
@@ -4015,7 +4030,10 @@ body {
 .play-timer-sec-warn   { color: #b45309; }
 .play-timer-sec-urgent { color: #b91c1c; }
 /* 안내 문구 — 창 안 오른쪽. 두 줄까지 들어간다(첫 턴 안내 + 지금 할 일) */
+/* ⚠️ `min-width: 0`이 있어야 상한에 걸렸을 때 이 칸이 줄어든다 — flex 항목의 기본값
+   `min-width: auto`는 내용보다 작아지기를 거부해, 창이 상한을 넘겨 버린다. */
 .play-timer-text {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: calc(var(--timer-h) * 0.03);
