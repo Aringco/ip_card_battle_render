@@ -6,12 +6,10 @@ export function TurnTimer({
   deadline,
   paused,
   totalMs,
-  big = false,
 }: {
   deadline: number; // 내 브라우저 시계(Date.now()) 기준 만료 시각 — useWebSocket이 환산해 넘겨준다
   paused: boolean;
   totalMs: number; // 게이지 100%에 해당하는 시간(ms) — 서버가 알려주는 "이번 턴에 실제로 주어진 시간"
-  big?: boolean; // 스킬 선택 안내줄처럼 더 크게 보여줘야 할 때
 }) {
   const maxSeconds = Math.max(1, totalMs / 1000);
   const [remaining, setRemaining] = useState(maxSeconds);
@@ -34,34 +32,27 @@ export function TurnTimer({
   const isUrgent = remaining <= Math.min(5, maxSeconds);
   const isWarn = remaining <= Math.min(10, maxSeconds);
 
-  // 채움 그림(gauge_fill)은 초록 한 벌뿐이라, 경고·위험 단계는 CSS가 색을 돌려 만든다.
-  const fillTone = isUrgent
-    ? 'play-gauge-fill-urgent'
-    : isWarn
-    ? 'play-gauge-fill-warn'
-    : '';
+  // ⚠️ 채움은 더 이상 **그림이 아니다**(gauge_fill 사용 중지). 예전에는 초록 한 벌짜리
+  // 그림을 `hue-rotate`로 돌려 경고·위험을 만들었는데, 색을 돌리면 그림의 광택까지
+  // 함께 돌아 단계마다 재질이 달라 보였다. CSS 그라디언트로 단계별 색을 그대로 지정한다.
+  const tone = isUrgent ? 'urgent' : isWarn ? 'warn' : null;
 
+  // 창(.play-timer-window)은 ActionPrompt가 그린다 — 여기서는 그 안에 들어가는
+  // 세 조각(모래시계 · 남은 시간 막대 · 남은 초)만 그린다.
   return (
-    <div className={`flex items-center ${big ? 'gap-3 min-w-[260px]' : 'gap-2 min-w-[180px]'}`}>
-      <span className={isUrgent ? 'hourglass-shake' : ''} style={{ fontSize: big ? '1.7rem' : '1rem' }}>
+    <>
+      <span className={`play-timer-icon ${isUrgent ? 'hourglass-shake' : ''}`} aria-hidden>
         ⏳
       </span>
-      {/* 트랙·채움 모두 가로 3분할이라 캡슐 끝 모양이 폭을 따라가지 않고 유지된다.
-          ⚠️ 트랙에 overflow-hidden을 걸지 않는다 — 채움이 자기 오른쪽 마구리(둥근 끝)를
-          그리는데, 잘라내면 그 자리가 각지게 끊긴다. */}
-      <div className={`play-gauge-track flex-1 ${big ? 'h-4' : 'h-3'}`}>
-        <div
-          className={`play-gauge-fill h-full transition-[width] duration-100 ${fillTone}`}
+      <span className="play-timer-bar">
+        <span
+          className={`play-timer-fill ${tone ? `play-timer-fill-${tone}` : ''}`}
           style={{ width: `${pct}%` }}
         />
-      </div>
-      <span
-        className={`text-right tabular-nums ${big ? 'text-xl w-9' : 'text-sm w-7'} ${
-          isUrgent ? 'text-red-600 font-bold' : isWarn ? 'text-orange-500 font-bold' : 'text-sky-700 font-bold'
-        }`}
-      >
+      </span>
+      <span className={`play-timer-sec ${tone ? `play-timer-sec-${tone}` : ''}`}>
         {Math.ceil(remaining)}
       </span>
-    </div>
+    </>
   );
 }

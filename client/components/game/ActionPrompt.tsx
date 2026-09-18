@@ -84,31 +84,33 @@ export function ActionPrompt({
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-      {/* 그림자(shadow-sm)를 뺐다 — 쪽지는 귀퉁이에 잎이 달린 모양 있는 그림이라
-          box-shadow가 그 바깥 네모를 따라 그려져 그늘이 드러난다. */}
-      <div className="play-note-card px-1 flex flex-col items-center gap-1">
-        {firstTeamNote && (
-          <p className="text-xs text-jungle-500 whitespace-nowrap">{firstTeamNote}</p>
+      {/* 타이머 **창** 하나에 넷(모래시계 · 막대 · 남은 초 · 문구)을 다 담는다.
+          예전에는 양피지 쪽지(label_small) 위에 게이지를 따로 얹었는데, 창 하나로 묶으니
+          "지금 몇 초 남았고 무엇을 해야 하는지"가 한 덩어리로 읽힌다. */}
+      <div className="play-timer-window">
+        {showTimer && (
+          // 막대 폭(=100%)은 방 설정값을 클라이언트가 다시 계산하지 않고 서버가 알려주는
+          // turnTotalMs를 그대로 쓴다 — 실용신양·도토리 축제 예약 뽑기로 늘어난 시간이나
+          // 행동할 게 없을 때의 짧은 시간까지 서버가 이미 반영해 보내주므로, 여기서
+          // 설정값만 보고 짐작하면 눈금과 숫자가 어긋난다.
+          <TurnTimer deadline={turnDeadline} paused={false} totalMs={turnTotalMs} />
         )}
-        <div className="flex items-center gap-3">
-          {showTimer && (
-            <div className="w-56 shrink-0">
-              {/* 게이지 폭(=100%)은 방 설정값을 클라이언트가 다시 계산하지 않고 서버가
-                  알려주는 turnTotalMs를 그대로 쓴다 — 실용신양·도토리 축제 예약 뽑기로
-                  늘어난 시간이나 행동할 게 없을 때의 짧은 시간까지 서버가 이미 반영해
-                  보내주므로, 여기서 설정값만 보고 짐작하면 눈금과 숫자가 어긋난다. */}
-              <TurnTimer deadline={turnDeadline} paused={false} totalMs={turnTotalMs} />
-            </div>
-          )}
-          <p
-            className={`font-bold whitespace-nowrap ${urgent ? 'text-amber-600' : 'text-jungle-700'}`}
+        <span className="play-timer-text">
+          {firstTeamNote && <span className="play-timer-note">{firstTeamNote}</span>}
+          <span
             // 관전자에게는 이 문구도 지금 차례인 팀의 색으로 — 어느 팀 차례인지를
             // 화면 곳곳(패널·보드 테두리·손가락)과 같은 색으로 일관되게 알려준다.
-            style={spectating ? { color: SPECTATOR_TEAM_PALETTE[displayedActiveTeam].deep } : undefined}
+            style={
+              spectating
+                ? { color: SPECTATOR_TEAM_PALETTE[displayedActiveTeam].deep }
+                : urgent
+                  ? { color: '#b45309' }
+                  : undefined
+            }
           >
             {text}
-          </p>
-        </div>
+          </span>
+        </span>
       </div>
     </div>
   );

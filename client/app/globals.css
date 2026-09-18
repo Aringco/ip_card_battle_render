@@ -3882,32 +3882,100 @@ body {
 .play-frame-inset { inset: var(--frame-inset, 0); }
 
 
-/* 양피지 쪽지 — 해설판 가운데 안내 문구가 앉는다.
-   255×180, 슬라이스 66 / 두께 20px(0.30배)라 귀퉁이 잎이 제 비율로 작아진다. */
-.play-note-card {
+/* ⚠️ 안내 문구가 앉던 양피지 쪽지(`.play-note-card`, label_small 9분할)는 걷어냈다 —
+   그 자리를 아래 타이머 창이 통째로 대신한다(모래시계·막대·초·문구를 한 창에 담는다).
+   되살릴 일이 있으면 `border-image: url('/play/label_small.webp') 66 fill stretch`에
+   두께 20px(0.30배)이 그 짝이다. */
+
+/* ── 타이머 창 — `gauge_track`(170×53) 한 장을 **크게 늘려 창으로** 쓴다 ────────────
+   예전에는 이 그림을 12px짜리 게이지 트랙으로만 쓰고, 모래시계·숫자·문구는 그 바깥
+   양피지 쪽지(label_small) 위에 따로 놓았다. 이제 창 하나가 넷을 다 담는다.
+
+   ⚠️ 마구리(캡)는 **창 높이에 비례**시킨다. 이 그림의 양 끝은 캡슐의 둥근 끝이라,
+   고정 px로 두고 창만 키우면 그 반원이 옆으로 납작하게 눌린다.
+     캡 = 높이 × 30/53
+   ⚠️ 창을 키운다고 안의 것들이 따라 커지지 않는다 — 모래시계·숫자·문구 크기도
+   `--timer-h`에서 함께 뽑는다.
+
+   ⚠️ 채움 그림(`gauge_fill`)은 **더 이상 쓰지 않는다**(요청). 초록 한 벌뿐이라
+   경고·위험 단계를 `hue-rotate`로 돌려 쓰고 있었는데, 색을 돌리면 그림의 광택까지
+   함께 돌아 단계마다 재질이 달라 보였다. 이제 CSS 그라디언트로 그려 단계별 색을
+   **그대로 지정**한다. */
+.play-timer-window {
+  /* 100~150px 사이(요청). 화면이 작아지면 함께 줄도록 vh에 물린다 */
+  --timer-h: clamp(100px, 11.5vh, 150px);
+  display: inline-flex;
+  align-items: center;
+  /* 상대 턴처럼 **타이머가 없는** 때는 문구만 남는데, 최소 길이 때문에 창은 그대로라
+     왼쪽 정렬이면 문구가 한쪽으로 쏠린다. 가운데로 모은다 —
+     타이머가 있을 때는 막대가 `flex: 1`로 남는 자리를 다 먹으므로 이 값이 티 나지 않는다. */
+  justify-content: center;
+  gap: calc(var(--timer-h) * 0.09);
+  height: var(--timer-h);
+  /* 문구 길이에 따라 창이 들쭉날쭉하지 않도록 최소 길이를 잡는다(요청: 충분히 길게).
+     짧은 문구("상대 턴이에요.")에서도 창이 같은 크기로 남는다. */
+  min-width: calc(var(--timer-h) * 7);
   border-style: solid;
-  border-width: 20px;
-  border-image: url('/play/label_small.webp') 66 fill stretch;
+  border-width: 0 calc(var(--timer-h) * 30 / 53);
+  border-image: url('/play/gauge_track.webp') 0 30 fill stretch;
   border-radius: 0;
   background: none;
   color: #4a3728;
+  /* ⚠️ 창이 100~150px이라 들보(38px)보다 훨씬 커서 위아래로 넘친다 — 어딘가는 가린다.
+     가운데에 두면 아래로 넘친 만큼이 기술 카드의 "레벨 부족" 문구를 덮으므로,
+     보드 쪽(아래 스택 줄 — 카드가 쌓여야 내용이 생긴다)으로 조금 밀어 올린다. */
+  position: relative;
+  top: calc(var(--timer-h) * -0.2);
+  filter: drop-shadow(0 calc(var(--timer-h) * 0.03) calc(var(--timer-h) * 0.04) rgba(0, 0, 0, 0.35));
 }
-
-/* 모래시계 게이지 — 트랙과 채움을 따로 그린다(색을 바꿔 단계를 알리기 위해).
-   168×54 / 239×53, 마구리 30. 높이 12px 기준 12/54 = 0.22 → 캡 30×0.22 ≈ 7px */
-.play-gauge-track,
-.play-gauge-fill {
-  border-style: solid;
-  border-width: 0 7px;
-  border-radius: 0;
-  background: none;
+/* 모래시계 */
+.play-timer-icon { font-size: calc(var(--timer-h) * 0.34); line-height: 1; }
+/* 남은 시간 막대 — 트랙은 창 안쪽을 파낸 홈처럼, 채움은 단계별 색 그라디언트 */
+.play-timer-bar {
+  flex: 1;
+  height: calc(var(--timer-h) * 0.2);
+  min-width: calc(var(--timer-h) * 1.6);
+  border-radius: 999px;
+  background: rgba(120, 90, 50, 0.22);
+  box-shadow: inset 0 1px 3px rgba(80, 55, 20, 0.45);
+  overflow: hidden;
 }
-.play-gauge-track { border-image: url('/play/gauge_track.webp') 0 30 fill stretch; }
-.play-gauge-fill  { border-image: url('/play/gauge_fill.webp')  0 30 fill stretch; }
-/* 채움 그림은 초록 한 벌뿐이라, 경고·위험 단계는 색을 돌려 만든다.
-   ⚠️ `filter`는 자식 전체에 걸리므로 **채움 요소에만** 건다. */
-.play-gauge-fill-warn   { filter: hue-rotate(-95deg) saturate(1.5); }
-.play-gauge-fill-urgent { filter: hue-rotate(-125deg) saturate(1.7) brightness(1.05); }
+/* ⚠️ `display: block`이 꼭 있어야 한다. 이 채움은 `<span>`이라 기본이 inline인데,
+   inline 요소에는 `height`가 먹지 않아 **막대가 텅 빈 채로 보인다**(실제로 회색
+   트랙만 남았다). 막대(.play-timer-bar)는 flex 자식이라 저절로 블록이 되지만
+   그 안의 채움은 일반 흐름이라 직접 지정해야 한다. */
+.play-timer-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #7dd3fc 0%, #0284c7 100%);
+  transition: width 100ms linear;
+}
+.play-timer-fill-warn   { background: linear-gradient(180deg, #fcd34d 0%, #d97706 100%); }
+.play-timer-fill-urgent { background: linear-gradient(180deg, #fca5a5 0%, #dc2626 100%); }
+/* 남은 초 */
+.play-timer-sec {
+  font-size: calc(var(--timer-h) * 0.3);
+  font-weight: 900;
+  line-height: 1;
+  min-width: calc(var(--timer-h) * 0.5);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #0c4a6e;
+}
+.play-timer-sec-warn   { color: #b45309; }
+.play-timer-sec-urgent { color: #b91c1c; }
+/* 안내 문구 — 창 안 오른쪽. 두 줄까지 들어간다(첫 턴 안내 + 지금 할 일) */
+.play-timer-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--timer-h) * 0.03);
+  font-size: calc(var(--timer-h) * 0.155);
+  line-height: 1.25;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.play-timer-note { font-size: calc(var(--timer-h) * 0.125); font-weight: 600; opacity: 0.75; }
 
 /* 가로로 긴 양피지 띠 — 해설판(높이 64px). **가로 3분할**이다.
    9분할로 쓰면 위아래 테두리가 40px을 먹어 세 줄이 안 들어간다.
@@ -3965,28 +4033,17 @@ body {
   background-origin: border-box;
 }
 
-/* 네 모서리 장식 — **테두리에 합치지 않는다.** 고정 크기 배경으로 따로 얹어야
-   카드가 커지든 작아지든 늘 또렷하다.
-   39px은 예전 26px의 1.5배다. 장식이 테두리 안쪽(padding box)에 앉으므로 금색 띠에
-   살짝 물려 "테두리에 박힌 장식"처럼 보인다. */
-.play-card-frame::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 21;
-  pointer-events: none;
-  background-image:
-    url('/play/card_corner_tl.webp'), url('/play/card_corner_tr.webp'),
-    url('/play/card_corner_bl.webp'), url('/play/card_corner_br.webp');
-  background-position: left top, right top, left bottom, right bottom;
-  background-repeat: no-repeat;
-  background-size: var(--deco) var(--deco);
-}
+/* ⚠️ 네 모서리 장식(card_corner_*)은 **걷어냈다**(요청). 예전에는 `::before`에 고정
+   크기 배경 네 장으로 얹었는데, 금색 테두리만으로 충분하고 장식이 글자를 밀어내
+   짧은 카드에서 자리를 많이 먹었다.
+   `--deco`는 남겨 둔다 — 글자를 테두리에서 띄우는 거리를 아직 여기서 뽑고,
+   장식을 되살릴 때 그 값이 다시 필요하다. 다만 밀어낼 장식이 없으므로 **거리를 줄였다**
+   (1.08 → 0.42, 0.88 → 0.34). 글자가 그만큼 넓게 쓴다. */
 
-/* 우상단 효과 문구 — 위쪽 장식 **아래**에 앉힌다(장식에 끝글자가 덮이던 자리) */
-.skill-effect-label { top: calc(var(--deco) * 1.08); }
-/* 자막 상자 — 아래쪽 장식만큼 비워 대사 마지막 줄이 잎 뒤로 숨지 않게 한다 */
-.skill-text-block { padding-bottom: calc(var(--deco) * 0.88); }
+/* 우상단 효과 문구 — 금색 테두리에 닿지 않을 만큼만 띄운다 */
+.skill-effect-label { top: calc(var(--deco) * 0.42); }
+/* 자막 상자 — 아래 테두리에서 살짝 띄운다 */
+.skill-text-block { padding-bottom: calc(var(--deco) * 0.34); }
 /* 짧은 카드에서는 글자도 함께 줄인다 — 제목·설명·대사 세 줄이 카드를 넘기지 않도록 */
 .skill-text-title { font-size: clamp(0.95rem, 2vh, 1.25rem); }
 .skill-text-desc  { font-size: clamp(0.72rem, 1.55vh, 1rem); }
