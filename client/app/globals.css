@@ -4045,7 +4045,14 @@ body {
 /* 자막 상자 — 아래 테두리에서 살짝 띄운다 */
 .skill-text-block { padding-bottom: calc(var(--deco) * 0.34); }
 /* 짧은 카드에서는 글자도 함께 줄인다 — 제목·설명·대사 세 줄이 카드를 넘기지 않도록 */
+/* 제목 `[실용신양]`은 굵은 글꼴(Cafe24Ssurround v2.0)을 그대로 쓴다 — JSX의
+   `font-extrabold`가 그쪽 얼굴을 고른다. */
 .skill-text-title { font-size: clamp(0.95rem, 2vh, 1.25rem); }
+/* ⚠️ 아래 두 줄(효과 설명·대사)은 **가는 글꼴(Air)** 로 그린다(요청).
+   대사에는 JSX에 `font-bold`가 붙어 있어 그대로 두면 700 → v2.0 얼굴이 잡힌다.
+   여기서 400으로 되돌려야 Air가 된다 — JSX를 고치지 않고 이 한 줄로 막는다. */
+.skill-text-desc,
+.skill-text-quote { font-weight: 400; }
 .skill-text-desc  { font-size: clamp(0.72rem, 1.55vh, 1rem); }
 .skill-text-quote { font-size: clamp(0.64rem, 1.35vh, 0.875rem); }
 

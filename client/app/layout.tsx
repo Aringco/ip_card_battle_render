@@ -6,6 +6,20 @@ import "./globals.css";
 /**
  * 게임 전체의 기본 글꼴 — Cafe24 Ssurround. **한글·영문·숫자를 모두 이 글꼴로 그린다.**
  *
+ * ── 한 패밀리에 두 굵기 ────────────────────────────────────────────────────
+ * 받은 글꼴이 둘이라 **같은 이름의 한 패밀리에 굵기만 나눠** 등록한다.
+ *   400(기본)   Cafe24SsurroundAir — 획이 가늘다
+ *   700~900(굵게) Cafe24Ssurround v2.0 — 예전부터 쓰던 그 글꼴
+ * 이렇게 두면 `font-bold`(700)·`font-black`(900)을 만나는 글자만 저절로 v2.0으로
+ * 갈리고, 나머지는 Air가 된다 — **컴포넌트를 한 줄도 고치지 않아도 된다.**
+ *
+ * ⚠️ v2.0을 `700`이 아니라 `700 900` **범위**로 등록한 이유: 900만 남겨 두면
+ * `font-black`에서 브라우저가 700짜리 획을 억지로 더 불려 그린다(합성 볼드).
+ * 범위로 덮으면 두 굵기 모두 같은 원본 획을 그대로 쓴다.
+ *
+ * ⚠️ 굵기를 바꾸면 글자 폭이 달라져 **로비 폼이 몇 px 움직인다** —
+ *    `client/scripts/measureLobby.mjs`로 다시 잴 것(CLAUDE.md의 규칙).
+ *
  * 한때 영문만 Comic Relief로 갈라 쓴 적이 있다(2026-09-08 밤 ~ 09-09). 되돌린 이유는
  * 그쪽 영문이 이 글꼴의 영문보다 눈에 띄게 얇아, 같은 줄에 한글과 섞이면 굵기가
  * 어긋나 보였기 때문이다. Cafe24 Ssurround는 라틴 글리프도 같은 둥근 톤으로 갖고 있어
@@ -25,14 +39,15 @@ import "./globals.css";
  */
 const cafe24 = localFont({
   src: [
-    { path: "../public/fonts/Cafe24Ssurround-v2.0/webfont/Cafe24Ssurround-v2.0.woff2", weight: "400", style: "normal" },
-    { path: "../public/fonts/Cafe24Ssurround-v2.0/webfont/Cafe24Ssurround-v2.0.woff",  weight: "400", style: "normal" },
+    // 기본(400) — Air. woff2 339KB / woff 813KB
+    { path: "../public/fonts/Cafe24SsurroundAir-v1.1/webfont/Cafe24SsurroundAir-v1.1.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/Cafe24SsurroundAir-v1.1/webfont/Cafe24SsurroundAir-v1.1.woff",  weight: "400", style: "normal" },
+    // 굵게(700~900) — v2.0. woff2 392KB / woff 906KB
+    { path: "../public/fonts/Cafe24Ssurround-v2.0/webfont/Cafe24Ssurround-v2.0.woff2", weight: "700 900", style: "normal" },
+    { path: "../public/fonts/Cafe24Ssurround-v2.0/webfont/Cafe24Ssurround-v2.0.woff",  weight: "700 900", style: "normal" },
   ],
   variable: "--font-cafe24",
   display: "swap",
-  // 이 글꼴은 굵기가 한 종류뿐이다. font-weight: bold를 만나면 브라우저가 획을 억지로
-  // 불려 그리는데(합성 볼드), 둥근 글꼴에서는 그게 오히려 게임 UI에 어울린다 —
-  // 그래서 막지 않고 그대로 둔다.
 });
 
 export const metadata: Metadata = {
