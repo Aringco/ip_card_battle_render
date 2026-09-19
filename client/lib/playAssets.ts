@@ -20,6 +20,15 @@ export const PLAY_ASSETS = {
    */
   background: '/play/play_bg.webp',
   /**
+   * 게임 결과 화면 배경 — 이긴 쪽(인어·토끼)과 진 쪽(호랑이·양)이 한 탁자에 앉은
+   * 그림 (2560×1440 WebP, 원본 `assets-src/result_bg.png`).
+   *
+   * 승패가 정해진 뒤의 `GameEndScreen` 전체에 깐다(globals.css의 `.result-bg`).
+   * 그 화면의 체력표·통계판은 불투명한 나무 액자라 그림의 가운데(탁자)를 덮고,
+   * 실제로 보이는 곳은 좌우 가장자리의 캐릭터와 위쪽 하늘·숲이다.
+   */
+  resultBackground: '/play/result_bg.webp',
+  /**
    * 상단 바 — **들보와 팻말이 한 몸인** 통짜 그림(2500×233).
    *
    * 가로 3분할의 **왼쪽 마구리가 곧 팻말**이라, 팀 이름과 "○○ 차례"를 그 양피지

@@ -113,7 +113,9 @@ export function GameEndScreen({
   const flavorAnimal = useMemo(() => pickFlavorAnimal(gameState, winner), [gameState, winner]);
 
   return (
-    <div className="min-h-screen bg-jungle-50 flex flex-col items-center p-8 overflow-hidden relative">
+    // 배경은 승패가 정해진 뒤의 탁자 그림(PLAY_ASSETS.resultBackground) — globals.css의
+    // `.result-bg`가 그림과 글자를 받쳐 줄 어둠을 함께 깐다.
+    <div className="min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative">
       {/* 아래 콘텐츠 묶음은 그대로 세로 중앙 정렬하고, 그 밖에 화면 맨 밑에 붙는 푸터
           안내를 별도로 둔다 — 바깥 div를 justify-center로 두면 푸터까지 그 중앙 정렬
           묶음에 끼어버려 화면 아래쪽에 붙지 않는다. */}
@@ -149,10 +151,11 @@ export function GameEndScreen({
         ) : (
           <div style={{ fontSize: '5rem' }}>🤝</div>
         )}
-        <h2 className="text-3xl font-bold text-jungle-900">{winnerText}</h2>
-        <p className="text-xs font-semibold text-jungle-400 -mt-1">{reasonText}</p>
+        {/* 판 바깥에서 그림 위에 바로 얹히는 글자라 초록 글씨로는 묻힌다 — `.result-bg-text` */}
+        <h2 className="text-3xl font-bold result-bg-text">{winnerText}</h2>
+        <p className="text-xs font-semibold result-bg-text -mt-1">{reasonText}</p>
         {flavorAnimal && (
-          <p className="text-sm text-jungle-500 -mt-1">{FLAVOR_TEXT[flavorAnimal]}</p>
+          <p className="text-sm result-bg-text -mt-1">{FLAVOR_TEXT[flavorAnimal]}</p>
         )}
       </div>
 
@@ -277,7 +280,7 @@ export function GameEndScreen({
       </button>
       </div>
 
-      <p className="text-sm text-jungle-400 text-center pt-4">
+      <p className="text-sm result-bg-text text-center pt-4">
         게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
       </p>
     </div>

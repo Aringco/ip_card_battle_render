@@ -190,6 +190,7 @@ export const IMAGE_FILES: string[] = [
   "/play/plank.webp",
   "/play/play_bg.webp",
   "/play/play_frame.webp",
+  "/play/result_bg.webp",
   "/play/upper_bar.webp"
 ];
 

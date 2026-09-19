@@ -4140,6 +4140,26 @@ body {
 .skill-text-desc  { font-size: clamp(0.68rem, 1.42vh, 0.88rem); }
 .skill-text-quote { font-size: clamp(0.6rem, 1.22vh, 0.78rem); }
 
+/* 결과 화면 배경 — 승패가 정해진 뒤(`GameEndScreen`)의 탁자 그림.
+   그림이 밝고 복잡해 판 **바깥**에 얹히는 글자(승패 문구·안내)가 묻힌다. 그래서 위쪽을
+   살짝 어둡게 누르는 그라디언트를 그림 위에 한 겹 깔고, 그 글자들은 `.result-bg-text`로
+   흰 글씨 + 그림자를 준다. 체력표·통계판은 불투명한 나무 액자라 이 처리가 필요 없다.
+   바탕색은 그림이 도착하기 전 한 프레임을 채운다(예전 bg-jungle-50 자리). */
+.result-bg {
+  background-color: #eaf6e4;
+  background-image:
+    linear-gradient(180deg, rgba(20, 12, 4, 0.45) 0%, rgba(20, 12, 4, 0.15) 45%, rgba(20, 12, 4, 0.35) 100%),
+    url('/play/result_bg.webp');
+  background-size: cover;
+  background-position: center;
+}
+.result-bg-text {
+  color: #fffaf0;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 8px rgba(0, 0, 0, 0.55);
+}
+
 /* 플레이 화면 배경 — 숲길 그림. 판들이 불투명해 실제로 보이는 곳은 판 사이의 틈이다.
    바탕색은 그림이 도착하기 전 한 프레임을 채운다(예전 bg-jungle-50 자리). */
 .play-bg {
