@@ -4234,9 +4234,11 @@ body {
 .exp-row      { gap: calc(var(--exp-w) * 0.035); padding-inline: calc(var(--exp-w) * 0.035); }
 .exp-row-face { width: calc(var(--exp-w) * 0.26); height: calc(var(--exp-w) * 0.26); }
 .exp-row-lv   { padding-inline: calc(var(--exp-w) * 0.045); }
-.exp-row-lv-cap { font-size: calc(var(--exp-w) * 0.062 * var(--font-scale)); }
-.exp-row-lv-num { font-size: calc(var(--exp-w) * 0.16 * var(--font-scale)); }
-.exp-row-value  { font-size: calc(var(--exp-w) * 0.12 * var(--font-scale)); }
+/* 글자는 0.8배로 줄였다(요청: 0.062/0.16/0.12 → 아래 값). 그 전 크기에서는 "0/20"의
+   분모가 옆 칸(얼굴)에 닿아 잘려 보였다. */
+.exp-row-lv-cap { font-size: calc(var(--exp-w) * 0.0496 * var(--font-scale)); }
+.exp-row-lv-num { font-size: calc(var(--exp-w) * 0.128 * var(--font-scale)); }
+.exp-row-value  { font-size: calc(var(--exp-w) * 0.096 * var(--font-scale)); }
 .exp-row-bar    { height: calc(var(--exp-w) * 0.07); }
 
 /* 칸 좌표 — `play_frame.webp`(1965×1000)에서 투명한 칸 10개를 연결 성분으로 잰 값.
