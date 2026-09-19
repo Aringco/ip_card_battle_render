@@ -4019,10 +4019,12 @@ body {
 .play-timer-fill-urgent { background: linear-gradient(180deg, #fca5a5 0%, #dc2626 100%); }
 /* 남은 초 */
 .play-timer-sec {
-  font-size: calc(var(--timer-h) * 0.3 * var(--font-scale));
+  /* 글자를 1.5배로 키웠다(요청: 0.3 → 0.45). 폭도 같이 키워야 두 자리("30")가
+     한 자리로 줄 때 막대가 옆으로 출렁이지 않는다(0.5 → 0.75). */
+  font-size: calc(var(--timer-h) * 0.45 * var(--font-scale));
   font-weight: 900;
   line-height: 1;
-  min-width: calc(var(--timer-h) * 0.5);
+  min-width: calc(var(--timer-h) * 0.75);
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: #0c4a6e;
@@ -4037,7 +4039,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: calc(var(--timer-h) * 0.03);
-  font-size: calc(var(--timer-h) * 0.155 * var(--font-scale));
+  /* 1.5배(요청: 0.155 → 0.2325). 두 줄이어도 0.2325 × 1.25 × 2 + 틈 ≈ 0.61배라
+     창 안쪽(테두리를 뺀 0.93배)에 들어간다. */
+  font-size: calc(var(--timer-h) * 0.2325 * var(--font-scale));
   line-height: 1.25;
   font-weight: 700;
   white-space: nowrap;
@@ -4046,7 +4050,7 @@ body {
    창의 크림색 위에서 글자가 뭉개져 읽히지 않았다(요청: 시인성). 키우고, 투명도로
    물리는 대신 **짙은 갈색**으로 또렷하게 둔다. */
 .play-timer-note {
-  font-size: calc(var(--timer-h) * 0.155 * var(--font-scale));
+  font-size: calc(var(--timer-h) * 0.2325 * var(--font-scale));
   font-weight: 700;
   color: #6b4a22;
 }
