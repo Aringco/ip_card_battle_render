@@ -42,14 +42,16 @@ export function GuideFinger({
   team?: Team | null;
   /** 주면 그 캐릭터의 손 그림으로, 안 주면 주인 없는 기본 손으로 그린다. */
   animal?: Animal;
-  /** 'tile'이면 더 낮게 앉힌다 — 보드 칸이 `overflow: hidden`이라 위로 삐져나오면 잘린다 */
+  /** 'tile'은 더 낮게(보드 칸이 `overflow: hidden`이라 위로 삐져나오면 잘린다),
+   *  'card'는 더 높게 앉는다(행동 카드 우상단의 효과 문구를 손이 가리면 안 된다).
+   *  자리는 globals.css의 `.place-guide-hand-tile` / `-card`가 정한다. */
   variant?: 'card' | 'tile';
 }) {
   // 행동(기술) 칸은 칸마다 주인이 있으므로 그 캐릭터의 손으로 짚고,
   // 장소 타일처럼 주인이 없는 자리는 기본 손으로 짚는다.
   return (
     <span
-      className={`place-guide-hand${variant === 'tile' ? ' place-guide-hand-tile' : ''}${team === null ? '' : ' place-guide-hand-spectator'}`}
+      className={`place-guide-hand place-guide-hand-${variant}${team === null ? '' : ' place-guide-hand-spectator'}`}
       style={team === null ? undefined : spectatorTeamVars(team)}
       aria-hidden
     >

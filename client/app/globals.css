@@ -1919,16 +1919,21 @@ body {
    그래서 세로 기준을 -50%가 아니라 **-82%**로 잡아 그림 아랫부분(손끝)이 기준선에
    오게 한다 — 아래 keyframes의 translate 값과 반드시 같아야 한다(애니메이션이
    transform을 통째로 덮어쓰므로, 한쪽만 고치면 손이 순간 튄다). */
+/* ⚠️ 세로 이동량이 `--hand-shift` 변수인 것이 요령이다. 이 애니메이션이 매 프레임
+   transform을 덮어쓰므로, 정적으로 선언한 translate는 **한 프레임도 적용되지 않는다**.
+   쓰는 쪽에서 자리를 조절하려면 이렇게 변수로 뚫어 두는 수밖에 없다.
+   -100%면 요소의 **아래 끝**이 곧 `top`이 되어, 손 그림의 세로 비율과 무관하게
+   "손끝이 여기서 멈춘다"를 정확히 지정할 수 있다(행동 카드가 그렇게 쓴다). */
 @keyframes guideHandBounce {
-  0%, 100% { transform: translate(-50%, -82%) translateY(0); }
-  50%      { transform: translate(-50%, -82%) translateY(-14px); }
+  0%, 100% { transform: translate(-50%, var(--hand-shift, -82%)) translateY(0); }
+  50%      { transform: translate(-50%, var(--hand-shift, -82%)) translateY(-14px); }
 }
 .place-guide-hand {
   position: absolute;
   top: 10%;
   left: 50%;
   width: 3.4rem;
-  transform: translate(-50%, -82%);
+  transform: translate(-50%, var(--hand-shift, -82%));
   z-index: 95;
   pointer-events: none;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
@@ -1944,6 +1949,28 @@ body {
      필요 조건: 타일 높이 × top% − 0.82 × 손 높이(65px) ≥ −(보드 안여백 8px)
      가장 빠듯한 1366(타일 165px)에서 top ≥ 27.5% → 여유를 둬 30% */
 .place-guide-hand-tile { top: 30%; }
+
+/* ⚠️ **행동 카드용은 더 높이 앉힌다.** 손이 카드 우상단의 효과 문구
+   (.skill-effect-label, "다음 턴 카드 +6회")를 덮고 있었다 — 1600에서 19px,
+   1920에서 23px이 겹쳤다.
+   `--hand-shift: -100%`로 **손의 아래 끝을 곧 `top`으로** 만든 다음, 그 자리를
+   효과 문구의 윗선보다 위에 둔다. -82%인 채로 `top`만 올리면 손 그림마다 세로
+   비율이 달라(347×500 ~ 370×500) 겹침이 캐릭터별로 들쭉날쭉해진다.
+     효과 문구 윗선 = 테두리 5px + --deco × 0.42
+     손끝           = --deco × 0.42            → 정확히 5px 위에서 멈춘다 */
+/* ⚠️ **손을 더 올려서는 안 된다.** 안내 띠(.play-timer-window)가 카드 바로 위 3px에
+   붙어 있어, 손이 카드 위로 올라간 만큼 그대로 그 띠를 침범한다 — 실제로 손끝을 효과
+   문구 위로 올렸더니 침범이 23px에서 46px이 되어 "이번 턴의 행동을 선택하세요!"를
+   덮었다. 효과 문구를 살리려다 안내 문구를 가리는 맞바꿈일 뿐이었다.
+   그래서 손은 **있던 높이 그대로** 두고, 효과 문구를 손끝 아래로 내렸다(--label-top).
+
+   다만 `--hand-shift: -100%`로 바꿔 **손의 아래 끝이 곧 `top`이 되게** 했다. -82%인
+   채로는 자리가 손 그림의 세로 비율에 딸려 가는데, 다섯 손이 347×500 ~ 370×500으로
+   제각각이라 캐릭터마다 손끝 높이가 3px씩 달랐다. 이제 다섯이 같은 자리에 선다. */
+.place-guide-hand-card {
+  --hand-shift: -100%;
+  top: var(--label-top);
+}
 .place-guide-hand img {
   display: block;
   width: 100%;
@@ -4307,8 +4334,9 @@ body {
   /* ⚠️ 상단 바가 화면 높이의 20%를 가져가면서 카드가 짧아졌다(1366×768에서 278 → 228px).
      장식·글자 자리를 고정 px로 두면 짧은 카드에서 서로 겹친다 — 실제로 효과 문구가
      제목 위로 올라탔다. 그래서 **장식 크기 하나(--deco)를 화면 높이에 묶고**
-     글자를 밀어낼 거리를 전부 거기서 뽑는다. 카드가 줄면 장식도 함께 준다. */
-  --deco: clamp(24px, 3.4vh, 39px);
+     글자를 밀어낼 거리를 전부 거기서 뽑는다. 카드가 줄면 장식도 함께 준다.
+     그 선언은 `.play-cards-grid`에 있다 — 손가락 가이드가 이 버튼의 형제라서,
+     여기 두면 손이 그 값을 보지 못한다(둘의 자리를 맞춰야 한다). */
   border: 5px solid transparent;
   border-radius: 16px;
   overflow: hidden;
@@ -4334,24 +4362,66 @@ body {
    장식을 되살릴 때 그 값이 다시 필요하다. 다만 밀어낼 장식이 없으므로 **거리를 줄였다**
    (1.08 → 0.42, 0.88 → 0.34). 글자가 그만큼 넓게 쓴다. */
 
-/* 우상단 효과 문구 — 금색 테두리에 닿지 않을 만큼만 띄운다 */
-.skill-effect-label { top: calc(var(--deco) * 0.42); }
-/* 자막 상자 — 아래 테두리에서 살짝 띄운다 */
-.skill-text-block { padding-bottom: calc(var(--deco) * 0.34); }
-/* 짧은 카드에서는 글자도 함께 줄인다 — 제목·설명·대사 세 줄이 카드를 넘기지 않도록 */
+/* ── 카드 글자는 **카드 폭에 맞춰 줄어든다** ──────────────────────────────
+   줄 수는 문구가 정해 놓았다(설명 2줄 + 대사 1줄, 효과 라벨은 쉼표마다 한 줄).
+   그런데 카드 폭은 액자 그림이 정하고 해상도마다 달라서(1920 223px → 1366 158px),
+   글자 크기를 화면 높이(vh)에만 묶으면 좁은 쪽에서 마지막 한두 글자가 다음 줄로
+   흘러내린다 — 1600×900에서 설명이 3줄, 대사가 2줄이 되던 것이 그 증상이다.
+
+   예전에는 clamp **상한을 눈대중으로 내려** 막았지만, 글꼴을 바꾸거나 문구를 고칠
+   때마다 다시 흘러내렸다. CSS에는 "이 글이 몇 픽셀인가"라는 개념이 없어 상한값이
+   언제나 추측일 수밖에 없다. 그래서 `lib/textFit.ts`가 **가장 긴 줄의 폭을 em으로
+   재어** `--*-em`으로 넘기고, 여기서 `가용폭 ÷ em`으로 크기를 정한다.
+   상한(clamp)은 그대로 살아 있어, 넓은 화면에서 글자가 무한정 커지지는 않는다.
+
+   ⚠️ `100cqw`가 성립하려면 카드가 **컨테이너**여야 한다(.skill-choice-panel).
+      cqw는 컨테이너의 **content box** 기준이라 금색 테두리 5px은 이미 빠져 있고,
+      여기서 좌우 안여백만 더 빼면 글이 실제로 쓸 수 있는 폭이 된다. */
+.skill-choice-panel {
+  container-type: inline-size;
+  /* 글자가 테두리에 닿지 않을 만큼의 좌우 안여백. 카드가 좁을수록 함께 줄어들어
+     글 쓸 폭을 최대한 내준다 — 고정 12px(p-3)이면 1366에서 카드의 21%를 먹었다. */
+  --card-pad: calc(var(--deco) * 0.16);
+}
+/* 글이 실제로 쓸 수 있는 폭 — 나눗셈의 분자다 */
+.skill-text-block,
+.skill-effect-label { --fit-w: calc(100cqw - var(--card-pad) * 2); }
+
+/* 우상단 효과 문구 — 금색 테두리에 닿지 않을 만큼만 띄운다.
+   ⚠️ `white-space: pre` — 줄바꿈은 **쉼표 뒤에서만** 일어난다(SkillChoiceBar가
+   효과 조각을 `,\n`으로 잇는다). 한 줄로 이어 두면 "내 체력 +1, 상대 체력 -1"이
+   카드 폭에 걸려 제멋대로 접혔고, 어디서 접힐지는 숫자 길이에 달려 매번 달랐다. */
+.skill-effect-label {
+  /* ⚠️ 손끝(--label-top)보다 **아래**여야 한다 — 손가락 가이드가 이 문구를 덮고 있었다.
+     기준이 한 값이라 둘은 언제나 5px(금색 테두리 두께)만큼 떨어져 선다. */
+  top: var(--label-top);
+  right: var(--card-pad);
+  white-space: pre;
+  text-align: right;
+  font-size: min(1.125rem * var(--font-scale), calc(var(--fit-w) / var(--label-em, 8)));
+}
+/* 자막 상자 — 아래 테두리에서 살짝 띄우고, 좌우는 --card-pad로 통일한다
+   (JSX의 p-3에서 세로만 남기고 가로를 여기서 덮어쓴다) */
+.skill-text-block {
+  padding-bottom: calc(var(--deco) * 0.34);
+  padding-inline: var(--card-pad);
+}
 /* 제목 `[실용신양]`은 굵은 글꼴(Cafe24Ssurround v2.0)을 그대로 쓴다 — JSX의
-   `font-extrabold`가 그쪽 얼굴을 고른다. */
+   `font-extrabold`가 그쪽 얼굴을 고른다. 한 낱말이라 폭 맞춤이 필요 없다. */
 .skill-text-title { font-size: clamp(0.95rem, 2vh, 1.25rem); }
-/* ⚠️ 아래 두 줄(효과 설명·대사)은 **가는 글꼴(Air)** 로 그린다(요청).
-   대사에는 JSX에 `font-bold`가 붙어 있어 그대로 두면 700 → v2.0 얼굴이 잡힌다.
-   여기서 400으로 되돌려야 Air가 된다 — JSX를 고치지 않고 이 한 줄로 막는다. */
+/* ⚠️ 효과 설명은 **가는 글꼴(Air)** 로 그린다(요청). 굵은 얼굴을 쓰는 제목·대사와
+   달리 두 줄이 길어 Air가 읽기 편하다. 대사는 아래에서 다시 굵게 돌린다. */
+.skill-text-desc { font-weight: 400; }
 .skill-text-desc,
-.skill-text-quote { font-weight: 400; }
-/* ⚠️ 상한을 낮춰 **마지막 한두 글자가 다음 줄로 넘어가는 것**을 막는다(요청).
-   기본 글꼴이 Air로 바뀌며 같은 크기에서도 글자 폭이 달라져, 설명·대사 모두 끝에서
-   한 글자씩 흘러내렸다. vh 계수는 그대로 두고 **상한만** 내려 큰 화면에서만 줄인다. */
-.skill-text-desc  { font-size: clamp(0.68rem, 1.42vh, 0.88rem); }
-.skill-text-quote { font-size: clamp(0.6rem, 1.22vh, 0.78rem); }
+.skill-text-quote {
+  /* ⚠️ `pre-line`이 아니라 `pre`다 — \n은 살리되 **그 밖의 줄바꿈은 없어야** 한다.
+     넘칠 것 같으면 접히는 게 아니라 아래 font-size가 글자를 줄인다. */
+  white-space: pre;
+}
+.skill-text-desc  { font-size: min(clamp(0.68rem, 1.42vh, 0.88rem), calc(var(--fit-w) / var(--desc-em, 15))); }
+/* 대사는 **굵은 글꼴(Cafe24Ssurround v2.0)** 이다(요청) — JSX의 `font-bold`가 그
+   얼굴을 고르므로, 예전처럼 여기서 400으로 되돌리지 **않는다**. */
+.skill-text-quote { font-size: min(clamp(0.6rem, 1.22vh, 0.78rem), calc(var(--fit-w) / var(--quote-em, 16))); }
 
 /* 결과 화면 배경 — 승패가 정해진 뒤(`GameEndScreen`)의 탁자 그림.
    그림이 밝고 복잡해 판 **바깥**에 얹히는 글자(승패 문구·안내)가 묻힌다. 그래서 위쪽을
@@ -4563,6 +4633,16 @@ body {
 }
 
 .play-cards-grid {
+  /* ⚠️ `--deco`를 여기 두는 이유: 손가락 가이드는 카드 버튼의 **형제**라(버튼이
+     overflow:hidden이라 안에 두면 손끝이 잘린다) 버튼에만 선언하면 상속되지 않는다.
+     띠 전체에 두면 카드도 손도 같은 값을 본다 — 둘의 자리를 맞춰야 하므로 중요하다. */
+  --deco: clamp(24px, 3.4vh, 39px);
+  /* **손끝이 멈추는 자리**이자, 그 바로 아래(금색 테두리 5px 뒤)가 효과 문구의 윗선이다.
+     한 값으로 둘을 묶어야 "손이 문구를 가리지 않는다"가 해상도와 무관하게 지켜진다.
+     1.3배는 손이 위쪽 안내 띠를 **예전보다 덜 침범하도록** 잡은 값이다(1920에서 19→14px,
+     1366에서 28→28px). 값을 줄이면 손이 올라가 안내 문구를 덮고, 키우면 효과 문구가
+     카드 아래로 내려온다 — 그 사이의 자리다. 사정은 아래 `.place-guide-hand-card` 주석에. */
+  --label-top: calc(var(--deco) * 1.3);
   display: grid;
   grid-template-columns: 242fr 244fr 244fr 245fr 243fr;
   gap: 0.986%;            /* 칸 사이 네 곳(12·12·13·13px)의 평균 12.5px ÷ 띠 1268px */

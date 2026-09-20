@@ -5,9 +5,14 @@ import { previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
 import { spectatorTeamVars } from '@/lib/teamColors';
+import { emVar } from '@/lib/textFit';
 import { GuideFinger } from './GuideFinger';
 
 const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
+
+// 줄바꿈은 여기서 정해진 그대로 그려진다(CSS가 `white-space: pre`) — 길면 접히는 게
+// 아니라 글자가 작아진다. 그래서 문구와 함께 상수로 꺼내 두고 폭을 재어 넘긴다.
+const PASS_TEXT = '지금은 할 수 있는게 없네요.\n레벨을 높이고,\n한 번에 몰아치는 방법도 좋답니다.';
 
 // 턴을 마친 뒤 행동을 고르는 영역 — 화면을 덮는 모달이 아니라 항상 보드 아래
 // (양 팀 합계 사이)에 자리한다. 로직은 기존과 동일하게 "내 팀의 행동 선택
@@ -71,12 +76,15 @@ export function SkillChoiceBar({
         const clickable = interactive && eligible;
         const desc = describeSkill(animal, preview.level);
         // 특허랑이처럼 효과가 둘 이상인 행동은 문구가 그냥 이어 붙어 "체력 +4상대 체력 -4"처럼
-        // 읽히므로, 각 효과를 조각으로 모아 쉼표로 이어 붙인다.
+        // 읽히므로, 각 효과를 조각으로 모아 **쉼표 뒤에서 줄을 바꿔** 한 줄에 하나씩 둔다
+        // (요청). 한 줄로 이으면 "내 체력 +1, 상대 체력 -1"이 카드 폭을 넘겨 제멋대로
+        // 접혔다 — 어디서 접힐지는 글자 수에 달려 있어 그때그때 달랐다.
         const effectParts: string[] = [];
         if (preview.extraDraws > 0) effectParts.push(`다음 턴 카드 +${preview.extraDraws}회`);
         if (preview.myHpDelta > 0) effectParts.push(`내 체력 +${preview.myHpDelta}`);
         if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${preview.multiplierAfter}`);
+        const effectLabel = eligible ? effectParts.join(',\n') : '레벨 부족';
 
         // 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
@@ -109,12 +117,15 @@ export function SkillChoiceBar({
               {/* ⚠️ 모서리 장식 **아래로** 내려 앉힌다. top-2에 두면 우상단 장식이
                   "레벨 부족"의 끝글자를, 긴 효과 문구는 좌상단 장식이 첫글자를 덮는다.
                   거리는 --deco에서 뽑으므로 카드가 짧아지면 함께 올라온다. */}
+              {/* 줄바꿈은 문구가 정하고(쉼표 뒤), 카드 폭이 모자라면 CSS가 글자를 줄인다 —
+                  그 판단에 필요한 "가장 긴 줄의 폭(em)"을 여기서 재어 넘긴다. */}
               <span
-                className={`skill-effect-label skill-outline-text absolute right-3 z-10 text-lg font-bold ${
+                className={`skill-effect-label skill-outline-text absolute z-10 text-lg font-bold ${
                   eligible ? 'text-amber-300' : 'text-white'
                 }`}
+                style={emVar('label-em', effectLabel)}
               >
-                {eligible ? effectParts.join(', ') : '레벨 부족'}
+                {effectLabel}
               </span>
               {/* 아래 안여백은 **아래쪽 모서리 장식**만큼이다(.skill-text-block) —
                   p-3으로만 두면 대사 마지막 줄이 잎 뒤로 숨는다(실제로 숨었다). */}
@@ -125,12 +136,15 @@ export function SkillChoiceBar({
                 >
                   [{SKILL_TITLE[animal]}]
                 </h3>
-                <p className="skill-text-desc skill-outline-text text-white leading-snug whitespace-pre-line">
+                {/* ⚠️ `whitespace-pre-line`이 아니라 `pre`다(CSS의 .skill-text-desc) —
+                    줄바꿈은 살리되 **그 밖의 줄바꿈은 일어나지 않아야** 한다. 대신 줄이
+                    길면 글자가 작아진다(--desc-em). */}
+                <p className="skill-text-desc skill-outline-text text-white leading-snug" style={emVar('desc-em', desc.effect)}>
                   {desc.effect}
                 </p>
                 <p
                   className="skill-text-quote skill-outline-text font-bold leading-snug"
-                  style={{ color: SKILL_COLOR[animal] }}
+                  style={{ color: SKILL_COLOR[animal], ...emVar('quote-em', `"${desc.catchphrase}"`) }}
                 >
                   &quot;{desc.catchphrase}&quot;
                 </p>
@@ -161,8 +175,8 @@ export function SkillChoiceBar({
           <div className="skill-choice-dim play-frame-inset absolute" />
           <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
             <h3 className="skill-text-title skill-outline-text font-extrabold text-jungle-200">[턴 마치기]</h3>
-            <p className="skill-text-desc skill-outline-text text-white leading-snug whitespace-pre-line">
-              {'지금은 할 수 있는게 없네요.\n레벨을 높이고,\n한 번에 몰아치는 방법도 좋답니다.'}
+            <p className="skill-text-desc skill-outline-text text-white leading-snug" style={emVar('desc-em', PASS_TEXT)}>
+              {PASS_TEXT}
             </p>
           </div>
         </button>
