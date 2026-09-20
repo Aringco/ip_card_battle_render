@@ -78,7 +78,9 @@ export function TeamPanel({
       {/* 나무테가 이미 22px을 가져간다. 그 안쪽으로 여백을 더 두면 액자와 내용이
           떨어져 보이므로 p-1(3px)까지만 남긴다. */}
       {/* 칸이 좁고 길어졌다(244×434) — 안여백은 나무 구멍과 글자가 붙지 않을 만큼만 */}
-      <div className="relative z-[1] h-full min-h-0 flex flex-col gap-1.5 overflow-y-auto p-2">
+      {/* .play-team-scroll — 가로 스크롤바가 생기지 않게 막는다. 이유는 globals.css의
+          그 클래스 주석에 있다(초록 스크롤바가 특허랑이 행 아래 띠로 보이던 문제). */}
+      <div className="play-team-scroll relative z-[1] h-full min-h-0 flex flex-col gap-1.5 overflow-y-auto p-2">
         <div
           className={`text-base font-bold ${teamColor} flex items-center gap-1.5 flex-wrap`}
           style={spectating ? { color: SPECTATOR_TEAM_PALETTE[team].deep } : undefined}

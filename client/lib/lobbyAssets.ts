@@ -51,6 +51,17 @@ export const LOBBY_ASSETS = {
      포함돼 있어(네 변이 다르다), globals.css가 그만큼 액자 레이어를 바깥으로 밀어 나무가
      카드 모서리에 맞도록 한다(--board-mt/mr/mb/ml). */
   formBoard: '/ui/back_board.png',
+  /**
+   * 위 formBoard를 **액자와 양피지 두 장으로 가른 것**(2026-09-20).
+   * 합쳐진 한 장으로는 양피지만 반투명하게 만들 수 없어서 갈랐다 — 승패 화면이
+   * 이 둘을 겹쳐 쓴다(globals.css의 .board-frame-split / .board-plate).
+   * 액자는 **속이 비어 있다**. 그래서 9분할할 때 fill을 주면 안 된다(줄 것이 없다).
+   * 두 파일 모두 투명 여백 없이 바짝 잘려 있으므로, formBoard와 달리 --board-m*으로
+   * 여백을 보정할 필요가 없다 — 그 값은 "액자를 상자 밖으로 얼마나 미느냐"로만 쓴다.
+   * 다시 자르려면: cd client && node scripts/cutBackBoard.mjs
+   */
+  formBoardFrame: '/ui/back_board_frame.webp',
+  formBoardPlate: '/ui/back_board_plate.webp',
   cornerTL: '/ui/corner_tl.webp',
   cornerTR: '/ui/corner_tr.webp',
   cornerBL: '/ui/corner_bl.webp',

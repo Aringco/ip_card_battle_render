@@ -25,6 +25,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const VIEWPORTS = [
   { w: 1280, h: 900 },
+  // 세로가 가장 빠듯한 노트북 해상도 — 폼 배율 상한이 여기서 먼저 걸린다.
+  // 이 줄이 없어서 방 만들기 카드가 768 높이에서 넘치는 것을 오래 놓쳤다.
+  { w: 1366, h: 768 },
   { w: 1920, h: 1080 },
   { w: 390, h: 844 },
 ];
@@ -58,6 +61,14 @@ async function measure(page, label) {
       formScroll: openForm
         ? { v: openForm.scrollHeight > openForm.clientHeight + 1, scrollH: openForm.scrollHeight, clientH: openForm.clientHeight }
         : null,
+      // 카드 **안쪽**의 스크롤(.lobby-form-scroll). 위 formScroll(.stage-form)과 다른
+      // 상자다 — 화면에 실제로 초록 막대가 그려지는 쪽은 대개 이쪽이고, 예전에는 재지
+      // 않아 "문제 없음"이라고 말하면서 방 만들기·방 참가하기에 스크롤바가 떠 있었다.
+      cardScroll: (() => {
+        const sc = openForm?.querySelector('.lobby-form-scroll');
+        if (!sc) return null;
+        return { v: sc.scrollHeight > sc.clientHeight + 1, over: sc.scrollHeight - sc.clientHeight };
+      })(),
       pageScroll: document.documentElement.scrollHeight > document.documentElement.clientHeight + 1,
     };
   }, label);
@@ -135,12 +146,17 @@ for (const vp of VIEWPORTS) {
 
   results.push(await measure(page, `home@${tag}`));               await shot('1-home');
   await page.click('.stage-col-solo > .stage-panel'); await sleep(SETTLE);
+  // ⚠️ **접힌 상태를 먼저 잰다.** 규칙을 펼친 뒤에만 재면 스크롤이 "정상"으로 넘어가
+  // 접힌 화면의 스크롤바를 놓친다 — 실제로 그렇게 놓쳐, 방 만들기·방 참가하기가
+  // 열리자마자 초록 막대가 떠 있는데도 "문제 없음"이 나왔다.
+  results.push(await measure(page, `solo@${tag}`));               await shot('2a-solo');
   await openRules(page, '.stage-form-solo');          await sleep(500);
   results.push(await measure(page, `solo+rules@${tag}`));         await shot('2-solo-rules');
   await page.click('.lobby-back');                    await sleep(SETTLE);
   await page.click('.stage-panel-multi');             await sleep(SETTLE);
   results.push(await measure(page, `multi@${tag}`));              await shot('3-multi');
   await page.click('.stage-col-create > .stage-panel'); await sleep(SETTLE);
+  results.push(await measure(page, `create@${tag}`));             await shot('4a-create');
   await openRules(page, '.stage-form-create');        await sleep(500);
   results.push(await measure(page, `create+rules@${tag}`));       await shot('4-create-rules');
 
@@ -157,6 +173,14 @@ for (const vp of VIEWPORTS) {
   const spec = await measure(page, `create+spectator@${tag}`);
   spec.note = specShown ? '' : '*** 관전자 안내 안 뜸';
   results.push(spec);                                             await shot('6-create-spectator');
+
+  // 초대 링크 **없이** 연 참가 폼 — 평소에 보게 되는 화면이다
+  await page.goto(URL_BASE, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('.lobby-safe', { timeout: 60000 });
+  await sleep(1000);
+  await page.click('.stage-panel-multi');             await sleep(SETTLE);
+  await page.click('.stage-col-join > .stage-panel'); await sleep(SETTLE);
+  results.push(await measure(page, `join@${tag}`));               await shot('6a-join');
 
   // 초대 링크로 들어온 참가 폼 — 안내 배너가 한 덩어리 더 붙는다.
   // 새로 열어야 한다(page.tsx의 ?room= 처리는 마운트 직후 한 번뿐이다).
@@ -182,7 +206,7 @@ for (const vp of VIEWPORTS) {
 await browser.close();
 
 let bad = 0;
-console.log('label                   안전영역     카드         폼스크롤  페이지스크롤  화면밖   비고');
+console.log('label                   안전영역     카드         폼스크롤  카드스크롤  페이지스크롤  화면밖   비고');
 for (const r of results) {
   const b = o => (o ? `${o.w}x${o.h}` : '-');
   // 규칙을 **펼친** 상태의 폼 스크롤은 2026-09-08부터 의도된 동작이다 — 펼치면 카드
@@ -191,12 +215,14 @@ for (const r of results) {
   // 규칙을 **접은** 상태(join+invite 등)에서 스크롤이 생기면 그때가 진짜 문제다.
   const scrollExpected = /\+rules|\+clash|\+spectator/.test(r.label);
   const formScrollBad = !!r.formScroll?.v && !scrollExpected;
-  if (formScrollBad || r.pageScroll || r.offscreen || r.note) bad++;
+  const cardScrollBad = !!r.cardScroll?.v && !scrollExpected;
+  if (formScrollBad || cardScrollBad || r.pageScroll || r.offscreen || r.note) bad++;
   console.log(
     r.label.padEnd(23),
     b(r.safe).padEnd(12),
     b(r.card).padEnd(12),
     (r.formScroll ? (r.formScroll.v ? (scrollExpected ? 'yes(정상)' : '*** YES') : 'no') : '-').padEnd(9),
+    (r.cardScroll ? (r.cardScroll.v ? (scrollExpected ? `yes(정상 +${r.cardScroll.over})` : `*** YES +${r.cardScroll.over}`) : 'no') : '-').padEnd(11),
     (r.pageScroll ? '*** YES' : 'no').padEnd(13),
     (r.offscreen ? '*** YES' : 'no').padEnd(8),
     r.note ?? '',

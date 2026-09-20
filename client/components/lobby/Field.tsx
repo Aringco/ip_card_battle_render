@@ -50,13 +50,20 @@ export function FormCard({
       <div
         className="lobby-form-board w-full"
         style={{
-          ['--form-board' as string]: `url(${LOBBY_ASSETS.formBoard})`,
+          // 액자와 양피지를 가른 두 장(back_board_frame / back_board_plate)을 쓴다 —
+          // 합본 back_board.png는 더 이상 이 화면에서 쓰지 않는다. globals.css의
+          // .lobby-form-board가 그 둘을 각각 ::before와 .board-plate로 그린다.
+          ['--form-board' as string]: `url(${LOBBY_ASSETS.formBoardFrame})`,
+          ['--form-plate' as string]: `url(${LOBBY_ASSETS.formBoardPlate})`,
           ['--orn-tl' as string]: `url(${LOBBY_ASSETS.cornerTL})`,
           ['--orn-tr' as string]: `url(${LOBBY_ASSETS.cornerTR})`,
           ['--orn-bl' as string]: `url(${LOBBY_ASSETS.cornerBL})`,
           ['--orn-br' as string]: `url(${LOBBY_ASSETS.cornerBR})`,
         }}
       >
+        {/* 양피지 판 — 액자(::before)보다 아래 층(z-index -3). 의사요소 둘은 이미
+            액자와 귀퉁이 장식이 쓰고 있어 실제 요소로 둔다(BoardFrame과 같은 구조). */}
+        <div className="board-plate" aria-hidden />
         {/* 규칙을 펼쳐 내용이 길어지면 **카드가 자라지 않고 여기가 스크롤한다.**
             예전에는 카드가 세로로 자라 .stage-form이 통째로 스크롤했는데, 그러면
             나무 액자까지 함께 밀려 올라가 판이 화면 밖으로 나갔다.

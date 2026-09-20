@@ -16,22 +16,34 @@ import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
  *
  * ⚠️ `.board-frame`은 안쪽 배치를 정하지 않는다(폼처럼 zoom·2열 그리드를 갖지 않는다).
  * 배치는 쓰는 쪽이 `className`으로 준다.
+ *
+ * ## split — 액자와 양피지를 따로 그린다
+ *
+ * 기본값은 합쳐진 한 장(`back_board.png`)을 9분할해 `fill`로 가운데 양피지까지 함께
+ * 그리는 방식이다. `split`을 주면 **속이 빈 액자**와 **양피지 판**을 별도 레이어로
+ * 겹친다 — 그래야 양피지에만 투명도를 줄 수 있다(합쳐진 그림에 opacity를 걸면 나무까지
+ * 함께 비친다). 지금은 승패 화면(GameEndScreen)만 쓴다. 대기실은 불투명한 카드 하나로
+ * 읽혀야 해서 기본값 그대로다.
  */
 export function BoardFrame({
   className = '',
+  split = false,
   style,
   children,
 }: {
   className?: string;
+  /** 액자·양피지를 두 장으로 나눠 그리고 양피지를 반투명하게 한다(위 주석 참고) */
+  split?: boolean;
   /** 등장 애니메이션처럼 쓰는 쪽에서 얹는 값 — 액자 그림 변수 뒤에 병합된다 */
   style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   return (
     <div
-      className={`board-frame ${className}`}
+      className={`board-frame ${split ? 'board-frame-split' : ''} ${className}`}
       style={{
-        ['--form-board' as string]: `url(${LOBBY_ASSETS.formBoard})`,
+        ['--form-board' as string]: `url(${split ? LOBBY_ASSETS.formBoardFrame : LOBBY_ASSETS.formBoard})`,
+        ['--form-plate' as string]: `url(${LOBBY_ASSETS.formBoardPlate})`,
         ['--orn-tl' as string]: `url(${LOBBY_ASSETS.cornerTL})`,
         ['--orn-tr' as string]: `url(${LOBBY_ASSETS.cornerTR})`,
         ['--orn-bl' as string]: `url(${LOBBY_ASSETS.cornerBL})`,
@@ -39,6 +51,9 @@ export function BoardFrame({
         ...style,
       }}
     >
+      {/* 양피지 판 — 액자(::before)보다 아래 층(z-index -3)에 깔린다. 의사요소를
+          쓰지 못하는 이유는 ::before가 액자, ::after가 귀퉁이 장식으로 이미 차 있어서다. */}
+      {split && <div className="board-plate" aria-hidden />}
       {children}
     </div>
   );

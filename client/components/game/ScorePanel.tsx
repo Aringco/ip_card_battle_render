@@ -81,17 +81,13 @@ function AnimalTable({
     // 삐져나오게 디자인돼 있어 안쪽에 두면 튀어나온 부분이 그대로 잘려 보인다.
     <div data-team-score-row={`${team}:${animal}`} className="relative flex-1 min-h-0">
       {animal === 'mermaid' && multiplier > 1 && (
-        <span
-          className="mermaid-multiplier-sticker"
-          style={isTeamB ? { left: 'auto', right: '-0.4rem' } : undefined}
-        >
+        <span className={`mermaid-multiplier-sticker ${isTeamB ? 'sticker-flip-right' : ''}`}>
           ×{multiplier}
         </span>
       )}
       {animal === 'sheep' && extraDraws > 0 && (
         <span
-          className="sheep-extra-draws-sticker"
-          style={isTeamB ? { left: 'auto', right: '-0.4rem' } : undefined}
+          className={`sheep-extra-draws-sticker ${isTeamB ? 'sticker-flip-right' : ''}`}
           title="다음 내 턴에 예약된 추가 뽑기"
         >
           +{extraDraws}

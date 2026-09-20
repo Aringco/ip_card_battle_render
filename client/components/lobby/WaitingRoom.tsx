@@ -98,7 +98,10 @@ export function WaitingRoom({
     // 로비 폼과 같은 나무 액자를 두른다 — 예전에는 흰 카드 한 장이라, 카드테이블
     // 일러스트 위에 인쇄물을 얹어 놓은 것처럼 세계관이 끊겼다. 안쪽 칸들도 회색이
     // 아니라 .board-panel(반투명 따뜻한 흰색)이라야 양피지와 같은 재질로 읽힌다.
-    <BoardFrame className="w-full max-w-4xl h-full flex flex-col">
+    // split — 액자와 양피지를 가른 두 장으로 그린다(로비 폼·결과 창과 같은 에셋).
+    // 양피지는 불투명하게 둔다: 참가자 목록·채팅이 계속 바뀌는 자리라 배경이 비치면
+    // 읽는 데 방해가 된다(--plate-opacity).
+    <BoardFrame split className="waiting-board w-full max-w-4xl h-full flex flex-col">
       {/* 스크롤은 액자가 아니라 **양피지 안쪽**에서 난다. 액자를 스크롤 컨테이너 안에
           넣으면 나무테까지 함께 밀려 올라가 판이 화면 밖으로 나가버린다. 여기서는
           액자가 제자리에 서 있고 내용만 그 안에서 오르내린다.
