@@ -14,7 +14,7 @@ import type {
   ServerMessage,
   Team,
 } from 'shared';
-import { DEFAULT_SETTINGS } from 'shared';
+import { DEFAULT_SETTINGS, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
 
 type LobbyTeamNames = Record<Team, string | null>;
 
@@ -95,6 +95,17 @@ export interface UseWebSocketReturn {
   turnDeadline: number;
   lastEvents: ClientGameEvent[];
   error: string | null;
+  // 상대가 보낸 일시정지 요청 — 수락/거절 창을 띄울 근거다. receivedAt은 받은 순간의
+  // 내 시계라, 남은 초는 (receivedAt + timeoutMs - now)로 화면이 직접 센다(서버 시계의
+  // 절대 시각을 그대로 쓰지 않는다 — 턴 타이머와 같은 이유).
+  pauseRequest: { fromTeam: Team; fromNickname: string; timeoutMs: number; receivedAt: number } | null;
+  // 내가 보낸 요청의 답을 기다리는 중이면 그 마감 시각(내 시계 기준), 아니면 null.
+  pauseWaitingUntil: number | null;
+  // 멈춰 있다면 자동으로 다시 시작되는 시각(내 시계 기준), 아니면 null.
+  pauseUntil: number | null;
+  // 요청이 거절/시간초과로 끝났을 때의 한 줄 안내(직접 닫거나 잠시 뒤 사라진다).
+  pauseNotice: string | null;
+  clearPauseNotice: () => void;
   // team에는 관전석('spectator')도 올 수 있다 — 로비에서 고르는 "자리"이기 때문.
   createRoom: (nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string) => void;
   joinRoom: (roomId: string, nickname: string, team: Seat, teamName?: string) => void;
@@ -112,6 +123,14 @@ export interface UseWebSocketReturn {
   drawCard: (place: Place) => void;
   chooseSkill: (animal: Animal) => void;
   passSkill: () => void;
+  // ─ 게임 중 메뉴(⏸) ─
+  requestPause: () => void;
+  respondPause: (accept: boolean) => void;
+  resumeGame: () => void;
+  /** 항복하기 — 상대 팀 승리로 게임을 끝내고 그대로 결과 화면을 본다. */
+  surrender: () => void;
+  /** 나가기 — 항복과 같은 승패 처리 뒤 방에서까지 빠진다(저장된 세션도 함께 지운다). */
+  leaveGame: () => void;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
@@ -134,6 +153,10 @@ export function useWebSocket(): UseWebSocketReturn {
   const [turnDeadline, setTurnDeadline] = useState(0);
   const [lastEvents, setLastEvents] = useState<ClientGameEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pauseRequest, setPauseRequest] = useState<UseWebSocketReturn['pauseRequest']>(null);
+  const [pauseWaitingUntil, setPauseWaitingUntil] = useState<number | null>(null);
+  const [pauseUntil, setPauseUntil] = useState<number | null>(null);
+  const [pauseNotice, setPauseNotice] = useState<string | null>(null);
 
   // 상태를 받은 "그 순간"을 기준으로 데드라인을 내 시계로 환산해둔다. 화면에 타이머가
   // 실제로 보이기 시작하는 건 연출이 끝난 뒤(수 초 뒤)라, 이 환산을 타이머 컴포넌트가
@@ -141,6 +164,8 @@ export function useWebSocket(): UseWebSocketReturn {
   const applyState = useCallback((state: ClientGameState) => {
     setGameState(state);
     setTurnDeadline(state.turnRemainingMs > 0 ? Date.now() + state.turnRemainingMs : 0);
+    // 자동 재개까지 남은 시간도 **받은 그 순간** 내 시계로 환산한다(턴 타이머와 같은 규칙).
+    setPauseUntil(state.pauseRemainingMs > 0 ? Date.now() + state.pauseRemainingMs : null);
   }, []);
 
   const send = useCallback((msg: ClientMessage) => {
@@ -179,6 +204,18 @@ export function useWebSocket(): UseWebSocketReturn {
       switch (msg.type) {
         case 'roomCreated':
         case 'roomJoined':
+          // ⚠️ **여기서 옛 게임 상태를 비우는 것이 핵심이다.** 게임 화면에서 뒤로가기로
+          // 로비에 오면 이 훅이 자동 재접속으로 그 방의 gameSnapshot을 한 번 받아 두는데,
+          // 그 상태가 남아 있는 채로 새 방을 만들면 로비의 "게임이 시작되면 게임 화면으로"
+          // 규칙이 곧바로 걸려버린다 — 아직 시작도 안 한 새 방 코드로 게임 화면에 들어가
+          // "방 XXXX를 찾을 수 없습니다"만 보게 되던 버그다. 방에 새로 들어온 시점은
+          // 정의상 아직 게임이 없는 시점이므로, 비우는 것이 언제나 옳다.
+          setGameState(null);
+          setLastEvents([]);
+          setTurnDeadline(0);
+          setPauseRequest(null);
+          setPauseWaitingUntil(null);
+          setPauseNotice(null);
           setRoomId(msg.roomId);
           setPlayerId(msg.playerId);
           setMemberId(msg.memberId);
@@ -236,6 +273,42 @@ export function useWebSocket(): UseWebSocketReturn {
           applyState(msg.state);
           break;
 
+        case 'pauseState':
+          applyState(msg.state);
+          // ⚠️ **답을 기다리는 중이면 아무 창도 닫지 않는다.** 서버는 묻는 20초 동안에도
+          // 판을 멈추므로 이 메시지가 그 시작에도 온다 — 예전처럼 무조건 지우면 요청한
+          // 쪽 버튼이 곧바로 "게임 계속하기"로 바뀌고(아직 수락 전인데) 물어보던 창도
+          // 뜨자마자 사라진다. 멈춤/재개가 **확정**된 경우에만 정리한다.
+          if (!msg.state.pausePendingAnswer) {
+            setPauseRequest(null);
+            setPauseWaitingUntil(null);
+          }
+          break;
+
+        case 'pauseRequest':
+          setPauseRequest({
+            fromTeam: msg.fromTeam,
+            fromNickname: msg.fromNickname,
+            timeoutMs: msg.timeoutMs,
+            receivedAt: Date.now(),
+          });
+          break;
+
+        case 'pauseRequestResult':
+          setPauseRequest(null);
+          setPauseWaitingUntil(null);
+          // 수락이면 곧이어 pauseState가 화면을 멈추므로 따로 알릴 것이 없다.
+          if (!msg.accepted) {
+            setPauseNotice(
+              msg.reason === 'timeout'
+                ? '상대방이 시간 안에 답하지 않아 게임을 계속합니다.'
+                : msg.reason === 'cancelled'
+                  ? '일시정지 요청이 취소되었습니다.'
+                  : '상대방이 일시정지를 거절했습니다.',
+            );
+          }
+          break;
+
         case 'error':
           if (msg.code === 'INVALID_RECONNECT' || msg.code === 'ROOM_NOT_FOUND') {
             // 재접속 실패(세션 무효 또는 방 소멸): 저장된 세션 정보를 지워서
@@ -243,6 +316,13 @@ export function useWebSocket(): UseWebSocketReturn {
             sessionStore.remove(STORAGE_ROOM_ID);
             sessionStore.remove(STORAGE_PLAYER_ID);
             sessionStore.remove(STORAGE_MEMBER_ID);
+          }
+          // 일시정지를 걸지 못했으면(이미 요청이 떠 있거나, 풀 권한이 없거나) 기다리는
+          // 표시부터 걷는다 — 오지 않을 답을 20초 동안 기다리는 것처럼 보이지 않게.
+          if (msg.code === 'PAUSE_UNAVAILABLE') {
+            setPauseWaitingUntil(null);
+            setPauseNotice(msg.message);
+            break;
           }
           // "지금은 행동을 선택할 차례입니다" 류는 화면 전환 타이밍에 늦게 도착한
           // 클릭이 원인인 무해한 안내라, 화면 위에 빨간 배너로 띄울 필요가 없다
@@ -317,14 +397,45 @@ export function useWebSocket(): UseWebSocketReturn {
 
   const passSkill = useCallback(() => send({ type: 'passSkill' }), [send]);
 
+  const requestPause = useCallback(() => {
+    setPauseNotice(null);
+    // 상대가 사람이 아니면(싱글) 서버가 곧바로 멈추고 pauseState가 이 값을 지운다.
+    // 사람이면 그 답을 기다리는 동안 이 마감 시각으로 남은 초를 센다.
+    setPauseWaitingUntil(Date.now() + PAUSE_REQUEST_TIMEOUT_SEC * 1000);
+    send({ type: 'pauseRequest' });
+  }, [send]);
+
+  const respondPause = useCallback((accept: boolean) => {
+    setPauseRequest(null);
+    send({ type: 'pauseRespond', accept });
+  }, [send]);
+
+  const resumeGame = useCallback(() => send({ type: 'resumeGame' }), [send]);
+
+  const surrender = useCallback(() => send({ type: 'forfeit' }), [send]);
+
+  const leaveGame = useCallback(() => {
+    // 저장된 세션을 **보내기 전에** 지운다 — 곧바로 로비로 이동하면서 이 연결이 닫히고
+    // 새 화면이 새 연결로 자동 재접속을 시도하는데, 그때까지 세션이 남아 있으면 방금
+    // 버리고 나온 방으로 되돌아가려 한다.
+    sessionStore.remove(STORAGE_ROOM_ID);
+    sessionStore.remove(STORAGE_PLAYER_ID);
+    sessionStore.remove(STORAGE_MEMBER_ID);
+    send({ type: 'forfeit', leave: true });
+  }, [send]);
+
+  const clearPauseNotice = useCallback(() => setPauseNotice(null), []);
+
   return {
     connected, roomId, playerId, memberId,
     lobbyPlayers, lobbyTeamNames, lobbySettings, hostMemberId,
     isHost: memberId !== null && memberId === hostMemberId,
     roomNotice, clearRoomNotice, chatLog,
     gameState, turnDeadline, lastEvents, error,
+    pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
     movePlayer, kickPlayer, transferHost, setTeamName, updateSettings, startGame, sendChat,
     drawCard, chooseSkill, passSkill,
+    requestPause, respondPause, resumeGame, surrender, leaveGame,
   };
 }

@@ -86,6 +86,7 @@ export const IMAGE_FILES: string[] = [
   "/howto/how_places.png",
   "/howto/how_skills.png",
   "/lobby/loading_bg.webp",
+  "/lobby/loading_bg_2.webp",
   "/lobby/logo.png",
   "/lobby/panel_create.webp",
   "/lobby/panel_join.webp",
@@ -193,6 +194,7 @@ export const IMAGE_FILES: string[] = [
   "/play/play_bg.webp",
   "/play/play_frame.webp",
   "/play/result_bg.webp",
+  "/play/result_bg_2.webp",
   "/play/upper_bar.webp"
 ];
 

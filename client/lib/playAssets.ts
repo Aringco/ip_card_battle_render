@@ -29,6 +29,13 @@ export const PLAY_ASSETS = {
    */
   resultBackground: '/play/result_bg.webp',
   /**
+   * 결과 화면 배경 2 — 통나무집 탁자에서 카드를 펼친 네 캐릭터 (2560×1440 WebP,
+   * 약 299KB, 원본 game_end_4.png). 위 resultBackground와 **둘 중 하나가 무작위로** 깔린다.
+   * 고르는 일은 GameEndScreen이 하고, CSS(.result-bg)는 그 결과를 --result-bg로 받는다 —
+   * 경로가 이 파일 한 곳에만 남도록.
+   */
+  resultBackground2: '/play/result_bg_2.webp',
+  /**
    * 상단 바 — **들보와 팻말이 한 몸인** 통짜 그림(2500×233).
    *
    * 가로 3분할의 **왼쪽 마구리가 곧 팻말**이라, 팀 이름과 "○○ 차례"를 그 양피지

@@ -7,6 +7,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAnimationQueue } from '@/hooks/useAnimationQueue';
 import { GameLayout } from '@/components/game/GameLayout';
 import { GameEndScreen } from '@/components/game/GameEndScreen';
+import { PauseMenu } from '@/components/game/PauseMenu';
 import { playBgm } from '@/lib/bgm';
 import { startPreload } from '@/lib/preload';
 
@@ -15,7 +16,11 @@ const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 B
 
 export default function GamePage() {
   const router = useRouter();
-  const { gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, error, connected, playerId } = useWebSocket();
+  const {
+    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, error, connected, playerId,
+    pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
+    requestPause, respondPause, resumeGame, surrender, leaveGame,
+  } = useWebSocket();
   const [myTeam, setMyTeam] = useState<Team | null>(null);
 
   const animState = useAnimationQueue(lastEvents, gameState);
@@ -63,6 +68,20 @@ export default function GamePage() {
     passSkill();
   }, [passSkill]);
 
+  /**
+   * 방을 버리고 로비로 — 나가기 버튼과 결과 화면의 "로비로 돌아가기"가 함께 쓴다.
+   *
+   * 화면만 옮기고 끝내면 안 된다. 서버에는 이 사람이 아직 그 방의 일원으로 남아 있고,
+   * 저장된 세션도 그대로라 로비에 도착하자마자 그 방으로 자동 재접속해버린다 —
+   * 그 상태로 방을 새로 만들면 옛 게임 상태와 새 방 코드가 섞여 "방 XXXX를 찾을 수
+   * 없습니다"가 된다. leaveGame이 방에서 빠지는 일과 세션을 지우는 일을 함께 한다
+   * (진행 중이던 게임이면 상대 팀 승리로 끝난다).
+   */
+  const handleLeave = useCallback(() => {
+    leaveGame();
+    router.push('/');
+  }, [leaveGame, router]);
+
   if (!gameState) {
     return (
       <div className="min-h-screen bg-jungle-50 flex flex-col items-center justify-center gap-3">
@@ -84,20 +103,44 @@ export default function GamePage() {
   // "결정타!" 강조)이 끝까지 재생된 뒤에야 종료 화면으로 넘어간다 — 승리를 만든
   // 그 행동의 손맛을 화면 전환이 잘라먹지 않도록.
   if (gameState.phase === 'ended' && !animState.isSettling) {
-    return <GameEndScreen gameState={gameState} myTeam={myTeam} onBack={() => router.push('/')} />;
+    return <GameEndScreen gameState={gameState} myTeam={myTeam} onBack={handleLeave} />;
   }
 
   return (
-    <GameLayout
-      gameState={gameState}
-      turnDeadline={turnDeadline}
-      myTeam={myTeam}
-      playerId={playerId}
-      onPlaceClick={handlePlaceClick}
-      onChooseSkill={handleChooseSkill}
-      onPassSkill={handlePassSkill}
-      error={error}
-      animState={animState}
-    />
+    <>
+      <GameLayout
+        gameState={gameState}
+        turnDeadline={turnDeadline}
+        myTeam={myTeam}
+        playerId={playerId}
+        onPlaceClick={handlePlaceClick}
+        onChooseSkill={handleChooseSkill}
+        onPassSkill={handlePassSkill}
+        error={error}
+        animState={animState}
+        paused={gameState.paused}
+      />
+      {/* 게임 중 메뉴(⏸) — 판 바깥에 둔다. GameLayout 안에 넣으면 결정타 연출의
+          화면 흔들기(transform)가 쌓임 맥락을 만들어 이 창까지 함께 흔들린다. */}
+      <PauseMenu
+        paused={gameState.paused}
+        pausedBy={gameState.pausedBy}
+        pausePending={gameState.pausePendingAnswer}
+        // 관전자(myTeam === null)는 애초에 멈출 수 없어 이 숫자를 쓰지 않는다.
+        pauseLeft={myTeam ? Math.max(0, gameState.settings.pauseMaxCount - gameState.pauseUsed[myTeam]) : 0}
+        pauseUnlimited={gameState.pauseUnlimited}
+        pauseUntil={pauseUntil}
+        myTeam={myTeam}
+        pauseRequest={pauseRequest}
+        pauseWaitingUntil={pauseWaitingUntil}
+        pauseNotice={pauseNotice}
+        onClearNotice={clearPauseNotice}
+        onRequestPause={requestPause}
+        onResume={resumeGame}
+        onRespond={respondPause}
+        onSurrender={surrender}
+        onLeave={handleLeave}
+      />
+    </>
   );
 }

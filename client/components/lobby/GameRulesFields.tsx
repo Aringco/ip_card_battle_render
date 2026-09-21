@@ -41,7 +41,23 @@ const RULE_FIELDS: {
   { key: 'drawTimeSec', label: '뽑기 시간', title: '동물 뽑기 제한시간', suffix: '초' },
   { key: 'actionTimeSec', label: '행동 시간', title: '행동 선택 제한시간', suffix: '초' },
   { key: 'noActionTimeSec', label: '행동 없을 때', title: '행동할 게 없을 때 제한시간', suffix: '초' },
+  {
+    key: 'pauseMaxCount',
+    label: '일시정지 횟수',
+    title: '일시정지 횟수 — 팀마다 이 횟수까지',
+    suffix: '회',
+    hint: '0 = 일시정지 없음',
+  },
+  {
+    key: 'pauseMaxMin',
+    label: '일시정지 시간',
+    title: '일시정지 최대 시간 — 넘으면 자동으로 다시 시작',
+    suffix: '분',
+  },
 ];
+
+// 혼자 놀기에서 감추는 두 항목 — 서버도 같은 이유로 제한을 걸지 않는다(Room.vsComputer).
+const PAUSE_KEYS: (keyof Omit<GameSettings, 'firstTeam'>)[] = ['pauseMaxCount', 'pauseMaxMin'];
 
 /** 입력값을 SETTINGS_LIMITS 범위로 자르는 공통 처리 — 두 입력 폼이 같은 규칙을 쓴다. */
 function clampField(key: keyof Omit<GameSettings, 'firstTeam'>, raw: string): number {
@@ -53,10 +69,14 @@ function clampField(key: keyof Omit<GameSettings, 'firstTeam'>, raw: string): nu
 export function GameRulesFields({
   settings,
   onChange,
+  hidePause = false,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
+  /** 일시정지 횟수·시간을 감춘다 — 혼자 놀기는 기다리게 할 상대가 없어 제한이 없다. */
+  hidePause?: boolean;
 }) {
+  const fields = hidePause ? RULE_FIELDS.filter(f => !PAUSE_KEYS.includes(f.key)) : RULE_FIELDS;
   const [open, setOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -116,7 +136,7 @@ export function GameRulesFields({
             넘치는 만큼 스크롤하도록 바뀌어(globals.css의 data-rules-open 절) 더는
             좁은 세로에 억지로 맞출 이유가 없다. 라벨도 잘리지 않는다. */}
         <div className="grid grid-cols-1 gap-y-1.5">
-          {RULE_FIELDS.map(({ key, label, title, suffix, hint }) => {
+          {fields.map(({ key, label, title, suffix, hint }) => {
             const { min, max } = SETTINGS_LIMITS[key];
             return (
               <div key={key} className="flex flex-col text-xs" title={title}>

@@ -40,6 +40,7 @@ export function GameLayout({
   onPassSkill,
   error,
   animState,
+  paused,
 }: {
   gameState: ClientGameState;
   // 턴 제한시간 만료 시각 — 서버 시계가 아니라 내 브라우저 시계 기준으로 환산된 값이
@@ -55,6 +56,8 @@ export function GameLayout({
   onPassSkill: () => void;
   error: string | null;
   animState: AnimationState;
+  /** 일시정지 중 — 타이머 표시와 "고를 게 없을 때의 자동 턴 종료"를 함께 멈춘다. */
+  paused: boolean;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
   const spectating = myTeam === null;
@@ -116,10 +119,13 @@ export function GameLayout({
   // 세고, 서버는 그 연출 길이만큼을 유예로 얹어두므로 자연히 이쪽이 먼저 발동한다.
   const noActionMs = gameState.settings.noActionTimeSec * 1000;
   useEffect(() => {
-    if (!noEligible) return;
+    // ⚠️ 멈춰 있는 동안에는 세지 않는다 — 서버는 일시정지 중 조작을 전부 거부하므로,
+    // 여기서 그대로 흘려보내면 재개하자마자(또는 멈춘 채로) 턴이 저절로 넘어간 것처럼
+    // 보이는 패스 요청만 거부당한 뒤 화면이 멈춘 채 남는다.
+    if (!noEligible || paused) return;
     const t = setTimeout(() => onPassSkill(), noActionMs);
     return () => clearTimeout(t);
-  }, [noEligible, noActionMs, onPassSkill]);
+  }, [noEligible, paused, noActionMs, onPassSkill]);
 
   return (
     <div
@@ -229,6 +235,7 @@ export function GameLayout({
               noEligible={noEligible}
               turnDeadline={turnDeadline}
               turnTotalMs={gameState.turnTotalMs}
+              paused={paused}
               turn={gameState.turn}
               startingTeam={gameState.startingTeam}
               startingTeamReason={gameState.startingTeamReason}

@@ -24,6 +24,7 @@ export function ActionPrompt({
   noEligible,
   turnDeadline,
   turnTotalMs,
+  paused,
   turn,
   startingTeam,
   startingTeamReason,
@@ -39,6 +40,9 @@ export function ActionPrompt({
   noEligible: boolean;
   turnDeadline: number; // 내 브라우저 시계 기준 만료 시각(useWebSocket이 환산해준 값)
   turnTotalMs: number;  // 게이지 100%에 해당하는 시간 — 서버가 상태와 함께 보내준다
+  // 게임이 일시정지 중인지 — 서버는 멈추는 순간 턴 타이머를 남은 시간만 챙겨 걷어내므로,
+  // 화면의 카운트다운도 같이 멈춰야 "숫자는 흐르는데 시간은 안 가는" 그림이 되지 않는다.
+  paused: boolean;
   turn: number; // 1이면 아직 첫 라운드 — 선 플레이어 안내를 함께 보여준다
   startingTeam: Team;
   startingTeamReason: 'setting' | 'random';
@@ -93,7 +97,7 @@ export function ActionPrompt({
           // turnTotalMs를 그대로 쓴다 — 실용신양·도토리 축제 예약 뽑기로 늘어난 시간이나
           // 행동할 게 없을 때의 짧은 시간까지 서버가 이미 반영해 보내주므로, 여기서
           // 설정값만 보고 짐작하면 눈금과 숫자가 어긋난다.
-          <TurnTimer deadline={turnDeadline} paused={false} totalMs={turnTotalMs} />
+          <TurnTimer deadline={turnDeadline} paused={paused} totalMs={turnTotalMs} />
         )}
         <span className="play-timer-text">
           {firstTeamNote && <span className="play-timer-note">{firstTeamNote}</span>}

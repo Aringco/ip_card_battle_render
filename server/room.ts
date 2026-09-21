@@ -17,6 +17,7 @@ import {
   CHAT_MIN_INTERVAL_MS,
   DEFAULT_SETTINGS,
   SPECTATOR,
+  PAUSE_REQUEST_TIMEOUT_SEC,
   isPlayingSeat,
   clampSettings,
 } from 'shared';
@@ -163,6 +164,34 @@ export class Room {
   private timerHandle: ReturnType<typeof setTimeout> | null = null;
   private vsComputer = false;
   private computerTimer: ReturnType<typeof setTimeout> | null = null;
+  // 컴퓨터 타이머가 터질 예정인 시각 — 일시정지할 때 "얼마나 남았는지"를 재려면
+  // 핸들만으로는 알 수 없어 따로 기억해둔다.
+  private computerDeadline = 0;
+
+  // ─── 일시정지 ────────────────────────────────────────────────────────────
+  // 멈춰 있는 동안 서버에는 **타이머가 하나도 걸려 있지 않다.** 남은 시간을 아래 두
+  // 값에 보관했다가 재개할 때 그대로 이어 붙인다 — 데드라인을 그대로 둔 채 타이머만
+  // 멈추면, 재개 순간 이미 지난 시각이 되어 턴이 곧바로 시간초과로 날아간다.
+  private paused = false;
+  private pausedBy: { playerId: string; team: Team; nickname: string } | null = null;
+  private pausedTurnRemainingMs = 0;
+  // 게이지 100%에 해당하는 시간도 함께 보관한다 — clearTimer가 turnTotalMs까지 0으로
+  // 되돌리기 때문이다(게임이 끝난 방의 스냅샷에 유령 카운트다운이 실리지 않게 하려고).
+  // 이 값을 챙기지 않으면 멈춘 동안의 게이지 폭이 0이 되고, 재개한 뒤에도 0으로 남아
+  // 남은 시간이 1초에 고정된 채 얼어붙는다(TurnTimer가 maxSeconds로 잘라 표시한다).
+  private pausedTurnTotalMs = 0;
+  private pausedCpuRemainingMs: number | null = null;
+  // 상대의 대답을 기다리는 중인 일시정지 요청(멀티 플레이 전용).
+  private pauseRequest: { playerId: string; team: Team; nickname: string } | null = null;
+  private pauseRequestTimer: ReturnType<typeof setTimeout> | null = null;
+  // 팀마다 쓴 일시정지 횟수(settings.pauseMaxCount까지). **요청하는 순간** 하나 깎는다 —
+  // 상대가 고르는 20초 동안에도 판은 이미 멈춰 있으므로, 수락 여부와 무관하게 그 요청
+  // 자체가 판을 멈춘 것이다. 깎지 않으면 거절당할 때마다 다시 요청해 판을 계속 얼릴 수 있다.
+  private pauseUsed: Record<Team, number> = { A: 0, B: 0 };
+  // 한 번의 일시정지가 settings.pauseMaxMin을 넘기면 서버가 대신 풀어준다 — 멈춘 팀이
+  // 자리를 뜨면 상대가 영영 기다리게 되기 때문이다. 남은 시간은 화면 카운트다운에도 쓴다.
+  private pauseAutoResumeTimer: ReturnType<typeof setTimeout> | null = null;
+  private pauseAutoResumeDeadline = 0;
 
   constructor(
     readonly roomId: string,
@@ -337,7 +366,15 @@ export class Room {
     return `m${this.memberIdSeq}`;
   }
 
-  /** 싱글 모드 — 사람은 A팀에 즉시 참가시키고, B팀은 컴퓨터(랜덤 클릭)로 채워 곧바로 게임을 시작한다. */
+  /**
+   * 싱글 모드 — 사람은 A팀에 앉히고 B팀은 컴퓨터(랜덤 클릭)로 채운다.
+   *
+   * ⚠️ **여기서 게임을 시작하지 않는다.** 시작은 부르는 쪽이 startSoloGame()으로
+   * 따로 한다 — 그래야 그 사이에 roomCreated(내 방 코드와 playerId)를 먼저 보낼 수
+   * 있다. 예전에는 이 함수가 곧바로 시작해 gameStart가 roomCreated보다 **먼저**
+   * 도착했는데, 그러면 "방에 새로 들어왔으니 옛 게임 상태를 비운다"는 클라이언트
+   * 규칙이 방금 받은 새 게임을 지워버려 혼자 놀기가 로비에서 한 발짝도 못 나간다.
+   */
   addSoloPlayer(ws: WebSocket, playerId: string, nickname: string, teamName?: string, settings?: Partial<GameSettings>): void {
     this.vsComputer = true;
     if (settings) this.settings = clampSettings(settings);
@@ -350,6 +387,10 @@ export class Room {
     this.teamPlayerIds.B.push(CPU_PLAYER_ID);
     this.assignTeamName('A', teamName);
     this.teamNames.B = CPU_TEAM_NAME;
+  }
+
+  /** 싱글 모드 시작 — addSoloPlayer로 자리를 만들고 roomCreated를 보낸 뒤에 부른다. */
+  startSoloGame(): void {
     this.tryStartGame();
   }
 
@@ -561,9 +602,36 @@ export class Room {
     this.assignTeamName('B');
 
     this.resetTimer();
-    const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
+    const clientState = this.snapshot();
     this.broadcast({ type: 'gameStart', state: clientState });
     this.scheduleComputerActionIfNeeded();
+  }
+
+  /**
+   * 지금 방 상태를 클라이언트용으로 직렬화한다. 이 방의 **모든** 상태 전송(gameStart ·
+   * gameSnapshot · actionResult · pauseState)이 이 한 곳을 지나므로, 일시정지처럼
+   * 엔진 밖에 있는 상태를 새로 실어야 할 때 빠뜨릴 자리가 없다.
+   *
+   * ⚠️ 멈춰 있을 때는 turnDeadline이 아니라 **보관해둔 남은 시간**으로 데드라인을 다시
+   * 만든다 — 멈추는 순간 turnDeadline은 이미 쓸모없는 과거 시각이고, 그대로 보내면
+   * 화면의 게이지가 0에 붙은 채 얼어붙는다(재개하면 제 시간이 돌아오는데도).
+   */
+  private snapshot() {
+    if (!this.state) throw new Error('게임이 시작되지 않은 방에서 snapshot을 만들 수 없습니다.');
+    const deadline = this.paused
+      ? (this.pausedTurnRemainingMs > 0 ? Date.now() + this.pausedTurnRemainingMs : 0)
+      : this.turnDeadline;
+    const totalMs = this.paused ? this.pausedTurnTotalMs : this.turnTotalMs;
+    return serializeState(this.state, deadline, totalMs, this.finalTeamNames(), this.teamPlayerIds, {
+      paused: this.paused,
+      pausedBy: this.pausedBy ? { team: this.pausedBy.team, nickname: this.pausedBy.nickname } : null,
+      pendingAnswer: this.pauseRequest !== null,
+      used: { ...this.pauseUsed },
+      unlimited: this.vsComputer,
+      // 절대 시각이 아니라 **남은 ms**를 보낸다 — 턴 타이머와 같은 이유다(CLAUDE.md의
+      // "턴 타이머를 화면에 그리는 규칙 3가지" 참고). 멈춰 있지 않으면 0.
+      remainingMs: this.paused ? Math.max(0, this.pauseAutoResumeDeadline - Date.now()) : 0,
+    });
   }
 
   private finalTeamNames(): Record<Team, string> {
@@ -593,8 +661,20 @@ export class Room {
     return true;
   }
 
+  /**
+   * 멈춰 있는 동안의 조작은 전부 거부한다. 화면이 이미 덮여 있어 실제로는 누를 수
+   * 없지만, 멈추기 직전에 떠난 클릭이 늦게 도착하거나 직접 만든 클라이언트가 보내는
+   * 경우가 있다 — 그걸 받아주면 멈춘 채로 판이 흘러가 버린다.
+   */
+  private rejectIfPaused(playerId: string): boolean {
+    if (!this.paused) return false;
+    this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '게임이 일시정지 중입니다.' });
+    return true;
+  }
+
   handleDrawCard(playerId: string, place: Place): void {
     if (this.rejectIfSpectator(playerId)) return;
+    if (this.rejectIfPaused(playerId)) return;
     if (!this.state || this.state.phase !== 'playing') {
       this.sendTo(playerId, { type: 'error', code: 'GAME_NOT_STARTED', message: '게임이 시작되지 않았습니다.' });
       return;
@@ -621,6 +701,7 @@ export class Room {
 
   handleChooseSkill(playerId: string, animal: Animal): void {
     if (this.rejectIfSpectator(playerId)) return;
+    if (this.rejectIfPaused(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례가 아닙니다.' });
       return;
@@ -643,6 +724,7 @@ export class Room {
 
   handlePassSkill(playerId: string): void {
     if (this.rejectIfSpectator(playerId)) return;
+    if (this.rejectIfPaused(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례가 아닙니다.' });
       return;
@@ -669,6 +751,7 @@ export class Room {
    * 차례일 때 그 연출이 화면에서 끝날 때까지 기다리는 데 쓴다(CPU_SKILL_THINK_* 참고).
    */
   private scheduleComputerActionIfNeeded(lastActionEvents?: GameEvent[]): void {
+    if (this.paused) return;
     if (!this.vsComputer || !this.state || this.state.phase !== 'playing') return;
     const waitingTeam = this.state.pendingChoice ?? this.state.activeTeam;
     if (waitingTeam !== 'B') return;
@@ -683,10 +766,16 @@ export class Room {
     const graceMs = isSkillChoice && lastActionEvents ? settleGraceMs(lastActionEvents) : 0;
 
     const delay = graceMs + minMs + Math.floor(Math.random() * (maxMs - minMs));
+    this.startComputerTimer(delay);
+  }
+
+  /** 컴퓨터가 다음 수를 두기까지의 대기 타이머 — 일시정지 재개에서도 같은 길을 쓴다. */
+  private startComputerTimer(delayMs: number): void {
+    this.computerDeadline = Date.now() + delayMs;
     this.computerTimer = setTimeout(() => {
       this.computerTimer = null;
       this.performComputerAction();
-    }, delay);
+    }, delayMs);
   }
 
   private performComputerAction(): void {
@@ -734,7 +823,7 @@ export class Room {
       this.clearTimer();
     }
 
-    const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
+    const clientState = this.snapshot();
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
@@ -743,7 +832,7 @@ export class Room {
   private broadcastResult(events: ReturnType<typeof processPlayerAction>['events']): void {
     if (!this.state) return;
     const clientEvents = serializeEvents(events);
-    const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
+    const clientState = this.snapshot();
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
   }
 
@@ -803,6 +892,281 @@ export class Room {
     this.turnTotalMs = 0;
   }
 
+  // ─── 일시정지 · 항복 · 나가기 ─────────────────────────────────────────────
+
+  /** 그 자리에 실제로 앉아 게임을 뛰고 있는 사람인지 — 아니면 이유를 알려주고 null. */
+  private playingMember(playerId: string): PlayerConnection | null {
+    const p = this.players.get(playerId);
+    if (!p) return null;
+    if (!isPlayingSeat(p.team)) {
+      this.sendTo(playerId, { type: 'error', code: 'NOT_YOUR_TURN', message: '관전자는 게임에 참여할 수 없습니다.' });
+      return null;
+    }
+    return p;
+  }
+
+  /** 그 팀에서 지금 접속해 있는 **사람** 목록(컴퓨터는 players에 없으므로 자연히 빠진다). */
+  private connectedHumansOf(team: Team): PlayerConnection[] {
+    return this.teamPlayerIds[team]
+      .map(id => this.players.get(id))
+      .filter((p): p is PlayerConnection => p !== undefined && p.connected);
+  }
+
+  /**
+   * 일시정지 요청.
+   *
+   * 상대 팀에 사람이 한 명도 없으면(싱글 모드이거나 상대가 전부 끊긴 경우) 물어볼
+   * 사람이 없으므로 곧바로 멈춘다. 있으면 그 사람들에게 물어보는데, **묻는 동안에도
+   * 판은 이미 멈춰 있다** — 답을 기다리는 PAUSE_REQUEST_TIMEOUT_SEC 동안 시계가 계속
+   * 흐르면, 요청을 띄운 쪽은 창에 가려 아무것도 못 하는 사이 자기 턴이 시간초과로
+   * 날아가고 답하는 쪽도 판을 보지 못한 채 시간을 잃는다. 거절·무응답이면
+   * `settlePauseRequest`가 그 즉시 풀어주고, **멈춰 있던 동안 흐른 시간은 남은 시간에서
+   * 깎이지 않는다**(applyPause/applyResume이 남은 시간을 그대로 보관했다 이어 붙인다).
+   */
+  handlePauseRequest(playerId: string): void {
+    if (!this.state || this.state.phase !== 'playing') {
+      this.sendTo(playerId, { type: 'error', code: 'GAME_NOT_STARTED', message: '진행 중인 게임이 없습니다.' });
+      return;
+    }
+    const p = this.playingMember(playerId);
+    if (!p || !isPlayingSeat(p.team)) return;
+    if (this.paused) return; // 이미 멈춰 있다 — 화면은 곧 pauseState로 맞춰진다
+    if (this.pauseRequest) {
+      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '이미 일시정지 요청이 진행 중입니다.' });
+      return;
+    }
+    // 팀마다 정해진 횟수까지만. 0으로 둔 방에서는 아무도 멈출 수 없다.
+    // ⚠️ 혼자 놀기는 제한이 없다 — 기다리게 할 상대가 없으니 제한이 보호하는 것이 없고,
+    //    그래서 로비에서도 이 두 항목을 아예 보여주지 않는다(GameRulesFields의 hidePause).
+    const maxCount = this.vsComputer ? Infinity : this.state.settings.pauseMaxCount;
+    if (this.pauseUsed[p.team] >= maxCount) {
+      this.sendTo(playerId, {
+        type: 'error',
+        code: 'PAUSE_UNAVAILABLE',
+        message: maxCount === 0 ? '이 방은 일시정지를 쓸 수 없습니다.' : `일시정지를 ${maxCount}번 모두 썼습니다.`,
+      });
+      return;
+    }
+    // ⚠️ 횟수는 **여기서** 깎는다(수락된 뒤가 아니라). 묻는 20초 동안에도 판이 멈추므로,
+    // 거절당할 때마다 다시 요청하면 횟수 제한이 무의미해진다.
+    this.pauseUsed[p.team] += 1;
+
+    const opponent: Team = p.team === 'A' ? 'B' : 'A';
+    const askable = this.connectedHumansOf(opponent);
+    if (askable.length === 0) {
+      this.applyPause({ playerId, team: p.team, nickname: p.nickname });
+      return;
+    }
+
+    this.pauseRequest = { playerId, team: p.team, nickname: p.nickname };
+    // 답을 기다리는 동안에도 멈춰 둔다(위 주석 참고). pauseState를 먼저 보내야 요청
+    // 창이 뜬 화면의 뒤쪽 판이 이미 회색으로 죽어 있어, 무엇을 고르는 중인지 읽힌다.
+    this.applyPause({ playerId, team: p.team, nickname: p.nickname });
+    const timeoutMs = PAUSE_REQUEST_TIMEOUT_SEC * 1000;
+    for (const o of askable) {
+      this.sendTo(o.playerId, { type: 'pauseRequest', fromTeam: p.team, fromNickname: p.nickname, timeoutMs });
+    }
+    this.pauseRequestTimer = setTimeout(() => this.settlePauseRequest(false, 'timeout'), timeoutMs);
+  }
+
+  /** 요청받은 쪽의 대답. 요청한 팀 사람은 자기 요청에 스스로 답할 수 없다. */
+  handlePauseRespond(playerId: string, accept: boolean): void {
+    const req = this.pauseRequest;
+    if (!req) return;
+    const p = this.playingMember(playerId);
+    if (!p || p.team === req.team) return;
+    this.settlePauseRequest(accept, accept ? 'accepted' : 'declined');
+  }
+
+  /**
+   * 멈춘 게임을 다시 시작한다. **멈춘 팀만** 풀 수 있다 — 상대가 곧바로 풀어버릴 수
+   * 있으면 일시정지가 아무 의미도 없기 때문이다(그 팀이 전부 끊기면 handleDisconnect가
+   * 대신 풀어주므로 판이 영영 멈춰 있을 일은 없다).
+   */
+  handleResume(playerId: string): void {
+    if (!this.paused) return;
+    const p = this.players.get(playerId);
+    if (!p) return;
+    // 상대가 아직 고르는 중이면 풀지 않는다 — 그 20초는 "멈춤"이 아니라 "묻는 중"이고,
+    // 여기서 풀어버리면 답이 도착했을 때 이미 흐르는 판을 다시 멈추게 된다.
+    if (this.pauseRequest) {
+      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '상대의 답을 기다리는 중입니다.' });
+      return;
+    }
+    if (this.pausedBy && p.team !== this.pausedBy.team) {
+      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '일시정지를 요청한 쪽만 다시 시작할 수 있습니다.' });
+      return;
+    }
+    this.applyResume();
+  }
+
+  private settlePauseRequest(accepted: boolean, reason: 'accepted' | 'declined' | 'timeout' | 'cancelled'): void {
+    const req = this.pauseRequest;
+    if (!req) return;
+    this.pauseRequest = null;
+    if (this.pauseRequestTimer !== null) {
+      clearTimeout(this.pauseRequestTimer);
+      this.pauseRequestTimer = null;
+    }
+    // 요청자와 요청받은 쪽의 창을 **함께** 닫아야 하므로 방 전체에 알린다.
+    this.broadcast({ type: 'pauseRequestResult', accepted, reason });
+    // 묻는 동안 이미 멈춰 있었다(handlePauseRequest 참고). 수락이면 그대로 두고,
+    // 거절·무응답·요청자 이탈이면 그 자리에서 풀어 판을 되돌린다.
+    if (!accepted) {
+      this.applyResume();
+    } else if (this.paused) {
+      // ⚠️ 멈춤 자체는 달라진 것이 없어도 **한 번 더 보내야 한다** — 방금 pauseRequest를
+      // 비웠으니 pausePendingAnswer가 false로 바뀌었고, 그걸 알리지 않으면 요청한 쪽
+      // 버튼이 "응답을 기다리는 중"에 붙박인다(applyPause는 이미 멈춘 방에서 아무것도 안 한다).
+      this.broadcast({ type: 'pauseState', state: this.snapshot() });
+    } else {
+      this.applyPause(req);
+    }
+  }
+
+  /**
+   * 실제로 멈춘다 — 걸려 있던 타이머를 **남은 시간만 챙겨** 모두 걷어낸다.
+   * 데드라인을 그대로 둔 채 타이머만 멈추면, 재개하는 순간 이미 지나간 시각이 되어
+   * 그 턴이 곧바로 시간초과로 날아간다.
+   */
+  private applyPause(by: { playerId: string; team: Team; nickname: string }): void {
+    if (!this.state || this.state.phase !== 'playing' || this.paused) return;
+    this.pausedTurnRemainingMs = this.turnDeadline === 0 ? 0 : Math.max(0, this.turnDeadline - Date.now());
+    this.pausedTurnTotalMs = this.turnTotalMs;
+    this.pausedCpuRemainingMs =
+      this.computerTimer !== null ? Math.max(0, this.computerDeadline - Date.now()) : null;
+    this.clearTimer(); // ⚠️ turnDeadline·turnTotalMs를 0으로 되돌린다 — 위에서 먼저 챙긴 이유다.
+    this.paused = true;
+    this.pausedBy = by;
+    // 한 번의 일시정지에 상한을 둔다 — 멈춘 팀이 자리를 뜨면 상대는 풀 수도 없어
+    // 영영 기다리게 된다(푸는 것은 멈춘 팀뿐이다). 시간이 다 되면 서버가 대신 푼다.
+    // 혼자 놀기에는 기다릴 상대가 없으므로 상한을 두지 않는다(원하는 만큼 멈춰둔다).
+    if (this.vsComputer) {
+      this.broadcast({ type: 'pauseState', state: this.snapshot() });
+      return;
+    }
+    const maxMs = this.state.settings.pauseMaxMin * 60_000;
+    this.pauseAutoResumeDeadline = Date.now() + maxMs;
+    this.pauseAutoResumeTimer = setTimeout(() => {
+      // 묻는 중에 시간이 다 되는 일은 없다(20초 < 최소 1분)지만, 설정을 바꿔도 안전하도록
+      // 대기 중인 요청을 먼저 거절과 같이 정리한다 — 그쪽이 applyResume까지 마친다.
+      if (this.pauseRequest) this.settlePauseRequest(false, 'timeout');
+      else this.applyResume();
+    }, maxMs);
+    this.broadcast({ type: 'pauseState', state: this.snapshot() });
+  }
+
+  private applyResume(): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.pausedBy = null;
+    this.clearPauseAutoResume();
+
+    const turnMs = this.pausedTurnRemainingMs;
+    const totalMs = this.pausedTurnTotalMs;
+    const cpuMs = this.pausedCpuRemainingMs;
+    this.pausedTurnRemainingMs = 0;
+    this.pausedTurnTotalMs = 0;
+    this.pausedCpuRemainingMs = null;
+
+    if (this.state && this.state.phase === 'playing') {
+      if (turnMs > 0) {
+        this.turnTotalMs = totalMs;
+        this.turnDeadline = Date.now() + turnMs;
+        this.timerHandle = setTimeout(() => this.handleTimeout(), turnMs);
+      } else {
+        // 남은 시간이 0이면(멈추기 직전에 이미 다 써버린 경우) 그 턴을 그대로 시간초과로
+        // 날리지 않고 새로 시간을 준다 — 멈춰 있는 동안에는 아무도 생각할 수 없었다.
+        this.resetTimer();
+      }
+      if (cpuMs !== null) this.startComputerTimer(cpuMs);
+    }
+
+    this.broadcast({ type: 'pauseState', state: this.snapshot() });
+  }
+
+  /** 최대 시간 타이머만 걷어낸다 — 재개·종료 양쪽이 함께 쓴다. */
+  private clearPauseAutoResume(): void {
+    if (this.pauseAutoResumeTimer !== null) {
+      clearTimeout(this.pauseAutoResumeTimer);
+      this.pauseAutoResumeTimer = null;
+    }
+    this.pauseAutoResumeDeadline = 0;
+  }
+
+  /** 게임이 끝났을 때 남아 있는 일시정지 상태·요청을 조용히 걷어낸다(알림 없음). */
+  private clearPauseState(): void {
+    this.paused = false;
+    this.pausedBy = null;
+    this.clearPauseAutoResume();
+    this.pausedTurnRemainingMs = 0;
+    this.pausedTurnTotalMs = 0;
+    this.pausedCpuRemainingMs = null;
+    this.pauseRequest = null;
+    if (this.pauseRequestTimer !== null) {
+      clearTimeout(this.pauseRequestTimer);
+      this.pauseRequestTimer = null;
+    }
+  }
+
+  /**
+   * 항복하기(leave 없음)와 나가기(leave: true).
+   *
+   * **승패 처리는 똑같다** — 포기한 사람의 팀이 지고 상대 팀이 이긴다. 다른 점은
+   * 나가기가 그 뒤 방에서까지 빠진다는 것뿐이다. 관전자는 어느 팀도 아니므로 승패를
+   * 건드리지 않고 나가기만 한다.
+   */
+  forfeit(playerId: string, leave = false): void {
+    const p = this.players.get(playerId);
+    if (!p) return;
+
+    if (this.state && this.state.phase === 'playing' && isPlayingSeat(p.team)) {
+      const winner: Team = p.team === 'A' ? 'B' : 'A';
+      this.clearPauseState();
+      this.clearTimer();
+      this.state = { ...this.state, phase: 'ended', winner, forfeitedBy: p.team };
+      const events: GameEvent[] = [{ type: 'gameEnd', winner, reason: 'forfeit' }];
+      this.broadcast({ type: 'actionResult', events: serializeEvents(events), state: this.snapshot() });
+    }
+
+    if (leave) this.removeFromGame(playerId);
+  }
+
+  /**
+   * 게임이 시작된 방에서 한 사람을 빼낸다. 로비의 removePlayer와 달리 채팅 안내도
+   * 방장 승계도 하지 않는다 — 게임 화면에는 채팅도 대기실 목록도 없어 그 안내가
+   * 닿을 곳이 없기 때문이다.
+   */
+  private removeFromGame(playerId: string): void {
+    const p = this.players.get(playerId);
+    if (!p) return;
+    this.sendTo(playerId, { type: 'leftRoom' });
+    this.players.delete(playerId);
+    const ids = this.teamPlayerIds[p.team];
+    const idx = ids.indexOf(playerId);
+    if (idx !== -1) ids.splice(idx, 1);
+    if (this.players.size === 0) {
+      this.clearTimer();
+      this.clearPauseState();
+      this.onEmpty();
+    }
+  }
+
+  /**
+   * 이 연결이 **다른 방으로 옮겨갈 때** 지금 방에서 완전히 손을 뗀다.
+   *
+   * 게임 화면에서 뒤로가기로 로비에 돌아온 뒤 새 방을 만드는 흐름이 이 길을 쓴다.
+   * 예전에는 옛 방의 자리를 그대로 둔 채 새 방을 만들어서, 끝나지 않은 혼자 놀기가
+   * 남고 새 방과 옛 게임 상태가 한 화면에서 섞였다("방을 찾을 수 없습니다" 화면).
+   * 진행 중이던 게임은 나가기와 똑같이 취급한다 — 말없이 사라지면 남은 상대가
+   * 오지 않을 차례를 계속 기다리게 된다.
+   */
+  detach(playerId: string): void {
+    if (!this.players.has(playerId)) return;
+    if (this.started) this.forfeit(playerId, true);
+    else this.removePlayer(playerId, 'left');
+  }
+
   // ─── 재접속/이탈 ─────────────────────────────────────────────────────────
 
   handleDisconnect(playerId: string, ws: WebSocket): void {
@@ -815,8 +1179,19 @@ export class Room {
     if (this.state === null) {
       // 로비에서 나가면 플레이어 제거(방장이었다면 남은 사람에게 넘긴다)
       this.removePlayer(playerId, 'left');
+      return;
     }
     // 게임 중 이탈: 차례가 오면 타이머 만료로 자동 강제진행
+
+    // 답을 기다리던 사람이 사라지면 그 요청은 성립하지 않는다 — 물어본 쪽 화면에
+    // 20초짜리 창만 덩그러니 남지 않도록 곧바로 걷는다.
+    if (this.pauseRequest?.playerId === playerId) this.settlePauseRequest(false, 'cancelled');
+
+    // 멈춘 팀에 아무도 남지 않으면 **아무도 다시 시작할 수 없다**(재개는 그 팀만
+    // 할 수 있으므로). 판이 영영 멈춘 채로 남지 않도록 여기서 대신 풀어준다.
+    if (this.paused && this.pausedBy && this.connectedHumansOf(this.pausedBy.team).length === 0) {
+      this.applyResume();
+    }
   }
 
   handleReconnect(ws: WebSocket, playerId: string): boolean {
@@ -834,7 +1209,7 @@ export class Room {
       this.sendChatHistory(playerId);
       this.broadcastLobbyState();
     } else {
-      const clientState = serializeState(this.state, this.turnDeadline, this.turnTotalMs, this.finalTeamNames(), this.teamPlayerIds);
+      const clientState = this.snapshot();
       this.sendTo(playerId, { type: 'gameSnapshot', state: clientState });
     }
     return true;

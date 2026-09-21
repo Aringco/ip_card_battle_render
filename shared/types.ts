@@ -68,6 +68,10 @@ export interface GameSettings {
   drawTimeSec: number;    // 동물 뽑기(장소 클릭) 제한시간
   actionTimeSec: number;  // 행동 선택 제한시간 — 고를 수 있는 행동이 있을 때
   noActionTimeSec: number; // 행동 선택 제한시간 — 고를 수 있는 행동이 하나도 없을 때
+  // 게임 중 메뉴(⏸)의 일시정지 제한 — **팀마다** 이 횟수까지 쓸 수 있고(0이면 아예 못 쓴다),
+  // 한 번 멈춘 뒤 이 시간이 지나면 서버가 알아서 풀어준다(상대가 영영 기다리지 않도록).
+  pauseMaxCount: number;  // 팀당 일시정지 가능 횟수
+  pauseMaxMin: number;    // 한 번의 일시정지 최대 시간(분)
 }
 
 export interface GameState {
@@ -88,6 +92,10 @@ export interface GameState {
   settings: GameSettings;                     // 방장이 정한(또는 기본값) 게임 규칙 — 방 생성 시 확정되어 게임 중 불변
   startingTeam: Team;                         // 이 게임에서 실제로 먼저 시작한 팀 — settings.firstTeam이 'random'이어도 이미 추첨이 끝난 확정값
   startingTeamReason: 'setting' | 'random';   // startingTeam이 방장 설정으로 정해졌는지 무작위 추첨으로 정해졌는지
+  // 항복하기/나가기로 게임을 포기한 팀 — 그렇게 끝난 게임에서만 채워진다(엔진은 이 값을
+  // 절대 건드리지 않는다). 결과 화면이 "제한 턴 종료 — 체력 비교" 대신 "기권"이라고 말할 수
+  // 있게 하는 단 하나의 단서라, winner만으로는 대신할 수 없다.
+  forfeitedBy?: Team | null;
 }
 
 // 게임 이벤트 (클라이언트 연출 및 시뮬레이션 로그용)
@@ -117,6 +125,8 @@ export type GameEvent =
     }
   | { type: 'skillPassed'; team: Team; auto: boolean } // "아무것도 하지 않음"을 선택(auto=true면 고를 수 있는 행동이 없어 화면에 알리지 않고 자동 처리)
   | { type: 'festival' } // FESTIVAL_TURN 도달 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
-  | { type: 'gameEnd'; winner: Team | 'draw'; reason: 'knockout' | 'turnLimit' }
+  // reason: 'forfeit'은 엔진이 만들지 않는다 — 항복·나가기는 방(Room)에서 일어나는 일이라
+  // Room.forfeit이 이 이벤트를 직접 만들어 보낸다(엔진은 두 팀이 끝까지 두는 경우만 안다).
+  | { type: 'gameEnd'; winner: Team | 'draw'; reason: 'knockout' | 'turnLimit' | 'forfeit' }
   | { type: 'timeout'; place: Place }
   | { type: 'timeoutChoice'; animal: Animal | null }; // 행동 선택 제한시간 초과 — null이면 고를 행동이 없어 자동 패스

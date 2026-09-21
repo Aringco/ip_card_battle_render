@@ -16,6 +16,17 @@ export function serializeState(
   turnTotalMs: number,
   teamNames: Record<Team, string>,
   memberIds: Record<Team, string[]>,
+  // 일시정지는 엔진이 아니라 방(Room)이 들고 있는 상태라 state에 없다 — 그래서 여기로
+  // 따로 받아 실어 보낸다. 재접속 스냅샷도 이 경로를 쓰므로 멈춘 방에 다시 들어와도
+  // 화면이 멈춘 채로 복원된다.
+  pause: {
+    paused: boolean;
+    pausedBy: { team: Team; nickname: string } | null;
+    pendingAnswer: boolean;
+    used: Record<Team, number>;
+    unlimited: boolean;
+    remainingMs: number;
+  } = { paused: false, pausedBy: null, pendingAnswer: false, used: { A: 0, B: 0 }, unlimited: false, remainingMs: 0 },
 ): ClientGameState {
   const activeTeam = state.teams[state.activeTeam];
   const activePlayerNickname = activeTeam.members[state.activePlayerIndex] ?? '';
@@ -28,6 +39,12 @@ export function serializeState(
     activePlayerNickname,
     turnRemainingMs: turnDeadline === 0 ? 0 : Math.max(0, turnDeadline - Date.now()),
     turnTotalMs,
+    paused: pause.paused,
+    pausedBy: pause.pausedBy,
+    pausePendingAnswer: pause.pendingAnswer,
+    pauseUsed: { ...pause.used },
+    pauseUnlimited: pause.unlimited,
+    pauseRemainingMs: pause.remainingMs,
     teamNames,
     memberIds: { A: [...memberIds.A], B: [...memberIds.B] },
     stacks: {
@@ -72,6 +89,7 @@ export function serializeState(
       },
     },
     winner: state.winner,
+    forfeitedBy: state.forfeitedBy ?? null,
     settings: state.settings,
     startingTeam: state.startingTeam,
     startingTeamReason: state.startingTeamReason,

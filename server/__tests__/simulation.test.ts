@@ -36,7 +36,7 @@ const mermaidComboBot: SkillPicker = (state, team) => {
 interface GameResult {
   winner: 'A' | 'B' | 'draw';
   finalTurn: number;
-  reason: 'knockout' | 'turnLimit' | null;
+  reason: 'knockout' | 'turnLimit' | 'forfeit' | null;
   hp: { A: number; B: number };
 }
 
@@ -44,7 +44,9 @@ interface GameResult {
 function runGame(seed: number, pickA: SkillPicker, pickB: SkillPicker): GameResult {
   const rng = makeLCG(seed);
   const state = initGame(['botA'], ['botB'], rng);
-  let lastReason: 'knockout' | 'turnLimit' | null = null;
+  // 'forfeit'(항복·나가기)은 방에서만 일어나는 일이라 봇 대전에서는 나올 수 없지만,
+  // 이벤트 타입이 그 값을 포함하므로 여기서도 같은 폭으로 받아 둔다.
+  let lastReason: 'knockout' | 'turnLimit' | 'forfeit' | null = null;
 
   let safetyCount = 0;
   while (state.phase === 'playing') {

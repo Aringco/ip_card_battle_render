@@ -33,6 +33,11 @@ export const DEFAULT_FESTIVAL_TURN = FESTIVAL_TURN;
 export const DEFAULT_DRAW_TIME_SEC = 30;
 export const DEFAULT_ACTION_TIME_SEC = 15;
 export const DEFAULT_NO_ACTION_TIME_SEC = 3;
+// 게임 중 메뉴(⏸)의 일시정지 제한 — 팀마다 3회, 한 번에 최대 5분.
+// 횟수는 **요청하는 순간** 깎인다(상대가 고르는 20초 동안에도 판이 멈춰 있으므로,
+// 수락 여부와 무관하게 그 요청 자체가 판을 멈춘 것이다 — server/room.ts 참고).
+export const DEFAULT_PAUSE_MAX_COUNT = 3;
+export const DEFAULT_PAUSE_MAX_MIN = 5;
 
 // 방 생성 화면에서 입력값을 이 범위로 잘라낸다(서버도 방어적으로 다시 clamp한다).
 export const SETTINGS_LIMITS = {
@@ -45,6 +50,9 @@ export const SETTINGS_LIMITS = {
   drawTimeSec: { min: 5, max: 120 },
   actionTimeSec: { min: 5, max: 60 },
   noActionTimeSec: { min: 2, max: 30 },
+  // 0이면 그 방에서는 일시정지를 아예 쓸 수 없다(항복·나가기는 그대로 남는다).
+  pauseMaxCount: { min: 0, max: 10 },
+  pauseMaxMin: { min: 1, max: 30 },
 } as const;
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -56,6 +64,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   drawTimeSec: DEFAULT_DRAW_TIME_SEC,
   actionTimeSec: DEFAULT_ACTION_TIME_SEC,
   noActionTimeSec: DEFAULT_NO_ACTION_TIME_SEC,
+  pauseMaxCount: DEFAULT_PAUSE_MAX_COUNT,
+  pauseMaxMin: DEFAULT_PAUSE_MAX_MIN,
 };
 
 /** 방장 입력값을 SETTINGS_LIMITS 범위로 잘라내고, 정수가 아니면 반올림한다. */
@@ -79,6 +89,8 @@ export function clampSettings(input: Partial<typeof DEFAULT_SETTINGS> | undefine
     drawTimeSec: clamp('drawTimeSec'),
     actionTimeSec: clamp('actionTimeSec'),
     noActionTimeSec: clamp('noActionTimeSec'),
+    pauseMaxCount: clamp('pauseMaxCount'),
+    pauseMaxMin: clamp('pauseMaxMin'),
   };
 }
 
@@ -156,6 +168,13 @@ export const CHAT_MIN_INTERVAL_MS = 400;
 // 겹치지 않는 이름을 무작위로 배정한다(닉네임 무작위 생성도 같은 파일에 있다).
 
 // 실용신양 스킬로 예약된 추가 뽑기 1회당 턴 제한시간 연장(초) — 30초 + 10×n
+// 멀티 플레이에서 일시정지를 요청했을 때, 상대가 수락/거절을 고르는 제한시간(초).
+// 이 시간 안에 아무도 답하지 않으면 거절과 똑같이 처리되어 게임이 그대로 이어진다 —
+// 응답이 없다고 게임이 멈춰 버리면, 대답할 사람이 자리를 비운 것만으로 판이 끝난다.
+// ⚠️ 요청을 기다리는 동안 게임 시계는 **계속 흐른다**(일시정지는 수락된 그 순간부터다).
+// 요청만으로 시계를 멈추면 요청을 되풀이하는 것만으로 판을 얼릴 수 있기 때문이다.
+export const PAUSE_REQUEST_TIMEOUT_SEC = 20;
+
 export const SHEEP_EXTRA_TIME_PER_DRAW_SEC = 10;
 // 배율이 실린 예약 뽑기가 턴 제한시간을 무한정 늘리지 않도록, 시간 연장 계산에는
 // 이 값까지만 반영한다(실제 뽑기 횟수 자체는 SHEEP_SAFETY_CAP까지 그대로 진행된다).

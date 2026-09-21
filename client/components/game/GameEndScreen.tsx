@@ -1,11 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Animal, ClientGameState, Team } from 'shared';
 import { ANIMALS, LOSE_HP } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import { PLAY_ASSETS } from '@/lib/playAssets';
+
+// 결과 화면 배경 — 들어올 때마다 둘 중 하나가 깔린다(경로는 playAssets.ts 한 곳).
+const RESULT_BACKGROUNDS = [PLAY_ASSETS.resultBackground, PLAY_ASSETS.resultBackground2];
 
 const FLAVOR_TEXT: Record<Animal, string> = {
   sheep: '실용신안의 실리주의로 판을 키우셨군요!',
@@ -84,7 +88,15 @@ export function GameEndScreen({
   const hpB = gameState.teams.B.hp;
   const winHp = gameState.settings.targetScore * 2;
   const isKnockout = hpA >= winHp || hpB >= winHp || hpA <= LOSE_HP || hpB <= LOSE_HP;
-  const reasonText = isKnockout ? '체력 즉시 승부 — GAME OVER!' : '제한 턴 종료 — 체력 비교';
+  // 항복하기·나가기로 끝난 판은 체력만 봐서는 알 수 없다 — 격차가 나지 않은 채로
+  // 끝나므로 "제한 턴 종료 — 체력 비교"라는 엉뚱한 설명이 붙는다. 서버가 실어 보낸
+  // forfeitedBy가 그 경우를 가리는 유일한 단서다.
+  const forfeitedBy = gameState.forfeitedBy ?? null;
+  const reasonText = forfeitedBy
+    ? `${gameState.teamNames[forfeitedBy]} 기권 — 남은 팀 승리`
+    : isKnockout
+      ? '체력 즉시 승부 — GAME OVER!'
+      : '제한 턴 종료 — 체력 비교';
 
   const confetti = useMemo(
     () => (winner && winner !== 'draw' ? generateConfetti(45, winner) : []),
@@ -111,11 +123,19 @@ export function GameEndScreen({
           ? '우리팀 승리!'
           : '우리팀 패배!';
   const flavorAnimal = useMemo(() => pickFlavorAnimal(gameState, winner), [gameState, winner]);
+  // 배경 그림은 들어올 때마다 둘 중 하나. **렌더 중에 뽑아도 되는 자리다** —
+  // 이 화면은 서버 렌더에 한 번도 나오지 않기 때문이다(그때는 gameState가 null이라
+  // 방 화면이 로딩 문구만 그린다). 로딩 화면이 굳이 마운트 후에 고르는 것과 대비된다.
+  // useState 초기화 함수라 다시 렌더돼도 그림이 바뀌지 않는다.
+  const [background] = useState(() => RESULT_BACKGROUNDS[Math.floor(Math.random() * RESULT_BACKGROUNDS.length)]);
 
   return (
     // 배경은 승패가 정해진 뒤의 탁자 그림(PLAY_ASSETS.resultBackground) — globals.css의
     // `.result-bg`가 그림과 글자를 받쳐 줄 어둠을 함께 깐다.
-    <div className="min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative">
+    <div
+      className="min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative"
+      style={{ ['--result-bg' as string]: `url(${background})` }}
+    >
       {/* 아래 콘텐츠 묶음은 그대로 세로 중앙 정렬하고, 그 밖에 화면 맨 밑에 붙는 푸터
           안내를 별도로 둔다 — 바깥 div를 justify-center로 두면 푸터까지 그 중앙 정렬
           묶음에 끼어버려 화면 아래쪽에 붙지 않는다. */}
