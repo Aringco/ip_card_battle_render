@@ -11,6 +11,13 @@ export function createConnectionHandler(roomManager: RoomManager) {
     let currentRoomId: string | null = null;
     let currentPlayerId: string | null = null;
 
+    // ⚠️ 소켓의 'error'를 반드시 받아야 한다. EventEmitter는 'error' 리스너가 **하나도
+    // 없으면 그 이벤트를 예외로 던지고**, 여기서 던져진 예외는 아무도 받지 않아
+    // 프로세스를 끝낸다 — 상대가 연결을 거칠게 끊기만 해도 서버 전체가 내려간다.
+    ws.on('error', (err) => {
+      console.error('[ws] 소켓 오류 —', err);
+    });
+
     ws.on('message', (raw) => {
       let msg: ClientMessage;
       try {
@@ -19,6 +26,27 @@ export function createConnectionHandler(roomManager: RoomManager) {
         return;
       }
 
+      try {
+        handle(msg);
+      } catch (err) {
+        // ⚠️ **메시지 하나가 서버 전체를 끄지 못하게 한다.** 예전에는 JSON.parse만
+        // 감싸고 그 뒤 분기는 무방비였다 — 필드가 빠진 메시지 한 통이
+        // `teamPlayerIds[undefined].push(...)`로 터지면 그 예외가 ws의 이벤트
+        // 콜백 밖으로 나가 프로세스를 끝냈고, **그 방뿐 아니라 서버에 붙어 있던
+        // 모든 방이 함께 죽었다**(실제로 그렇게 죽여 봤다).
+        // 배포 구성에서는 더 나쁘다 — 루트 server.ts가 Next.js와 한 프로세스를
+        // 쓰므로 사이트 전체가 내려간다.
+        // 보낸 사람에게만 알리고, 서버는 계속 돈다.
+        console.error(`[ws] '${msg?.type}' 처리 중 예외 —`, err);
+        try {
+          ws.send(JSON.stringify({ type: 'error', code: 'INTERNAL', message: '요청을 처리하지 못했습니다.' }));
+        } catch {
+          // 이미 닫힌 소켓이면 보낼 곳이 없다 — 그것 때문에 또 죽으면 안 된다.
+        }
+      }
+    });
+
+    function handle(msg: ClientMessage) {
       switch (msg.type) {
         case 'createRoom': {
           const { roomId, room } = roomManager.createRoom();
@@ -160,7 +188,7 @@ export function createConnectionHandler(roomManager: RoomManager) {
           break;
         }
       }
-    });
+    }
 
     ws.on('close', () => {
       if (currentRoomId && currentPlayerId) {
