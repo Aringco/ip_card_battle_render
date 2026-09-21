@@ -16,7 +16,12 @@ const REPEAT_AUTO_CLOSE_MS = 10000;
 // 한 PC를 여러 사람이 돌아가며 쓰는 경우("한 PC로 여러명이 할 수도 있거든")를 감안한
 // 설계다 — 완전히 한 번만 보여주면 두 번째 사람부터는 이 버튼의 존재를 영영 모르고
 // 지나칠 수 있어서, 매 게임 짧게라도 다시 알려준다.
-export function SettingsHintPopup() {
+//
+// ⚠️ **어느 경우든 한 바퀴가 돌면 사라진다**(요청). 선공·후공이 한 번씩 두고 나면
+// 게임에 몰입할 때라, 그 뒤로도 떠 있으면 설정 버튼만 가린다. `turn`이 그 단위다 —
+// 서버의 advanceTurn이 **후공 팀의 차례가 끝날 때만** 이 값을 올리므로, 2가 되는
+// 순간이 곧 "양 팀이 한 번씩 뒀다"이다.
+export function SettingsHintPopup({ turn }: { turn: number }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -35,7 +40,11 @@ export function SettingsHintPopup() {
     }
   };
 
-  if (!visible) return null;
+  // ⚠️ 여기서 localStorage에 표시를 남기지 **않는다.** 그 기록의 뜻은 "이 사람이
+  // 안내를 닫아 본 적이 있다"이고, 그래야 다음 게임부터 10초 자동 닫기로 짧게만
+  // 알린다. 스스로 사라진 것을 "읽었다"로 치면, 처음 온 사람이 미처 못 읽고
+  // 넘어간 채로 그 짧은 안내만 받게 된다.
+  if (!visible || turn >= 2) return null;
 
   return (
     <div className="settings-hint-popup" role="status">

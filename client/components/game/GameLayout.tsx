@@ -281,7 +281,9 @@ export function GameLayout({
         myTeam={myTeam}
         playerId={playerId}
       />
-      <SettingsHintPopup />
+      {/* 한 바퀴(선공·후공 한 번씩)가 돌면 사라진다 — gameState.turn이 그 단위다
+          (advanceTurn이 후공 팀의 차례가 끝날 때만 올린다). */}
+      <SettingsHintPopup turn={gameState.turn} />
     </div>
   );
 }
