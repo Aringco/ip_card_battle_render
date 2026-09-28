@@ -4806,6 +4806,18 @@ body {
   /* 눌러야 다음으로 넘어가는 유일한 버튼이라, 눈에 띄게 맥박을 준다 */
   animation: demoContinuePulse 1.1s ease-in-out infinite;
 }
+/* 단축키 안내 — 이 버튼은 진행자가 누르는 것이라(관람객이 아니다) 마우스를 찾지 않고
+   스페이스로 넘길 수 있음을 버튼 안에 적어 둔다. 자막 한 줄이 nowrap이라 새 줄을
+   만들지 않고 버튼 안에 넣는다(줄이 늘면 액자 칸이 밀린다). */
+.demo-caption-key {
+  margin-left: calc(var(--demo-h) * 0.16);
+  padding: 0 calc(var(--demo-h) * 0.14);
+  border-radius: calc(var(--demo-h) * 0.1);
+  background: #ffffff66;
+  font-size: calc(var(--demo-h) * 0.2 * var(--font-scale));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
 @keyframes demoContinuePulse {
   0%, 100% { filter: brightness(1); }
   50%      { filter: brightness(1.18); }

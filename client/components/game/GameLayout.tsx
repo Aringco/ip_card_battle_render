@@ -126,10 +126,13 @@ export function GameLayout({
     // ⚠️ 멈춰 있는 동안에는 세지 않는다 — 서버는 일시정지 중 조작을 전부 거부하므로,
     // 여기서 그대로 흘려보내면 재개하자마자(또는 멈춘 채로) 턴이 저절로 넘어간 것처럼
     // 보이는 패스 요청만 거부당한 뒤 화면이 멈춘 채 남는다.
-    if (!noEligible || paused) return;
+    // ⚠️ 시연 중에도 세지 않는다 — 시연은 [턴 마치기]를 잠가 두는데(턴이 넘어가면
+    // 대본이 끊긴다) 이 타이머는 그 버튼을 대신 눌러 버린다. 서버가 그 요청을 무시하긴
+    // 하지만, 여기서 막지 않으면 기술을 다 쓴 뒤 몇 초마다 헛된 요청이 계속 나간다.
+    if (!noEligible || paused || gameState.demo) return;
     const t = setTimeout(() => onPassSkill(), noActionMs);
     return () => clearTimeout(t);
-  }, [noEligible, paused, noActionMs, onPassSkill]);
+  }, [noEligible, paused, noActionMs, onPassSkill, gameState.demo]);
 
   return (
     <div
@@ -216,6 +219,8 @@ export function GameLayout({
               interactive={isMyChoiceTurn}
               spectatorGuideTeam={spectatorChoiceGuideTeam}
               myTeamChoosing={myTeamChoosing}
+              // 시연이면 대본이 열어 준 기술 한 칸만 누를 수 있다(없으면 null → 평소와 같다).
+              demoAllowed={gameState.demo ? gameState.demo.allowedSkills : null}
               onChoose={onChooseSkill}
               onPass={onPassSkill}
             />

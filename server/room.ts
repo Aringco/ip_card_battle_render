@@ -24,6 +24,7 @@ import {
 import { serializeEvents, serializeState } from './serializer';
 import { isDemoRequest } from './demo/trigger';
 import { DemoDirector } from './demo/director';
+import { DEMO_SETTINGS } from './demo/script';
 
 // 싱글 모드 컴퓨터 플레이어는 실제 WebSocket 연결이 없으므로 고정 ID로 취급한다.
 const CPU_PLAYER_ID = 'CPU';
@@ -387,8 +388,15 @@ export class Room {
     this.vsComputer = true;
     // ⚠️ 시연 판정은 **여기 안에서** 한다 — 부르는 쪽(gameServer)이 시연을 알 필요가 없다.
     //    이름은 그대로 쓴다(둘 다 12자 제한 안이라 정규화를 그냥 통과한다).
-    if (isDemoRequest(nickname, teamName)) this.demo = new DemoDirector();
-    if (settings) this.settings = clampSettings(settings);
+    if (isDemoRequest(nickname, teamName)) {
+      this.demo = new DemoDirector();
+      // 시연 규칙은 진행자가 로비에 무엇을 넣었든 프리셋으로 덮어쓴다 — 이유 셋(선공·
+      // 체력·축제 턴)은 demo/script.ts의 DEMO_SETTINGS 주석에 있다. clampSettings를
+      // 그대로 통과시키는 것이 중요하다(우회로를 뚫으면 일반 방에도 같은 구멍이 남는다).
+      this.settings = clampSettings({ ...settings, ...DEMO_SETTINGS });
+    } else if (settings) {
+      this.settings = clampSettings(settings);
+    }
     this.players.set(playerId, {
       ws, playerId, memberId: this.nextMemberId(), nickname: normalizeNickname(nickname), team: 'A',
       ready: true, connected: true, lastChatAt: 0,
@@ -745,6 +753,13 @@ export class Room {
       return;
     }
 
+    // 시연 2장은 기술 넷을 연달아 써 보는 장이라 **턴을 넘기지 않는다**(요구 2-2).
+    // 그래서 고른 즉시 턴을 넘기는 processSkillChoice를 쓰지 않는다.
+    if (this.demo) {
+      this.broadcastResult(this.demo.chooseSkill(this.state, animal));
+      return;
+    }
+
     const { state, events } = processSkillChoice(this.state, animal);
     this.state = state;
     if (this.state.phase === 'ended') this.clearTimer();
@@ -767,6 +782,11 @@ export class Room {
       this.sendTo(playerId, { type: 'error', code: 'NOT_YOUR_TURN', message: '지금은 당신의 차례가 아닙니다.' });
       return;
     }
+
+    // ⚠️ 시연에는 [턴 마치기]가 없다 — 화면이 그 칸을 잠가 두지만, 여기까지 오면
+    //    턴이 넘어가 대본이 끊긴다(상대 차례가 오고 2장의 남은 기술을 쓸 수 없다).
+    //    조용히 무시한다 — 누를 수 없는 버튼에 빨간 배너까지 띄울 이유가 없다.
+    if (this.demo) return;
 
     const { state, events } = processPass(this.state);
     this.state = state;

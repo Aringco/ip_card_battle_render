@@ -144,9 +144,15 @@ export interface DemoView {
   allowedPlaces: Place[];
   /** 누를 수 있는 기술. 비어 있으면 전부 잠긴다 */
   allowedSkills: Animal[];
-  /** 'continue'면 [계속 ▶] 버튼을 띄우고, 누를 때까지 판이 멈춰 있다 */
-  waiting: 'click' | 'continue' | 'done';
-  /** 진행도 — "3 / 10" */
+  /**
+   * 지금 무엇을 기다리는지.
+   * - 'click'    장소를 누를 차례(allowedPlaces 한 곳만 열려 있다)
+   * - 'skill'    기술을 고를 차례(allowedSkills 한 칸만 열려 있다)
+   * - 'continue' 짝이 맞아 멈춰 섰다 — [계속 ▶]을 누를 때까지 정산하지 않는다
+   * - 'done'     그 장이 끝났다
+   */
+  waiting: 'click' | 'skill' | 'continue' | 'done';
+  /** 그 장 안에서의 진행도 — "3 / 10" */
   step: number;
   total: number;
 }

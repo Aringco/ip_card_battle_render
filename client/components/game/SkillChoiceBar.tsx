@@ -25,6 +25,7 @@ export function SkillChoiceBar({
   interactive,
   spectatorGuideTeam = null,
   myTeamChoosing = false,
+  demoAllowed = null,
   onChoose,
   onPass,
 }: {
@@ -38,6 +39,15 @@ export function SkillChoiceBar({
   // 은은하게 빛나 "이번엔 여기를 봐야 한다"고 알린다. 장소 선택 단계에는 대신 카드판이
   // 빛나고 이 값은 false다(GameLayout이 두 곳을 번갈아 켠다).
   myTeamChoosing?: boolean;
+  /**
+   * 시연 모드에서 지금 누를 수 있는 기술 — 대본이 열어 준 한 칸만 담겨 온다.
+   * null이면 평범한 게임이라 아무것도 달라지지 않는다.
+   *
+   * ⚠️ **빈 배열은 "전부 잠금"이다**(null과 다르다). 시연 중 장소를 누를 차례에는
+   *    기술 칸이 하나도 열리지 않아야 하므로, `?? true` 같은 기본값으로 뭉개지 말 것.
+   * ⚠️ 시연에는 [턴 마치기]도 없다 — 누르면 턴이 넘어가 대본이 끊긴다(서버도 무시한다).
+   */
+  demoAllowed?: Animal[] | null;
   onChoose: (animal: Animal) => void;
   onPass: () => void;
 }) {
@@ -48,6 +58,11 @@ export function SkillChoiceBar({
   // 보여주고, 설정 패널(⚙️)에서 원하는 사람만 끌 수 있게 했다.
   const guideEnabled = useGuideEnabled();
   const showSkillGuide = guideEnabled && (interactive || spectatorGuideTeam !== null);
+  // 시연은 대본이 열어 준 칸만 누를 수 있고, 손가락도 그 한 칸만 짚는다(빈 배열=전부 잠금).
+  const demoOpen = (animal: Animal) => (demoAllowed ? demoAllowed.includes(animal) : true);
+  // [턴 마치기]는 평소 언제나 누를 수 있지만, 시연에서는 턴이 넘어가는 순간 대본이
+  // 끊기므로(상대 차례가 온다) 아예 잠근다 — 서버도 같은 이유로 무시한다.
+  const passable = interactive && demoAllowed === null;
 
   // 행동 선택 단계에만 이 띠가 빛난다. 관전자는 지금 고르는 팀의 색으로(그 팀 색 변수를
   // 함께 심어준다), 플레이어는 우리 팀 차례일 때 연두색으로.
@@ -73,7 +88,7 @@ export function SkillChoiceBar({
       {ANIMAL_ORDER.map((animal, i) => {
         const preview = previews[i];
         const eligible = preview.level > 0;
-        const clickable = interactive && eligible;
+        const clickable = interactive && eligible && demoOpen(animal);
         const desc = describeSkill(animal, preview.level);
         // 특허랑이처럼 효과가 둘 이상인 행동은 문구가 그냥 이어 붙어 "체력 +4상대 체력 -4"처럼
         // 읽히므로, 각 효과를 조각으로 모아 **쉼표 뒤에서 줄을 바꿔** 한 줄에 하나씩 둔다
@@ -105,8 +120,13 @@ export function SkillChoiceBar({
               {/* 컷신 이미지 어둡게 하는 filter는 이 배경 레이어에만 걸어야 한다 — 예전처럼
                   버튼 전체에 filter를 걸면 그 위에 z-index로 얹은 자막(제목·설명·레벨
                   표시)까지 함께 어두워져 "레벨 부족"일 때 글자가 거의 안 보였다. */}
+              {/* ⚠️ 어둡게 하는 기준은 `eligible`이 아니라 **지금 누를 수 있는가**다.
+                  시연에서 대본이 잠가 둔 칸을 밝은 채로 두면 눌러도 되는 것처럼 보여
+                  관람객이 계속 누르는데 아무 일도 일어나지 않는다(장소 타일은 이미
+                  잠기면 어두워진다 — 그쪽과 같은 신호를 준다). 글씨는 그대로 둔다:
+                  레벨이 모자란 것이 아니라 "지금은 아닌" 것이라 "레벨 부족"이 아니다. */}
               <div
-                className={`skill-choice-bg play-frame-inset absolute ${eligible ? '' : 'skill-choice-bg-disabled'}`}
+                className={`skill-choice-bg play-frame-inset absolute ${eligible && demoOpen(animal) ? '' : 'skill-choice-bg-disabled'}`}
                 style={{ backgroundImage: `url(/skills/${animal}_skill.png)` }}
               />
               <div className="skill-choice-dim play-frame-inset absolute" />
@@ -153,7 +173,7 @@ export function SkillChoiceBar({
 
             {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다.
                 손은 그 칸의 주인 캐릭터 것이라, 어느 칸을 짚고 있는지 손만 봐도 안다. */}
-            {showSkillGuide && eligible && (
+            {showSkillGuide && eligible && demoOpen(animal) && (
               <GuideFinger team={spectatorGuideTeam} animal={animal} />
             )}
           </div>
@@ -165,13 +185,14 @@ export function SkillChoiceBar({
           이 바깥의, 잘리지 않는 래퍼에 그린다(장소 타일에서 겪었던 것과 같은 문제). */}
       <div className="relative">
         <button
-          onClick={() => interactive && onPass()}
-          disabled={!interactive}
+          onClick={() => passable && onPass()}
+          disabled={!passable}
           className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
-            interactive ? 'skill-choice-glow' : ''
+            passable ? 'skill-choice-glow' : ''
           }`}
         >
-          <div className="skill-choice-bg pass-panel-bg play-frame-inset absolute" />
+          {/* 시연에서는 이 칸이 내내 잠겨 있으므로 함께 어둡게 둔다(위 주석과 같은 이유). */}
+          <div className={`skill-choice-bg pass-panel-bg play-frame-inset absolute ${demoAllowed === null ? '' : 'skill-choice-bg-disabled'}`} />
           <div className="skill-choice-dim play-frame-inset absolute" />
           <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
             <h3 className="skill-text-title skill-outline-text font-extrabold text-jungle-200">[턴 마치기]</h3>
@@ -181,8 +202,9 @@ export function SkillChoiceBar({
           </div>
         </button>
 
-        {/* 언제나 누를 수 있는 이 버튼도, 행동 선택 차례마다 손가락으로 짚어준다. */}
-        {showSkillGuide && <GuideFinger team={spectatorGuideTeam} />}
+        {/* 언제나 누를 수 있는 이 버튼도, 행동 선택 차례마다 손가락으로 짚어준다
+            (시연에서는 잠겨 있으므로 짚지 않는다 — 누를 수 없는 곳을 가리키면 안 된다). */}
+        {showSkillGuide && demoAllowed === null && <GuideFinger team={spectatorGuideTeam} />}
       </div>
     </div>
   );
