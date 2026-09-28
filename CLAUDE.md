@@ -109,6 +109,15 @@ npm run build
 
 `RoomManager`(`server/roomManager.ts`)는 4글자 방 코드(`O`/`I` 제외)로 `Room` 인스턴스를 생성·조회·정리하는 순수 관리 계층이고, `createConnectionHandler`(`server/gameServer.ts`)가 `ClientMessage` 타입별 분기(WS 연결 하나당 `currentRoomId`/`currentPlayerId` 클로저 유지)를 맡는다. 이 핸들러를 분리해둔 이유는 독립 실행(`server/index.ts`, 로컬 개발용 8080 포트에 자체 `WebSocketServer` 생성)과 통합 실행(루트 `server.ts`, Next.js와 같은 포트를 쓰는 배포용) 양쪽이 동일한 연결 처리 로직을 공유하기 위해서다.
 
+### 시연 모드(`server/demo/`) — 방 위에 얹은 얇은 진행자 층
+시연회에서 게임을 **가르쳐 주는 순서대로** 진행하는 분기다. 혼자 놀기에서 정해진 이름 짝으로 들어오면 켜진다(암호는 `server/demo/trigger.ts`에만 있다 — `shared/`에 두면 클라이언트 번들에 문자열로 박혀 누구나 찾아낸다). 시나리오 전문·설계 배경·"조용히 깨지는 곳" 12개는 **[`DEMO_MODE.md`](DEMO_MODE.md)**가 기준이고, 여기서는 나머지 코드에 영향을 주는 사실만 적는다.
+
+- **엔진을 고치지 않는다.** `DemoDirector`는 엔진 부품(`settleStacks`·`applySkillChoice`·`makeScriptedCard`)을 순서만 바꿔 부른다. 엔진에 시연 분기를 넣으면 일반 게임 81개 테스트가 지키는 규칙이 흔들린다.
+- **`Room`이 시연이면 엔진 진입점을 쓰지 않는다.** `handleDrawCard`·`handleChooseSkill`이 감독에게 넘기고, `handlePassSkill`은 조용히 무시하며(턴이 넘어가면 대본이 끊긴다), `resetTimer`는 타이머를 아예 걸지 않고(진행자가 설명하는 사이 `handleTimeout`이 대신 장소를 골라 버린다), `scheduleComputerActionIfNeeded`는 CPU를 움직이지 않는다. `snapshot()`에 `demo`를 싣는 것도 필수다 — 빠뜨리면 F5 후 장소가 전부 열린다.
+- **화면에서 잠근 것은 서버에서도 잠가야 한다(그 반대도).** 시연은 "지금 무엇을 누를 수 있는가"(`ClientGameState.demo`)를 양쪽이 함께 알아야 하는 구조다. [턴 마치기]는 잠글 자리가 셋이었다 — 버튼(`SkillChoiceBar`)·서버(`handlePassSkill`)·**"고를 게 없으면 자동 패스"하는 클라이언트 타이머**(`GameLayout`). **새로 조작 UI를 더하면 `gameState.demo` 분기를 함께 넣을 것.**
+- **기술 단계는 `allowedSkills`만으로 뜨지 않는다.** 행동 선택 칸은 서버의 `state.pendingChoice`가 세워져야 살아나므로 감독이 대본 줄을 옮길 때마다 함께 맞춘다(`syncPending`). 장소를 누를 줄에서는 반드시 비운다 — 남아 있으면 `handleDrawCard`가 그 클릭을 에러로 되돌려보낸다.
+- **대본은 눈으로 검사할 수 없다.** 숫자를 고치면 `server/__tests__/demo.test.ts`의 검산이 먼저 걸린다(게임을 켜지 않는 순수 데이터 테스트). 장을 더할 때는 **장 사이의 이음매**도 함께 본다 — 앞 장의 마지막 클릭과 다음 장의 첫 클릭이 같은 장소면 `state.lastPlace`에 막혀 그 클릭이 먹통이 되는데, 화면에는 아무 일도 일어나지 않는다.
+
 ### 배포 — 루트 `server.ts` / `Dockerfile`
 Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼에서는 WS용 포트를 따로 열 수 없으므로(브라우저가 WS 서버에 직접 접속하는 구조라, 그 포트가 공개되지 않으면 접속 자체가 안 됨), 루트 `server.ts`가 Next.js 커스텀 서버 위에 같은 HTTP 서버·같은 포트(`$PORT`, 기본 3000)로 `/ws` 경로의 WebSocket을 함께 띄운다. 로컬 개발 시에는 이 파일을 쓰지 않는다 — 위의 "개발 명령어"대로 서버(8080)와 클라이언트(3000)를 분리 실행하는 방식을 그대로 쓴다. `npm run start`(루트, `ts-node --transpile-only server.ts`) 또는 `docker build -t ip-card-battle .` && `docker run -p 3000:3000 ip-card-battle`로 실행한다. Render는 `render.yaml`(Blueprint)이 서비스를 정의하며, 대시보드에서 한 번 연결하면 그 뒤로는 `main` push마다 자동 재배포된다.
 
