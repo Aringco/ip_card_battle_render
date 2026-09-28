@@ -17,7 +17,7 @@ const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 B
 export default function GamePage() {
   const router = useRouter();
   const {
-    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, error, connected, playerId,
+    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, demoContinue, error, connected, playerId,
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
   } = useWebSocket();
@@ -68,6 +68,11 @@ export default function GamePage() {
     passSkill();
   }, [passSkill]);
 
+  // 시연 모드의 [계속 ▶] — 짝이 맞아 멈춰 선 정산을 진행시킨다
+  const handleDemoContinue = useCallback(() => {
+    demoContinue();
+  }, [demoContinue]);
+
   /**
    * 방을 버리고 로비로 — 나가기 버튼과 결과 화면의 "로비로 돌아가기"가 함께 쓴다.
    *
@@ -116,6 +121,7 @@ export default function GamePage() {
         onPlaceClick={handlePlaceClick}
         onChooseSkill={handleChooseSkill}
         onPassSkill={handlePassSkill}
+        onDemoContinue={handleDemoContinue}
         error={error}
         animState={animState}
         paused={gameState.paused}

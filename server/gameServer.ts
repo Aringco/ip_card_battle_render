@@ -196,6 +196,13 @@ export function createConnectionHandler(roomManager: RoomManager) {
           break;
         }
 
+        // 시연 모드의 [계속 ▶]. 시연 방이 아니면 Room이 조용히 무시한다.
+        case 'demoContinue': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.handleDemoContinue(currentPlayerId);
+          break;
+        }
+
         case 'pauseRequest': {
           if (!currentRoomId || !currentPlayerId) return;
           roomManager.getRoom(currentRoomId)?.handlePauseRequest(currentPlayerId);

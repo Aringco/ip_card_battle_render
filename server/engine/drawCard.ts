@@ -65,7 +65,15 @@ function _drawOne(state: GameState, place: Place, rng: RNG): GameEvent[] {
   return [{ type: 'draw', place, card }];
 }
 
-function settleStacks(state: GameState): GameEvent[] {
+/**
+ * 미획득 스택이 짝수인 동물을 한꺼번에 정산한다(경험치만 오른다).
+ *
+ * ⚠️ `export`인 이유는 **시연 모드**(`server/demo/`)가 이 함수를 따로 부르기 때문이다.
+ *    시연은 "짝이 맞았습니다" 안내를 띄우고 **관람객이 [계속]을 누른 뒤에** 정산해야
+ *    하는데, `drawCard`는 뽑기와 정산을 한 번에 끝내 그 사이에 끼어들 틈이 없다.
+ *    정산 규칙이 두 벌이 되면 곧 어긋나므로, 복사하지 말고 이 함수를 그대로 쓴다.
+ */
+export function settleStacks(state: GameState): GameEvent[] {
   const events: GameEvent[] = [];
   const team = state.activeTeam;
 

@@ -123,6 +123,8 @@ export interface UseWebSocketReturn {
   drawCard: (place: Place) => void;
   chooseSkill: (animal: Animal) => void;
   passSkill: () => void;
+  /** 시연 모드의 [계속 ▶] — 시연 방이 아니면 서버가 무시한다 */
+  demoContinue: () => void;
   // ─ 게임 중 메뉴(⏸) ─
   requestPause: () => void;
   respondPause: (accept: boolean) => void;
@@ -396,6 +398,7 @@ export function useWebSocket(): UseWebSocketReturn {
   }, [send]);
 
   const passSkill = useCallback(() => send({ type: 'passSkill' }), [send]);
+  const demoContinue = useCallback(() => send({ type: 'demoContinue' }), [send]);
 
   const requestPause = useCallback(() => {
     setPauseNotice(null);
@@ -435,7 +438,7 @@ export function useWebSocket(): UseWebSocketReturn {
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
     movePlayer, kickPlayer, transferHost, setTeamName, updateSettings, startGame, sendChat,
-    drawCard, chooseSkill, passSkill,
+    drawCard, chooseSkill, passSkill, demoContinue,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
   };
 }

@@ -40,7 +40,10 @@ export type ClientMessage =
   // 항복하기(leave 없음)와 나가기(leave: true)는 **승패 처리가 같다** — 상대 팀 승리로
   // 게임이 끝난다. 다른 점은 나가기가 그 뒤 방에서까지 빠져 로비로 돌아간다는 것뿐이다.
   // 관전자가 보내면 승패는 건드리지 않고 나가기만 처리한다(관전자는 어느 팀도 아니다).
-  | { type: 'forfeit'; leave?: boolean };
+  | { type: 'forfeit'; leave?: boolean }
+  // ─ 시연 모드 ─
+  // 짝이 맞아 멈춰 선 화면에서 [계속 ▶]을 눌렀다. 시연 방이 아니면 서버가 무시한다.
+  | { type: 'demoContinue' };
 
 // ─── 서버 → 클라이언트 ──────────────────────────────────────────────────────
 
@@ -124,8 +127,34 @@ export type ErrorCode =
 // 카드가 뽑히는 즉시 공개되므로(숨겨진 카드 상태가 없음) 서버 GameState를 그대로
 // 확장해서 쓴다 — 예전처럼 별도의 클라이언트 전용 board 직렬화가 필요 없다.
 
+/**
+ * 시연 모드에서 화면에 내려보내는 진행 상황.
+ *
+ * ⚠️ **암호(팀명·닉네임)는 여기에 실리지 않는다.** 그 판정은 서버 안에서만 일어나고
+ *    (`server/demo/trigger.ts`), 밖으로 나가는 것은 "지금 무엇을 누를 수 있는가"뿐이다.
+ *    암호를 shared에 두면 클라이언트 번들에 문자열로 박혀 누구나 찾아낼 수 있다.
+ *
+ * 시연 시나리오 전문은 저장소 루트의 `DEMO_MODE.md`에 있다.
+ */
+export interface DemoView {
+  chapter: number;
+  /** 지금 화면에 띄울 설명 */
+  caption: string;
+  /** 누를 수 있는 장소. **비어 있으면 전부 잠긴다** */
+  allowedPlaces: Place[];
+  /** 누를 수 있는 기술. 비어 있으면 전부 잠긴다 */
+  allowedSkills: Animal[];
+  /** 'continue'면 [계속 ▶] 버튼을 띄우고, 누를 때까지 판이 멈춰 있다 */
+  waiting: 'click' | 'continue' | 'done';
+  /** 진행도 — "3 / 10" */
+  step: number;
+  total: number;
+}
+
 export interface ClientGameState extends GameState {
   activePlayerNickname: string;
+  /** 시연 모드일 때만 실린다. 없으면 평범한 게임이다. */
+  demo?: DemoView;
   // 남은 턴 제한시간(ms) — 서버가 이 상태를 직렬화하는 순간을 기준으로 잰 "상대 시간"이다.
   // 예전에는 서버 시계의 절대 시각(turnDeadline)을 그대로 보냈는데, 그러면 클라이언트 PC
   // 시계가 서버와 어긋난 만큼 표시가 그대로 틀어졌다(엉뚱한 숫자에서 시작해 0에 멈춰

@@ -22,6 +22,7 @@ import { FestivalProgressBar } from './FestivalProgressBar';
 import { SkillChoiceBar } from './SkillChoiceBar';
 import { TeamTotalPanel } from './TeamTotalPanel';
 import { ActionPrompt } from './ActionPrompt';
+import { DemoCaption } from './DemoCaption';
 
 // screenShakeLevel(임의의 정수) → 진동 강도 스케일. 숫자가 클수록 세게 흔들린다 —
 // 카드가 쌓일 때/예약 뽑기 롤 진입 시(약하게=1, 강하게=4), 특허랑이·결정타 등 다른
@@ -38,6 +39,7 @@ export function GameLayout({
   onPlaceClick,
   onChooseSkill,
   onPassSkill,
+  onDemoContinue,
   error,
   animState,
   paused,
@@ -54,6 +56,8 @@ export function GameLayout({
   onPlaceClick: (place: Place) => void;
   onChooseSkill: (animal: Animal) => void;
   onPassSkill: () => void;
+  /** 시연 모드의 [계속 ▶] — 짝이 맞아 멈춰 선 정산을 진행시킨다 */
+  onDemoContinue: () => void;
   error: string | null;
   animState: AnimationState;
   /** 일시정지 중 — 타이머 표시와 "고를 게 없을 때의 자동 턴 종료"를 함께 멈춘다. */
@@ -224,6 +228,10 @@ export function GameLayout({
               그 안에 얹혀 있던 이 오버레이만 따로 살려 보드 아래쪽에 띄운다.
               타이머는 없어지면 안 되는 기능이라 "로그 제거"에 딸려 보낼 수 없다. */}
           <div className="play-prompt-strip">
+            {gameState.demo ? (
+              // 시연에는 턴 타이머가 없다(서버가 아예 걸지 않는다) — 그 자리를 설명 자막이 쓴다.
+              <DemoCaption demo={gameState.demo} onContinue={onDemoContinue} />
+            ) : (
             <ActionPrompt
               myTeam={myTeam}
               playerId={playerId}
@@ -241,6 +249,7 @@ export function GameLayout({
               startingTeamReason={gameState.startingTeamReason}
               teamNames={gameState.teamNames}
             />
+            )}
           </div>
         </div>
       </main>

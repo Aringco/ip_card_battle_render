@@ -22,6 +22,8 @@ import {
   clampSettings,
 } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
+import { isDemoRequest } from './demo/trigger';
+import { DemoDirector } from './demo/director';
 
 // 싱글 모드 컴퓨터 플레이어는 실제 WebSocket 연결이 없으므로 고정 ID로 취급한다.
 const CPU_PLAYER_ID = 'CPU';
@@ -163,6 +165,12 @@ export class Room {
   private turnTotalMs = 0;
   private timerHandle: ReturnType<typeof setTimeout> | null = null;
   private vsComputer = false;
+  /**
+   * 시연회 분기 — 혼자 놀기에서 정해진 이름 짝으로 들어왔을 때만 세워진다.
+   * null이면 평범한 게임이고, 아래 어느 분기에도 걸리지 않는다.
+   * 시나리오 전문은 저장소 루트의 `DEMO_MODE.md`.
+   */
+  private demo: DemoDirector | null = null;
   private computerTimer: ReturnType<typeof setTimeout> | null = null;
   // 컴퓨터 타이머가 터질 예정인 시각 — 일시정지할 때 "얼마나 남았는지"를 재려면
   // 핸들만으로는 알 수 없어 따로 기억해둔다.
@@ -377,6 +385,9 @@ export class Room {
    */
   addSoloPlayer(ws: WebSocket, playerId: string, nickname: string, teamName?: string, settings?: Partial<GameSettings>): void {
     this.vsComputer = true;
+    // ⚠️ 시연 판정은 **여기 안에서** 한다 — 부르는 쪽(gameServer)이 시연을 알 필요가 없다.
+    //    이름은 그대로 쓴다(둘 다 12자 제한 안이라 정규화를 그냥 통과한다).
+    if (isDemoRequest(nickname, teamName)) this.demo = new DemoDirector();
     if (settings) this.settings = clampSettings(settings);
     this.players.set(playerId, {
       ws, playerId, memberId: this.nextMemberId(), nickname: normalizeNickname(nickname), team: 'A',
@@ -598,6 +609,9 @@ export class Room {
     const nickA = this.teamPlayerIds.A.map(id => this.players.get(id)?.nickname ?? CPU_NICKNAME);
     const nickB = this.teamPlayerIds.B.map(id => this.players.get(id)?.nickname ?? CPU_NICKNAME);
     this.state = initGame(nickA, nickB, Math.random, this.settings);
+    // ⚠️ 시연은 **빈 보드에서** 시작한다 — initGame이 깔아 둔 시작 공유 카드 2장을
+    //    그대로 두면 대본의 짝수 계산이 통째로 어긋난다(director.start의 주석 참고).
+    this.demo?.start(this.state);
     this.assignTeamName('A');
     this.assignTeamName('B');
 
@@ -622,7 +636,7 @@ export class Room {
       ? (this.pausedTurnRemainingMs > 0 ? Date.now() + this.pausedTurnRemainingMs : 0)
       : this.turnDeadline;
     const totalMs = this.paused ? this.pausedTurnTotalMs : this.turnTotalMs;
-    return serializeState(this.state, deadline, totalMs, this.finalTeamNames(), this.teamPlayerIds, {
+    const snap = serializeState(this.state, deadline, totalMs, this.finalTeamNames(), this.teamPlayerIds, {
       paused: this.paused,
       pausedBy: this.pausedBy ? { team: this.pausedBy.team, nickname: this.pausedBy.nickname } : null,
       pendingAnswer: this.pauseRequest !== null,
@@ -632,6 +646,10 @@ export class Room {
       // "턴 타이머를 화면에 그리는 규칙 3가지" 참고). 멈춰 있지 않으면 0.
       remainingMs: this.paused ? Math.max(0, this.pauseAutoResumeDeadline - Date.now()) : 0,
     });
+    // ⚠️ 재접속(gameSnapshot)도 이 경로를 쓴다 — 여기서 빠뜨리면 시연 중 F5를 눌렀을 때
+    //    화면만 평범한 게임으로 돌아가 장소가 전부 열린다.
+    if (this.demo) snap.demo = this.demo.view();
+    return snap;
   }
 
   private finalTeamNames(): Record<Team, string> {
@@ -690,6 +708,13 @@ export class Room {
       return;
     }
 
+    // 시연은 뽑히는 카드를 대본이 정하고, 짝이 맞으면 정산 전에 멈춰 선다.
+    // 그래서 뽑기와 정산을 한 번에 끝내는 processPlayerAction을 쓰지 않는다.
+    if (this.demo) {
+      this.broadcastResult(this.demo.draw(this.state, place));
+      return;
+    }
+
     const { state, events } = processPlayerAction(this.state, place);
     this.state = state;
     if (this.state.phase === 'ended') this.clearTimer();
@@ -697,6 +722,13 @@ export class Room {
     this.broadcastResult(events);
 
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
+  }
+
+  /** 시연 모드의 [계속 ▶] — 멈춰 두었던 정산을 그제야 수행한다. */
+  handleDemoContinue(playerId: string): void {
+    if (!this.demo || !this.state || this.state.phase !== 'playing') return;
+    if (playerId !== this.expectedPlayerId('A')) return;
+    this.broadcastResult(this.demo.resume(this.state));
   }
 
   handleChooseSkill(playerId: string, animal: Animal): void {
@@ -752,6 +784,9 @@ export class Room {
    */
   private scheduleComputerActionIfNeeded(lastActionEvents?: GameEvent[]): void {
     if (this.paused) return;
+    // ⚠️ 시연 1·2장은 턴을 넘기지 않으므로 상대 차례가 오지 않는다. 그래도 방어적으로
+    //    막아 둔다 — 여기서 CPU가 한 수라도 두면 대본이 어긋난다.
+    if (this.demo) return;
     if (!this.vsComputer || !this.state || this.state.phase !== 'playing') return;
     const waitingTeam = this.state.pendingChoice ?? this.state.activeTeam;
     if (waitingTeam !== 'B') return;
@@ -855,6 +890,9 @@ export class Room {
   private resetTimer(events: GameEvent[] = []): void {
     this.clearTimer();
     if (!this.state) return;
+    // ⚠️ 시연에는 턴 타이머를 걸지 않는다. 진행자가 설명하는 30초 사이에
+    //    handleTimeout이 대신 장소를 골라 버리면 대본이 통째로 어긋난다.
+    if (this.demo) return;
     const settings = this.state.settings;
     const waitingTeam = this.state.pendingChoice ?? this.state.activeTeam;
     const pendingDraws =

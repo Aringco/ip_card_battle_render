@@ -131,14 +131,20 @@ export function GameBoard({
         // 든 항상 같아야 하는 정보이기 때문이다. 예전엔 canAct에 묶여 있어서 상대
         // 턴에는 안 보이고, 내 턴 안에서도 행동 선택 단계로 넘어가면 사라졌다.
         const isForbidden = place === gameState.lastPlace;
+        // 시연 모드에서는 **대본이 열어 준 장소 하나만** 누를 수 있다. 관람객이 아무
+        // 데나 누르면 "이 장소에서는 이것들이 나옵니다"라는 설명 자체가 성립하지 않는다.
+        // (demo가 없으면 평범한 게임이라 아무것도 달라지지 않는다.)
+        const demoLocked = gameState.demo ? !gameState.demo.allowedPlaces.includes(place) : false;
+        // 손가락 가이드도 그 한 곳만 짚는다 — 다음에 누를 곳이 곧 대본의 다음 줄이다.
+        const demoGuide = gameState.demo ? !demoLocked && gameState.demo.waiting === 'click' : false;
         return (
           <div key={place} style={{ gridArea: GRID_AREA[place] }}>
             <PlaceTile
               place={place}
-              disabled={!canAct}
+              disabled={!canAct || demoLocked}
               forbidden={isForbidden}
               onClick={onPlaceClick}
-              showGuide={showPlaceGuide && !isForbidden}
+              showGuide={gameState.demo ? demoGuide : showPlaceGuide && !isForbidden}
               guideTeam={spectatorGuideTeam}
             />
           </div>

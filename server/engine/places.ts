@@ -41,6 +41,21 @@ export function drawCardAt(place: Place, rng: RNG = Math.random): StackedCard {
 }
 
 /**
+ * 대본이 정한 카드 한 장 — **시연 모드 전용**(`server/demo/`).
+ *
+ * 시연에서는 어떤 동물이 몇 번으로 나올지를 대본이 정하므로 무작위를 쓰지 않는다.
+ * 그래도 이 함수가 여기 있는 이유는 **카드 id를 같은 카운터에서 뽑기 위해서다** —
+ * 클라이언트 연출이 카드를 id로 따라다니므로(`cardIds`), 시연 카드만 다른 체계로
+ * 번호를 매기면 같은 id가 두 장 생겨 엉뚱한 카드가 날아간다.
+ *
+ * ⚠️ 숫자가 그 장소에서 실제로 나올 수 있는 범위인지는 **검사하지 않는다.**
+ *    그 검사는 대본 쪽(`demo/script.ts`)의 몫이고, 테스트가 지킨다.
+ */
+export function makeScriptedCard(animal: Animal, num: CardNum): StackedCard {
+  return { id: ++cardIdCounter, animal, num, collectedBy: null };
+}
+
+/**
  * 게임 시작 시 중앙에 미리 깔아두는 "공유 카드"를 뽑는다 — 선 플레이어가 빈 보드에서
  * 시작해 짝을 만들 수 없던 불합리를 없애기 위한 장치다(shared/constants.ts 참고).
  *

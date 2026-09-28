@@ -4751,6 +4751,69 @@ body {
 .play-prompt-strip button,
 .play-prompt-strip a { pointer-events: auto; }
 
+/* ── 시연 모드 설명 자막 — 타이머 창이 있던 자리를 그대로 쓴다 ──────────────────
+   ⚠️ **새 줄을 만들지 않는다.** 액자 칸(.play-prompt-strip) 안에 들어가야 그 아래
+   카드 다섯 장의 자리가 밀리지 않는다. 시연에는 턴 타이머가 없으므로(서버가 아예
+   걸지 않는다) 그 자리가 비고, 설명이 그 자리를 쓴다.
+   생김새는 타이머 창(.play-timer-window)과 같은 크림색 캡슐로 맞춰, 시연 화면이
+   평소와 다른 게임처럼 보이지 않게 한다. */
+.demo-caption {
+  --demo-h: clamp(50px, 5.75vh, 75px);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--demo-h) * 0.35);
+  height: var(--demo-h);
+  max-width: calc(var(--pf-w) * 0.92);
+  padding-inline: calc(var(--demo-h) * 0.5);
+  border: calc(var(--demo-h) * 0.035) solid #211505;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff6df 0%, #fbe9c2 55%, #f2d9a6 100%);
+  color: #4a3728;
+  pointer-events: none;
+  white-space: nowrap;
+}
+/* 진행도 "3 / 10" — 어두운 알약으로 본문과 갈라 둔다 */
+.demo-caption-step {
+  flex-shrink: 0;
+  padding: calc(var(--demo-h) * 0.08) calc(var(--demo-h) * 0.26);
+  border-radius: 999px;
+  background: #3f2410;
+  color: #f7e6c2;
+  font-size: calc(var(--demo-h) * 0.26 * var(--font-scale));
+  font-weight: 700;
+}
+/* ⚠️ `min-width: 0`이 있어야 상한에 걸렸을 때 이 칸이 줄어든다 — flex 항목의 기본값
+   `min-width: auto`는 내용보다 작아지기를 거부해, 창이 상한을 넘겨 버린다. */
+.demo-caption-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: calc(var(--demo-h) * 0.27 * var(--font-scale));
+}
+.demo-caption-button {
+  flex-shrink: 0;
+  padding: calc(var(--demo-h) * 0.12) calc(var(--demo-h) * 0.34);
+  border: calc(var(--demo-h) * 0.03) solid #211505;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #a3d977 0%, #6aa63c 100%);
+  color: #14290a;
+  font-size: calc(var(--demo-h) * 0.26 * var(--font-scale));
+  cursor: pointer;
+  /* 눌러야 다음으로 넘어가는 유일한 버튼이라, 눈에 띄게 맥박을 준다 */
+  animation: demoContinuePulse 1.1s ease-in-out infinite;
+}
+@keyframes demoContinuePulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-caption-button { animation: none; }
+}
+
 /* 팀 패널 본체 — 칸이 이미 양피지를 깔았으므로 여기서는 팀 색만 옅게 얹는다
    (예전 `.wood-panel::after`가 하던 일). */
 /* 팀 경험치 판 — 양피지 질감 위에 팀 색을 옅게 얹는다(요청 2).
