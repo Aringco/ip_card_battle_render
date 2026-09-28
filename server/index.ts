@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import { RoomManager } from './roomManager';
 import { createConnectionHandler } from './gameServer';
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8088;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
 const wss = new WebSocketServer({ port: PORT });
 const roomManager = new RoomManager();
 
