@@ -732,11 +732,38 @@ export class Room {
     if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
   }
 
-  /** 시연 모드의 [계속 ▶] — 멈춰 두었던 정산을 그제야 수행한다. */
+  /**
+   * 시연 모드의 [계속 ▶] — 멈춰 두었던 정산, 3장의 턴 넘김, 4장에서 상대가 두는 수를
+   * 한 걸음씩 진행시킨다.
+   *
+   * ⚠️ **끝난 판에서도 받는다.** 4장의 결과 화면에 뜨는 [4장으로 복귀]가 같은 메시지를
+   *    쓰기 때문이다 — 진행자에게는 똑같이 "다음으로 넘긴다"는 한 가지 동작이다.
+   *    되살리는 것은 `view().replay`가 켜져 있을 때(=4장의 장면을 보던 중)뿐이라,
+   *    1~3장 도중 항복으로 끝난 판이 이 길로 되살아나지는 않는다.
+   */
   handleDemoContinue(playerId: string): void {
-    if (!this.demo || !this.state || this.state.phase !== 'playing') return;
+    if (!this.demo || !this.state) return;
+    // ⚠️ 멈춰 있는 동안에는 받지 않는다. 화면은 멈춤 창이 덮고 있지만 **키보드는 덮이지
+    //    않는다** — 진행자가 질문에 답하다 무심코 스페이스를 누르면 창 뒤에서 대본이
+    //    한 걸음 나아가 버린다(화면에서 잠근 것은 서버에서도 잠근다 — 주의 12).
+    if (this.paused) return;
     if (playerId !== this.expectedPlayerId('A')) return;
+
+    if (this.state.phase === 'ended') {
+      if (!this.demo.view().replay) return;
+      this.broadcastResult(this.demo.restart(this.state));
+      return;
+    }
+    if (this.state.phase !== 'playing') return;
     this.broadcastResult(this.demo.resume(this.state));
+  }
+
+  /** 시연 4장 — 볼 장면(강탈승·회복승·패배)을 골랐다. */
+  handleDemoScene(playerId: string, key: string): void {
+    if (!this.demo || !this.state || this.state.phase !== 'playing') return;
+    if (this.paused) return; // 1·2·3 키도 멈춤 창을 뚫고 들어온다 — 위와 같은 이유다
+    if (playerId !== this.expectedPlayerId('A')) return;
+    this.broadcastResult(this.demo.chooseScene(this.state, key));
   }
 
   handleChooseSkill(playerId: string, animal: Animal): void {

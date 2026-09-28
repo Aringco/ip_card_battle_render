@@ -4822,6 +4822,93 @@ body {
   0%, 100% { filter: brightness(1); }
   50%      { filter: brightness(1.18); }
 }
+
+/* ── 시연 4장 — 볼 결말 고르기 ────────────────────────────────────────────────
+   ⚠️ **판 위에 덮는 오버레이다**(fixed). 자막 띠처럼 액자 칸(.play-prompt-strip) 안에
+      넣으면 그 아래 카드 다섯 장의 자리가 밀린다 — 이건 배치의 일부가 아니라 잠깐 떠
+      있는 창이므로, 레이아웃에 아예 끼어들지 않는 편이 맞다.
+   z-index 80은 배너들(71) 위, 일시정지 창(100) 아래다 — 멈춘 동안에는 멈춤 창이
+   이 판을 덮어야 한다. */
+.demo-scene-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 2.6vh, 28px);
+  padding: 4vh 16px;
+  background: rgba(10, 6, 2, 0.74);
+  animation: demoSceneFadeIn 260ms ease-out both;
+}
+@keyframes demoSceneFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.demo-scene-title {
+  max-width: 44rem;
+  text-align: center;
+  color: #f7e6c2;
+  font-size: calc(1.25rem * var(--font-scale));
+  font-weight: 700;
+  text-shadow: 0 2px 6px #000000cc;
+}
+/* 좁은 화면에서는 세로로 쌓인다 — 셋을 나란히 두려고 줄이면 설명 줄이 두 줄로 접혀
+   카드 높이가 제각각이 된다. */
+.demo-scene-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(10px, 1.6vw, 20px);
+}
+/* 번호와 이름만 들어간다 — 설명 줄을 다시 붙이지 말 것(DemoSceneMenu 주석 참고).
+   그래서 카드가 작고, 셋이 한 줄에 여유 있게 놓인다. */
+.demo-scene-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: clamp(168px, 17vw, 220px);
+  padding: clamp(16px, 2.6vh, 26px) 18px;
+  border: 3px solid #211505;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fdf3dc 0%, #efd9ad 100%);
+  color: #2a1a08;
+  box-shadow: 0 6px 0 #2115055c, 0 10px 22px #00000066;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+.demo-scene-card:hover,
+.demo-scene-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 0 #2115055c, 0 14px 28px #00000077;
+  filter: brightness(1.05);
+}
+.demo-scene-card:active { transform: translateY(1px); box-shadow: 0 3px 0 #2115055c, 0 6px 14px #00000066; }
+/* 번호 — 진행자가 1·2·3 키로도 고를 수 있다는 것을 눈으로 알려주는 자리이기도 하다. */
+.demo-scene-index {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: #3f2410;
+  color: #f7e6c2;
+  font-size: calc(0.95rem * var(--font-scale));
+  font-weight: 700;
+}
+.demo-scene-label {
+  font-size: calc(1.15rem * var(--font-scale));
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-scene-menu { animation: none; }
+  .demo-scene-card { transition: none; }
+  .demo-scene-card:hover,
+  .demo-scene-card:focus-visible { transform: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .demo-caption-button { animation: none; }
 }

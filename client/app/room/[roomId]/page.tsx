@@ -17,7 +17,8 @@ const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 B
 export default function GamePage() {
   const router = useRouter();
   const {
-    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, demoContinue, error, connected, playerId,
+    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, demoContinue, demoScene,
+    error, connected, playerId,
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
   } = useWebSocket();
@@ -68,10 +69,19 @@ export default function GamePage() {
     passSkill();
   }, [passSkill]);
 
-  // 시연 모드의 [계속 ▶] — 짝이 맞아 멈춰 선 정산을 진행시킨다
+  // 시연 모드의 [계속 ▶] — 멈춰 선 정산·턴 넘김·상대의 수를 한 걸음씩 진행시킨다.
+  // 4장의 결과 화면에 뜨는 [다른 결말 보기]도 같은 메시지를 쓴다(서버 Room 주석 참고).
   const handleDemoContinue = useCallback(() => {
     demoContinue();
   }, [demoContinue]);
+
+  // 시연 4장 — 볼 결말을 골랐다
+  const handleDemoScene = useCallback(
+    (key: string) => {
+      demoScene(key);
+    },
+    [demoScene],
+  );
 
   /**
    * 방을 버리고 로비로 — 나가기 버튼과 결과 화면의 "로비로 돌아가기"가 함께 쓴다.
@@ -108,7 +118,16 @@ export default function GamePage() {
   // "결정타!" 강조)이 끝까지 재생된 뒤에야 종료 화면으로 넘어간다 — 승리를 만든
   // 그 행동의 손맛을 화면 전환이 잘라먹지 않도록.
   if (gameState.phase === 'ended' && !animState.isSettling) {
-    return <GameEndScreen gameState={gameState} myTeam={myTeam} onBack={handleLeave} />;
+    return (
+      <GameEndScreen
+        gameState={gameState}
+        myTeam={myTeam}
+        onBack={handleLeave}
+        // 시연 4장에서만 쓰인다 — 서버가 demo.replay로 "되돌아갈 곳이 있다"고
+        // 알려줄 때만 버튼이 뜬다(GameEndScreen 주석 참고).
+        onReplay={handleDemoContinue}
+      />
+    );
   }
 
   return (
@@ -122,6 +141,7 @@ export default function GamePage() {
         onChooseSkill={handleChooseSkill}
         onPassSkill={handlePassSkill}
         onDemoContinue={handleDemoContinue}
+        onDemoScene={handleDemoScene}
         error={error}
         animState={animState}
         paused={gameState.paused}

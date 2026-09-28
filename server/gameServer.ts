@@ -197,9 +197,17 @@ export function createConnectionHandler(roomManager: RoomManager) {
         }
 
         // 시연 모드의 [계속 ▶]. 시연 방이 아니면 Room이 조용히 무시한다.
+        // (4장 결과 화면의 [4장으로 복귀]도 같은 메시지를 쓴다 — Room 주석 참고.)
         case 'demoContinue': {
           if (!currentRoomId || !currentPlayerId) return;
           roomManager.getRoom(currentRoomId)?.handleDemoContinue(currentPlayerId);
+          break;
+        }
+
+        // 시연 4장 — 볼 장면(강탈승·회복승·패배)을 골랐다.
+        case 'demoScene': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.handleDemoScene(currentPlayerId, msg.key);
           break;
         }
 

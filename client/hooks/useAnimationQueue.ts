@@ -367,6 +367,12 @@ export function useAnimationQueue(
     setDisplayedActivePlayerIndex(gameState.activePlayerIndex);
     setIsSettling(false);
     setPendingExpCredit({});
+    // ⚠️ **좌절 이모티콘(persist)은 여기서도 걷어야 한다.** 그것만 제거 타이머가 없어
+    //    저절로 사라지지 않는데, 걷어내는 곳이 아래 레이아웃 이펙트 한 군데뿐이었다 —
+    //    그쪽은 이벤트가 있는 갱신에서만 도므로, **이벤트가 비어 있는 갱신**으로 판이
+    //    바뀌면 네 얼굴이 새 판 위에 그대로 남는다. 시연 4장에서 실제로 그랬다
+    //    ([다른 결말 보기]와 장면 세팅이 빈 채로 나간다 — DEMO_MODE 주의 13).
+    setEmoticons(prev => (prev.some(e => e.persist) ? prev.filter(e => !e.persist) : prev));
   }, [gameState, lastEvents]);
 
   const sched = (fn: () => void, delayMs: number) => {

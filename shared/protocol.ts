@@ -43,7 +43,13 @@ export type ClientMessage =
   | { type: 'forfeit'; leave?: boolean }
   // ─ 시연 모드 ─
   // 짝이 맞아 멈춰 선 화면에서 [계속 ▶]을 눌렀다. 시연 방이 아니면 서버가 무시한다.
-  | { type: 'demoContinue' };
+  //
+  // ⚠️ **끝난 판에서도 이 메시지를 쓴다.** 4장은 승패 장면을 보여주고 끝나는데, 그
+  //    결과 화면의 [4장으로 복귀]가 바로 이것이다 — 진행자에게는 똑같이 "다음으로
+  //    넘긴다"는 한 가지 동작이라 메시지를 따로 만들지 않았다.
+  | { type: 'demoContinue' }
+  // 4장에서 볼 장면(강탈승·회복승·패배)을 골랐다. key는 서버가 내려준 DemoView.scenes의 값이다.
+  | { type: 'demoScene'; key: string };
 
 // ─── 서버 → 클라이언트 ──────────────────────────────────────────────────────
 
@@ -136,6 +142,20 @@ export type ErrorCode =
  *
  * 시연 시나리오 전문은 저장소 루트의 `DEMO_MODE.md`에 있다.
  */
+/**
+ * 4장에서 고를 수 있는 장면 하나 — 화면의 버튼 한 개가 된다.
+ *
+ * ⚠️ **설명 줄을 다시 붙이지 말 것.** 한때 버튼마다 "배율을 쌓고 특허랑이 한 방으로…"
+ *    같은 한 줄을 달았는데, 진행자가 말로 하는 설명을 화면이 먼저 해버려 버튼이
+ *    읽히는 대신 읽히는 **글 덩어리**가 됐다. 여기 있어야 할 것은 번호와 이름뿐이다.
+ */
+export interface DemoSceneChoice {
+  /** 되돌려 보낼 값(`demoScene`의 key) */
+  key: string;
+  /** 버튼에 쓰는 이름 */
+  label: string;
+}
+
 export interface DemoView {
   chapter: number;
   /** 지금 화면에 띄울 설명 */
@@ -148,10 +168,21 @@ export interface DemoView {
    * 지금 무엇을 기다리는지.
    * - 'click'    장소를 누를 차례(allowedPlaces 한 곳만 열려 있다)
    * - 'skill'    기술을 고를 차례(allowedSkills 한 칸만 열려 있다)
-   * - 'continue' 짝이 맞아 멈춰 섰다 — [계속 ▶]을 누를 때까지 정산하지 않는다
+   * - 'continue' 멈춰 섰다 — [계속 ▶]을 누를 때까지 다음으로 가지 않는다
+   *              (짝이 맞은 정산 · 3장의 턴 넘김 · 4장에서 상대가 두는 수)
+   * - 'scene'    4장 — 볼 장면을 고를 차례(scenes에 후보가 실린다)
    * - 'done'     그 장이 끝났다
    */
-  waiting: 'click' | 'skill' | 'continue' | 'done';
+  waiting: 'click' | 'skill' | 'continue' | 'scene' | 'done';
+  /** 고를 수 있는 장면들 — waiting이 'scene'일 때만 실린다 */
+  scenes?: DemoSceneChoice[];
+  /**
+   * 결과 화면에 [4장으로 복귀]를 띄울지.
+   *
+   * 4장의 장면 하나가 끝나 판이 끝난 상태에서만 true다 — 1~3장 도중에 항복으로 끝난
+   * 판까지 되돌아가기를 띄우면 "무엇으로 돌아가는지" 설명할 수 없다.
+   */
+  replay?: boolean;
   /** 그 장 안에서의 진행도 — "3 / 10" */
   step: number;
   total: number;

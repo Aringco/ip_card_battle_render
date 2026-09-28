@@ -14,11 +14,11 @@ const TIPS = [
 ];
 
 // 배경 그림은 여러 장을 **번갈아** 보여준다. 경로는 lobbyAssets.ts 한 곳에 있다.
-const LOADING_BACKGROUNDS = [LOBBY_ASSETS.loading, LOBBY_ASSETS.loading2];
+const LOADING_BACKGROUNDS = [LOBBY_ASSETS.loading, LOBBY_ASSETS.loading2, LOBBY_ASSETS.loading3];
 // 한 장이 머무는 시간과 넘어가는 데 걸리는 시간.
 // ⚠️ 이 둘은 CSS(.loading-bg-layer의 transition)와 **짝**이다 — 페이드가 머무는 시간보다
 // 길면 그림이 제 모습으로 서 있는 순간이 사라져 두 장이 겹친 잔상만 보인다.
-const SLIDE_HOLD_MS = 2000;
+const SLIDE_HOLD_MS = 2500;
 const SLIDE_FADE_MS = 500;
 
 /**
@@ -32,8 +32,16 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
   // 다른 값을 뽑아 경고가 뜨고, 운 나쁘면 문구가 잠깐 바뀌는 게 눈에 보인다. 무작위
   // 선택은 마운트 후 이 effect에서만 한다(React가 공식 권장하는 방식).
   const [tip, setTip] = useState<string>(TIPS[0]);
-  // 지금 보이는 배경의 차례. 첫 프레임은 서버 렌더와 같아야 하므로 늘 0으로 시작하고
-  // (위 주석의 hydration 문제), 2초마다 다음 장으로 넘어간다.
+  /**
+   * 지금 보이는 배경의 차례. **언제나 0번(loading_bg)으로 시작해 적힌 순서대로** 넘어간다
+   * (loading → loading2 → loading3 → 다시 loading …).
+   *
+   * ⚠️ 첫 장을 무작위로 만들려 한 적이 있는데(2026-09-29) 되돌렸다. 이 페이지는 정적으로
+   *    미리 그려져 나가고 그 HTML이 JS보다 먼저 화면에 칠해지므로, "마운트 후에 고르는"
+   *    방식으로는 **맨 처음 보이는 것이 언제나 0번**이 된다. 그것을 피하려면 순서가
+   *    정해질 때까지 어느 장도 보이지 않게 둬야 하는데, 그러면 첫 그림이 늦게 뜬다.
+   *    순서를 바꾸고 싶다면 무작위가 아니라 **LOADING_BACKGROUNDS의 나열 순서**를 고칠 것.
+   */
   const [slide, setSlide] = useState(0);
 
   useEffect(() => {

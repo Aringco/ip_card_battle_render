@@ -30,11 +30,27 @@ export const PLAY_ASSETS = {
   resultBackground: '/play/result_bg.webp',
   /**
    * 결과 화면 배경 2 — 통나무집 탁자에서 카드를 펼친 네 캐릭터 (2560×1440 WebP,
-   * 약 299KB, 원본 game_end_4.png). 위 resultBackground와 **둘 중 하나가 무작위로** 깔린다.
-   * 고르는 일은 GameEndScreen이 하고, CSS(.result-bg)는 그 결과를 --result-bg로 받는다 —
-   * 경로가 이 파일 한 곳에만 남도록.
+   * 약 299KB, 원본 game_end_4.png).
+   *
+   * 아래 넷 중 하나가 **들어올 때마다 무작위로** 깔린다. 고르는 일은 GameEndScreen이
+   * 하고, CSS(.result-bg)는 그 결과를 --result-bg로 받는다 — 경로가 이 파일 한 곳에만
+   * 남도록. 장수를 늘리거나 줄여도 CSS는 손댈 필요가 없다.
    */
   resultBackground2: '/play/result_bg_2.webp',
+  /**
+   * 결과 화면 배경 3 — 초록 깔개를 깐 통나무집 탁자, 인어·토끼가 환호하고 호랑이·양이
+   * 풀 죽어 있다 (2560×1440 WebP, 약 279KB, 원본 game_end_2.png).
+   */
+  resultBackground3: '/play/result_bg_3.webp',
+  /**
+   * 결과 화면 배경 4 — 머그잔이 놓인 통나무집 탁자, 인어·토끼가 환호하고 양·호랑이가
+   * 풀 죽어 있다 (2560×1440 WebP, 약 313KB, 원본 game_end_3.png).
+   *
+   * ⚠️ 이 화면은 가운데를 **불투명한 판 두 장**(체력표·행동 통계)이 덮는다. 그림을
+   * 더 넣을 때는 주인공이 **좌우 가장자리**에 있는 구도를 고를 것 — 가운데에 몰린
+   * 그림은 판에 가려 그 자리에 무엇이 있었는지 알 수 없게 된다.
+   */
+  resultBackground4: '/play/result_bg_4.webp',
   /**
    * 상단 바 — **들보와 팻말이 한 몸인** 통짜 그림(2500×233).
    *

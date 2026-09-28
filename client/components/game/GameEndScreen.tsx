@@ -1,15 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Animal, ClientGameState, Team } from 'shared';
 import { ANIMALS, LOSE_HP } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
+import { DEMO_CONTINUE_KEYS } from '@/lib/demoKeys';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { PLAY_ASSETS } from '@/lib/playAssets';
 
-// 결과 화면 배경 — 들어올 때마다 둘 중 하나가 깔린다(경로는 playAssets.ts 한 곳).
-const RESULT_BACKGROUNDS = [PLAY_ASSETS.resultBackground, PLAY_ASSETS.resultBackground2];
+// 결과 화면 배경 — 들어올 때마다 이 중 하나가 깔린다(경로는 playAssets.ts 한 곳).
+const RESULT_BACKGROUNDS = [
+  PLAY_ASSETS.resultBackground,
+  PLAY_ASSETS.resultBackground2,
+  PLAY_ASSETS.resultBackground3,
+  PLAY_ASSETS.resultBackground4,
+];
 
 const FLAVOR_TEXT: Record<Animal, string> = {
   sheep: '실용신안의 실리주의로 판을 키우셨군요!',
@@ -78,10 +84,19 @@ export function GameEndScreen({
   gameState,
   myTeam,
   onBack,
+  onReplay,
 }: {
   gameState: ClientGameState;
   myTeam: Team | null;
   onBack: () => void;
+  /**
+   * 시연 4장 — 이 결말을 다 봤으니 **장면 고르기 화면으로 되돌아간다.**
+   *
+   * 승리 조건이 둘이고 패배까지 셋이라, 한 번에 하나씩만 볼 수 있으면 관람객은 그중
+   * 하나만 본 채 끝난다. 서버가 `demo.replay`로 "지금 되돌아갈 수 있다"를 알려줄 때만
+   * 버튼이 뜬다(1~3장 도중 항복으로 끝난 판에는 되돌아갈 곳이 없다).
+   */
+  onReplay?: () => void;
 }) {
   const { winner } = gameState;
   const hpA = gameState.teams.A.hp;
@@ -128,6 +143,22 @@ export function GameEndScreen({
   // 방 화면이 로딩 문구만 그린다). 로딩 화면이 굳이 마운트 후에 고르는 것과 대비된다.
   // useState 초기화 함수라 다시 렌더돼도 그림이 바뀌지 않는다.
   const [background] = useState(() => RESULT_BACKGROUNDS[Math.floor(Math.random() * RESULT_BACKGROUNDS.length)]);
+
+  // 시연 4장에서만 뜨는 [다른 결말 보기]. 진행자가 마우스를 찾지 않도록 자막 띠의
+  // [계속 ▶]과 **같은 키**를 받는다(클리커로 그대로 넘어간다 — demoKeys.ts 참고).
+  const canReplay = Boolean(onReplay) && Boolean(gameState.demo?.replay);
+  useEffect(() => {
+    if (!canReplay || !onReplay) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || !DEMO_CONTINUE_KEYS.includes(e.key)) return;
+      // 방금 마우스로 누른 버튼에 포커스가 남아 있으면 스페이스가 그 버튼까지 한 번 더
+      // 눌러 두 번 진행된다 — 자막 띠와 같은 이유로 기본 동작을 끊는다.
+      e.preventDefault();
+      onReplay();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canReplay, onReplay]);
 
   return (
     // 배경은 승패가 정해진 뒤의 탁자 그림(PLAY_ASSETS.resultBackground) — globals.css의
@@ -302,15 +333,30 @@ export function GameEndScreen({
       </BoardFrame>
       </div>
 
-      <button
-        onClick={onBack}
-        // 1.5배 — 안여백(py-3/px-10 → 4.5/15)은 여기서, 나무테 두께와 글씨 크기는
-        // .wood-button-lg에서 함께 키운다(globals.css 주석 참고).
-        className="wood-button wood-button-lg py-[1.125rem] px-[3.75rem]"
-        style={{ animation: 'bounceIn 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 400ms both' }}
-      >
-        로비로 돌아가기
-      </button>
+      {/* 시연 4장에서는 버튼이 둘이다 — 나머지 결말을 보러 돌아가거나, 여기서 끝내거나.
+          ⚠️ 되돌아가기가 **먼저**다. 시연 중에는 그쪽을 훨씬 자주 누르고, [로비로
+          돌아가기]를 잘못 누르면 방이 통째로 끝나 1장부터 다시 해야 한다. */}
+      <div className="flex flex-wrap items-center justify-center gap-4">
+        {canReplay && (
+          <button
+            onClick={onReplay}
+            className="wood-button wood-button-lg py-[1.125rem] px-[3.75rem]"
+            style={{ animation: 'bounceIn 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 400ms both' }}
+            aria-keyshortcuts="Space Enter PageDown ArrowRight"
+          >
+            다른 결말 보기 ▶
+          </button>
+        )}
+        <button
+          onClick={onBack}
+          // 1.5배 — 안여백(py-3/px-10 → 4.5/15)은 여기서, 나무테 두께와 글씨 크기는
+          // .wood-button-lg에서 함께 키운다(globals.css 주석 참고).
+          className="wood-button wood-button-lg py-[1.125rem] px-[3.75rem]"
+          style={{ animation: 'bounceIn 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 400ms both' }}
+        >
+          로비로 돌아가기
+        </button>
+      </div>
       </div>
 
       <p className="text-sm result-bg-text text-center pt-4">

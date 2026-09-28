@@ -27,14 +27,21 @@ export const LOBBY_ASSETS = {
   loading: '/lobby/loading_bg.webp',
   /**
    * 로딩 화면 배경 2 — 숲길을 걷는 네 캐릭터 (2560×1440 WebP, 약 410KB,
-   * 원본 title_screen_2.png). 위 loading과 **둘 중 하나가 무작위로** 깔린다
-   * (LoadingScreen이 마운트 후에 고른다 — 렌더 중에 뽑으면 서버·클라이언트가 서로
-   * 다른 그림을 골라 hydration 경고가 뜬다).
+   * 원본 title_screen_2.png).
    *
    * ⚠️ 그림을 더 넣을 때는 **가운데 위쪽이 비어 있는 구도**로 고를 것 — 진행 막대와
    * 문구 판이 그 자리에 놓인다.
    */
   loading2: '/lobby/loading_bg_2.webp',
+  /**
+   * 로딩 화면 배경 3 — 햇살 드는 숲길을 걷는 네 캐릭터 (2560×1440 WebP, 약 405KB,
+   * 원본 title_screen_3.png).
+   *
+   * 위 셋은 로딩 중 **2.5초마다 적힌 순서대로** 나타난다(loading → loading2 → loading3 →
+   * 다시 loading …, LoadingScreen의 LOADING_BACKGROUNDS). 순서를 바꾸고 싶으면 그 배열의
+   * 나열 순서를 고친다 — 장수를 늘리거나 줄여도 그쪽 코드는 손댈 필요가 없다.
+   */
+  loading3: '/lobby/loading_bg_3.webp',
   /**
    * 모드 선택 패널 아트 (각 768×768 WebP, 80~95KB).
    * 원본은 1024² JPEG였고 sharp로 줄였다 — 패널이 실제로 그려지는 크기(넓어야 500px 남짓)의
