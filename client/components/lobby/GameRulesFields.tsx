@@ -266,6 +266,19 @@ export function RuleSummary({
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">
         <span>⏳ 뽑기 {settings.drawTimeSec}초</span>
         <span>⏳ 행동 {settings.actionTimeSec}초</span>
+        {/* 일시정지는 방장만 정하는데 그 값에 묶이는 것은 참가자도 마찬가지라, 시작 전에
+            여기서 알려준다(게임에 들어가면 ⏸ 창이 "n회 남음"으로 알려주지만 그때는 이미
+            늦다). ⚠️ **0은 "0회"가 아니라 "쓸 수 없음"이다** — 그 방에서는 일시정지가
+            아예 막히므로(Room.pauseMaxCount) 숫자 대신 그 사실을 적고, 함께 무의미해지는
+            최대 시간도 감춘다. 횟수가 **팀마다**인 것도 적는다(합산이 아니다).
+            혼자 놀기는 이 요약을 지나지 않는다 — 대기실 없이 곧바로 게임으로 가고,
+            서버도 vsComputer면 두 제한을 걸지 않는다. */}
+        <span>
+          ⏸{' '}
+          {settings.pauseMaxCount > 0
+            ? `일시정지 팀마다 ${settings.pauseMaxCount}회 (최대 ${settings.pauseMaxMin}분)`
+            : '일시정지 없음'}
+        </span>
       </div>
     </div>
   );
