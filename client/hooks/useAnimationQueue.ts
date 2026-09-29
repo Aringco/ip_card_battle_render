@@ -277,6 +277,10 @@ export function useAnimationQueue(
   // id를 여기서 직접 관리한다.
   const [revealedCardIds, setRevealedCardIds] = useState<ReadonlySet<number>>(EMPTY_ID_SET);
   const cardCacheRef = useRef<Map<number, StackedCard>>(new Map());
+  // cardCacheRef는 ref라 새 카드 객체로 갈아끼워도 아무것도 다시 그려지지 않는다. 캐시를
+  // 새로 채울 때마다 이 값을 올려 아래 stackCards가 새 객체로 다시 만들어지게 한다
+  // (왜 필요한지는 stackCards 쪽 주석 — 시연에서 카드가 엉뚱한 곳으로 날아가던 버그).
+  const [cardCacheVersion, setCardCacheVersion] = useState(0);
 
   // 실제 서버 상태(gameState.activeTeam)는 액션 처리 즉시 다음 팀으로 넘어가지만,
   // 화면에는 이번 액션의 정산 연출이 완전히 끝날 때까지 "행동한 팀"을 그대로 유지해
@@ -349,6 +353,7 @@ export function useAnimationQueue(
     ANIMALS.forEach(a => {
       gameState.stacks[a].forEach(c => cardCacheRef.current.set(c.id, c));
     });
+    setCardCacheVersion(v => v + 1);
     setRevealedCardIds(prev => {
       let changed = false;
       const next = new Set(prev);
@@ -520,6 +525,7 @@ export function useAnimationQueue(
       ANIMALS.forEach(a => {
         gameState.stacks[a].forEach(c => cardCacheRef.current.set(c.id, c));
       });
+      setCardCacheVersion(v => v + 1);
 
       const thisActionDrawIds = new Set(
         lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'draw' }> => e.type === 'draw')
@@ -1061,6 +1067,18 @@ export function useAnimationQueue(
   // 실제로 화면에 그릴 카드 목록 — revealedCardIds에 있는 카드만, id(=뽑힌 순서)
   // 오름차순으로 정렬해 동물별로 묶는다. 원본 데이터는 gameState가 아니라
   // cardCacheRef에서 가져온다.
+  //
+  // ⚠️ **캐시가 바뀌었을 때도 다시 만들어야 한다(cardCacheVersion).** 짝이 맞아 날아갈
+  //    방향과 목적지는 카드 객체의 `collectedBy`로 정하는데(AnimalStackArea·StackCardView),
+  //    예전에는 revealedCardIds가 바뀔 때만 다시 만들어서 **정산 전의 옛 객체**(collectedBy
+  //    null)를 그대로 들고 날렸다. 그러면 방향은 'right', 목적지 칸도 못 찾아 폴백 좌표로
+  //    — 누가 가져갔든 **무조건 오른쪽 아래**로 날아간다.
+  //    일반 게임에서는 드러나지 않았다: 짝을 맞추는 카드가 **같은 액션 안에서** 새로 뽑혀
+  //    revealedCardIds에 더해지므로, 그때 목록이 새 객체로 다시 만들어졌다. 시연은 짝이
+  //    맞으면 멈췄다가 [계속]으로 정산만 따로 보내는데(뽑기와 정산이 다른 액션), 그 액션에는
+  //    새로 드러나는 카드가 없어 목록이 옛 객체 그대로 남았다.
+  //    새 객체로 바꿔도 화면은 달라지지 않는다 — 그리는 데 쓰는 animal·num은 변하지 않고,
+  //    collectedBy는 날아가는 순간에만 읽힌다(표시에 쓰지 않는 이유는 AnimalStackArea 주석).
   const stackCards = useMemo(() => {
     const result: Record<Animal, StackedCard[]> = { sheep: [], rabbit: [], mermaid: [], tiger: [] };
     const ids = [...revealedCardIds].sort((a, b) => a - b);
@@ -1070,7 +1088,7 @@ export function useAnimationQueue(
     }
     return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealedCardIds]);
+  }, [revealedCardIds, cardCacheVersion]);
 
   // 팀 패널에 실제로 보여줄 경험치 — 항상 서버 진실(gameState.exp)에서 "아직 도착 연출이
   // 끝나지 않은 페어"만큼만 빼서 보여준다(위 pendingExpCredit 설명 참조).
