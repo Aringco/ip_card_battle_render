@@ -297,14 +297,23 @@ export const CHAPTER_2: DemoStep[] = [
  */
 export const CHAPTER_3: DemoStep[] = [
   {
+    // ⚠️ 자막은 **게임 규칙**을 말해야 한다. 여기서 한 바퀴를 도는 것은 축제를 열기
+    //    위한 시연의 사정일 뿐이고(감독이 advanceTurn을 두 번 부른다), 실제 규칙은
+    //    "방을 만들 때 정한 축제 시작 턴에 이르면"이다(engine/turnManager.ts의
+    //    `turn >= effectiveFestivalTurn`). 예전 문구가 "한 바퀴가 돌면"이라 관람객에게
+    //    한 라운드마다 열리는 것처럼 들렸다. 턴 숫자는 적지 않는다 — 시연 방은 감독이
+    //    festivalTurn을 옮겨 쓰므로 화면의 턴 수와 어긋난다.
     kind: 'turn', openFestival: true,
-    caption: '한 바퀴가 돌면 도토리 축제가 열립니다. [계속 ▶]을 눌러 주세요.',
+    caption: '방을 만들 때 정한 턴이 되면 도토리 축제가 열립니다. [계속 ▶]을 눌러 주세요.',
   },
   {
     // 도토리로 온 디자인어가 2장 끝에 남아 있던 디자인어 6과 짝이 된다 — 클릭한
     // 상표토끼는 짝이 안 맞으므로, 정산이 일어난 이유가 보너스 카드임이 분명해진다.
     kind: 'draw', place: 'river_road', animal: 'rabbit', num: 13,
-    caption: '축제가 열렸습니다. 강가를 누르면 도토리 2장이 먼저 쏟아집니다.',
+    // "무작위"는 여기에 있다 — 축제가 열리는 것은 정해진 턴이라 무작위가 아니고,
+    // **도토리로 뽑히는 카드가 무작위 장소에서** 나온다(drawCard.ts의 randomPlace).
+    // 그래서 누른 곳이 강가인데도 부둣가·오두막 카드가 섞여 날아온다.
+    caption: '축제가 열렸습니다. 강가를 누르면 무작위 장소에서 도토리 2장이 먼저 쏟아집니다.',
     settleCaption: '도토리로 온 디자인어가 짝을 맞췄어요 — 보너스로 뽑은 카드도 똑같이 쌓입니다.',
     festivalExtras: [
       { place: 'dock', animal: 'mermaid', num: 8 },
