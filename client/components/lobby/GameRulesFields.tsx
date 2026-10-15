@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { GameSettings, Team } from 'shared';
+import type { GameMode, GameSettings, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
@@ -70,11 +70,14 @@ export function GameRulesFields({
   settings,
   onChange,
   hidePause = false,
+  mode = 'team',
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
   /** 일시정지 횟수·시간을 감춘다 — 혼자 놀기는 기다리게 할 상대가 없어 제한이 없다. */
   hidePause?: boolean;
+  /** 개인전이면 "선 플레이어(먼저 시작하는 팀)"가 없다 — 차례 순서는 시작할 때 섞어서 정한다. */
+  mode?: GameMode;
 }) {
   const fields = hidePause ? RULE_FIELDS.filter(f => !PAUSE_KEYS.includes(f.key)) : RULE_FIELDS;
   const [open, setOpen] = useState(false);
@@ -113,6 +116,7 @@ export function GameRulesFields({
         // 밖으로 나가 "펼치기를 눌러도 아무 일도 없는" 화면이 됐다(globals.css .lobby-rules 주석).
         <div ref={bodyRef} className="lobby-rules-body px-3 pb-2.5 border-t border-gray-100 pt-2 flex flex-col gap-1.5">
           {/* 선 플레이어 — 숫자 입력이 아니라 3지선다라 격자 위에 한 줄로 둔다 */}
+          {mode === 'team' && (
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-gray-500">선 플레이어 (먼저 시작하는 팀)</label>
             <div className="flex gap-1.5 items-center">
@@ -131,6 +135,7 @@ export function GameRulesFields({
               ))}
             </div>
           </div>
+          )}
 
         {/* 한 항목씩 세로로 — 예전에는 2열로 눌러 담았지만, 규칙을 펼치면 카드가
             넘치는 만큼 스크롤하도록 바뀌어(globals.css의 data-rules-open 절) 더는
@@ -179,12 +184,16 @@ export function GameRulesFields({
 export function GameRulesInputs({
   settings,
   onChange,
+  mode = 'team',
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
+  /** 개인전이면 선 플레이어 줄이 없다(차례 순서는 시작할 때 섞어서 정한다). */
+  mode?: GameMode;
 }) {
   return (
     <div className="flex flex-col gap-3">
+      {mode === 'team' && (
       <div className="flex flex-col gap-1">
         <label className="text-lg text-board-muted">선 플레이어(먼저 시작하는 팀)</label>
         {/* 폭은 globals.css의 .first-team-row가 정한다 — 버튼을 24%로 묶고 양끝에 붙인다.
@@ -207,6 +216,7 @@ export function GameRulesInputs({
           ))}
         </div>
       </div>
+      )}
       <div className="flex flex-col gap-3">
         {RULE_FIELDS.map(({ key, title, suffix, hint }) => {
           const { min, max } = SETTINGS_LIMITS[key];
@@ -243,10 +253,13 @@ export function GameRulesInputs({
 export function RuleSummary({
   settings,
   teamNames,
+  mode = 'team',
 }: {
   settings: GameSettings;
   teamNames: Record<Team, string | null>;
+  mode?: GameMode;
 }) {
+  const individual = mode === 'individual';
   const firstTeamLabel =
     settings.firstTeam === 'random'
       ? '무작위 추첨'
@@ -259,7 +272,12 @@ export function RuleSummary({
   return (
     <div className="board-panel p-4 text-base text-board-muted flex flex-col gap-1.5">
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">
-        <span>🚩 선공 {firstTeamLabel}</span>
+        {individual ? (
+          // 개인전은 선·후공이 없다 — 차례 순서는 시작할 때 한 번 섞어서 정한다.
+          <span>🎲 차례 순서는 시작할 때 무작위</span>
+        ) : (
+          <span>🚩 선공 {firstTeamLabel}</span>
+        )}
         <span>🎯 목표 {settings.targetScore}점</span>
         <span>🌰 축제 {settings.festivalTurn}턴부터 (뽑기 {settings.festivalDrawCount}회)</span>
       </div>
@@ -276,7 +294,7 @@ export function RuleSummary({
         <span>
           ⏸{' '}
           {settings.pauseMaxCount > 0
-            ? `일시정지 팀마다 ${settings.pauseMaxCount}회 (최대 ${settings.pauseMaxMin}분)`
+            ? `일시정지 ${individual ? '사람' : '팀'}마다 ${settings.pauseMaxCount}회 (최대 ${settings.pauseMaxMin}분)`
             : '일시정지 없음'}
         </span>
       </div>

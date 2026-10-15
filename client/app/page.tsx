@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { GameSettings, Seat } from 'shared';
+import type { GameMode, GameSettings, Seat } from 'shared';
 import { DEFAULT_SETTINGS, isPlayingSeat, randomNickname } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { playBgm } from '@/lib/bgm';
@@ -50,6 +50,8 @@ export default function LobbyPage() {
   // 아무것도 조작할 수 없고 양 팀의 진행만 지켜본다.
   const [team, setTeam] = useState<Seat>('A');
   const spectatorSeat = !isPlayingSeat(team);
+  // 방 만들기의 방 종류 — 개인전이면 팀이 없으므로 자리·팀 이름을 쓰지 않는다.
+  const [roomMode, setRoomMode] = useState<GameMode>('team');
   const [teamName, setTeamName] = useState('');
   // 방을 만드는 쪽만 입력할 수 있다 — 아직 아무도 들어오지 않은 반대편 팀의 이름까지
   // 미리 정해둔다(비워두면 기존처럼 실제 참가자가 자기 팀 이름을 직접 고른다).
@@ -128,10 +130,17 @@ export default function LobbyPage() {
 
   // 두 팀 이름이 같으면 게임 화면에서 어느 쪽이 우리 팀인지 구분할 방법이 사라진다
   // (서버도 startBlockReason에서 같은 조건을 막는다).
-  const teamNamesClash = teamName.trim().length > 0 && teamName.trim() === otherTeamName.trim();
+  const teamNamesClash =
+    roomMode === 'team' && teamName.trim().length > 0 && teamName.trim() === otherTeamName.trim();
 
   const handleCreateRoom = () => {
     if (!canSubmitName || teamNamesClash) return;
+    if (roomMode === 'individual') {
+      // 개인전의 방장은 플레이어석에 앉는다(관전은 대기실에서 옮기면 된다). 팀 이름은 보내지 않는다.
+      sessionStorage.setItem('cardBattle_team', 'player');
+      ws.createRoom(effectiveNickname, 'player', undefined, settings, undefined, 'individual');
+      return;
+    }
     sessionStorage.setItem('cardBattle_team', team);
     ws.createRoom(
       effectiveNickname,
@@ -207,6 +216,7 @@ export default function LobbyPage() {
             <div className="flex-1 min-h-0 flex justify-center">
               <WaitingRoom
                 roomId={ws.roomId}
+                mode={ws.lobbyMode}
                 players={ws.lobbyPlayers}
                 teamNames={ws.lobbyTeamNames}
                 settings={ws.lobbySettings}
@@ -223,6 +233,7 @@ export default function LobbyPage() {
                 onKick={ws.kickPlayer}
                 onTransferHost={ws.transferHost}
                 onRenameTeam={ws.setTeamName}
+                onSelectColor={ws.selectColor}
                 onUpdateSettings={ws.updateSettings}
               />
             </div>
@@ -232,6 +243,8 @@ export default function LobbyPage() {
                 stage={stage}
                 blocked={blocked}
                 onGo={setStage}
+                roomMode={roomMode}
+                onRoomMode={setRoomMode}
                 nickname={nickname}
                 onNickname={setNickname}
                 nicknameHint={nicknameHint}

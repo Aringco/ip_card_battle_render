@@ -1,8 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { GameSettings, LobbyChatMessage, LobbyPlayer, Seat, Team } from 'shared';
-import { SEATS, SPECTATOR, TEAM_NAME_MAX_LEN, isPlayingSeat, randomTeamName } from 'shared';
+import type { GameMode, GameSettings, LobbyChatMessage, LobbyPlayer, PlayerColorId, Seat, Team } from 'shared';
+import {
+  INDIVIDUAL_MAX_PLAYERS,
+  INDIVIDUAL_MIN_PLAYERS,
+  INDIVIDUAL_SEATS,
+  INDIVIDUAL_TWO_SKILLS_FROM,
+  PLAYER_SEAT,
+  SEATS,
+  SPECTATOR,
+  TEAM_NAME_MAX_LEN,
+  isPlayingSeat,
+  playerColorHex,
+  randomTeamName,
+} from 'shared';
 import { SEAT_IMAGE, SEAT_META, seatLabel } from '@/lib/seatInfo';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { BoardFrame } from '@/components/ui/BoardFrame';
@@ -10,6 +22,7 @@ import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { PlankButton } from '@/components/ui/PlankButton';
+import { ColorPicker } from './ColorPicker';
 
 /** 초대 링크 — 로비 첫 화면(`/`)을 방 코드가 채워진 "방 참가하기" 상태로 열어준다. */
 function inviteUrl(roomId: string): string {
@@ -48,6 +61,8 @@ async function copyText(text: string): Promise<boolean> {
 
 export interface WaitingRoomProps {
   roomId: string;
+  /** 방의 종류 — 개인전이면 두 팀 열 대신 한 블록에 플레이어 전원이 나온다 */
+  mode: GameMode;
   players: LobbyPlayer[];
   teamNames: Record<Team, string | null>;
   settings: GameSettings;
@@ -64,6 +79,7 @@ export interface WaitingRoomProps {
   onKick: (targetMemberId: string) => void;
   onTransferHost: (targetMemberId: string) => void;
   onRenameTeam: (team: Team, name: string) => void;
+  onSelectColor: (color: PlayerColorId) => void;
   onUpdateSettings: (settings: GameSettings) => void;
 }
 
@@ -72,21 +88,29 @@ export interface WaitingRoomProps {
 const PLANK_MAX_PX = 420;
 
 export function WaitingRoom({
-  roomId, players, teamNames, settings,
+  roomId, mode, players, teamNames, settings,
   myMemberId, hostMemberId, isHost, chatLog, connected, onSendChat,
-  onReady, onStart, onLeave, onMove, onKick, onTransferHost, onRenameTeam, onUpdateSettings,
+  onReady, onStart, onLeave, onMove, onKick, onTransferHost, onRenameTeam, onSelectColor, onUpdateSettings,
 }: WaitingRoomProps) {
+  const individual = mode === 'individual';
   const me = players.find(p => p.memberId === myMemberId) ?? null;
   const teamA = players.filter(p => p.team === 'A');
   const teamB = players.filter(p => p.team === 'B');
+  // 개인전 — 팀이 없고 플레이어석 하나뿐이다(서버가 A·B로 온 참가도 'player'로 받는다).
+  const seated = players.filter(p => p.team === PLAYER_SEAT);
   const spectators = players.filter(p => !isPlayingSeat(p.team));
   const iAmSpectator = me !== null && !isPlayingSeat(me.team);
 
   // 방장이 시작 버튼을 누를 수 있는지 — 서버(Room.startBlockReason)와 같은 조건을
   // 화면에도 그대로 보여줘서, 왜 아직 시작할 수 없는지 방장이 바로 알 수 있게 한다.
   // 관전자는 인원수에도, 준비 여부에도 영향을 주지 않는다(서버가 항상 준비 완료로 둔다).
-  const blockReason =
-    teamA.length === 0 || teamB.length === 0
+  const blockReason = individual
+    ? seated.length < INDIVIDUAL_MIN_PLAYERS
+      ? `플레이어가 ${INDIVIDUAL_MIN_PLAYERS}명 이상 있어야 해요. (관전자는 인원에 들어가지 않아요)`
+      : players.some(p => !p.ready)
+        ? '아직 준비하지 않은 참가자가 있어요.'
+        : null
+    : teamA.length === 0 || teamB.length === 0
       ? '양 팀에 각각 한 명 이상 있어야 해요. (관전자는 인원에 들어가지 않아요)'
       : players.some(p => !p.ready)
         ? '아직 준비하지 않은 참가자가 있어요.'
@@ -114,6 +138,20 @@ export function WaitingRoom({
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 [&>*]:shrink-0">
       <RoomCodeHeader roomId={roomId} />
 
+      {individual ? (
+        // 개인전 — 플레이어 전원을 **한 블록** 안에 둔다. 색 고르기도 이 안에 있다.
+        <IndividualRoster
+          players={seated}
+          me={me}
+          myMemberId={myMemberId}
+          hostMemberId={hostMemberId}
+          isHost={isHost}
+          onMove={onMove}
+          onKick={onKick}
+          onTransferHost={onTransferHost}
+          onSelectColor={onSelectColor}
+        />
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {(['A', 'B'] as Team[]).map(team => (
           <TeamColumn
@@ -132,8 +170,10 @@ export function WaitingRoom({
           />
         ))}
       </div>
+      )}
 
       <SpectatorRow
+        individual={individual}
         players={spectators}
         myMemberId={myMemberId}
         hostMemberId={hostMemberId}
@@ -171,7 +211,7 @@ export function WaitingRoom({
         // 관전자는 준비할 것이 없다(서버도 항상 준비 완료로 둔다) — 준비 버튼 대신
         // 지금 어떤 상태인지만 알려준다.
         <p className="text-center text-lg text-purple-500 bg-purple-50 border border-purple-200 rounded-xl py-4">
-          👀 관전자로 참가했어요. 방장이 시작하면 양 팀의 대결을 지켜볼 수 있어요.
+          👀 관전자로 참가했어요. 방장이 시작하면 {individual ? '플레이어들의' : '양 팀의'} 대결을 지켜볼 수 있어요.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -193,9 +233,9 @@ export function WaitingRoom({
       )}
 
       {isHost ? (
-        <HostRulesPanel settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
+        <HostRulesPanel mode={mode} settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
       ) : (
-        <RuleSummary settings={settings} teamNames={teamNames} />
+        <RuleSummary mode={mode} settings={settings} teamNames={teamNames} />
       )}
 
       <button onClick={onLeave} className="text-lg text-board-muted hover:text-board-ink">
@@ -310,8 +350,10 @@ function TeamColumn({
  * 참여하지 않고 구경만 하므로 준비 표시도, 인원수 계산도 따로 하지 않는다.
  */
 function SpectatorRow({
-  players, myMemberId, hostMemberId, isHost, onMove, onKick, onTransferHost,
+  individual = false, players, myMemberId, hostMemberId, isHost, onMove, onKick, onTransferHost,
 }: {
+  /** 개인전 방 — 옮겨갈 수 있는 자리가 [플레이어석]뿐이라 PlayerRow가 다른 버튼을 그린다 */
+  individual?: boolean;
   players: LobbyPlayer[];
   myMemberId: string | null;
   hostMemberId: string | null;
@@ -345,12 +387,76 @@ function SpectatorRow({
               isMe={p.memberId === myMemberId}
               isTheHost={p.memberId === hostMemberId}
               viewerIsHost={isHost}
+              seats={individual ? INDIVIDUAL_SEATS : SEATS}
               onMove={onMove}
               onKick={onKick}
               onTransferHost={onTransferHost}
             />
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 개인전 플레이어 목록 — 팀 열 두 개 대신 **한 블록**. 줄마다 색 칩 · 닉네임 · 준비 상태 · 방장 표시.
+ * 내 색을 고르는 ColorPicker도 이 블록 안에 있다(플레이어석에 앉은 사람에게만).
+ *
+ * ⚠️ 색만으로 사람을 구분하게 두지 않는다 — 색 칩 옆에는 언제나 닉네임이 있다.
+ */
+function IndividualRoster({
+  players, me, myMemberId, hostMemberId, isHost, onMove, onKick, onTransferHost, onSelectColor,
+}: {
+  players: LobbyPlayer[];
+  me: LobbyPlayer | null;
+  myMemberId: string | null;
+  hostMemberId: string | null;
+  isHost: boolean;
+  onMove: (targetMemberId: string, team: Seat) => void;
+  onKick: (targetMemberId: string) => void;
+  onTransferHost: (targetMemberId: string) => void;
+  onSelectColor: (color: PlayerColorId) => void;
+}) {
+  const iAmPlayer = me !== null && me.team === PLAYER_SEAT;
+  return (
+    <div className={`board-panel p-4 min-h-[140px] border ${SEAT_META[PLAYER_SEAT].border}`}>
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <p className="font-semibold text-board-ink text-lg">
+          {SEAT_META[PLAYER_SEAT].badge} 플레이어 ({players.length}/{INDIVIDUAL_MAX_PLAYERS}명)
+        </p>
+        <p className="text-base text-board-muted">
+          각자 겨뤄 1위부터 순위를 매겨요 · {INDIVIDUAL_TWO_SKILLS_FROM}명 이상이면 한 차례에 기술 2장
+        </p>
+      </div>
+
+      {players.length === 0 ? (
+        <p className="text-base text-board-muted mt-2">아직 아무도 없어요</p>
+      ) : (
+        <div className="flex flex-col gap-1 mt-2">
+          {players.map(p => (
+            <PlayerRow
+              key={p.memberId}
+              player={p}
+              isMe={p.memberId === myMemberId}
+              isTheHost={p.memberId === hostMemberId}
+              viewerIsHost={isHost}
+              seats={INDIVIDUAL_SEATS}
+              onMove={onMove}
+              onKick={onKick}
+              onTransferHost={onTransferHost}
+            />
+          ))}
+        </div>
+      )}
+
+      {iAmPlayer && (
+        <ColorPicker
+          players={players}
+          myMemberId={myMemberId}
+          myColor={me?.color}
+          onSelect={onSelectColor}
+        />
       )}
     </div>
   );
@@ -445,13 +551,15 @@ function TeamNameRow({
 }
 
 function PlayerRow({
-  player, isMe, isTheHost, viewerIsHost,
+  player, isMe, isTheHost, viewerIsHost, seats = SEATS,
   onMove, onKick, onTransferHost,
 }: {
   player: LobbyPlayer;
   isMe: boolean;
   isTheHost: boolean;
   viewerIsHost: boolean;
+  /** 옮겨갈 수 있는 자리의 목록 — 팀전은 A·B·관전석, 개인전은 플레이어석·관전석 */
+  seats?: Seat[];
   onMove: (targetMemberId: string, team: Seat) => void;
   onKick: (targetMemberId: string) => void;
   onTransferHost: (targetMemberId: string) => void;
@@ -469,7 +577,7 @@ function PlayerRow({
   // 지금 앉아 있는 자리를 뺀 나머지(다른 팀 + 관전석)가 옮겨갈 수 있는 곳이다.
   const canMove = viewerIsHost || isMe;
   const canManage = viewerIsHost && !isMe;
-  const moveTargets = SEATS.filter(s => s !== player.team);
+  const moveTargets = seats.filter(s => s !== player.team);
   const isSpectator = !isPlayingSeat(player.team);
 
   return (
@@ -488,6 +596,15 @@ function PlayerRow({
           !player.connected ? 'bg-red-300' : isSpectator ? 'bg-purple-400' : player.ready ? 'bg-green-500' : 'bg-gray-300'
         }`}
       />
+      {/* 개인전 — 그 사람의 색 칩. 닉네임이 바로 옆에 있으므로 색이 유일한 단서가 되지 않는다. */}
+      {player.color && (
+        <span
+          title="이 사람의 색"
+          aria-hidden
+          className="w-4 h-4 rounded-sm border border-black/30 shrink-0"
+          style={{ backgroundColor: playerColorHex(player.color) }}
+        />
+      )}
       <span className={`text-lg truncate ${isMe ? 'text-green-700 font-semibold' : 'text-board-ink'}`}>
         {isTheHost && '👑 '}
         {player.nickname}
@@ -518,7 +635,18 @@ function PlayerRow({
       ) : (
         <div className="flex items-center gap-1 shrink-0">
           {canMove &&
-            moveTargets.map(seat => (
+            moveTargets.map(seat => seat === PLAYER_SEAT ? (
+              // 개인전의 플레이어석에는 전용 그림이 없다 — 글자 버튼으로 둔다.
+              <button
+                key={seat}
+                onClick={() => onMove(player.memberId, seat)}
+                title="플레이어석으로 옮기기"
+                aria-label="플레이어석으로 옮기기"
+                className="wood-button wood-button-sm text-sm px-2 py-1"
+              >
+                🎮 참가
+              </button>
+            ) : (
               // 자리 선택·선 플레이어와 같은 그림 버튼. 다만 이쪽은 **고르는 것이 아니라
               // 누르면 곧바로 옮겨지는** 버튼이라 고른 상태가 없다 — 그래서 흑백으로
               // 눌러 두지 않는 -action 변형을 쓰고, 참가자 줄이 좁아 -sm으로 작게 둔다.
@@ -559,8 +687,9 @@ function PlayerRow({
 // ─── 방장용 규칙 편집 ────────────────────────────────────────────────────────
 
 function HostRulesPanel({
-  settings, teamNames, onApply,
+  mode, settings, teamNames, onApply,
 }: {
+  mode: GameMode;
   settings: GameSettings;
   teamNames: Record<Team, string | null>;
   onApply: (next: GameSettings) => void;
@@ -589,7 +718,7 @@ function HostRulesPanel({
 
       {open ? (
         <div className="px-4 pb-4 border-t border-board-line/60 pt-3 flex flex-col gap-3">
-          <GameRulesInputs settings={draft} onChange={setDraft} />
+          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} />
           <div className="flex gap-2">
             <PlankButton
               onClick={() => onApply(draft)}
@@ -612,7 +741,7 @@ function HostRulesPanel({
         </div>
       ) : (
         <div className="px-2 pb-3">
-          <RuleSummary settings={settings} teamNames={teamNames} />
+          <RuleSummary mode={mode} settings={settings} teamNames={teamNames} />
         </div>
       )}
     </div>

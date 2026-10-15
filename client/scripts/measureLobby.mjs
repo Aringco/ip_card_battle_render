@@ -124,6 +124,18 @@ async function pickSpectatorSeat(page, formSel) {
     formSel);
 }
 
+/** 방 만들기 폼의 [개인전] 토글을 누른다. 눌렸는지(aria-pressed)까지 확인한다. */
+async function pickIndividualMode(page) {
+  for (const b of await page.$$('.stage-form-create .mode-toggle-button')) {
+    const t = await page.evaluate(el => el.textContent, b);
+    if (t && t.includes('개인전')) {
+      await b.click();
+      return page.evaluate(el => el.getAttribute('aria-pressed') === 'true', b);
+    }
+  }
+  return false;
+}
+
 const { default: puppeteer } = await import('puppeteer-core');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -173,6 +185,20 @@ for (const vp of VIEWPORTS) {
   const spec = await measure(page, `create+spectator@${tag}`);
   spec.note = specShown ? '' : '*** 관전자 안내 안 뜸';
   results.push(spec);                                             await shot('6-create-spectator');
+
+  // 개인전을 고른 방 만들기 — 팀 이름 두 칸과 자리 선택이 사라진다. **접힌 상태를 먼저** 잰다
+  // (접힌 폼은 스크롤이 잠겨 있어 넘치면 [게임 규칙] 버튼이 잘린다 — 위 주석 참고).
+  await page.goto(URL_BASE, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('.lobby-safe', { timeout: 60000 });
+  await sleep(1000);
+  await page.click('.stage-panel-multi');             await sleep(SETTLE);
+  await page.click('.stage-col-create > .stage-panel'); await sleep(SETTLE);
+  const individualPicked = await pickIndividualMode(page); await sleep(400);
+  const ind = await measure(page, `individual@${tag}`);
+  ind.note = individualPicked ? '' : '*** 개인전 토글 못 찾음';
+  results.push(ind);                                              await shot('6b-create-individual');
+  await openRules(page, '.stage-form-create');        await sleep(500);
+  results.push(await measure(page, `individual+rules@${tag}`));    await shot('6c-create-individual-rules');
 
   // 초대 링크 **없이** 연 참가 폼 — 평소에 보게 되는 화면이다
   await page.goto(URL_BASE, { waitUntil: 'networkidle2' });

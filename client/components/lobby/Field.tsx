@@ -28,12 +28,18 @@ export function Field({ label, children }: { label: string; children: React.Reac
  */
 export function FormCard({
   title,
+  headerAside,
   description,
   children,
   side,
   footer,
 }: {
   title: React.ReactNode;
+  /**
+   * 제목 줄 **오른쪽**에 붙는 작은 조작(방 종류 토글). 새 줄을 만들지 않으므로 폼 높이가 늘지 않는다 —
+   * 폼이 절대배치라 한 줄만 늘어도 접힌 상태(스크롤이 잠겨 있다)에서 [게임 규칙] 버튼이 잘린다.
+   */
+  headerAside?: React.ReactNode;
   description?: React.ReactNode;
   children: React.ReactNode;
   /**
@@ -73,7 +79,14 @@ export function FormCard({
             생기지 않는다(대기실에서 채팅창이 선 하나로 눌려 사라진 적이 있다). */}
         <div className="lobby-form-scroll [&>*]:shrink-0">
           <div className="lobby-form-head">
-            <h3 className="font-bold text-board-ink">{title}</h3>
+            {headerAside ? (
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-bold text-board-ink">{title}</h3>
+                {headerAside}
+              </div>
+            ) : (
+              <h3 className="font-bold text-board-ink">{title}</h3>
+            )}
             {description && <p className="text-xs text-board-muted mt-0.5">{description}</p>}
           </div>
           <div className="lobby-form-fields">{children}</div>

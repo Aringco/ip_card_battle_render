@@ -6,12 +6,15 @@ import type {
   ClientGameEvent,
   ClientGameState,
   ClientMessage,
+  GameMode,
   GameSettings,
   LobbyChatMessage,
   LobbyPlayer,
   Place,
+  PlayerColorId,
   Seat,
   ServerMessage,
+  SideId,
   Team,
 } from 'shared';
 import { DEFAULT_SETTINGS, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
@@ -79,6 +82,8 @@ export interface UseWebSocketReturn {
   lobbyPlayers: LobbyPlayer[];
   lobbyTeamNames: LobbyTeamNames;
   lobbySettings: GameSettings;
+  // 방의 종류 — 팀전이면 두 팀 열, 개인전이면 한 블록. 방이 살아 있는 동안 바뀌지 않는다.
+  lobbyMode: GameMode;
   hostMemberId: string | null;
   isHost: boolean;
   // 추방당했거나 스스로 나가서 방을 벗어났을 때의 안내문(없으면 null)
@@ -107,7 +112,8 @@ export interface UseWebSocketReturn {
   pauseNotice: string | null;
   clearPauseNotice: () => void;
   // team에는 관전석('spectator')도 올 수 있다 — 로비에서 고르는 "자리"이기 때문.
-  createRoom: (nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string) => void;
+  // mode를 생략하면 팀전. 개인전은 team에 'player'를 보낸다(팀 이름은 쓰지 않는다).
+  createRoom: (nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode) => void;
   joinRoom: (roomId: string, nickname: string, team: Seat, teamName?: string) => void;
   createSoloRoom: (nickname: string, teamName?: string, settings?: Partial<GameSettings>) => void;
   sendReady: (ready?: boolean) => void;
@@ -117,11 +123,14 @@ export interface UseWebSocketReturn {
   kickPlayer: (targetMemberId: string) => void;
   transferHost: (targetMemberId: string) => void;
   setTeamName: (team: Team, name: string) => void;
+  /** 개인전 대기실에서 자기 색을 고른다 — 남이 쓰는 색이면 서버가 COLOR_TAKEN 에러를 준다 */
+  selectColor: (color: PlayerColorId) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
   startGame: () => void;
   sendChat: (text: string) => void;
   drawCard: (place: Place) => void;
-  chooseSkill: (animal: Animal) => void;
+  /** target은 개인전 특허랑이의 대상(편 id) — 다른 기술·팀전에서는 서버가 무시한다 */
+  chooseSkill: (animal: Animal, target?: SideId) => void;
   passSkill: () => void;
   /** 시연 모드의 [계속 ▶] — 시연 방이 아니면 서버가 무시한다 */
   demoContinue: () => void;
@@ -150,6 +159,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([]);
   const [lobbyTeamNames, setLobbyTeamNames] = useState<LobbyTeamNames>({ A: null, B: null });
   const [lobbySettings, setLobbySettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  const [lobbyMode, setLobbyMode] = useState<GameMode>('team');
   const [hostMemberId, setHostMemberId] = useState<string | null>(null);
   const [roomNotice, setRoomNotice] = useState<string | null>(null);
   const [chatLog, setChatLog] = useState<LobbyChatMessage[]>([]);
@@ -233,6 +243,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setLobbyPlayers(msg.players);
           setLobbyTeamNames(msg.teamNames);
           setLobbySettings(msg.settings);
+          setLobbyMode(msg.mode ?? 'team');
           setHostMemberId(msg.hostMemberId);
           break;
 
@@ -260,6 +271,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setMemberId(null);
           setLobbyPlayers([]);
           setLobbyTeamNames({ A: null, B: null });
+          setLobbyMode('team');
           setHostMemberId(null);
           setChatLog([]);
           setRoomNotice(msg.type === 'kicked' ? msg.message : null);
@@ -340,9 +352,9 @@ export function useWebSocket(): UseWebSocketReturn {
     return () => ws.close();
   }, [applyState]);
 
-  const createRoom = useCallback((nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string) => {
+  const createRoom = useCallback((nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode) => {
     setError(null);
-    send({ type: 'createRoom', nickname, team, teamName, settings, otherTeamName });
+    send({ type: 'createRoom', nickname, team, teamName, settings, otherTeamName, mode });
   }, [send]);
 
   const joinRoom = useCallback((rid: string, nickname: string, team: Seat, teamName?: string) => {
@@ -376,6 +388,11 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'setTeamName', team, name });
   }, [send]);
 
+  const selectColor = useCallback((color: PlayerColorId) => {
+    setError(null);
+    send({ type: 'selectColor', color });
+  }, [send]);
+
   const updateSettings = useCallback((settings: Partial<GameSettings>) => {
     send({ type: 'updateSettings', settings });
   }, [send]);
@@ -395,8 +412,8 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'drawCard', place });
   }, [send]);
 
-  const chooseSkill = useCallback((animal: Animal) => {
-    send({ type: 'chooseSkill', animal });
+  const chooseSkill = useCallback((animal: Animal, target?: SideId) => {
+    send({ type: 'chooseSkill', animal, target });
   }, [send]);
 
   const passSkill = useCallback(() => send({ type: 'passSkill' }), [send]);
@@ -434,13 +451,13 @@ export function useWebSocket(): UseWebSocketReturn {
 
   return {
     connected, roomId, playerId, memberId,
-    lobbyPlayers, lobbyTeamNames, lobbySettings, hostMemberId,
+    lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, hostMemberId,
     isHost: memberId !== null && memberId === hostMemberId,
     roomNotice, clearRoomNotice, chatLog,
     gameState, turnDeadline, lastEvents, error,
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
-    movePlayer, kickPlayer, transferHost, setTeamName, updateSettings, startGame, sendChat,
+    movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat,
     drawCard, chooseSkill, passSkill, demoContinue, demoScene,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
   };

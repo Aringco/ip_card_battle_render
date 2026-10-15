@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { GameSettings, Seat } from 'shared';
+import type { GameMode, GameSettings, Seat } from 'shared';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { ModePanel } from './ModePanel';
 import { SoloForm } from './SoloForm';
@@ -26,6 +26,9 @@ export interface LobbyStageProps {
   blocked: boolean;
   onGo: (stage: Stage) => void;
 
+  /** 방 만들기의 방 종류(팀전/개인전) */
+  roomMode: GameMode;
+  onRoomMode: (m: GameMode) => void;
   nickname: string;
   onNickname: (v: string) => void;
   /** 닉네임을 비워둔 채 시작하는 사람에게 그대로 쓰이는 무작위 이름(placeholder에도 보인다) */
@@ -172,6 +175,8 @@ export function LobbyStage(props: LobbyStageProps) {
             <div className="stage-form stage-form-create" inert={stage !== 'create'}>
               <CreateRoomForm
                 firstFieldRef={createFirstRef}
+                mode={props.roomMode}
+                onMode={props.onRoomMode}
                 nickname={props.nickname}
                 onNickname={props.onNickname}
                 nicknameHint={props.nicknameHint}

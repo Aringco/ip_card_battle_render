@@ -1,15 +1,18 @@
 'use client';
 
-import type { GameSettings, Seat } from 'shared';
+import type { GameMode, GameSettings, Seat } from 'shared';
 import { GameRulesFields } from './GameRulesFields';
 import { FormCard } from './Field';
 import { NicknameField, TeamNameField } from './NameFields';
 import { TeamSelect } from './TeamSelect';
+import { GameModeSelect } from './GameModeSelect';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { PlankButton } from '@/components/ui/PlankButton';
 
 export function CreateRoomForm({
   firstFieldRef,
+  mode,
+  onMode,
   nickname,
   onNickname,
   nicknameHint,
@@ -27,6 +30,9 @@ export function CreateRoomForm({
   onSubmit,
 }: {
   firstFieldRef?: React.Ref<HTMLInputElement>;
+  /** 방의 종류 — 개인전이면 자리 선택과 팀 이름 두 칸이 없어진다(팀이 없으므로) */
+  mode: GameMode;
+  onMode: (m: GameMode) => void;
   nickname: string;
   onNickname: (v: string) => void;
   nicknameHint: string;
@@ -52,9 +58,13 @@ export function CreateRoomForm({
       // 제출이 팻말로 바뀌면서 그림이 이 자리로 옮겨 왔다. .ui-icon이 1.6em이라
       // 제목 글자 크기를 그대로 따라가며 작게 들어간다.
       title={<><UiIcon name="iconCreate" /> 방 만들기</>}
+      // 방 종류 토글은 제목 줄 오른쪽에 둔다 — 새 줄을 만들면 팀전 폼이 넘친다(measureLobby로 확인).
+      headerAside={<GameModeSelect mode={mode} onChange={onMode} />}
       description={
         teamNamesClash ? (
           <span className="text-red-600 font-semibold">두 팀 이름이 같아요. 한쪽을 바꿔주세요.</span>
+        ) : mode === 'individual' ? (
+          '각자 겨뤄 1위부터 순위를 매겨요.'
         ) : spectatorSeat ? (
           // 충돌 경고가 우선한다 — 그쪽은 제출을 막는 오류이고 이건 안내다
           '관전자는 지켜보기만 해요.'
@@ -66,8 +76,8 @@ export function CreateRoomForm({
       // 접혀 있을 때는 DOM 순서 그대로 입력칸 아래로 흘러 예전과 같은 차례가 된다.
       side={
         <>
-          <TeamSelect team={team} onChange={onTeam} />
-          <GameRulesFields settings={settings} onChange={onSettings} />
+          {mode === 'team' && <TeamSelect team={team} onChange={onTeam} />}
+          <GameRulesFields settings={settings} onChange={onSettings} mode={mode} />
         </>
       }
       footer={
@@ -90,22 +100,24 @@ export function CreateRoomForm({
           보인다(겹치면 두 칸에 붉은 링이 함께 켜진다). */}
       {/* 방장이 관전석에 앉으면 "우리 팀"이 없으므로, 두 입력칸이 그대로 팀 1·팀 2의
           이름이 된다(서버 Room.addPlayer도 같은 순서로 받는다). */}
-      <div className="lobby-team-pair grid grid-cols-1 gap-2">
-        <TeamNameField
-          label={spectatorSeat ? '팀 1 이름' : '우리 팀 이름'}
-          value={teamName}
-          onChange={onTeamName}
-          avoid={otherTeamName}
-          invalid={teamNamesClash}
-        />
-        <TeamNameField
-          label={spectatorSeat ? '팀 2 이름' : '상대 팀 이름'}
-          value={otherTeamName}
-          onChange={onOtherTeamName}
-          avoid={teamName}
-          invalid={teamNamesClash}
-        />
-      </div>
+      {mode === 'team' && (
+        <div className="lobby-team-pair grid grid-cols-1 gap-2">
+          <TeamNameField
+            label={spectatorSeat ? '팀 1 이름' : '우리 팀 이름'}
+            value={teamName}
+            onChange={onTeamName}
+            avoid={otherTeamName}
+            invalid={teamNamesClash}
+          />
+          <TeamNameField
+            label={spectatorSeat ? '팀 2 이름' : '상대 팀 이름'}
+            value={otherTeamName}
+            onChange={onOtherTeamName}
+            avoid={teamName}
+            invalid={teamNamesClash}
+          />
+        </div>
+      )}
     </FormCard>
   );
 }
