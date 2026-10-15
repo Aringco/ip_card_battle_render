@@ -1,4 +1,5 @@
-import type { Animal, GameEvent, GameSettings, GameState, Place, Seat, SideId, Team } from './types';
+import type { Animal, GameEvent, GameMode, GameSettings, GameState, Place, Seat, SideId, Team } from './types';
+import type { PlayerColorId } from './constants';
 
 // ─── 클라이언트 → 서버 ───────────────────────────────────────────────────────
 
@@ -11,7 +12,10 @@ export type ClientMessage =
   //
   // team에는 관전석('spectator')도 올 수 있다. 방을 만드는 사람이 관전석을 골랐다면
   // teamName/otherTeamName은 각각 팀 1(A)·팀 2(B)의 이름으로 쓰인다.
-  | { type: 'createRoom'; nickname: string; team: Seat; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings> }
+  //
+  // mode는 방의 종류다 — 생략하면 팀전('team', 옛 클라이언트 호환). 개인전('individual')에서는 teamName/
+  // otherTeamName을 쓰지 않고, team은 'player'(플레이어석) 또는 'spectator'만 의미가 있다.
+  | { type: 'createRoom'; nickname: string; team: Seat; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings>; mode?: GameMode }
   | { type: 'joinRoom'; roomId: string; nickname: string; team: Seat; teamName?: string }
   | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings> } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전
   // ready는 토글이다 — 값을 생략하면 "준비 완료"로 본다(옛 클라이언트 호환).
@@ -28,7 +32,11 @@ export type ClientMessage =
   | { type: 'startGame' } // 방장이 직접 시작(모두 준비 완료 + 양 팀에 한 명 이상일 때만)
   | { type: 'chat'; text: string } // 대기실 채팅 — 게임이 시작된 뒤에는 서버가 무시한다
   | { type: 'drawCard'; place: Place }
-  | { type: 'chooseSkill'; animal: Animal } // 턴 종료 시 4가지 스킬 중 하나 선택
+  // 턴 종료 시 4가지 스킬 중 하나 선택. target은 개인전의 특허랑이가 노릴 상대(편 id) — 다른 기술이나
+  // 팀전에서는 서버가 무시한다.
+  | { type: 'chooseSkill'; animal: Animal; target?: SideId }
+  // 개인전 대기실에서 자기 색을 고른다(12색, 중복 불가 — 남이 쓰는 색이면 COLOR_TAKEN).
+  | { type: 'selectColor'; color: PlayerColorId }
   | { type: 'passSkill' } // 턴 종료 시 "아무것도 하지 않음" 선택
   | { type: 'reconnect'; roomId: string; playerId: string }
   // ─ 게임 중 메뉴(⏸) ─
@@ -64,6 +72,7 @@ export type ServerMessage =
       teamNames: Record<Team, string | null>;
       settings: GameSettings;
       hostMemberId: string | null;
+      mode: GameMode; // 방이 살아 있는 동안 바뀌지 않는다
     }
   | { type: 'kicked'; message: string }   // 방장에게 추방당해 방에서 나갔음
   | { type: 'leftRoom' }                  // 스스로 나가기(leaveRoom) 완료
@@ -86,7 +95,8 @@ export type ServerMessage =
 export interface LobbyPlayer {
   memberId: string;
   nickname: string;
-  team: Seat;      // 'spectator'면 관전석에 앉아 있다는 뜻(게임에 참여하지 않는다)
+  team: Seat;      // 'spectator'면 관전석에 앉아 있다는 뜻(게임에 참여하지 않는다). 개인전의 플레이어는 'player'
+  color?: PlayerColorId; // 개인전 플레이어석에 앉은 사람의 색 — 관전석·팀전에는 없다
   ready: boolean;  // 관전자는 준비할 것이 없으므로 서버가 항상 true로 유지한다
   connected: boolean;
 }
@@ -125,6 +135,7 @@ export type ErrorCode =
   | 'NOT_HOST'          // 방장만 쓸 수 있는 명령을 방장이 아닌 사람이 보냈다
   | 'PLAYER_NOT_FOUND'  // 방장 명령의 대상(memberId)이 방에 없다
   | 'TEAM_NAME_TAKEN'   // 바꾸려는 팀 이름이 상대 팀과 겹친다
+  | 'COLOR_TAKEN'       // 개인전 — 고르려는 색을 다른 사람이 이미 쓰고 있다
   | 'CANNOT_START'      // 아직 시작 조건(양 팀 한 명 이상 + 전원 준비)을 못 채웠다
   | 'PAUSE_UNAVAILABLE' // 지금은 일시정지(또는 재개)를 할 수 없다
   | 'INTERNAL';         // 서버가 그 메시지를 처리하다 예외를 냈다(그 사람에게만 알린다)

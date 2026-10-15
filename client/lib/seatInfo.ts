@@ -1,5 +1,5 @@
 import type { Seat } from 'shared';
-import { SPECTATOR } from 'shared';
+import { PLAYER_SEAT, SPECTATOR } from 'shared';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
 /**
@@ -10,6 +10,8 @@ import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 export const SEAT_META: Record<Seat, { badge: string; label: string; border: string }> = {
   A: { badge: '🟢', label: '팀 1', border: 'border-green-200' },
   B: { badge: '🔵', label: '팀 2', border: 'border-blue-200' },
+  // 개인전 방의 플레이어석 — 팀전의 팀에 해당한다(INDIVIDUAL_MODE_ROADMAP.md).
+  [PLAYER_SEAT]: { badge: '🎮', label: '플레이어', border: 'border-amber-200' },
   [SPECTATOR]: { badge: '👀', label: '관전자', border: 'border-purple-200' },
 };
 
@@ -28,5 +30,7 @@ export function seatLabel(seat: Seat): string {
 export const SEAT_IMAGE: Record<Seat, string> = {
   A: LOBBY_ASSETS.btnTeamA,
   B: LOBBY_ASSETS.btnTeamB,
+  // 개인전의 플레이어석은 전용 그림이 없다 — 개인전 대기실은 이 그림 대신 글자 버튼을 쓰므로 자리만 채운다.
+  [PLAYER_SEAT]: LOBBY_ASSETS.btnTeamA,
   [SPECTATOR]: LOBBY_ASSETS.btnSpectator,
 };

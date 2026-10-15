@@ -25,11 +25,21 @@ export type FinishReason = 'win' | 'out' | 'forfeit' | 'turnLimit' | 'last';
 // 있는 개념이다. 엔진 쪽 타입에 'spectator'를 섞지 말 것(정산·턴 교대·승패 판정이
 // 전부 두 팀을 전제로 짜여 있다).
 export const SPECTATOR = 'spectator';
-export type Seat = Team | typeof SPECTATOR;
+// 개인전 방에는 팀이 없고 "플레이어석" 하나와 관전석뿐이다(INDIVIDUAL_MODE_ROADMAP.md T3-1).
+// 팀전의 'A'/'B'에 해당하는 자리다 — 한 방 안에서 두 종류가 섞이는 일은 없다.
+export const PLAYER_SEAT = 'player';
+export type Seat = Team | typeof PLAYER_SEAT | typeof SPECTATOR;
+// 팀전 대기실의 자리 목록. 개인전은 아래 INDIVIDUAL_SEATS를 쓴다.
 export const SEATS: Seat[] = ['A', 'B', SPECTATOR];
+export const INDIVIDUAL_SEATS: Seat[] = [PLAYER_SEAT, SPECTATOR];
 
-/** 이 자리가 실제로 게임을 뛰는 팀인지(=관전석이 아닌지). */
-export function isPlayingSeat(seat: Seat): seat is Team {
+/** 이 자리가 실제로 게임을 뛰는 자리인지(=관전석이 아닌지). 팀전의 팀이거나 개인전의 플레이어석이다. */
+export function isPlayingSeat(seat: Seat): seat is Team | typeof PLAYER_SEAT {
+  return seat !== SPECTATOR;
+}
+
+/** 이 자리가 팀전의 팀(A/B)인지 — 팀 이름·팀 색처럼 팀전에만 있는 것을 만질 때 쓴다. */
+export function isTeamSeat(seat: Seat): seat is Team {
   return seat === 'A' || seat === 'B';
 }
 export type CardNum = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;

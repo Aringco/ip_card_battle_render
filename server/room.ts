@@ -1,7 +1,15 @@
 import type { WebSocket } from 'ws';
-import type { Animal, Place, Seat, SideId, Team } from 'shared';
+import type { Animal, GameMode, Place, PlayerColorId, Seat, SideId, Team } from 'shared';
 import type { ServerMessage } from 'shared';
-import { processPlayerAction, processSkillChoice, processPass, processTimeout, initGame } from './engine/gameEngine';
+import {
+  processPlayerAction,
+  processSkillChoice,
+  processPass,
+  processTimeout,
+  processForfeit,
+  initGame,
+  initIndividualGame,
+} from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
 import type { GameEvent, GameSettings, GameState, LobbyChatMessage } from 'shared';
 import {
@@ -17,8 +25,13 @@ import {
   CHAT_MIN_INTERVAL_MS,
   DEFAULT_SETTINGS,
   SPECTATOR,
+  PLAYER_SEAT,
+  PLAYER_COLORS,
+  INDIVIDUAL_MAX_PLAYERS,
+  INDIVIDUAL_MIN_PLAYERS,
   PAUSE_REQUEST_TIMEOUT_SEC,
   isPlayingSeat,
+  isTeamSeat,
   clampSettings,
 } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
@@ -142,13 +155,22 @@ interface PlayerConnection {
   connected: boolean;
   // 마지막으로 채팅을 보낸 시각 — 과속 전송을 걸러내는 데만 쓴다.
   lastChatAt: number;
+  // 개인전 플레이어석에 앉은 사람이 고른 색 — 방 안에서 겹치지 않는다. 팀전·관전석은 없다.
+  color?: PlayerColorId;
 }
 
 export class Room {
   private players = new Map<string, PlayerConnection>();  // playerId → PlayerConnection
   // 자리별 playerId 목록. A/B는 그대로 게임의 팀 순번(activePlayerIndex)이 되고,
   // spectator 칸은 게임에 전혀 쓰이지 않는다(직렬화할 때도 A/B만 넘긴다).
-  private teamPlayerIds: Record<Seat, string[]> = { A: [], B: [], [SPECTATOR]: [] };
+  private teamPlayerIds: Record<Seat, string[]> = { A: [], B: [], [PLAYER_SEAT]: [], [SPECTATOR]: [] };
+  // 방의 종류 — 만드는 사람이 정하고 방이 살아 있는 동안 바뀌지 않는다. 개인전이면 'player' 칸이
+  // 팀전의 A/B에 해당하는 플레이어석이다(INDIVIDUAL_MODE_ROADMAP.md).
+  private mode: GameMode = 'team';
+  // 개인전 — 게임이 시작되면 편('p1'…) → 사람의 대응을 여기에 굳힌다. 팀전은 null이고 teamPlayerIds를 쓴다.
+  // ⚠️ 팀전과 달리 **나가도 지우지 않는다** — 순위표와 통계에 그 사람의 자리가 남아야 한다.
+  private sidePlayerIds: Record<SideId, string[]> | null = null;
+  private playerSide = new Map<string, SideId>(); // 개인전 playerId → 편
   private teamNames: Record<Team, string | null> = { A: null, B: null };
   // 방장 = 방을 처음 만든 사람. 로비에서 이 사람이 나가면 남아 있는 다음 사람에게 넘어간다.
   private hostPlayerId: string | null = null;
@@ -182,7 +204,7 @@ export class Room {
   // 값에 보관했다가 재개할 때 그대로 이어 붙인다 — 데드라인을 그대로 둔 채 타이머만
   // 멈추면, 재개 순간 이미 지난 시각이 되어 턴이 곧바로 시간초과로 날아간다.
   private paused = false;
-  private pausedBy: { playerId: string; team: Team; nickname: string } | null = null;
+  private pausedBy: { playerId: string; team: SideId; nickname: string } | null = null;
   private pausedTurnRemainingMs = 0;
   // 게이지 100%에 해당하는 시간도 함께 보관한다 — clearTimer가 turnTotalMs까지 0으로
   // 되돌리기 때문이다(게임이 끝난 방의 스냅샷에 유령 카운트다운이 실리지 않게 하려고).
@@ -191,12 +213,12 @@ export class Room {
   private pausedTurnTotalMs = 0;
   private pausedCpuRemainingMs: number | null = null;
   // 상대의 대답을 기다리는 중인 일시정지 요청(멀티 플레이 전용).
-  private pauseRequest: { playerId: string; team: Team; nickname: string } | null = null;
+  private pauseRequest: { playerId: string; team: SideId; nickname: string } | null = null;
   private pauseRequestTimer: ReturnType<typeof setTimeout> | null = null;
   // 팀마다 쓴 일시정지 횟수(settings.pauseMaxCount까지). **요청하는 순간** 하나 깎는다 —
   // 상대가 고르는 20초 동안에도 판은 이미 멈춰 있으므로, 수락 여부와 무관하게 그 요청
   // 자체가 판을 멈춘 것이다. 깎지 않으면 거절당할 때마다 다시 요청해 판을 계속 얼릴 수 있다.
-  private pauseUsed: Record<Team, number> = { A: 0, B: 0 };
+  private pauseUsed: Record<SideId, number> = { A: 0, B: 0 };
   // 한 번의 일시정지가 settings.pauseMaxMin을 넘기면 서버가 대신 풀어준다 — 멈춘 팀이
   // 자리를 뜨면 상대가 영영 기다리게 되기 때문이다. 남은 시간은 화면 카운트다운에도 쓴다.
   private pauseAutoResumeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -271,7 +293,8 @@ export class Room {
 
   /** 자리 이름을 화면 표기용으로 — 팀 이름이 아직 없으면 "팀 1"/"팀 2", 관전석은 "관전석". */
   private teamLabel(seat: Seat): string {
-    if (!isPlayingSeat(seat)) return '관전석';
+    if (seat === PLAYER_SEAT) return '플레이어석';
+    if (!isTeamSeat(seat)) return '관전석';
     return this.teamNames[seat] ?? (seat === 'A' ? '팀 1' : '팀 2');
   }
 
@@ -324,6 +347,8 @@ export class Room {
     settings?: Partial<GameSettings>,
     // 방을 처음 만드는 사람만 넘겨준다 — 아직 아무도 들어오지 않은 반대편 팀의 이름.
     otherTeamName?: string,
+    // 방을 처음 만드는 사람만 넘겨준다 — 생략하면 팀전(옛 클라이언트 호환).
+    mode?: GameMode,
   ): 'ok' | 'game_started' | 'nickname_taken' {
     if (this.state !== null) return 'game_started';
 
@@ -334,40 +359,86 @@ export class Room {
 
     // 방을 처음 만드는 쪽(=이 방에 아직 아무도 없을 때)만 규칙을 정할 수 있다.
     const isRoomCreator = this.players.size === 0;
-    if (isRoomCreator && settings) {
-      this.settings = clampSettings(settings);
+    if (isRoomCreator) {
+      if (settings) this.settings = clampSettings(settings);
+      this.mode = mode === 'individual' ? 'individual' : 'team';
+    }
+
+    // 자리를 방의 종류에 맞춘다. ⚠️ 참가 화면(JoinRoomForm)은 방이 어떤 종류인지 모른 채 'A'/'B'/
+    // 'spectator'를 보내므로, 개인전 방에서는 'A'·'B'·'player'를 모두 플레이어석으로 받는다.
+    // 플레이어석이 가득 찼으면 튕겨 내지 않고 관전석으로 받는다(ROOM_FULL을 쓰지 않는다).
+    let seat: Seat = team;
+    let seatFull = false;
+    if (this.mode === 'individual') {
+      if (seat !== SPECTATOR) {
+        seat = PLAYER_SEAT;
+        if (this.teamPlayerIds[PLAYER_SEAT].length >= INDIVIDUAL_MAX_PLAYERS) {
+          seat = SPECTATOR;
+          seatFull = true;
+        }
+      }
+    } else if (seat === PLAYER_SEAT) {
+      seat = 'A'; // 팀전 방에 플레이어석은 없다
     }
 
     // 방장은 따로 "준비"를 누르지 않는다 — 준비 버튼 대신 "게임 시작" 버튼을 쥔다.
     // 관전자도 준비할 것이 없으므로 처음부터 준비 완료로 둔다.
     this.players.set(playerId, {
-      ws, playerId, memberId: this.nextMemberId(), nickname, team,
-      ready: isRoomCreator || !isPlayingSeat(team), connected: true, lastChatAt: 0,
+      ws, playerId, memberId: this.nextMemberId(), nickname, team: seat,
+      ready: isRoomCreator || !isPlayingSeat(seat), connected: true, lastChatAt: 0,
+      color: seat === PLAYER_SEAT ? this.firstFreeColor() : undefined,
     });
     if (isRoomCreator) this.hostPlayerId = playerId;
     // 이전 대화를 먼저 넘겨준 뒤에 입장 안내를 방송한다 — 순서가 뒤바뀌면 새로 들어온
     // 사람이 자기 입장 메시지를 chatMessage로 한 번, chatHistory로 또 한 번 받게 된다.
     this.sendChatHistory(playerId);
     this.pushSystem(
-      isPlayingSeat(team) ? `${nickname} 님이 들어왔어요` : `${nickname} 님이 관전자로 들어왔어요`,
+      seatFull
+        ? `플레이어석이 가득 차서(최대 ${INDIVIDUAL_MAX_PLAYERS}명) ${nickname} 님이 관전자로 들어왔어요`
+        : isPlayingSeat(seat) ? `${nickname} 님이 들어왔어요` : `${nickname} 님이 관전자로 들어왔어요`,
     );
-    this.teamPlayerIds[team].push(playerId);
+    this.teamPlayerIds[seat].push(playerId);
     // 방을 만드는 순간 양 팀 이름을 모두 확정한다 — 방장이 상대 팀 이름을 비워뒀더라도
     // 무작위로 채운다. 예전에는 "그 팀에 실제로 참가하는 사람이 직접 고를 기회"를 남기려고
     // 비워뒀지만, 참가 화면에는 팀 이름 입력칸이 아예 없어서 그 기회는 쓰이지 못하고
     // 대기실에 "팀 2 (미정)"만 덩그러니 남았다.
-    if (isRoomCreator) {
-      // 방장이 관전석을 골랐다면 자기 팀이 없으므로 teamName/otherTeamName이 곧
-      // 팀 1(A)·팀 2(B)의 이름이다. 먼저 부른 쪽이 이름 우선권을 가지므로(겹치면
-      // 나중 쪽이 무작위로 대체된다) 방장 자신의 팀부터 확정한다.
-      const own: Team = isPlayingSeat(team) ? team : 'A';
-      this.assignTeamName(own, teamName);
-      this.assignTeamName(own === 'A' ? 'B' : 'A', otherTeamName);
-    } else if (isPlayingSeat(team)) {
-      this.assignTeamName(team, teamName);
+    // 개인전에는 팀이 없으므로 팀 이름도 없다.
+    if (this.mode === 'team') {
+      if (isRoomCreator) {
+        // 방장이 관전석을 골랐다면 자기 팀이 없으므로 teamName/otherTeamName이 곧
+        // 팀 1(A)·팀 2(B)의 이름이다. 먼저 부른 쪽이 이름 우선권을 가지므로(겹치면
+        // 나중 쪽이 무작위로 대체된다) 방장 자신의 팀부터 확정한다.
+        const own: Team = isTeamSeat(seat) ? seat : 'A';
+        this.assignTeamName(own, teamName);
+        this.assignTeamName(own === 'A' ? 'B' : 'A', otherTeamName);
+      } else if (isTeamSeat(seat)) {
+        this.assignTeamName(seat, teamName);
+      }
     }
     this.broadcastLobbyState();
     return 'ok';
+  }
+
+  /** 개인전 — 아직 아무도 쓰지 않는 첫 색(PLAYER_COLORS 순서). 12색 > 8명이라 항상 하나는 남는다. */
+  private firstFreeColor(): PlayerColorId {
+    const used = new Set([...this.players.values()].map(p => p.color));
+    return (PLAYER_COLORS.find(c => !used.has(c.id)) ?? PLAYER_COLORS[0]).id;
+  }
+
+  /** 개인전 대기실에서 색을 고른다. 남이 쓰는 색이면 COLOR_TAKEN, 게임이 시작된 뒤에는 무시. */
+  selectColor(playerId: string, color: PlayerColorId): void {
+    if (this.started || this.mode !== 'individual') return;
+    const p = this.players.get(playerId);
+    if (!p || p.team !== PLAYER_SEAT) return;
+    if (!PLAYER_COLORS.some(c => c.id === color)) return;
+    if (p.color === color) return;
+    const owner = [...this.players.values()].find(q => q.color === color && q.playerId !== playerId);
+    if (owner) {
+      this.sendTo(playerId, { type: 'error', code: 'COLOR_TAKEN', message: `${owner.nickname} 님이 쓰고 있는 색이에요.` });
+      return;
+    }
+    p.color = color;
+    this.broadcastLobbyState();
   }
 
   private nextMemberId(): string {
@@ -444,7 +515,21 @@ export class Room {
       this.sendTo(playerId, { type: 'error', code: 'NOT_HOST', message: '다른 참가자의 자리는 방장만 바꿀 수 있습니다.' });
       return;
     }
+    // 방의 종류에 맞는 자리로 바로잡는다(개인전은 플레이어석·관전석, 팀전은 A·B·관전석).
+    if (this.mode === 'individual') {
+      if (team !== SPECTATOR) team = PLAYER_SEAT;
+    } else if (team === PLAYER_SEAT) {
+      return;
+    }
     if (target.team === team) return;
+    if (
+      this.mode === 'individual' &&
+      team === PLAYER_SEAT &&
+      this.teamPlayerIds[PLAYER_SEAT].length >= INDIVIDUAL_MAX_PLAYERS
+    ) {
+      this.sendTo(playerId, { type: 'error', code: 'ROOM_FULL', message: `플레이어석이 가득 찼어요(최대 ${INDIVIDUAL_MAX_PLAYERS}명).` });
+      return;
+    }
 
     const prevSeat = target.team;
     const from = this.teamPlayerIds[prevSeat];
@@ -452,6 +537,9 @@ export class Room {
     if (idx !== -1) from.splice(idx, 1);
     target.team = team;
     this.teamPlayerIds[team].push(target.playerId);
+    // 개인전 — 플레이어석에 앉으면 비어 있는 첫 색을 받고, 관전석으로 가면 색을 돌려놓는다.
+    if (team === PLAYER_SEAT) target.color = target.color ?? this.firstFreeColor();
+    else target.color = undefined;
     // 관전석에 앉으면 준비할 것이 없으므로 준비 완료, 관전석에서 팀으로 나오면 이제부터
     // 실제로 뛰는 사람이므로 다시 준비를 눌러야 한다. 팀↔팀 이동은 예전 그대로 준비
     // 상태를 건드리지 않고, 방장은 애초에 준비 개념이 없어 어느 경우든 제외한다.
@@ -459,7 +547,9 @@ export class Room {
       target.ready = !isPlayingSeat(team);
     }
     // 팀 이름은 방을 만드는 순간 양쪽 다 정해지므로(addPlayer) 여기서 손댈 것이 없다.
-    const where = isPlayingSeat(team) ? `${this.teamLabel(team)} 팀으로` : '관전석으로';
+    const where = team === PLAYER_SEAT
+      ? '플레이어석으로'
+      : isPlayingSeat(team) ? `${this.teamLabel(team)} 팀으로` : '관전석으로';
     this.pushSystem(
       target.playerId === playerId
         ? `${target.nickname} 님이 ${where} 옮겼어요`
@@ -503,6 +593,7 @@ export class Room {
   /** 팀 이름 변경 — 무작위로 배정됐던 이름도 게임 시작 전이면 방장이 다시 지을 수 있다. */
   setTeamName(playerId: string, team: Team, name: string): void {
     if (!this.requireHost(playerId)) return;
+    if (this.mode === 'individual') return; // 개인전에는 팀이 없다
     const other = this.teamNames[team === 'A' ? 'B' : 'A'];
     const trimmed = name.trim().slice(0, TEAM_NAME_MAX_LEN);
     if (!trimmed) {
@@ -545,6 +636,15 @@ export class Room {
   /** 지금 게임을 시작할 수 없는 이유(없으면 null). */
   private startBlockReason(): string | null {
     const all = [...this.players.values()];
+    if (this.mode === 'individual') {
+      const count = this.teamPlayerIds[PLAYER_SEAT].length;
+      if (count < INDIVIDUAL_MIN_PLAYERS) {
+        return `개인전은 플레이어가 ${INDIVIDUAL_MIN_PLAYERS}명 이상 있어야 합니다(관전자는 인원에 들어가지 않아요).`;
+      }
+      if (count > INDIVIDUAL_MAX_PLAYERS) return `개인전은 플레이어가 최대 ${INDIVIDUAL_MAX_PLAYERS}명까지예요.`;
+      if (!all.every(p => p.ready)) return '아직 준비하지 않은 참가자가 있습니다.';
+      return null;
+    }
     // 인원수는 관전자를 빼고 센다 — 양 팀에 한 명씩만 있으면 그것으로 충분하고,
     // 관전자만 잔뜩 있어도 게임은 시작될 수 없다(아래 조건이 그대로 걸러낸다).
     if (this.teamPlayerIds.A.length === 0 || this.teamPlayerIds.B.length === 0) {
@@ -611,6 +711,10 @@ export class Room {
   private tryStartGame(): void {
     const all = [...this.players.values()];
     if (!all.every(p => p.ready)) return;
+    if (this.mode === 'individual') {
+      this.startIndividualGame();
+      return;
+    }
     // 양 팀이 한 명씩만 차 있으면 시작할 수 있다 — 관전자 수는 여기에 영향을 주지 않는다.
     if (this.teamPlayerIds.A.length === 0 || this.teamPlayerIds.B.length === 0) return;
 
@@ -630,6 +734,47 @@ export class Room {
   }
 
   /**
+   * 개인전 시작 — 플레이어석에 앉은 순서대로 'p1'…'pN'을 붙여 한 사람이 한 편이 되게 한다.
+   * 차례 순서는 엔진이 시작할 때 한 번 섞는다(initIndividualGame).
+   */
+  private startIndividualGame(): void {
+    const seated = this.teamPlayerIds[PLAYER_SEAT]
+      .map(id => this.players.get(id))
+      .filter((p): p is PlayerConnection => p !== undefined);
+    if (seated.length < INDIVIDUAL_MIN_PLAYERS || seated.length > INDIVIDUAL_MAX_PLAYERS) return;
+
+    const sides = seated.map((p, i) => ({
+      side: `p${i + 1}`,
+      nickname: p.nickname,
+      color: p.color ?? this.firstFreeColor(),
+    }));
+    this.state = initIndividualGame(sides, Math.random, this.settings);
+    this.sidePlayerIds = {};
+    this.playerSide.clear();
+    this.pauseUsed = {};
+    sides.forEach((s, i) => {
+      this.sidePlayerIds![s.side] = [seated[i].playerId];
+      this.playerSide.set(seated[i].playerId, s.side);
+      this.pauseUsed[s.side] = 0;
+    });
+
+    this.resetTimer();
+    this.broadcast({ type: 'gameStart', state: this.snapshot() });
+  }
+
+  /** 이 연결이 게임에서 맡은 편 — 팀전은 앉은 팀, 개인전은 시작할 때 붙은 'p1'… 관전자는 null. */
+  private sideOf(p: PlayerConnection): SideId | null {
+    if (this.mode === 'individual') return this.playerSide.get(p.playerId) ?? null;
+    return isTeamSeat(p.team) ? p.team : null;
+  }
+
+  /** 그 편에 속한 사람들의 playerId. 팀전은 팀 목록이고, 개인전은 한 사람이다. */
+  private playerIdsOfSide(side: SideId): string[] {
+    if (this.sidePlayerIds) return this.sidePlayerIds[side] ?? [];
+    return (this.teamPlayerIds as Record<string, string[]>)[side] ?? [];
+  }
+
+  /**
    * 지금 방 상태를 클라이언트용으로 직렬화한다. 이 방의 **모든** 상태 전송(gameStart ·
    * gameSnapshot · actionResult · pauseState)이 이 한 곳을 지나므로, 일시정지처럼
    * 엔진 밖에 있는 상태를 새로 실어야 할 때 빠뜨릴 자리가 없다.
@@ -644,7 +789,7 @@ export class Room {
       ? (this.pausedTurnRemainingMs > 0 ? Date.now() + this.pausedTurnRemainingMs : 0)
       : this.turnDeadline;
     const totalMs = this.paused ? this.pausedTurnTotalMs : this.turnTotalMs;
-    const snap = serializeState(this.state, deadline, totalMs, this.finalTeamNames(), this.teamPlayerIds, {
+    const snap = serializeState(this.state, deadline, totalMs, this.finalTeamNames(), this.sidePlayerIds ?? this.teamPlayerIds, {
       paused: this.paused,
       pausedBy: this.pausedBy ? { team: this.pausedBy.team, nickname: this.pausedBy.nickname } : null,
       pendingAnswer: this.pauseRequest !== null,
@@ -660,7 +805,13 @@ export class Room {
     return snap;
   }
 
-  private finalTeamNames(): Record<Team, string> {
+  private finalTeamNames(): Record<SideId, string> {
+    // 개인전에는 팀 이름이 없다 — 편마다 그 사람의 닉네임이 이름 자리에 들어간다.
+    if (this.state?.mode === 'individual') {
+      const names: Record<SideId, string> = {};
+      for (const side of this.state.turnOrder) names[side] = this.state.teams[side].members[0] ?? side;
+      return names;
+    }
     return {
       A: this.teamNames.A ?? 'A팀',
       B: this.teamNames.B ?? 'B팀',
@@ -672,8 +823,7 @@ export class Room {
   /** 지금 결정을 내려야 하는 팀의 "대표 플레이어"(현재 activePlayerIndex)의 id. */
   private expectedPlayerId(team: SideId): string | undefined {
     if (!this.state) return undefined;
-    // 팀전의 편 id는 자리 이름('A'|'B')과 같다. 개인전의 편 → 사람 대응은 T3-2에서 따로 둔다.
-    return (this.teamPlayerIds as Record<string, string[]>)[team]?.[this.state.activePlayerIndex];
+    return this.playerIdsOfSide(team)[this.state.activePlayerIndex];
   }
 
   /**
@@ -767,7 +917,7 @@ export class Room {
     this.broadcastResult(this.demo.chooseScene(this.state, key));
   }
 
-  handleChooseSkill(playerId: string, animal: Animal): void {
+  handleChooseSkill(playerId: string, animal: Animal, target?: SideId): void {
     if (this.rejectIfSpectator(playerId)) return;
     if (this.rejectIfPaused(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
@@ -788,7 +938,14 @@ export class Room {
       return;
     }
 
-    const { state, events } = processSkillChoice(this.state, animal);
+    const { state, events } = processSkillChoice(this.state, animal, target);
+    // 개인전에서 받아들여지지 않은 요청(순위가 정해진 사람이나 자기 자신을 노린 특허랑이 등)은 이벤트가
+    // 하나도 없다. 그대로 브로드캐스트하면 화면이 빈 갱신을 "재접속"으로 읽고, 타이머만 새로 걸려 시간을
+    // 벌 수 있다 — 보낸 사람에게만 에러로 돌려준다. (팀전의 옛 동작은 건드리지 않는다.)
+    if (state.mode === 'individual' && events.length === 0) {
+      this.sendTo(playerId, { type: 'error', code: 'CARD_NOT_AVAILABLE', message: '선택할 수 없는 기술이거나 대상입니다.' });
+      return;
+    }
     this.state = state;
     if (this.state.phase === 'ended') this.clearTimer();
     else this.resetTimer(events);
@@ -991,9 +1148,9 @@ export class Room {
     return p;
   }
 
-  /** 그 팀에서 지금 접속해 있는 **사람** 목록(컴퓨터는 players에 없으므로 자연히 빠진다). */
-  private connectedHumansOf(team: Team): PlayerConnection[] {
-    return this.teamPlayerIds[team]
+  /** 그 편에서 지금 접속해 있는 **사람** 목록(컴퓨터는 players에 없으므로 자연히 빠진다). */
+  private connectedHumansOf(side: SideId): PlayerConnection[] {
+    return this.playerIdsOfSide(side)
       .map(id => this.players.get(id))
       .filter((p): p is PlayerConnection => p !== undefined && p.connected);
   }
@@ -1015,7 +1172,14 @@ export class Room {
       return;
     }
     const p = this.playingMember(playerId);
-    if (!p || !isPlayingSeat(p.team)) return;
+    if (!p) return;
+    const side = this.sideOf(p);
+    if (side === null) return;
+    // 개인전에서 순위가 정해진 사람은 이미 판에서 빠진 관전자와 같다 — 남은 사람들의 판을 멈출 수 없다.
+    if (this.state.mode === 'individual' && this.state.teams[side]?.finish) {
+      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '순위가 정해진 뒤에는 일시정지를 쓸 수 없습니다.' });
+      return;
+    }
     if (this.paused) return; // 이미 멈춰 있다 — 화면은 곧 pauseState로 맞춰진다
     if (this.pauseRequest) {
       this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '이미 일시정지 요청이 진행 중입니다.' });
@@ -1025,7 +1189,7 @@ export class Room {
     // ⚠️ 혼자 놀기는 제한이 없다 — 기다리게 할 상대가 없으니 제한이 보호하는 것이 없고,
     //    그래서 로비에서도 이 두 항목을 아예 보여주지 않는다(GameRulesFields의 hidePause).
     const maxCount = this.vsComputer ? Infinity : this.state.settings.pauseMaxCount;
-    if (this.pauseUsed[p.team] >= maxCount) {
+    if ((this.pauseUsed[side] ?? 0) >= maxCount) {
       this.sendTo(playerId, {
         type: 'error',
         code: 'PAUSE_UNAVAILABLE',
@@ -1035,22 +1199,29 @@ export class Room {
     }
     // ⚠️ 횟수는 **여기서** 깎는다(수락된 뒤가 아니라). 묻는 20초 동안에도 판이 멈추므로,
     // 거절당할 때마다 다시 요청하면 횟수 제한이 무의미해진다.
-    this.pauseUsed[p.team] += 1;
+    this.pauseUsed[side] = (this.pauseUsed[side] ?? 0) + 1;
+
+    // 개인전은 아무에게도 묻지 않고 즉시 멈춘다 — 상대가 여럿이라 누구에게 물을지 정할 수 없고,
+    // 횟수·시간 제한(사람마다)이 남용을 막는다. 다시 시작은 멈춘 사람만 한다.
+    if (this.state.mode === 'individual') {
+      this.applyPause({ playerId, team: side, nickname: p.nickname });
+      return;
+    }
 
     const opponent: Team = p.team === 'A' ? 'B' : 'A';
     const askable = this.connectedHumansOf(opponent);
     if (askable.length === 0) {
-      this.applyPause({ playerId, team: p.team, nickname: p.nickname });
+      this.applyPause({ playerId, team: side, nickname: p.nickname });
       return;
     }
 
-    this.pauseRequest = { playerId, team: p.team, nickname: p.nickname };
+    this.pauseRequest = { playerId, team: side, nickname: p.nickname };
     // 답을 기다리는 동안에도 멈춰 둔다(위 주석 참고). pauseState를 먼저 보내야 요청
     // 창이 뜬 화면의 뒤쪽 판이 이미 회색으로 죽어 있어, 무엇을 고르는 중인지 읽힌다.
-    this.applyPause({ playerId, team: p.team, nickname: p.nickname });
+    this.applyPause({ playerId, team: side, nickname: p.nickname });
     const timeoutMs = PAUSE_REQUEST_TIMEOUT_SEC * 1000;
     for (const o of askable) {
-      this.sendTo(o.playerId, { type: 'pauseRequest', fromTeam: p.team, fromNickname: p.nickname, timeoutMs });
+      this.sendTo(o.playerId, { type: 'pauseRequest', fromTeam: side as Team, fromNickname: p.nickname, timeoutMs });
     }
     this.pauseRequestTimer = setTimeout(() => this.settlePauseRequest(false, 'timeout'), timeoutMs);
   }
@@ -1060,7 +1231,7 @@ export class Room {
     const req = this.pauseRequest;
     if (!req) return;
     const p = this.playingMember(playerId);
-    if (!p || p.team === req.team) return;
+    if (!p || this.sideOf(p) === req.team) return;
     this.settlePauseRequest(accept, accept ? 'accepted' : 'declined');
   }
 
@@ -1079,7 +1250,7 @@ export class Room {
       this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '상대의 답을 기다리는 중입니다.' });
       return;
     }
-    if (this.pausedBy && p.team !== this.pausedBy.team) {
+    if (this.pausedBy && this.sideOf(p) !== this.pausedBy.team) {
       this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '일시정지를 요청한 쪽만 다시 시작할 수 있습니다.' });
       return;
     }
@@ -1115,7 +1286,7 @@ export class Room {
    * 데드라인을 그대로 둔 채 타이머만 멈추면, 재개하는 순간 이미 지나간 시각이 되어
    * 그 턴이 곧바로 시간초과로 날아간다.
    */
-  private applyPause(by: { playerId: string; team: Team; nickname: string }): void {
+  private applyPause(by: { playerId: string; team: SideId; nickname: string }): void {
     if (!this.state || this.state.phase !== 'playing' || this.paused) return;
     this.pausedTurnRemainingMs = this.turnDeadline === 0 ? 0 : Math.max(0, this.turnDeadline - Date.now());
     this.pausedTurnTotalMs = this.turnTotalMs;
@@ -1206,7 +1377,9 @@ export class Room {
     const p = this.players.get(playerId);
     if (!p) return;
 
-    if (this.state && this.state.phase === 'playing' && isPlayingSeat(p.team)) {
+    if (this.state && this.state.phase === 'playing' && this.state.mode === 'individual') {
+      this.forfeitIndividual(p);
+    } else if (this.state && this.state.phase === 'playing' && isPlayingSeat(p.team)) {
       const winner: Team = p.team === 'A' ? 'B' : 'A';
       this.clearPauseState();
       this.clearTimer();
@@ -1216,6 +1389,35 @@ export class Room {
     }
 
     if (leave) this.removeFromGame(playerId);
+  }
+
+  /**
+   * 개인전의 항복·나가기 — 그 사람만 패배(꼴찌 쪽부터 순위)가 되고 **판은 계속된다.**
+   * 순위표에 남아야 하므로 편 → 사람 대응(sidePlayerIds)은 지우지 않는다.
+   */
+  private forfeitIndividual(p: PlayerConnection): void {
+    const state = this.state;
+    if (!state || state.phase !== 'playing') return;
+    const side = this.sideOf(p);
+    if (side === null || state.teams[side].finish) return;
+
+    // 이 사람이 멈춰 둔 일시정지는 풀어 준다 — 다시 시작할 수 있는 사람이 멈춘 사람뿐이라, 그대로 두면
+    // 남은 사람들의 판이 자동 재개 시간까지 멈춰 있게 된다.
+    if (this.paused && this.pausedBy?.team === side) this.applyResume();
+
+    const wasActive = state.activeTeam === side;
+    const { events } = processForfeit(state, side);
+
+    if (state.phase !== 'playing') {
+      this.clearPauseState();
+      this.clearTimer();
+    } else if (wasActive) {
+      // 차례가 다음 사람에게 넘어갔다 — 새 제한시간을 건다. 멈춰 있는 동안이면 재개할 때 새로 걸리도록
+      // 보관해 둔 남은 시간을 비운다(applyResume이 0이면 resetTimer를 부른다).
+      if (this.paused) this.pausedTurnRemainingMs = 0;
+      else this.resetTimer(events);
+    }
+    this.broadcast({ type: 'actionResult', events: serializeEvents(events), state: this.snapshot() });
   }
 
   /**
@@ -1326,6 +1528,7 @@ export class Room {
       teamNames: this.teamNames,
       settings: this.settings,
       hostMemberId: this.hostPlayerId ? this.memberIdOf(this.hostPlayerId) : null,
+      mode: this.mode,
     });
   }
 
@@ -1336,6 +1539,7 @@ export class Room {
       team: p.team,
       ready: p.ready,
       connected: p.connected,
+      ...(p.color !== undefined ? { color: p.color } : {}),
     }));
   }
 }

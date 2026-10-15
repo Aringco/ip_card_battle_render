@@ -69,7 +69,7 @@ export function createConnectionHandler(roomManager: RoomManager) {
         case 'createRoom': {
           const { roomId, room } = roomManager.createRoom();
           const playerId = randomUUID();
-          const result = room.addPlayer(ws, playerId, msg.nickname, msg.team, msg.teamName, msg.settings, msg.otherTeamName);
+          const result = room.addPlayer(ws, playerId, msg.nickname, msg.team, msg.teamName, msg.settings, msg.otherTeamName, msg.mode);
           if (result !== 'ok') {
             ws.send(JSON.stringify({ type: 'error', code: 'ROOM_FULL', message: '방을 만들 수 없습니다.' }));
             return;
@@ -186,7 +186,14 @@ export function createConnectionHandler(roomManager: RoomManager) {
 
         case 'chooseSkill': {
           if (!currentRoomId || !currentPlayerId) return;
-          roomManager.getRoom(currentRoomId)?.handleChooseSkill(currentPlayerId, msg.animal);
+          roomManager.getRoom(currentRoomId)?.handleChooseSkill(currentPlayerId, msg.animal, msg.target);
+          break;
+        }
+
+        // 개인전 대기실에서 자기 색을 고른다. 팀전 방이면 Room이 조용히 무시한다.
+        case 'selectColor': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.selectColor(currentPlayerId, msg.color);
           break;
         }
 
