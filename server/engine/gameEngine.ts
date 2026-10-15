@@ -1,11 +1,13 @@
-import type { Animal, GameEvent, GameState, Place } from 'shared';
+import { opponentsOf } from 'shared';
+import type { Animal, GameEvent, GameState, Place, SideId } from 'shared';
 import { drawCard } from './drawCard';
-import { finishTurn, initGame } from './turnManager';
-import { applySkillChoice, applyPass, randomEligibleSkill, levelOf } from './skills';
+import { advanceTurn, finishTurn, initGame } from './turnManager';
+import { forfeitRank, resolveRanks } from './ranking';
+import { applySkillChoice, applyPass, eligibleAnimals, randomEligibleSkill, levelOf } from './skills';
 import { randomPlace } from './places';
 import type { RNG } from './places';
 
-export { initGame } from './turnManager';
+export { initGame, initIndividualGame } from './turnManager';
 
 /**
  * 장소 클릭 처리 — 엔진의 진입점 ①.
@@ -44,9 +46,12 @@ export function processPlayerAction(
 export function processSkillChoice(
   state: GameState,
   animal: Animal,
+  // 특허랑이의 대상 — 개인전에서만 쓴다(팀전은 상대가 한 팀뿐이라 무시한다).
+  target?: SideId,
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice === null) return { state, events: [] };
   if (levelOf(state, state.pendingChoice, animal) <= 0) return { state, events: [] };
+  if (state.mode === 'individual') return processIndividualSkill(state, animal, target);
 
   const team = state.pendingChoice;
   const events: GameEvent[] = [];
@@ -54,6 +59,64 @@ export function processSkillChoice(
   state.pendingChoice = null;
   events.push(...finishTurn(state));
 
+  return { state, events };
+}
+
+/**
+ * 개인전의 기술 선택 — 한 차례에 기술을 skillsPerTurn장까지 쓸 수 있고, 기술 하나마다 순위를 판정한다.
+ * (INDIVIDUAL_MODE_ROADMAP.md §2-2~2-4, 주의 3~5)
+ *
+ * ⚠️ 판정은 차례가 끝날 때가 아니라 **기술마다** 한다 — 2장 규칙에서 첫 특허랑이로 체력이 0이 된
+ *    사람이 두 번째 기술의 대상 목록에 남아 있으면 안 된다.
+ * ⚠️ 두 번째 기술을 기다릴 때는 pendingChoice를 **그대로 세워 둔다**(비우면 화면의 행동 선택 칸이
+ *    살아나지 않는다). 차례가 끝날 때는 finishTurn(= 팀전의 즉시 승패 판정)이 아니라 advanceTurn만 부른다.
+ */
+function processIndividualSkill(
+  state: GameState,
+  animal: Animal,
+  target?: SideId,
+): { state: GameState; events: GameEvent[] } {
+  const team = state.pendingChoice!;
+
+  // 특허랑이는 대상이 필요하다 — 순위가 정해지지 않은 다른 사람이어야 한다. 아니면 무시(이벤트 없음).
+  let victim: SideId | undefined;
+  if (animal === 'tiger') {
+    if (target === undefined || !opponentsOf(state, team).includes(target)) return { state, events: [] };
+    victim = target;
+  }
+
+  const events: GameEvent[] = [applySkillChoice(state, team, animal, victim)];
+  events.push(...resolveRanks(state));
+  if (state.phase !== 'playing') return { state, events };
+
+  state.skillsUsedThisTurn += 1;
+  const turnOver =
+    state.skillsUsedThisTurn >= state.skillsPerTurn ||
+    eligibleAnimals(state, team).length === 0 ||
+    state.teams[team].finish !== undefined;
+  if (turnOver) {
+    state.pendingChoice = null;
+    events.push(...advanceTurn(state));
+  }
+  return { state, events };
+}
+
+/**
+ * 개인전 항복·나가기 — 그 사람은 패배(꼴찌 쪽부터 순위)가 되고 판은 계속된다.
+ * 지금 차례가 그 사람이었다면 다음 사람에게 넘긴다(방(Room)이 부른다 — 엔진 안에서는 쓰이지 않는다).
+ */
+export function processForfeit(
+  state: GameState,
+  side: SideId,
+): { state: GameState; events: GameEvent[] } {
+  if (state.phase !== 'playing' || state.mode !== 'individual') return { state, events: [] };
+  if (state.teams[side]?.finish) return { state, events: [] };
+
+  const events = forfeitRank(state, side);
+  if (state.phase === 'playing' && state.activeTeam === side) {
+    state.pendingChoice = null;
+    events.push(...advanceTurn(state));
+  }
   return { state, events };
 }
 
@@ -72,7 +135,8 @@ export function processPass(
   const team = state.pendingChoice;
   const events: GameEvent[] = [applyPass(team, auto)];
   state.pendingChoice = null;
-  events.push(...finishTurn(state));
+  // 개인전은 체력이 변하지 않았으므로 승패 판정 없이 곧바로 차례를 넘긴다(판정은 기술마다 이미 했다).
+  events.push(...(state.mode === 'individual' ? advanceTurn(state) : finishTurn(state)));
 
   return { state, events };
 }
@@ -85,6 +149,12 @@ export function processTimeout(
   if (state.phase !== 'playing') return { state, events: [] };
 
   if (state.pendingChoice !== null) {
+    // 개인전은 서버가 기술을 대신 고르지 않는다 — 첫 번째든 두 번째든, 대상을 고르던 중이든
+    // 시간이 다 되면 그대로 차례 종료다(자동으로 기술을 쓰면 사람이 일부러 안 쓴 것과 구분이 안 된다).
+    if (state.mode === 'individual') {
+      const result = processPass(state, true);
+      return { state: result.state, events: [{ type: 'timeoutChoice', animal: null }, ...result.events] };
+    }
     const team = state.pendingChoice;
     const animal = randomEligibleSkill(state, team, rng);
     const result = animal === null ? processPass(state, true) : processSkillChoice(state, animal);

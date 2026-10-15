@@ -9,6 +9,7 @@ import {
 import type { GameEvent, GameSettings, GameState, PlayerColorId, SideId, Team, TeamState } from 'shared';
 import { dealOpeningSharedCards, initStacks } from './places';
 import type { RNG } from './places';
+import { rankByHpAndEnd } from './ranking';
 
 /**
  * 시작 체력 = 목표 점수 그 자체다 — 목표 점수만큼 "더 벌거나 잃어야" 끝나는 게임이므로,
@@ -130,8 +131,9 @@ export function advanceTurn(state: GameState): GameEvent[] {
     }
   }
 
-  // 종료 판정 — 턴 상한 초과 시 체력 비교
+  // 종료 판정 — 턴 상한 초과 시 체력 비교. 개인전은 승패가 아니라 남은 사람들의 순위를 정한다.
   if (state.turn > MAX_TURN) {
+    if (state.mode === 'individual') return [...events, ...rankByHpAndEnd(state)];
     return [...events, ...endGame(state, determineWinnerByHp(state), 'turnLimit')];
   }
 
