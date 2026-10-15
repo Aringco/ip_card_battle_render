@@ -603,7 +603,7 @@ function playChapter3() {
   const festivalCounts: number[] = [];
   const reserved: number[] = [];
   const collected: Animal[][] = [];
-  const activeTeams: Team[] = [];
+  const activeTeams: string[] = []; // 편 id는 SideId(string) — 팀전이라 값은 A·B뿐이다
 
   CHAPTER_3.forEach((step, i) => {
     if (step.kind !== 'draw') {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Animal, Place, Team } from 'shared';
+import type { Animal, Place, SideId } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAnimationQueue } from '@/hooks/useAnimationQueue';
 import { GameLayout } from '@/components/game/GameLayout';
@@ -22,7 +22,7 @@ export default function GamePage() {
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
   } = useWebSocket();
-  const [myTeam, setMyTeam] = useState<Team | null>(null);
+  const [myTeam, setMyTeam] = useState<SideId | null>(null);
 
   const animState = useAnimationQueue(lastEvents, gameState);
 
@@ -35,7 +35,7 @@ export default function GamePage() {
   // 대기실에서 앉았던 자리. 관전석('spectator')이면 어느 팀도 내 팀이 아니므로 myTeam은
   // null로 남고, 그 null이 곧 게임 화면 전체의 "관전 시점" 스위치가 된다(GameLayout 참고).
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORAGE_TEAM) as Team | null;
+    const saved = sessionStorage.getItem(STORAGE_TEAM) as SideId | null;
     if (saved === 'A' || saved === 'B') setMyTeam(saved);
   }, []);
 

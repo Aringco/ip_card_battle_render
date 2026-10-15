@@ -1,6 +1,6 @@
 'use client';
 
-import type { Team } from 'shared';
+import type { SideId } from 'shared';
 import { TurnTimer } from './TurnTimer';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 
@@ -30,11 +30,11 @@ export function ActionPrompt({
   startingTeamReason,
   teamNames,
 }: {
-  myTeam: Team | null;
+  myTeam: SideId | null;
   playerId: string | null;
-  displayedActiveTeam: Team;
+  displayedActiveTeam: SideId;
   displayedActivePlayerIndex: number;
-  memberIds: Record<Team, string[]>;
+  memberIds: Record<SideId, string[]>;
   isMyDrawTurn: boolean; // 정산이 끝난 상태에서 내가 장소를 고를 차례인지
   interactive: boolean; // 정산이 끝난 상태에서 내가 행동을 고를 차례인지
   noEligible: boolean;
@@ -44,9 +44,9 @@ export function ActionPrompt({
   // 화면의 카운트다운도 같이 멈춰야 "숫자는 흐르는데 시간은 안 가는" 그림이 되지 않는다.
   paused: boolean;
   turn: number; // 1이면 아직 첫 라운드 — 선 플레이어 안내를 함께 보여준다
-  startingTeam: Team;
+  startingTeam: SideId;
   startingTeamReason: 'setting' | 'random';
-  teamNames: Record<Team, string>;
+  teamNames: Record<SideId, string>;
 }) {
   const spectating = myTeam === null;
   const isMyTeamTurn = myTeam !== null && displayedActiveTeam === myTeam;

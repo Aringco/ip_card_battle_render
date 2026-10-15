@@ -1,4 +1,4 @@
-import type { Animal, GameEvent, GameSettings, GameState, Place, Seat, Team } from './types';
+import type { Animal, GameEvent, GameSettings, GameState, Place, Seat, SideId, Team } from './types';
 
 // ─── 클라이언트 → 서버 ───────────────────────────────────────────────────────
 
@@ -205,14 +205,15 @@ export interface ClientGameState extends GameState {
   // (연출 유예 시간은 여기에 포함하지 않는다 — 아래 turnRemainingMs가 이 값을 잠시
   //  넘을 수 있고, 그 구간에는 게이지가 가득 찬 상태로 표시된다.)
   turnTotalMs: number;
-  teamNames: Record<Team, string>; // 방장이 정했거나 무작위로 배정된 팀 이름("A팀"/"B팀" 대신 표시)
-  memberIds: Record<Team, string[]>; // teams[team].members와 같은 순서의 playerId — 클라이언트가 "지금 활성 플레이어가 바로 나인지"를 판별하는 데 쓴다
+  // 방장이 정했거나 무작위로 배정된 팀 이름("A팀"/"B팀" 대신 표시). 개인전에서는 편마다(p1…) 그 사람의 닉네임이다.
+  teamNames: Record<SideId, string>;
+  memberIds: Record<SideId, string[]>; // teams[team].members와 같은 순서의 playerId — 클라이언트가 "지금 활성 플레이어가 바로 나인지"를 판별하는 데 쓴다
   // 게임이 멈춰 있는지. 멈춘 동안 서버는 턴 타이머·컴퓨터 타이머를 세워두지 않고
   // (남은 시간을 그대로 보관했다가 재개할 때 이어 붙인다) 모든 조작을 거부한다.
   paused: boolean;
   // 멈춘 사람(팀) — 이 팀만 다시 시작할 수 있다. 상대가 곧바로 풀어버릴 수 있으면
   // 일시정지가 아무 의미도 없기 때문이다. 멈춰 있지 않으면 null.
-  pausedBy: { team: Team; nickname: string } | null;
+  pausedBy: { team: SideId; nickname: string } | null;
   // 상대의 대답을 아직 기다리는 중인가. 묻는 20초 동안에도 판은 멈춰 있으므로
   // (`paused`만으로는 "확정된 일시정지"와 구분되지 않는다) 그 둘을 이 값이 가른다 —
   // 요청한 쪽 버튼이 아직 누를 수 없는 "응답을 기다리는 중"으로 남고, 서버도 이 동안에는
@@ -221,7 +222,7 @@ export interface ClientGameState extends GameState {
   pausePendingAnswer: boolean;
   // 팀마다 지금까지 쓴 일시정지 횟수(settings.pauseMaxCount까지). 요청하는 순간 올라간다 —
   // 묻는 동안에도 판이 멈추므로 거절당해도 되돌리지 않는다(server/room.ts 참고).
-  pauseUsed: Record<Team, number>;
+  pauseUsed: Record<SideId, number>;
   // 이 방에는 횟수·시간 제한이 없다(혼자 놀기) — 화면이 "3회 남음"이나 자동 재개 안내를
   // 그리지 않게 하는 스위치다. 서버가 같은 값으로 검사하므로 둘이 어긋날 일이 없다.
   pauseUnlimited: boolean;

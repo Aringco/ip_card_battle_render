@@ -1,4 +1,4 @@
-import type { ClientGameState, Team } from 'shared';
+import type { ClientGameState, SideId } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { withDisplayedExp } from '@/lib/skills';
 import { PlayerList } from './PlayerList';
@@ -12,8 +12,8 @@ export function TeamPanel({
   gameState,
   animState,
 }: {
-  team: Team;
-  myTeam: Team | null;
+  team: SideId;
+  myTeam: SideId | null;
   gameState: ClientGameState;
   animState: AnimationState;
 }) {

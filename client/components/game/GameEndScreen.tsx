@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { Animal, ClientGameState, Team } from 'shared';
+import type { Animal, ClientGameState, SideId } from 'shared';
 import { ANIMALS, LOSE_HP } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { DEMO_CONTINUE_KEYS } from '@/lib/demoKeys';
@@ -25,7 +25,7 @@ const FLAVOR_TEXT: Record<Animal, string> = {
 };
 
 /** 승리팀이 체력을 가장 많이 벌어들인 동물(행동)을 판정한다. */
-function pickFlavorAnimal(gameState: ClientGameState, winner: Team | 'draw' | null): Animal | null {
+function pickFlavorAnimal(gameState: ClientGameState, winner: SideId | 'draw' | null): Animal | null {
   if (winner !== 'A' && winner !== 'B') return null;
 
   let best: Animal | null = null;
@@ -87,7 +87,7 @@ export function GameEndScreen({
   onReplay,
 }: {
   gameState: ClientGameState;
-  myTeam: Team | null;
+  myTeam: SideId | null;
   onBack: () => void;
   /**
    * 시연 4장 — 이 결말을 다 봤으니 **장면 고르기 화면으로 되돌아간다.**

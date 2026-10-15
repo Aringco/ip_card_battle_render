@@ -177,7 +177,7 @@ export class DemoDirector {
     const step = this.current();
     if (!step || step.kind !== 'skill' || animal !== step.animal) return [];
 
-    const team: Team = state.activeTeam;
+    const team = state.activeTeam;
     const event = applySkillChoice(state, team, animal);
     return this.afterSkill(state, event);
   }

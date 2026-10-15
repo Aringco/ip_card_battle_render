@@ -1,12 +1,12 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import type { Team } from 'shared';
+import type { SideId } from 'shared';
 
 const NOTE_COUNT = 5;
 
 // 디자인어 스킬 발동 — 발동한 팀 쪽 모서리에 큰 인어가 떠오르며 음표가 흩날린다.
-export function MermaidPopup({ team }: { team: Team }) {
+export function MermaidPopup({ team }: { team: SideId }) {
   const side = team === 'A' ? 'left' : 'right';
 
   return (

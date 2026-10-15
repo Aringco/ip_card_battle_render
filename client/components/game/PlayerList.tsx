@@ -1,4 +1,4 @@
-import type { Team } from 'shared';
+import type { SideId } from 'shared';
 
 export function PlayerList({
   team,
@@ -6,7 +6,7 @@ export function PlayerList({
   activePlayerIndex,
   isActiveTeam,
 }: {
-  team: Team;
+  team: SideId;
   members: string[];
   activePlayerIndex: number;
   isActiveTeam: boolean;

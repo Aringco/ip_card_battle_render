@@ -35,7 +35,8 @@ export interface SpectatorTeamPalette {
 // soft/softEdge는 실제 플레이어 화면의 팀 배경(bg-lime-100 / bg-rose-100)과 같은 100~200
 // 단계로 맞춰 둔다 — 50 단계(#f0fdfa 등)는 흰색과 구분이 안 돼 "색이 안 칠해진 것 같다"는
 // 인상을 준다.
-export const SPECTATOR_TEAM_PALETTE: Record<Team, SpectatorTeamPalette> = {
+// 키는 팀전의 A·B뿐이다(개인전은 사람마다 고른 색을 쓴다 — INDIVIDUAL_MODE_ROADMAP 주의 8).
+export const SPECTATOR_TEAM_PALETTE: Record<string, SpectatorTeamPalette> = {
   // 팀 1(왼쪽) — 민트
   A: {
     label: '민트',
@@ -64,8 +65,9 @@ export const SPECTATOR_TEAM_PALETTE: Record<Team, SpectatorTeamPalette> = {
  * 팔레트를 CSS 변수로 풀어 놓는다 — 이 스타일을 붙인 요소와 그 자손은
  * globals.css의 관전자 전용 클래스(.spectator-*, .hp-orb-spectator 등)를 그대로 쓸 수 있다.
  */
-export function spectatorTeamVars(team: Team): CSSProperties {
-  const p = SPECTATOR_TEAM_PALETTE[team];
+export function spectatorTeamVars(team: string): CSSProperties {
+  // 관전 색은 팀전(A·B)에만 있다 — 개인전은 사람마다 고른 색(PLAYER_COLORS)을 쓴다.
+  const p = SPECTATOR_TEAM_PALETTE[team] ?? SPECTATOR_TEAM_PALETTE.A;
   return {
     '--spec-base': p.base,
     '--spec-strong': p.strong,

@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws';
-import type { Animal, Place, Seat, Team } from 'shared';
+import type { Animal, Place, Seat, SideId, Team } from 'shared';
 import type { ServerMessage } from 'shared';
 import { processPlayerAction, processSkillChoice, processPass, processTimeout, initGame } from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
@@ -670,9 +670,10 @@ export class Room {
   // ─── 게임 진행 ───────────────────────────────────────────────────────────
 
   /** 지금 결정을 내려야 하는 팀의 "대표 플레이어"(현재 activePlayerIndex)의 id. */
-  private expectedPlayerId(team: Team): string | undefined {
+  private expectedPlayerId(team: SideId): string | undefined {
     if (!this.state) return undefined;
-    return this.teamPlayerIds[team][this.state.activePlayerIndex];
+    // 팀전의 편 id는 자리 이름('A'|'B')과 같다. 개인전의 편 → 사람 대응은 T3-2에서 따로 둔다.
+    return (this.teamPlayerIds as Record<string, string[]>)[team]?.[this.state.activePlayerIndex];
   }
 
   /**

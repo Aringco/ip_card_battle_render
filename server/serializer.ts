@@ -1,4 +1,4 @@
-import type { GameEvent, GameState, Team } from 'shared';
+import type { GameEvent, GameState, SideId, TeamState } from 'shared';
 import type { ClientGameEvent, ClientGameState } from 'shared';
 
 /**
@@ -14,16 +14,16 @@ export function serializeState(
   state: GameState,
   turnDeadline: number,
   turnTotalMs: number,
-  teamNames: Record<Team, string>,
-  memberIds: Record<Team, string[]>,
+  teamNames: Record<SideId, string>,
+  memberIds: Record<SideId, string[]>,
   // 일시정지는 엔진이 아니라 방(Room)이 들고 있는 상태라 state에 없다 — 그래서 여기로
   // 따로 받아 실어 보낸다. 재접속 스냅샷도 이 경로를 쓰므로 멈춘 방에 다시 들어와도
   // 화면이 멈춘 채로 복원된다.
   pause: {
     paused: boolean;
-    pausedBy: { team: Team; nickname: string } | null;
+    pausedBy: { team: SideId; nickname: string } | null;
     pendingAnswer: boolean;
-    used: Record<Team, number>;
+    used: Record<SideId, number>;
     unlimited: boolean;
     remainingMs: number;
   } = { paused: false, pausedBy: null, pendingAnswer: false, used: { A: 0, B: 0 }, unlimited: false, remainingMs: 0 },
@@ -46,7 +46,7 @@ export function serializeState(
     pauseUnlimited: pause.unlimited,
     pauseRemainingMs: pause.remainingMs,
     teamNames,
-    memberIds: { A: [...memberIds.A], B: [...memberIds.B] },
+    memberIds: copyBySide(state, side => [...(memberIds[side] ?? [])]),
     stacks: {
       sheep: [...state.stacks.sheep],
       rabbit: [...state.stacks.rabbit],
@@ -56,43 +56,47 @@ export function serializeState(
     lastPlace: state.lastPlace,
     festival: state.festival,
     pendingChoice: state.pendingChoice,
-    teams: {
-      A: {
-        members: state.teams.A.members,
-        exp: { ...state.teams.A.exp },
-        hp: state.teams.A.hp,
-        pendingMultiplier: state.teams.A.pendingMultiplier,
-        pendingExtraDraws: state.teams.A.pendingExtraDraws,
-        pendingFestivalDraws: state.teams.A.pendingFestivalDraws,
-        playerIndex: state.teams.A.playerIndex,
-        skillStats: {
-          sheep: { ...state.teams.A.skillStats.sheep },
-          rabbit: { ...state.teams.A.skillStats.rabbit },
-          mermaid: { ...state.teams.A.skillStats.mermaid },
-          tiger: { ...state.teams.A.skillStats.tiger },
-        },
-      },
-      B: {
-        members: state.teams.B.members,
-        exp: { ...state.teams.B.exp },
-        hp: state.teams.B.hp,
-        pendingMultiplier: state.teams.B.pendingMultiplier,
-        pendingExtraDraws: state.teams.B.pendingExtraDraws,
-        pendingFestivalDraws: state.teams.B.pendingFestivalDraws,
-        playerIndex: state.teams.B.playerIndex,
-        skillStats: {
-          sheep: { ...state.teams.B.skillStats.sheep },
-          rabbit: { ...state.teams.B.skillStats.rabbit },
-          mermaid: { ...state.teams.B.skillStats.mermaid },
-          tiger: { ...state.teams.B.skillStats.tiger },
-        },
-      },
-    },
+    // ⚠️ A·B 키를 손으로 하나씩 적지 말 것 — 개인전은 편이 p1…p8까지 있어서, 손으로 복사하면
+    //    에러 없이 나머지 편이 통째로 빠진 채 화면에 간다. 항상 state.teams의 키를 돈다.
+    teams: copyBySide(state, side => serializeTeam(state.teams[side])),
     winner: state.winner,
     forfeitedBy: state.forfeitedBy ?? null,
     settings: state.settings,
     startingTeam: state.startingTeam,
     startingTeamReason: state.startingTeamReason,
+    mode: state.mode,
+    turnOrder: [...state.turnOrder],
+    skillsPerTurn: state.skillsPerTurn,
+    skillsUsedThisTurn: state.skillsUsedThisTurn,
+    ranks: { ...state.ranks },
+  };
+}
+
+/** state.teams의 모든 편(팀전 A·B / 개인전 p1…)에 대해 값을 만들어 같은 키로 모은다. */
+function copyBySide<T>(state: GameState, make: (side: SideId) => T): Record<SideId, T> {
+  const out: Record<SideId, T> = {};
+  for (const side of Object.keys(state.teams)) out[side] = make(side);
+  return out;
+}
+
+function serializeTeam(t: TeamState): TeamState {
+  return {
+    members: t.members,
+    exp: { ...t.exp },
+    hp: t.hp,
+    pendingMultiplier: t.pendingMultiplier,
+    pendingExtraDraws: t.pendingExtraDraws,
+    pendingFestivalDraws: t.pendingFestivalDraws,
+    playerIndex: t.playerIndex,
+    skillStats: {
+      sheep: { ...t.skillStats.sheep },
+      rabbit: { ...t.skillStats.rabbit },
+      mermaid: { ...t.skillStats.mermaid },
+      tiger: { ...t.skillStats.tiger },
+    },
+    // 개인전만 채워지는 필드 — 팀전 직렬화의 모양이 예전과 똑같도록 있을 때만 싣는다.
+    ...(t.color !== undefined ? { color: t.color } : {}),
+    ...(t.finish !== undefined ? { finish: { ...t.finish } } : {}),
   };
 }
 

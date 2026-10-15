@@ -1,5 +1,22 @@
+import type { PlayerColorId } from './constants';
+
 export type Animal = 'sheep' | 'rabbit' | 'mermaid' | 'tiger';
 export type Team = 'A' | 'B';
+
+// 게임에서 "한 편"을 가리키는 id. 팀전은 'A'|'B' 둘뿐이고, 개인전은 'p1' … 'p8' —
+// 한 사람이 한 편이다(INDIVIDUAL_MODE_ROADMAP.md §3). 엔진 상태(GameState)는 모두 이 타입으로
+// 편을 가리킨다. `Team`은 **팀전 전용 코드**(대기실 팀 이름·시연·CPU)가 계속 쓴다.
+//
+// ⚠️ 그래서 `team === 'A' ? 'B' : 'A'` 같은 "반대편 뒤집기"는 string에서도 아무 문제 없이
+//    컴파일되고, 개인전에서는 조용히 없는 편 'B'를 가리킨다. 상대는 반드시 shared/sides.ts의
+//    opponentsOf로 구한다(server/__tests__/noTeamFlip.test.ts가 그물이다).
+export type SideId = string;
+
+/** 방의 종류 — 팀전(두 팀, 팀마다 여러 명) 또는 개인전(한 사람이 한 편, 순위전). */
+export type GameMode = 'team' | 'individual';
+
+/** 개인전에서 순위가 정해진 이유. 'forfeit'은 항복·나가기, 'last'는 끝까지 남은 한 명. */
+export type FinishReason = 'win' | 'out' | 'forfeit' | 'turnLimit' | 'last';
 
 // ─── 자리(Seat) — 두 팀 + 관전석 ──────────────────────────────────────────────
 // 로비에서 고를 수 있는 자리는 "팀 1 / 팀 2 / 관전자" 셋이다. 관전자는 게임 진행에
@@ -35,7 +52,7 @@ export interface StackedCard {
   id: number;
   animal: Animal;
   num: CardNum;
-  collectedBy: Team | null;
+  collectedBy: SideId | null;
 }
 
 // 동물별로 그 스킬을 몇 번, 총 몇 레벨어치 사용했는지 기록(결과 화면 통계용).
@@ -56,6 +73,10 @@ export interface TeamState {
   pendingFestivalDraws: number;    // 도토리 축제로 예약된, 다음 내 턴에 추가로 뽑을 카드 수(실용신양과 동일한 방식)
   playerIndex: number;             // 팀 내 현재 차례 플레이어 인덱스 (N:N 로테이션)
   skillStats: Record<Animal, SkillUsageStat>; // 결과 화면에 표시할 스킬 사용 통계
+  color?: PlayerColorId;           // 개인전만 — 이 사람이 고른 색
+  // 개인전만 — 순위가 정해지면 채운다. 채워진 편은 판에서 빠진다(차례가 오지 않고, 특허랑이의
+  // 대상이 될 수 없고, 체력이 더 이상 변하지 않는다).
+  finish?: { rank: number; reason: FinishReason };
 }
 
 // 방장이 방 생성 시 정하는 게임 규칙 — 기본값은 shared/constants.ts의 DEFAULT_* 참조.
@@ -77,7 +98,7 @@ export interface GameSettings {
 export interface GameState {
   phase: GamePhase;
   turn: number;
-  activeTeam: Team;
+  activeTeam: SideId;
   activePlayerIndex: number;
   stacks: Record<Animal, StackedCard[]>;      // 동물별 중앙 카드 스택 (수집된 카드도 기록으로 남음)
   // 직전에(어느 팀이든) 실제로 클릭해서 뽑은 장소 — 같은 장소만 계속 노리는 게 너무
@@ -86,16 +107,27 @@ export interface GameState {
   // 알아서 일어나는 것이라 여기에 영향을 주지 않는다 — 오직 "직접 클릭한" 장소만 기억한다.
   lastPlace: Place | null;
   festival: boolean;                          // settings.festivalTurn 이후 여부 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
-  pendingChoice: Team | null;                 // 턴을 마친 팀이 5가지 선택지(행동 4종 + 패스) 중 하나를 고르길 기다리는 중
-  teams: Record<Team, TeamState>;
-  winner: Team | 'draw' | null;
+  pendingChoice: SideId | null;               // 턴을 마친 팀이 5가지 선택지(행동 4종 + 패스) 중 하나를 고르길 기다리는 중
+  teams: Record<SideId, TeamState>;
+  winner: SideId | 'draw' | null;
   settings: GameSettings;                     // 방장이 정한(또는 기본값) 게임 규칙 — 방 생성 시 확정되어 게임 중 불변
-  startingTeam: Team;                         // 이 게임에서 실제로 먼저 시작한 팀 — settings.firstTeam이 'random'이어도 이미 추첨이 끝난 확정값
+  startingTeam: SideId;                       // 이 게임에서 실제로 먼저 시작한 팀 — settings.firstTeam이 'random'이어도 이미 추첨이 끝난 확정값
   startingTeamReason: 'setting' | 'random';   // startingTeam이 방장 설정으로 정해졌는지 무작위 추첨으로 정해졌는지
   // 항복하기/나가기로 게임을 포기한 팀 — 그렇게 끝난 게임에서만 채워진다(엔진은 이 값을
   // 절대 건드리지 않는다). 결과 화면이 "제한 턴 종료 — 체력 비교" 대신 "기권"이라고 말할 수
   // 있게 하는 단 하나의 단서라, winner만으로는 대신할 수 없다.
-  forfeitedBy?: Team | null;
+  forfeitedBy?: SideId | null;
+
+  // ─ 개인전 일반화 필드 — 팀전에서는 모두 고정값이다(mode 'team', turnOrder [선, 후], 1, 0, {}) ─
+  mode: GameMode;
+  // 차례 순서. 팀전은 [startingTeam, 반대편], 개인전은 시작할 때 한 번 섞은 편 목록 —
+  // 판 도중에는 바뀌지 않는다. 순위가 정해진 편도 목록에 남고 차례만 건너뛴다.
+  turnOrder: SideId[];
+  // 한 차례에 쓸 수 있는 기술 수. 개인전은 시작 인원이 5명 이상이면 2, 아니면 1이고 판 도중
+  // 탈락으로 인원이 줄어도 바뀌지 않는다. 팀전은 언제나 1.
+  skillsPerTurn: 1 | 2;
+  skillsUsedThisTurn: number; // 이번 차례에 지금까지 쓴 기술 수 — 차례가 넘어갈 때 0으로
+  ranks: Record<SideId, number>; // 개인전 — 정해진 순위만. 팀전은 {}
 }
 
 // 게임 이벤트 (클라이언트 연출 및 시뮬레이션 로그용)
@@ -104,15 +136,15 @@ export type GameEvent =
   | {
       type: 'collect';
       animal: Animal;
-      team: Team;
+      team: SideId;
       exp: number;      // 카드 숫자 합 — 이 페어를 정산해 실제로 더해진 경험치
       cardIds: number[];
     }
-  | { type: 'bonusDraws'; team: Team; count: number } // 실용신양 스킬로 예약해둔 추가 뽑기를 이번 턴에 소모
-  | { type: 'festivalDraws'; team: Team; count: number } // 도토리 축제로 예약해둔 추가 뽑기를 이번 턴에 소모(실용신양과 동일한 방식)
+  | { type: 'bonusDraws'; team: SideId; count: number } // 실용신양 스킬로 예약해둔 추가 뽑기를 이번 턴에 소모
+  | { type: 'festivalDraws'; team: SideId; count: number } // 도토리 축제로 예약해둔 추가 뽑기를 이번 턴에 소모(실용신양과 동일한 방식)
   | {
       type: 'skillApplied';
-      team: Team;
+      team: SideId;
       animal: Animal;
       level: number;            // 발동에 사용된(초기화 직전) 레벨. 0이면 아무 일도 없었다는 뜻
       expSpent: number;         // level × threshold — 소모된 경험치
@@ -121,12 +153,17 @@ export type GameEvent =
       myHpDelta: number;        // 내 체력 증감 — 항상 0 이상
       oppHpDelta: number;       // 상대 체력 증감 — 항상 0 이하(음수 그대로, 양수로 뒤집지 않는다)
       extraDrawsQueued: number; // 양을 골랐을 때, 다음 내 턴에 예약된 추가 뽑기 수(배율 반영 후 최종값)
-      hpAfter: Record<Team, number>; // 적용 직후 양 팀 체력
+      hpAfter: Record<SideId, number>; // 적용 직후 모든 편의 체력
+      // 특허랑이의 대상(개인전). 팀전은 비워 둔다 — 화면은 "상대"를 스스로 계산하지 않고 이 값을 읽는다.
+      target?: SideId;
     }
-  | { type: 'skillPassed'; team: Team; auto: boolean } // "아무것도 하지 않음"을 선택(auto=true면 고를 수 있는 행동이 없어 화면에 알리지 않고 자동 처리)
+  | { type: 'skillPassed'; team: SideId; auto: boolean } // "아무것도 하지 않음"을 선택(auto=true면 고를 수 있는 행동이 없어 화면에 알리지 않고 자동 처리)
   | { type: 'festival' } // FESTIVAL_TURN 도달 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
   // reason: 'forfeit'은 엔진이 만들지 않는다 — 항복·나가기는 방(Room)에서 일어나는 일이라
   // Room.forfeit이 이 이벤트를 직접 만들어 보낸다(엔진은 두 팀이 끝까지 두는 경우만 안다).
-  | { type: 'gameEnd'; winner: Team | 'draw'; reason: 'knockout' | 'turnLimit' | 'forfeit' }
+  // 개인전의 reason 'ranked'는 "순위가 정해지지 않은 사람이 1명 이하가 됐다"는 뜻이다.
+  | { type: 'gameEnd'; winner: SideId | 'draw'; reason: 'knockout' | 'turnLimit' | 'forfeit' | 'ranked' }
+  // 개인전 — 한 사람의 순위가 정해졌다(승리선 도달·체력 0·항복·마지막 한 명).
+  | { type: 'ranked'; team: SideId; rank: number; reason: FinishReason }
   | { type: 'timeout'; place: Place }
   | { type: 'timeoutChoice'; animal: Animal | null }; // 행동 선택 제한시간 초과 — null이면 고를 행동이 없어 자동 패스

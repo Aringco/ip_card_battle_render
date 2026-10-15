@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Team } from 'shared';
+import type { SideId } from 'shared';
 import { BoardFrame } from '@/components/ui/BoardFrame';
 import { PlankButton } from '@/components/ui/PlankButton';
 
@@ -101,7 +101,7 @@ export function PauseMenu({
 }: {
   paused: boolean;
   /** 멈춘 팀 — 이 팀만 다시 시작할 수 있다(서버가 같은 규칙으로 막는다). */
-  pausedBy: { team: Team; nickname: string } | null;
+  pausedBy: { team: SideId; nickname: string } | null;
   /** 상대의 대답을 기다리는 중(서버가 알려준다) — 그동안에도 판은 멈춰 있다. */
   pausePending: boolean;
   /** 우리 팀에 남은 일시정지 횟수. 0이면 버튼이 잠긴다(서버도 같은 규칙으로 막는다). */
@@ -111,8 +111,8 @@ export function PauseMenu({
   /** 자동으로 다시 시작되는 시각(내 시계 기준) — 멈춰 있지 않으면 null. */
   pauseUntil: number | null;
   /** null이면 관전자 — 승패를 가를 수 없으니 [나가기]만 쓸 수 있다. */
-  myTeam: Team | null;
-  pauseRequest: { fromTeam: Team; fromNickname: string; timeoutMs: number; receivedAt: number } | null;
+  myTeam: SideId | null;
+  pauseRequest: { fromTeam: SideId; fromNickname: string; timeoutMs: number; receivedAt: number } | null;
   pauseWaitingUntil: number | null;
   pauseNotice: string | null;
   onClearNotice: () => void;

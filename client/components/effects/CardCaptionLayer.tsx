@@ -1,7 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useState } from 'react';
-import type { Team } from 'shared';
+import type { SideId } from 'shared';
 import type { CaptionItem } from '@/hooks/useAnimationQueue';
 import { spectatorTeamVars } from '@/lib/teamColors';
 
@@ -13,7 +13,7 @@ export function CardCaptionLayer({
   myTeam,
 }: {
   captions: CaptionItem[];
-  myTeam: Team | null;
+  myTeam: SideId | null;
 }) {
   const effectCaptions = captions.filter(c => c.tier === 'effect');
   const anchoredCaptions = captions.filter(c => c.tier !== 'effect');

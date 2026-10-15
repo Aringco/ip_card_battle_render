@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Animal, ClientGameState, Team } from 'shared';
+import type { Animal, ClientGameState, SideId } from 'shared';
 import { ANIMALS, THRESHOLDS } from 'shared';
 import { SKILL_TITLE, describeSkillShort } from '@/lib/skillInfo';
 
@@ -20,7 +20,7 @@ function AnimalTable({
   isFlashing: boolean;
   isPopping: boolean;
   gameState: ClientGameState;
-  team: Team;
+  team: SideId;
 }) {
   const isTeamB = team === 'B';
   const threshold = THRESHOLDS[animal];
@@ -158,7 +158,7 @@ export function ScorePanel({
   scoreFlash,
   displayedExp,
 }: {
-  team: Team;
+  team: SideId;
   gameState: ClientGameState;
   scoreFlash: ReadonlyMap<string, number>;
   // 서버 진실(gameState.teams[team].exp)은 페어가 맞는 즉시 반영되지만, 화면 숫자는
@@ -175,7 +175,7 @@ export function ScorePanel({
   useEffect(() => {
     const newPops = new Set<Animal>();
     scoreFlash.forEach((id, key) => {
-      const [t, animal] = key.split(':') as [Team, Animal];
+      const [t, animal] = key.split(':') as [SideId, Animal];
       if (t === team && id !== (prevFlashRef.current.get(key) ?? -1)) {
         newPops.add(animal);
       }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Place, Team } from 'shared';
+import type { Place, SideId } from 'shared';
 import { GuideFinger } from './GuideFinger';
 
 const PRESS_DUR = 180;
@@ -24,7 +24,7 @@ export function PlaceTile({
   showGuide?: boolean; // 내가 장소를 고를 수 있는 턴마다 "여길 눌러보세요" 손가락 가이드를 보여준다(설정에서 끌 수 있음)
   // 관전 시점일 때만 채워진다 — 지금 장소를 고르는 팀. 손가락이 그 팀 색의 반투명
   // 손가락으로 바뀌어, 누를 수 있다는 권유가 아니라 진행 상황 중계임을 드러낸다.
-  guideTeam?: Team | null;
+  guideTeam?: SideId | null;
 }) {
   const [pressed, setPressed] = useState(false);
   const blocked = disabled || forbidden;

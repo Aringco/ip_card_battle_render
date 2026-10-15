@@ -1,6 +1,6 @@
 'use client';
 
-import type { Animal, ClientGameState, Team } from 'shared';
+import type { Animal, ClientGameState, SideId } from 'shared';
 import { previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
@@ -30,11 +30,11 @@ export function SkillChoiceBar({
   onPass,
 }: {
   gameState: ClientGameState;
-  team: Team;
+  team: SideId;
   interactive: boolean; // 지금이 실제로 이 팀(=나)이 행동을 고를 차례인지
   // 관전 시점일 때만 채워진다 — 지금 행동을 고르고 있는 팀. 관전자는 누를 수 없으므로
   // 그 팀 색 손가락으로 "이 중에서 고르는 중"이라는 진행만 중계한다.
-  spectatorGuideTeam?: Team | null;
+  spectatorGuideTeam?: SideId | null;
   // 우리 팀이 행동을 고르는 단계인지(팀 안의 다른 사람 차례여도 참) — 이 띠 전체가
   // 은은하게 빛나 "이번엔 여기를 봐야 한다"고 알린다. 장소 선택 단계에는 대신 카드판이
   // 빛나고 이 값은 false다(GameLayout이 두 곳을 번갈아 켠다).

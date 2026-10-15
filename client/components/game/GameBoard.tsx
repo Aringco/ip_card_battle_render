@@ -1,6 +1,6 @@
 'use client';
 
-import type { Animal, ClientGameState, Place, StackedCard, Team } from 'shared';
+import type { Animal, ClientGameState, Place, StackedCard, SideId } from 'shared';
 import { PLACES } from 'shared';
 import { PlaceTile } from './PlaceTile';
 import { AnimalStackArea } from './AnimalStackArea';
@@ -51,7 +51,7 @@ export function GameBoard({
   turnGlow,
 }: {
   gameState: ClientGameState;
-  myTeam: Team | null;
+  myTeam: SideId | null;
   // 지금 이 자리에서 정확히 나 자신이 장소를 고를 수 있는지(GameLayout.isMyDrawTurn을
   // 그대로 받는다) — 팀만 맞는 게 아니라 N:N일 때 그 팀 안에서도 지금 차례인 그
   // 플레이어 본인이어야 한다. 정산 연출이 완전히 끝났는지도 이미 반영돼 있다: 서버는
@@ -69,13 +69,13 @@ export function GameBoard({
   shakingPile: ShakingPile | null;
   newCardId: number | null;
   stackCards: Record<Animal, StackedCard[]>;
-  displayedActiveTeam: Team;
+  displayedActiveTeam: SideId;
   festivalFlash: boolean;
   festivalBurst: boolean;
-  mermaidPopup: { team: Team } | null;
+  mermaidPopup: { team: SideId } | null;
   // 관전 시점일 때만 채워진다 — 지금 장소를 고르고 있는 팀. 관전자는 아무것도 누를 수
   // 없지만, 그 팀 색의 손가락으로 "지금 여기서 고르는 중"을 중계해준다.
-  spectatorGuideTeam: Team | null;
+  spectatorGuideTeam: SideId | null;
   // 지금 "눈길을 둘 곳"이 이 카드판인지(=장소 선택 단계). 행동 선택 단계로 넘어가면
   // 이 값이 false가 되고 강조가 화면 아래 행동 선택 띠로 옮겨간다(GameLayout이 정한다).
   turnGlow: boolean;

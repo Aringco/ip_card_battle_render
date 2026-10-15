@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { Team } from 'shared';
+import type { SideId } from 'shared';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 
 type Tier = 'mine' | 'ally' | 'enemy' | 'spectator';
@@ -24,7 +24,7 @@ let idCounter = 0;
  * 화면 배치가 "팀 1 = 왼쪽, 팀 2 = 오른쪽"으로 고정이라(GameLayout의 3열 그리드) 문구도
  * 그 위치를 그대로 부른다.
  */
-function spectatorPillStyle(team: Team): CSSProperties {
+function spectatorPillStyle(team: SideId): CSSProperties {
   const p = SPECTATOR_TEAM_PALETTE[team];
   return {
     fontSize: '2.6rem',
@@ -37,10 +37,10 @@ function spectatorPillStyle(team: Team): CSSProperties {
 }
 
 function computeAnnouncement(
-  myTeam: Team | null,
+  myTeam: SideId | null,
   playerId: string | null,
-  memberIds: Record<Team, string[]>,
-  activeTeam: Team,
+  memberIds: Record<SideId, string[]>,
+  activeTeam: SideId,
   activePlayerIndex: number,
 ): { text: string; tier: Tier; style?: CSSProperties } | null {
   // 관전자(myTeam === null)에게는 "내/우리팀"이 없다 — 대신 어느 쪽 팀 차례인지를
@@ -70,10 +70,10 @@ export function TurnAnnounceBanner({
   myTeam,
   playerId,
 }: {
-  activeTeam: Team;
+  activeTeam: SideId;
   activePlayerIndex: number;
-  memberIds: Record<Team, string[]>;
-  myTeam: Team | null;
+  memberIds: Record<SideId, string[]>;
+  myTeam: SideId | null;
   playerId: string | null;
 }) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);

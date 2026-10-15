@@ -36,7 +36,7 @@ const mermaidComboBot: SkillPicker = (state, team) => {
 interface GameResult {
   winner: 'A' | 'B' | 'draw';
   finalTurn: number;
-  reason: 'knockout' | 'turnLimit' | 'forfeit' | null;
+  reason: 'knockout' | 'turnLimit' | 'forfeit' | 'ranked' | null;
   hp: { A: number; B: number };
 }
 
@@ -46,7 +46,7 @@ function runGame(seed: number, pickA: SkillPicker, pickB: SkillPicker): GameResu
   const state = initGame(['botA'], ['botB'], rng);
   // 'forfeit'(항복·나가기)은 방에서만 일어나는 일이라 봇 대전에서는 나올 수 없지만,
   // 이벤트 타입이 그 값을 포함하므로 여기서도 같은 폭으로 받아 둔다.
-  let lastReason: 'knockout' | 'turnLimit' | 'forfeit' | null = null;
+  let lastReason: 'knockout' | 'turnLimit' | 'forfeit' | 'ranked' | null = null;
 
   let safetyCount = 0;
   while (state.phase === 'playing') {
@@ -60,7 +60,7 @@ function runGame(seed: number, pickA: SkillPicker, pickB: SkillPicker): GameResu
 
     // 뽑기+정산이 끝나면 행동 하나를 골라야 턴이 넘어간다.
     if (state.pendingChoice !== null) {
-      const team = state.pendingChoice;
+      const team = state.pendingChoice as Team; // 팀전 시뮬레이션이라 편은 A·B뿐이다
       const pick = team === 'A' ? pickA : pickB;
       const animal = pick(state, team, rng);
       const { events } = animal === null ? processPass(state) : processSkillChoice(state, animal);
@@ -70,7 +70,7 @@ function runGame(seed: number, pickA: SkillPicker, pickB: SkillPicker): GameResu
   }
 
   return {
-    winner: state.winner ?? 'draw',
+    winner: (state.winner ?? 'draw') as 'A' | 'B' | 'draw',
     finalTurn: state.turn,
     reason: lastReason,
     hp: { A: state.teams.A.hp, B: state.teams.B.hp },

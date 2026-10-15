@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Animal, ClientGameEvent, ClientGameState, Place, StackedCard, Team } from 'shared';
+import type { Animal, ClientGameEvent, ClientGameState, Place, StackedCard, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { playRandomSound, playRandomSoundSequence } from '@/lib/sounds';
 import { SLOT_SPIN_DUR, SLOT_TOTAL_DUR, WOOL_BALL_DUR, SHEEP_DRAW_STEP } from '@/lib/drawTiming';
 
-type DeltaKey = `${Team}:${Animal}`;
-const deltaKeyOf = (t: Team, a: Animal): DeltaKey => `${t}:${a}`;
+type DeltaKey = `${SideId}:${Animal}`;
+const deltaKeyOf = (t: SideId, a: Animal): DeltaKey => `${t}:${a}`;
 
 // 해설판/자막에 쓰는 행동 발동 문구 — 동물이 아니라 그 동물이 상징하는 권리에 맞게 고른다
 // ("토끼 지식재산의 힘!"처럼 아무 동물에나 같은 문구가 붙던 것을 동물별 전용 문구로 교체).
@@ -23,7 +23,7 @@ const ACTION_PHRASES: Record<Animal, string[]> = {
 export interface FloatingTextItem {
   id: number;
   text: string;
-  team: Team;
+  team: SideId;
   type: 'bonus' | 'penalty';
   animal?: Animal;
 }
@@ -41,30 +41,30 @@ export interface MainCombo {
 
 export interface SheepLoaded {
   id: number;
-  team: Team;
+  team: SideId;
   count: number; // 이번 액션에서 소모되는 예약된 추가 뽑기 수
 }
 
 export interface SheepProgress {
-  team: Team;
+  team: SideId;
   current: number; // 지금까지 소모한 예약 뽑기 수
   total: number;   // 이번에 소모해야 할 전체 예약 뽑기 수
 }
 
 export interface FestivalProgress {
-  team: Team;
+  team: SideId;
   current: number; // 지금까지 소모한 도토리 축제 예약 뽑기 수
   total: number;   // 이번에 소모해야 할 전체 도토리 축제 예약 뽑기 수
 }
 
 export interface RabbitFlight {
   id: number;
-  team: Team; // 이 팀 체력 쪽으로 토끼떼(RabbitFlightLayer가 고정 개수로 그린다)가 달려간다
+  team: SideId; // 이 팀 체력 쪽으로 토끼떼(RabbitFlightLayer가 고정 개수로 그린다)가 달려간다
 }
 
 export interface RabbitPressure {
-  sourceTeam: Team; // 토끼가 불어난 팀
-  targetTeam: Team; // 압박을 느껴야 할 상대 팀
+  sourceTeam: SideId; // 토끼가 불어난 팀
+  targetTeam: SideId; // 압박을 느껴야 할 상대 팀
 }
 
 export interface CaptionItem {
@@ -74,12 +74,12 @@ export interface CaptionItem {
   placeKey?: Place;
   stackAnimal?: Animal; // pair인데 앵커링할 카드를 못 찾았을 때의 대체 앵커(그 동물 스택 전체)
   anchorCardId?: number; // pair는 짝을 이룬 카드 중 가장 마지막(가장 오른쪽) 카드 바로 위에 앵커링
-  team?: Team; // effect 자막 색상(우리팀 초록 / 상대팀 빨강 / 중립 금색) 판정용
+  team?: SideId; // effect 자막 색상(우리팀 초록 / 상대팀 빨강 / 중립 금색) 판정용
 }
 
 export interface PlayerEmoticon {
   id: number;
-  team: Team;
+  team: SideId;
   playerIndex: number; // 팀 내 이 플레이어의 인덱스 (프로필 목록 앵커용)
   file: string;         // /emoticon/{file}.png
   // 화면상의 자리(몇 칸 아래인지)는 여기 담지 않는다 — 같은 앵커에 뜬 것들이 큐처럼
@@ -101,13 +101,13 @@ export interface DrawSlotItem {
 
 export interface WoolBallItem {
   id: number;
-  team: Team;
+  team: SideId;
   place: Place;
 }
 
 export interface AcornBallItem {
   id: number;
-  team: Team;
+  team: SideId;
   place: Place; // 도토리 축제 랜덤 뽑기 — 실용신양(WoolBallItem)과 동일하게 그 팀 프로필에서 장소로 날아간다
 }
 
@@ -154,13 +154,13 @@ export interface AnimationState {
   festivalProgress: FestivalProgress | null; // 도토리 축제 예약 뽑기가 지금 몇 번째까지 소모됐는지
   rabbitFlights: RabbitFlight[];
   rabbitPressure: RabbitPressure | null;
-  tigerSlash: { onTeam: Team } | null;
-  tigerRecoil: { attackerTeam: Team } | null;
+  tigerSlash: { onTeam: SideId } | null;
+  tigerRecoil: { attackerTeam: SideId } | null;
   tigerImpact: boolean;
-  mermaidPopup: { team: Team } | null;
+  mermaidPopup: { team: SideId } | null;
   scoreFlash: ReadonlyMap<string, number>; // "team:animal" → flash id (for CSS re-trigger)
-  displayedExp: Record<Team, Record<Animal, number>>; // 팀 패널에 실제로 보여주는 경험치 — 페어 카드가 팀으로 날아가 도착한 뒤에야 반영된다
-  hpPulse: ReadonlyMap<Team, HpPulse>; // 체력 오브가 지금 상승/감소 연출 중인지
+  displayedExp: Record<SideId, Record<Animal, number>>; // 팀 패널에 실제로 보여주는 경험치 — 페어 카드가 팀으로 날아가 도착한 뒤에야 반영된다
+  hpPulse: ReadonlyMap<SideId, HpPulse>; // 체력 오브가 지금 상승/감소 연출 중인지
   festivalFlash: boolean; // 축제 진입 순간 보드 전체 섬광
   festivalBurst: boolean; // 축제 진입 순간 보드 여기저기 도토리 폭죽(15발)
   festivalStartInfo: FestivalStartInfo | null; // 축제 진입 순간 "이제부터 K턴마다 N회!" 규칙 안내 배너
@@ -175,14 +175,14 @@ export interface AnimationState {
   shakingPile: ShakingPile | null; // 정산 직전 "확인" 흔들림이 재생 중인 동물 스택
   newCardId: number | null; // 방금 스택에 추가된 카드 (팝인 강조용)
   stackCards: Record<Animal, StackedCard[]>; // 화면에 실제로 그려야 하는 카드 목록(연출 타이밍 반영, id 오름차순)
-  displayedActiveTeam: Team; // 정산 연출이 끝나야 실제 activeTeam으로 갱신되는 "화면상" 활성 팀
+  displayedActiveTeam: SideId; // 정산 연출이 끝나야 실제 activeTeam으로 갱신되는 "화면상" 활성 팀
   displayedActivePlayerIndex: number;
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
-  decisiveHit: { winner: Team } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
+  decisiveHit: { winner: SideId } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
 }
 
 const EMPTY_SCORE_MAP = new Map<string, number>() as ReadonlyMap<string, number>;
-const EMPTY_HP_PULSE_MAP = new Map<Team, HpPulse>() as ReadonlyMap<Team, HpPulse>;
+const EMPTY_HP_PULSE_MAP = new Map<SideId, HpPulse>() as ReadonlyMap<SideId, HpPulse>;
 const EMPTY_ID_SET = new Set<number>() as ReadonlySet<number>;
 
 const EMPTY_GAP = 80;
@@ -236,12 +236,12 @@ export function useAnimationQueue(
   const [festivalProgress, setFestivalProgress] = useState<FestivalProgress | null>(null);
   const [rabbitFlights, setRabbitFlights] = useState<RabbitFlight[]>([]);
   const [rabbitPressure, setRabbitPressure] = useState<RabbitPressure | null>(null);
-  const [tigerSlash, setTigerSlash] = useState<{ onTeam: Team } | null>(null);
-  const [tigerRecoil, setTigerRecoil] = useState<{ attackerTeam: Team } | null>(null);
+  const [tigerSlash, setTigerSlash] = useState<{ onTeam: SideId } | null>(null);
+  const [tigerRecoil, setTigerRecoil] = useState<{ attackerTeam: SideId } | null>(null);
   const [tigerImpact, setTigerImpact] = useState(false);
-  const [mermaidPopup, setMermaidPopup] = useState<{ team: Team } | null>(null);
+  const [mermaidPopup, setMermaidPopup] = useState<{ team: SideId } | null>(null);
   const [scoreFlash, setScoreFlash] = useState<ReadonlyMap<string, number>>(EMPTY_SCORE_MAP);
-  const [hpPulse, setHpPulse] = useState<ReadonlyMap<Team, HpPulse>>(EMPTY_HP_PULSE_MAP);
+  const [hpPulse, setHpPulse] = useState<ReadonlyMap<SideId, HpPulse>>(EMPTY_HP_PULSE_MAP);
   const [festivalFlash, setFestivalFlash] = useState(false);
   const [festivalBurst, setFestivalBurst] = useState(false);
   const [festivalStartInfo, setFestivalStartInfo] = useState<FestivalStartInfo | null>(null);
@@ -255,7 +255,7 @@ export function useAnimationQueue(
   const [collectingCardIds, setCollectingCardIds] = useState<ReadonlySet<number>>(EMPTY_ID_SET);
   const [shakingPile, setShakingPile] = useState<ShakingPile | null>(null);
   const [newCardId, setNewCardId] = useState<number | null>(null);
-  const [decisiveHit, setDecisiveHit] = useState<{ winner: Team } | null>(null);
+  const [decisiveHit, setDecisiveHit] = useState<{ winner: SideId } | null>(null);
   // 실제 서버 경험치(gameState.teams[t].exp)는 페어가 맞는 즉시 반영되지만, 화면에는 그
   // 페어 카드가 팀 쪽으로 날아가 도착하는 순간에야 숫자가 오르는 게 더 직관적이다.
   //
@@ -285,7 +285,7 @@ export function useAnimationQueue(
   // 실제 서버 상태(gameState.activeTeam)는 액션 처리 즉시 다음 팀으로 넘어가지만,
   // 화면에는 이번 액션의 정산 연출이 완전히 끝날 때까지 "행동한 팀"을 그대로 유지해
   // 보여준다 — 정산 도중 배경/테두리 색이 성급하게 바뀌어 혼란을 주지 않기 위함.
-  const [displayedActiveTeam, setDisplayedActiveTeam] = useState<Team>(gameState?.activeTeam ?? 'A');
+  const [displayedActiveTeam, setDisplayedActiveTeam] = useState<SideId>(gameState?.activeTeam ?? 'A');
   const [displayedActivePlayerIndex, setDisplayedActivePlayerIndex] = useState<number>(gameState?.activePlayerIndex ?? 0);
   const [isSettling, setIsSettling] = useState(false);
   // 이번 액션의 정산이 끝나면 화면 턴을 어디로 넘겨야 하는지 미리 기록해둔다. 싱글 모드처럼
@@ -293,7 +293,7 @@ export function useAnimationQueue(
   // 도착해 타이머가 통째로 취소될 수 있다 — 그러면 상대 턴 배경색이 한 번도 안 보이고
   // 곧바로 내 턴으로 되돌아온 것처럼 보인다. 다음 액션이 도착한 렌더 도중(아래
   // lastEventsForCreditRef 블록)에 이 값을 반드시 반영하고 넘어간다.
-  const pendingFlipRef = useRef<{ team: Team; playerIndex: number } | null>(null);
+  const pendingFlipRef = useRef<{ team: SideId; playerIndex: number } | null>(null);
 
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   // 다음 액션이 들어올 때 timersRef를 통째로 비우기 때문에, 그보다 오래 지속되는
@@ -390,13 +390,13 @@ export function useAnimationQueue(
     persistentTimersRef.current.push(t);
   };
 
-  const addFloat = (text: string, team: Team, type: 'bonus' | 'penalty') => {
+  const addFloat = (text: string, team: SideId, type: 'bonus' | 'penalty') => {
     const id = ++floatIdCounter;
     setFloatingTexts(prev => [...prev, { id, text, team, type }]);
     sched(() => setFloatingTexts(prev => prev.filter(f => f.id !== id)), 1200);
   };
 
-  const pulseHp = (team: Team, direction: 'gain' | 'loss') => {
+  const pulseHp = (team: SideId, direction: 'gain' | 'loss') => {
     const id = ++floatIdCounter;
     setHpPulse(prev => new Map([...prev, [team, { id, direction }]]));
     sched(() => {
@@ -413,7 +413,7 @@ export function useAnimationQueue(
     text: string,
     tier: CaptionItem['tier'],
     atMs: number,
-    opts?: { placeKey?: Place; stackAnimal?: Animal; anchorCardId?: number; team?: Team; durationOverride?: number },
+    opts?: { placeKey?: Place; stackAnimal?: Animal; anchorCardId?: number; team?: SideId; durationOverride?: number },
   ) => {
     const id = ++floatIdCounter;
     const { durationOverride, ...rest } = opts ?? {};
@@ -430,7 +430,7 @@ export function useAnimationQueue(
    * (그때까지 남은 것들은 새 액션이 도착하면 위 리셋 블록이 직접 걷어낸다.)
    */
   const addEmoticon = (
-    team: Team,
+    team: SideId,
     playerIndex: number,
     file: string,
     atMs: number,
@@ -574,11 +574,11 @@ export function useAnimationQueue(
     // 소모)으로 동작한다(server/engine/drawCard.ts) — 한 액션 안에서 bonusDraws(실용신양)가
     // 먼저, 그 다음 festivalDraws(도토리 축제)가 소모되므로 두 롤이 동시에 진행 중일 수는 없다.
     let cursor = 0;
-    let bonusRollTeam: Team | null = null;
+    let bonusRollTeam: SideId | null = null;
     let bonusRollRemaining = 0;
     let bonusRollIdx = 0;
     let bonusRollTotal = 0;
-    let festivalRollTeam: Team | null = null;
+    let festivalRollTeam: SideId | null = null;
     let festivalRollRemaining = 0;
     let festivalRollIdx = 0;
     let festivalRollTotal = 0;
@@ -892,7 +892,9 @@ export function useAnimationQueue(
 
       if (skillEv && skillEv.level > 0) {
         const { team, animal, myHpDelta, oppHpDelta, multiplierAfter, extraDrawsQueued } = skillEv;
-        const opp: Team = team === 'A' ? 'B' : 'A';
+        // 특허랑이의 대상은 서버가 알려준 값을 그대로 쓴다(개인전). 팀전 이벤트에는 target이 없으니
+        // 이벤트가 알려주는 편 중 나 아닌 쪽이 상대다 — 화면이 "반대편"을 스스로 뒤집어 구하지 않는다.
+        const opp: SideId = skillEv.target ?? Object.keys(skillEv.hpAfter).find(s => s !== team) ?? team;
         const at = cursor;
 
         // 큰 캡션은 이제 캐치프레이즈("실용신양의 힘!" 류) 대신, 스킬 선택 패널
@@ -993,7 +995,7 @@ export function useAnimationQueue(
     if (gameEndEv && gameEndEv.reason === 'knockout' && gameEndEv.winner !== 'draw') {
       const at = cursor;
       const winner = gameEndEv.winner;
-      const loser: Team = winner === 'A' ? 'B' : 'A';
+      const loser: SideId = winner === 'A' ? 'B' : 'A';
       sched(() => {
         setScreenShakeLevel(3);
         sched(() => setScreenShakeLevel(0), SHAKE_PULSE_DUR);
@@ -1094,9 +1096,10 @@ export function useAnimationQueue(
   // 끝나지 않은 페어"만큼만 빼서 보여준다(위 pendingExpCredit 설명 참조).
   const displayedExp = useMemo(() => {
     const zero: Record<Animal, number> = { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 };
-    const result: Record<Team, Record<Animal, number>> = { A: { ...zero }, B: { ...zero } };
-    if (!gameState) return result;
-    (['A', 'B'] as const).forEach(team => {
+    const result: Record<SideId, Record<Animal, number>> = {};
+    if (!gameState) return { A: { ...zero }, B: { ...zero } } as Record<SideId, Record<Animal, number>>;
+    Object.keys(gameState.teams).forEach(team => {
+      result[team] = { ...zero };
       ANIMALS.forEach(animal => {
         const credit = pendingExpCredit[`${team}:${animal}`] ?? 0;
         result[team][animal] = gameState.teams[team].exp[animal] - credit;

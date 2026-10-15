@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ClientGameState, Team } from 'shared';
+import type { ClientGameState, SideId } from 'shared';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { spectatorTeamVars } from '@/lib/teamColors';
 
@@ -14,11 +14,11 @@ export function TeamTotalPanel({
   myTeam,
   pulse,
 }: {
-  team: Team;
+  team: SideId;
   gameState: ClientGameState;
   // 보는 사람의 팀 — null이면 관전 시점이라 "내 구슬/상대 구슬"이 아니라 두 구슬을
   // 각 팀 색(client/lib/teamColors.ts의 팔레트)으로 칠한다.
-  myTeam: Team | null;
+  myTeam: SideId | null;
   pulse?: { id: number; direction: 'gain' | 'loss' } | null;
 }) {
   const hp = gameState.teams[team].hp;

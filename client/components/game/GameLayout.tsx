@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { Animal, ClientGameState, Place, Team } from 'shared';
+import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { previewSkill, withDisplayedExp } from '@/lib/skills';
@@ -53,7 +53,7 @@ export function GameLayout({
   // null이면 관전 시점 — 어느 쪽도 내 팀이 아니다. 화면 전체가 이 한 값으로 갈린다:
   // 팀 색이 "우리 연두/상대 붉은"에서 중립 두 색(기본 민트·핑크)으로 바뀌고,
   // 조작은 전부 막히며, 대신 지금 차례인 팀을 알려주는 옅은 손가락 가이드가 켜진다.
-  myTeam: Team | null;
+  myTeam: SideId | null;
   playerId: string | null;
   onPlaceClick: (place: Place) => void;
   onChooseSkill: (animal: Animal) => void;

@@ -179,3 +179,28 @@ export const SHEEP_EXTRA_TIME_PER_DRAW_SEC = 10;
 // 배율이 실린 예약 뽑기가 턴 제한시간을 무한정 늘리지 않도록, 시간 연장 계산에는
 // 이 값까지만 반영한다(실제 뽑기 횟수 자체는 SHEEP_SAFETY_CAP까지 그대로 진행된다).
 export const SHEEP_TIMER_EXTRA_DRAW_CAP = 6;
+
+// ─── 개인전(순위전) ───────────────────────────────────────────────────────────
+// 설계 전문은 저장소 루트의 INDIVIDUAL_MODE_ROADMAP.md.
+export const INDIVIDUAL_MAX_PLAYERS = 8;
+export const INDIVIDUAL_MIN_PLAYERS = 2;
+// 시작 인원이 이 수 이상이면 한 차례에 기술을 2장 쓴다(미만이면 1장). 시작할 때 한 번 정한다.
+export const INDIVIDUAL_TWO_SKILLS_FROM = 5;
+
+// 플레이어 색 12가지 — 대기실에서 사람마다 하나씩 고르고(중복 불가), 게임 화면에서는 그 사람의
+// 표지(체력바·닉네임 칩·차례 빛)가 된다. 크림 베이지 바탕 위에서 서로 구분되는지 눈으로 보고
+// 정한 값이다. ⚠️ 색만으로 사람을 구분하게 두지 말 것 — 색 옆에는 언제나 닉네임을 함께 쓴다.
+export const PLAYER_COLORS = [
+  { id: 'red',    hex: '#E5484D' }, { id: 'orange', hex: '#F76B15' },
+  { id: 'yellow', hex: '#F5C400' }, { id: 'lime',   hex: '#7CC242' },
+  { id: 'green',  hex: '#2E9E5B' }, { id: 'teal',   hex: '#12A594' },
+  { id: 'cyan',   hex: '#1EA7E1' }, { id: 'blue',   hex: '#3E63DD' },
+  { id: 'indigo', hex: '#6E56CF' }, { id: 'purple', hex: '#AB4ABA' },
+  { id: 'pink',   hex: '#E93D82' }, { id: 'slate',  hex: '#5B6B7A' },
+] as const;
+export type PlayerColorId = (typeof PLAYER_COLORS)[number]['id'];
+
+/** 색 id → 16진 색. 모르는 id가 오면 slate. */
+export function playerColorHex(id: PlayerColorId | undefined | null): string {
+  return PLAYER_COLORS.find(c => c.id === id)?.hex ?? PLAYER_COLORS[PLAYER_COLORS.length - 1].hex;
+}

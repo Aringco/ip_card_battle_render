@@ -1,5 +1,12 @@
-import { MAX_TURN, LOSE_HP, clampSettings, festivalDrawInfoAt } from 'shared';
-import type { GameEvent, GameSettings, GameState, Team } from 'shared';
+import {
+  MAX_TURN,
+  LOSE_HP,
+  INDIVIDUAL_TWO_SKILLS_FROM,
+  clampSettings,
+  festivalDrawInfoAt,
+  nextActiveSide,
+} from 'shared';
+import type { GameEvent, GameSettings, GameState, PlayerColorId, SideId, Team, TeamState } from 'shared';
 import { dealOpeningSharedCards, initStacks } from './places';
 import type { RNG } from './places';
 
@@ -20,7 +27,7 @@ function determineWinnerByHp(state: GameState): Team | 'draw' {
 }
 
 /** 게임 종료를 한 곳에서 처리한다 — phase/winner/pendingChoice를 모두 정리하고 gameEnd를 낸다. */
-function endGame(state: GameState, winner: Team | 'draw', reason: 'knockout' | 'turnLimit'): GameEvent[] {
+function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' | 'turnLimit'): GameEvent[] {
   state.phase = 'ended';
   state.winner = winner;
   state.pendingChoice = null;
@@ -83,14 +90,22 @@ export function advanceTurn(state: GameState): GameEvent[] {
   const events: GameEvent[] = [];
 
   const currentTeam = state.activeTeam;
-  const nextTeam: Team = currentTeam === 'A' ? 'B' : 'A';
-  // 이 게임에서 매 라운드 "두 번째로" 플레이하는 팀 — settings.firstTeam이 A/B/무작위
-  // 무엇이든, 라운드의 두 번째 팀이 플레이를 마쳐야 턴 카운터가 오른다(기존에는
-  // 이 팀을 'B'로 못박아뒀는데, 선 플레이어를 고를 수 있게 되면서 일반화했다).
-  const secondTeamOfRound: Team = state.startingTeam === 'A' ? 'B' : 'A';
+  const nextTeam = nextActiveSide(state, currentTeam);
+  // 다음 차례가 없다는 건 판에 남은 편이 없다는 뜻 — 개인전에서 순위 판정(ranking.ts)이 먼저
+  // 판을 끝내므로 정상 경로에서는 오지 않지만, 방어적으로 아무것도 하지 않는다.
+  if (nextTeam === null) return events;
 
-  // 후공 팀이 플레이를 마친 경우 → 턴 카운터 증가
-  if (currentTeam === secondTeamOfRound) {
+  // 차례가 넘어갈 때마다 "이번 차례에 쓴 기술 수"를 비운다(개인전의 기술 2장 규칙).
+  state.skillsUsedThisTurn = 0;
+
+  // 한 라운드가 다 돈 시점 — turnOrder에서 다음 편의 위치가 지금 편의 위치보다 앞이면
+  // 끝까지 돌아 처음으로 되돌아온 것이다. 팀전([선, 후])에서는 후공 팀이 마친 순간과 정확히 같고
+  // (선 플레이어를 바꿔도 turnOrder가 함께 바뀐다), 개인전에서는 순위가 정해진 사람을 건너뛰어도
+  // 위치 비교라 틀리지 않는다. ⚠️ 축제 시작·단계 상승이 이 카운터에 묶여 있다(festivalDrawInfoAt).
+  const roundCompleted = state.turnOrder.indexOf(nextTeam) < state.turnOrder.indexOf(currentTeam);
+
+  // 한 라운드가 끝난 경우 → 턴 카운터 증가
+  if (roundCompleted) {
     state.turn++;
 
     // settings.festivalTurn 도달 시점부터 축제가 시작된다. festivalTurn이 MAX_TURN보다
@@ -132,6 +147,25 @@ export function advanceTurn(state: GameState): GameEvent[] {
   return events;
 }
 
+/** 한 편의 시작 상태 — 팀전의 팀과 개인전의 한 사람이 같은 모양이다. */
+function makeTeamState(members: string[], hp: number): TeamState {
+  return {
+    members,
+    exp: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
+    hp,
+    pendingMultiplier: 1,
+    pendingExtraDraws: 0,
+    pendingFestivalDraws: 0,
+    playerIndex: 0,
+    skillStats: {
+      sheep: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
+      rabbit: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
+      mermaid: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
+      tiger: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
+    },
+  };
+}
+
 /** 새 게임 상태 초기화 — settings를 생략하면 기본 규칙(shared/constants.ts DEFAULT_*)으로 시작한다. */
 export function initGame(
   teamAMembers: string[],
@@ -151,21 +185,7 @@ export function initGame(
   const startingTeamReason: 'setting' | 'random' =
     resolvedSettings.firstTeam === 'random' ? 'random' : 'setting';
 
-  const makeTeam = (members: string[]) => ({
-    members,
-    exp: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
-    hp: resolvedSettings.targetScore,
-    pendingMultiplier: 1,
-    pendingExtraDraws: 0,
-    pendingFestivalDraws: 0,
-    playerIndex: 0,
-    skillStats: {
-      sheep: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
-      rabbit: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
-      mermaid: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
-      tiger: { count: 0, totalLevel: 0, totalHpGained: 0, totalExtraDraws: 0 },
-    },
-  });
+  const makeTeam = (members: string[]) => makeTeamState(members, resolvedSettings.targetScore);
 
   // 선 플레이어의 불합리를 없애기 위한 시작 공유 카드 — 서로 다른 동물 두 장이 중앙에
   // 깔린 채로 게임이 시작된다(engine/places.ts의 dealOpeningSharedCards 참고).
@@ -191,5 +211,66 @@ export function initGame(
     settings: resolvedSettings,
     startingTeam,
     startingTeamReason,
+    // 팀전은 개인전 일반화 필드가 모두 고정값이다 — 차례는 [선, 후] 둘뿐, 기술은 한 차례에 1장.
+    mode: 'team',
+    turnOrder: startingTeam === 'A' ? ['A', 'B'] : ['B', 'A'],
+    skillsPerTurn: 1,
+    skillsUsedThisTurn: 0,
+    ranks: {},
+  };
+}
+
+/**
+ * 개인전 시작 — 한 사람이 한 편이다. 편 id는 호출하는 쪽(Room)이 대기실 순서대로 'p1'…'pN'을
+ * 붙여 넘기고, 차례 순서는 여기서 rng로 한 번 섞어 정한다(판 도중에는 바뀌지 않는다).
+ *
+ * - settings.firstTeam은 쓰지 않는다 — 선은 섞인 순서의 맨 앞이다(startingTeamReason은 'random').
+ * - skillsPerTurn은 **시작 인원** 기준으로 한 번 정한다(5명 이상이면 2장). 탈락으로 인원이 줄어도
+ *   바뀌지 않는다 — 판 도중에 규칙이 바뀌면 안 된다.
+ * - 시작 공유 카드는 팀전과 똑같이 깐다.
+ */
+export function initIndividualGame(
+  players: Array<{ side: SideId; nickname: string; color: PlayerColorId }>,
+  rng: RNG = Math.random,
+  settings?: Partial<GameSettings>,
+): GameState {
+  const resolvedSettings = clampSettings(settings);
+
+  const turnOrder = players.map(p => p.side);
+  for (let i = turnOrder.length - 1; i > 0; i--) { // Fisher–Yates
+    const j = Math.floor(rng() * (i + 1));
+    [turnOrder[i], turnOrder[j]] = [turnOrder[j], turnOrder[i]];
+  }
+
+  const teams: Record<SideId, TeamState> = {};
+  for (const p of players) {
+    teams[p.side] = { ...makeTeamState([p.nickname], resolvedSettings.targetScore), color: p.color };
+  }
+
+  const stacks = initStacks();
+  for (const card of dealOpeningSharedCards(rng)) {
+    stacks[card.animal].push(card);
+  }
+
+  const startingTeam = turnOrder[0];
+  return {
+    phase: 'playing',
+    turn: 1,
+    activeTeam: startingTeam,
+    activePlayerIndex: 0,
+    stacks,
+    lastPlace: null,
+    festival: false,
+    pendingChoice: null,
+    teams,
+    winner: null,
+    settings: resolvedSettings,
+    startingTeam,
+    startingTeamReason: 'random',
+    mode: 'individual',
+    turnOrder,
+    skillsPerTurn: players.length >= INDIVIDUAL_TWO_SKILLS_FROM ? 2 : 1,
+    skillsUsedThisTurn: 0,
+    ranks: {},
   };
 }

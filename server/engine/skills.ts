@@ -1,13 +1,13 @@
-import { ANIMALS, THRESHOLDS } from 'shared';
-import type { Animal, GameEvent, GameState, Team } from 'shared';
+import { ANIMALS, THRESHOLDS, opponentsOf } from 'shared';
+import type { Animal, GameEvent, GameState, SideId } from 'shared';
 
 /** 레벨 = floor(누적 경험치 / 임계값). 임계값은 동물마다 다르다(양·토끼 10, 인어·호랑이 20). */
-export function levelOf(state: GameState, team: Team, animal: Animal): number {
+export function levelOf(state: GameState, team: SideId, animal: Animal): number {
   return Math.floor(state.teams[team].exp[animal] / THRESHOLDS[animal]);
 }
 
 /** 레벨이 1 이상이라 지금 고를 수 있는 동물 목록. */
-export function eligibleAnimals(state: GameState, team: Team): Animal[] {
+export function eligibleAnimals(state: GameState, team: SideId): Animal[] {
   return ANIMALS.filter(a => levelOf(state, team, a) > 0);
 }
 
@@ -27,10 +27,17 @@ export function eligibleAnimals(state: GameState, team: Team): Animal[] {
  * 배율은 토끼·호랑이·양을 쓰는 순간 1로 초기화된다("다음을 노리기"로는 소모되지 않는다).
  * 레벨이 0인 동물을 골랐다면(정상적인 클라이언트라면 UI에서 막힘) 아무 일도 일어나지 않는다.
  */
-export function applySkillChoice(state: GameState, team: Team, animal: Animal): GameEvent {
-  const opponent: Team = team === 'A' ? 'B' : 'A';
+export function applySkillChoice(
+  state: GameState,
+  team: SideId,
+  animal: Animal,
+  // 특허랑이의 대상. 팀전은 상대가 한 팀뿐이라 생략하고, 개인전은 호출하는 쪽(gameEngine)이
+  // "순위가 정해지지 않은 다른 편"인지 먼저 검증한 값을 넘긴다.
+  target?: SideId,
+): GameEvent {
+  const opponent = target ?? opponentsOf(state, team)[0];
   const me = state.teams[team];
-  const foe = state.teams[opponent];
+  const foe = opponent === undefined ? undefined : state.teams[opponent];
   const level = levelOf(state, team, animal);
 
   if (level <= 0) {
@@ -45,7 +52,7 @@ export function applySkillChoice(state: GameState, team: Team, animal: Animal): 
       myHpDelta: 0,
       oppHpDelta: 0,
       extraDrawsQueued: 0,
-      hpAfter: { A: state.teams.A.hp, B: state.teams.B.hp },
+      hpAfter: hpSnapshot(state),
     };
   }
 
@@ -74,7 +81,7 @@ export function applySkillChoice(state: GameState, team: Team, animal: Animal): 
       myHpDelta = amount;
     } else {
       // tiger — 강탈은 보존형: 상대가 가진 만큼만 뺏는다(오버킬 없음).
-      const steal = Math.min(amount, Math.max(0, foe.hp));
+      const steal = Math.min(amount, Math.max(0, foe?.hp ?? 0));
       oppHpDelta = -steal;
       myHpDelta = steal;
     }
@@ -83,7 +90,7 @@ export function applySkillChoice(state: GameState, team: Team, animal: Animal): 
   }
 
   // ④ 체력 반영 — 하한 0으로 클램프. 상한은 없다(승리 판정은 별도로 처리).
-  foe.hp = Math.max(0, foe.hp + oppHpDelta);
+  if (foe) foe.hp = Math.max(0, foe.hp + oppHpDelta);
   me.hp = me.hp + myHpDelta;
 
   // ⑤ 통계
@@ -104,8 +111,17 @@ export function applySkillChoice(state: GameState, team: Team, animal: Animal): 
     myHpDelta,
     oppHpDelta,
     extraDrawsQueued,
-    hpAfter: { A: state.teams.A.hp, B: state.teams.B.hp },
+    hpAfter: hpSnapshot(state),
+    // 대상은 개인전의 특허랑이에만 싣는다 — 팀전 이벤트의 모양은 예전과 똑같이 둔다.
+    ...(state.mode === 'individual' && animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
   };
+}
+
+/** 모든 편의 지금 체력 — skillApplied.hpAfter. 팀전은 { A, B }, 개인전은 { p1 … pN }. */
+function hpSnapshot(state: GameState): Record<SideId, number> {
+  const hp: Record<SideId, number> = {};
+  for (const side of Object.keys(state.teams)) hp[side] = state.teams[side].hp;
+  return hp;
 }
 
 /**
@@ -113,12 +129,12 @@ export function applySkillChoice(state: GameState, team: Team, animal: Animal): 
  * auto=true면 고를 수 있는 행동이 아예 없어 서버가 즉시 대신 처리한 것 — 화면에
  * 알릴 필요 없는 침묵 처리이므로 클라이언트는 이 값을 보고 캡션/해설을 생략한다.
  */
-export function applyPass(team: Team, auto: boolean): GameEvent {
+export function applyPass(team: SideId, auto: boolean): GameEvent {
   return { type: 'skillPassed', team, auto };
 }
 
 /** 제한시간 내에 고르지 않으면 서버가 대신 무작위로 하나를 골라준다(고를 수 있는 게 없으면 null=패스). */
-export function randomEligibleSkill(state: GameState, team: Team, rng: () => number = Math.random): Animal | null {
+export function randomEligibleSkill(state: GameState, team: SideId, rng: () => number = Math.random): Animal | null {
   const options = eligibleAnimals(state, team);
   if (options.length === 0) return null;
   return options[Math.floor(rng() * options.length)];

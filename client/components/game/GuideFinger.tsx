@@ -1,6 +1,6 @@
 'use client';
 
-import type { Animal, Team } from 'shared';
+import type { Animal, SideId } from 'shared';
 import { spectatorTeamVars } from '@/lib/teamColors';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
@@ -39,7 +39,7 @@ export function GuideFinger({
   animal,
   variant = 'card',
 }: {
-  team?: Team | null;
+  team?: SideId | null;
   /** 주면 그 캐릭터의 손 그림으로, 안 주면 주인 없는 기본 손으로 그린다. */
   animal?: Animal;
   /** 'tile'은 더 낮게(보드 칸이 `overflow: hidden`이라 위로 삐져나오면 잘린다),

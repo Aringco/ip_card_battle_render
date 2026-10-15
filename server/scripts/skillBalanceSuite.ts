@@ -106,7 +106,7 @@ function runMatch(gameCount: number, pickA: PickFn, pickB: PickFn, seedOffset = 
       processPlayerAction(state, place, rng);
 
       if (state.pendingChoice !== null) {
-        const team = state.pendingChoice;
+        const team = state.pendingChoice as Team; // 이 스크립트는 팀전(A·B) 전용이다
         const pick = team === 'A' ? pickA : pickB;
         const animal = pick(state, team, rng);
         if (animal === null) processPass(state);

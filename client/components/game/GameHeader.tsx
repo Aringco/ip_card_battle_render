@@ -1,4 +1,4 @@
-import type { ClientGameState, Team } from 'shared';
+import type { ClientGameState, SideId } from 'shared';
 import { MAX_TURN, festivalDrawInfoAt } from 'shared';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 import { PLAY_ASSETS } from '@/lib/playAssets';
@@ -60,8 +60,8 @@ export function GameHeader({
   isSettling,
 }: {
   gameState: ClientGameState;
-  myTeam: Team | null;
-  displayedActiveTeam: Team;
+  myTeam: SideId | null;
+  displayedActiveTeam: SideId;
   displayedActivePlayerIndex: number;
   isSettling: boolean;
 }) {
