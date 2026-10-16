@@ -113,6 +113,7 @@ export function SkillChoiceBar({
   spectatorGuideTeam = null,
   myTeamChoosing = false,
   demoAllowed = null,
+  hideGuide = false,
   onChoose,
   onPass,
 }: {
@@ -135,6 +136,11 @@ export function SkillChoiceBar({
    * ⚠️ 시연에는 [턴 마치기]도 없다 — 누르면 턴이 넘어가 대본이 끊긴다(서버도 무시한다).
    */
   demoAllowed?: Animal[] | null;
+  /**
+   * 손가락 가이드를 숨긴다 — 개인전의 상대 선택 화면(TargetPicker)이 떠 있는 동안. 가이드 손(z-index 95)은
+   * 그 오버레이(80)보다 위에 그려져, 어두워진 화면 위로 손가락만 환하게 남는다.
+   */
+  hideGuide?: boolean;
   onChoose: (animal: Animal) => void;
   onPass: () => void;
 }) {
@@ -144,7 +150,7 @@ export function SkillChoiceBar({
   // 그 순간을 놓치면 다시 볼 방법이 없었다. 이제는 행동을 고를 수 있는 턴마다 매번
   // 보여주고, 설정 패널(⚙️)에서 원하는 사람만 끌 수 있게 했다.
   const guideEnabled = useGuideEnabled();
-  const showSkillGuide = guideEnabled && (interactive || spectatorGuideTeam !== null);
+  const showSkillGuide = guideEnabled && !hideGuide && (interactive || spectatorGuideTeam !== null);
   // 시연은 대본이 열어 준 칸만 누를 수 있고, 손가락도 그 한 칸만 짚는다(빈 배열=전부 잠금).
   const demoOpen = (animal: Animal) => (demoAllowed ? demoAllowed.includes(animal) : true);
   // [턴 마치기]는 평소 언제나 누를 수 있지만, 시연에서는 턴이 넘어가는 순간 대본이

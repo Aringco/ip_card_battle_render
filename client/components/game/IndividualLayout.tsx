@@ -229,6 +229,7 @@ export function IndividualLayout({
               spectatorGuideTeam={null}
               myTeamChoosing={myTeamChoosing}
               demoAllowed={null}
+              hideGuide={picking}
               onChoose={handleChoose}
               onPass={onPassSkill}
             />
