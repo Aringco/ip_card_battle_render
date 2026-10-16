@@ -4434,6 +4434,26 @@ body {
   background-origin: border-box;
 }
 
+/* 기술 카드 테두리의 고유 색 — 실용신양은 위 금색 그대로, 나머지 셋은 각자 색의 금속 결(밝은 면 → 제 색 →
+   어두운 면 → 반사 → 제 색 → 그늘)로 같은 모양을 만든다. [턴 마치기] 칸은 금색 그대로다(SkillChoiceBar가
+   동물 칸에만 이 클래스를 단다). 팀전·개인전 공통. */
+.play-card-frame-rabbit  { --card-edge: #fa8ee5; }
+.play-card-frame-mermaid { --card-edge: #2898f1; }
+.play-card-frame-tiger   { --card-edge: #fb8c00; }
+.play-card-frame-rabbit,
+.play-card-frame-mermaid,
+.play-card-frame-tiger {
+  background-image: linear-gradient(
+    158deg,
+    color-mix(in srgb, var(--card-edge) 45%, #ffffff) 0%,
+    var(--card-edge) 18%,
+    color-mix(in srgb, var(--card-edge) 68%, #000000) 38%,
+    color-mix(in srgb, var(--card-edge) 60%, #ffffff) 54%,
+    var(--card-edge) 74%,
+    color-mix(in srgb, var(--card-edge) 58%, #000000) 100%
+  );
+}
+
 /* ⚠️ 네 모서리 장식(card_corner_*)은 **걷어냈다**(요청). 예전에는 `::before`에 고정
    크기 배경 네 장으로 얹었는데, 금색 테두리만으로 충분하고 장식이 글자를 밀어내
    짧은 카드에서 자리를 많이 먹었다.
@@ -5260,9 +5280,9 @@ body {
 /* 지금 차례 표시(.play-panel-turn — 안쪽 링)가 칸의 둥근 모서리를 따라가게 한다. 둥글기가 없으면 링이
    네모난 채로 칸에 잘려 모서리만 각져 보인다. */
 .ind-cell > .play-panel-body { border-radius: var(--cell-r); }
-/* 내 체력(목표 점수) 창은 열 폭(0.19)의 0.8배(0.152)만 쓰고, 남는 0.038은 오른쪽 기술 카드 띠가 가져간다
-   (.ind-cards의 음수 margin-left). 위 칸(내 동물 패널)은 열 폭을 그대로 쓴다. */
-.ind-cell-hp    { grid-area: hp; width: 80%; justify-self: start; }
+/* 내 체력(목표 점수) 창은 열 폭(0.19)의 64%(0.1216 — 0.8배를 두 번)만 쓰고, 남는 0.0684는 오른쪽 기술 카드
+   띠가 가져간다(.ind-cards의 음수 margin-left). 위 칸(내 동물 패널)은 열 폭을 그대로 쓴다. */
+.ind-cell-hp    { grid-area: hp; width: 64%; justify-self: start; }
 .ind-cell-opp   { grid-area: opp; }
 /* 보드 칸만 클립 경계를 바깥으로 넓힌다 — 장소를 짚는 손이 타일 위로 솟는다(.play-cell-board와 같은 이유). */
 .ind-cell-board { grid-area: board; overflow: clip; overflow-clip-margin: 48px; }
@@ -5280,9 +5300,9 @@ body {
   grid-area: cards;
   min-width: 0;
   min-height: 0;
-  /* 체력 창이 내준 0.038(= 0.19 × 0.2)만큼 왼쪽으로 넓힌다 — 카드 띠 0.6522 → 0.6902.
-     ⚠️ 이 값은 .ind-cell-hp의 width: 80%와 짝이다. 한쪽만 고치면 체력 창과 카드가 겹치거나 틈이 벌어진다. */
-  margin-left: calc(var(--pf-w) * -0.038);
+  /* 체력 창이 내준 0.0684(= 0.19 × 0.36)만큼 왼쪽으로 넓힌다 — 카드 띠 0.6522 → 0.7206.
+     ⚠️ 이 값은 .ind-cell-hp의 width: 64%와 짝이다. 한쪽만 고치면 체력 창과 카드가 겹치거나 틈이 벌어진다. */
+  margin-left: calc(var(--pf-w) * -0.0684);
 }
 
 /* 안내 쪽지는 보드 칸과 카드 줄 사이의 가로 들보 위에 앉는다 — 가운데 열에 맞춘다(위 .play-frame-css의 숫자 묶음).
@@ -5731,15 +5751,13 @@ body {
   box-shadow: inset 0 0 0 3px rgba(163, 230, 53, 0.85);
 }
 
-/* 빛 반사 — **사선 반사 띠 + 마우스 광원**(무지개 → 사선 띠 → 마우스 광원만 → 둘을 함께). 기법만 참고하고 새로 썼다.
-   .holo-shine: ① 카드 면을 가로지르는 하얀 사선 띠 — 포인터 높이(--my)에 따라 위아래로 미끄러진다.
-                ② 포인터 바로 아래의 작고 또렷한 하이라이트 — 광원이 카드 면에 비친 점. (둘 다 screen)
-   .holo-glare: 포인터 자리가 가장 밝고 멀어질수록 어두워지는 반사광(overlay) — 카드가 빛을 받아 기운 것처럼 보인다. */
+/* 빛 반사 — **사선 반사 띠만** 쓴다(무지개 → 사선 띠 → 마우스 광원 → 둘을 함께 → 요청으로 마우스 광원을 걷었다).
+   .holo-shine: 카드 면을 가로지르는 하얀 사선 띠 — 포인터 높이(--my)에 따라 위아래로 미끄러진다(screen).
+   기울기(--rx/--ry)는 그대로 포인터를 따라간다. 기법만 참고하고 새로 썼다. */
 /* ⚠️ z-index는 버튼보다 높아야 한다 — 누를 수 있는 카드에 마우스를 올리면 버튼이 z-index 30이 된다
    (.skill-choice-panel:not(:disabled):hover). 처음에 4로 두었더니 정확히 hover하는 순간 버튼에 덮여
    무지개·광택이 하나도 보이지 않았다. 손가락 가이드(95)보다는 낮게 둔다. */
-.holo-shine,
-.holo-glare {
+.holo-shine {
   position: absolute;
   inset: 0;
   z-index: 40;
@@ -5750,12 +5768,6 @@ body {
 }
 .holo-shine {
   background-image:
-    radial-gradient(
-      circle at var(--mx) var(--my),
-      rgba(255, 255, 255, 0.6) 0%,
-      rgba(255, 255, 255, 0.22) 14%,
-      transparent 36%
-    ),
     linear-gradient(
       168deg,
       transparent 0%,
@@ -5766,34 +5778,21 @@ body {
       transparent 59%,
       transparent 100%
     );
-  background-size: 100% 100%, 100% 260%;
-  background-position: center, 50% var(--my);
+  background-size: 100% 260%;
+  background-position: 50% var(--my);
   background-repeat: no-repeat;
   mix-blend-mode: screen;
 }
-.holo-glare {
-  z-index: 41;
-  background: radial-gradient(
-    farthest-corner circle at var(--mx) var(--my),
-    rgba(255, 255, 255, 0.75) 0%,
-    rgba(255, 255, 255, 0.35) 22%,
-    rgba(0, 0, 0, 0.45) 92%
-  );
-  mix-blend-mode: overlay;
-}
 .holo-cell[data-holo]:hover .holo-shine { opacity: 0.85; }
-.holo-cell[data-holo]:hover .holo-glare { opacity: 0.75; }
 
 /* 터치 기기는 hover가 없다 — 효과를 아예 켜지 않는다(HoloCell도 마우스일 때만 좌표를 쓴다). */
 @media (hover: none) {
-  .holo-shine,
-  .holo-glare { display: none; }
+  .holo-shine { display: none; }
   .holo-cell[data-holo]:hover { transform: none; filter: none; }
 }
 /* 움직임을 줄이는 설정이면 기울기·광택을 끈다 — 기존 hover(떠오름)도 이미 꺼져 있다. */
 @media (prefers-reduced-motion: reduce) {
-  .holo-shine,
-  .holo-glare { display: none; }
+  .holo-shine { display: none; }
   .holo-cell,
   .holo-cell[data-holo]:hover { transform: none; transition: none; filter: none; }
 }

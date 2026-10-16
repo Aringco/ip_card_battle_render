@@ -11,7 +11,7 @@ import { GuideFinger } from './GuideFinger';
 
 const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 
-// 홀로 카드 — 포인터를 따라 기울어지고 위쪽 광원의 빛이 반사되는 효과(요구 G6, 팀전·개인전 공통).
+// 홀로 카드 — 포인터를 따라 기울어지고 사선 반사 띠가 지나가는 효과(요구 G6, 팀전·개인전 공통).
 // 기법만 참고하고 새로 썼다: 포인터 좌표를 카드 기준 0~1로 바꿔 CSS 변수(--mx/--my 광택 위치,
 // --rx/--ry 기울기 각도)에 쓰고, 나머지는 전부 CSS(globals.css의 .holo-*)가 그린다.
 // ⚠️ 참고한 사이트(poke-holo.simey.me)의 원본 저장소는 GPL-3.0이라 코드를 가져오지 않는다.
@@ -86,13 +86,8 @@ function HoloCell({
       onPointerLeave={reset}
     >
       {children}
-      {/* 반사 띠 층과 위쪽 광원 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
-      {enabled && (
-        <>
-          <span className="holo-shine" aria-hidden />
-          <span className="holo-glare" aria-hidden />
-        </>
-      )}
+      {/* 사선 반사 띠 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
+      {enabled && <span className="holo-shine" aria-hidden />}
     </div>
   );
 }
@@ -208,7 +203,7 @@ export function SkillChoiceBar({
               // 잎 데칼을 얹는다 — 컷신 이미지 위에 덧그릴 뿐 그림은 그대로다.
               // 다섯 장이 각자 제 나무 구멍에 앉으므로 **모두** 같은 둥글기를 쓴다
               // (예전에는 한 덩어리 띠라 양 끝만 둥글렸다).
-              className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
+              className={`play-card-frame play-card-frame-${animal} skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
                 clickable ? 'skill-choice-glow' : ''
               }`}
             >
