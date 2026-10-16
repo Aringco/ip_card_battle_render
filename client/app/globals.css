@@ -5224,8 +5224,10 @@ body {
   --ind-frame-w: min(calc(var(--stage-w) * 1.1), calc(100vw - var(--stage-pad) * 2));
   --pf-w: calc(var(--ind-frame-w) / 1.1);
   --pf-h: calc(var(--pf-w) * 1000 / 1965);
-  --cell-r: calc(var(--pf-w) * 22 / 1965);
-  --fr-line: calc(var(--pf-w) * 0.0028);
+  /* 모서리 둥글기 — 거의 직각(22 → 5, 요청). 칸·카드·차례 링이 모두 이 값을 따른다. */
+  --cell-r: calc(var(--pf-w) * 5 / 1965);
+  /* 테두리 선 두께 — 0.0028의 0.7배(요청) */
+  --fr-line: calc(var(--pf-w) * 0.00196);
 
   position: relative;
   box-sizing: border-box;
@@ -5251,7 +5253,7 @@ body {
     "hp cards opp";
 
   /* 나무 — 결 무늬 위에 갈색 바탕. 안쪽으로 얇은 크림(베이지) 선과 짙은 선을 겹쳐 틀처럼 읽히게 한다. */
-  border-radius: calc(var(--pf-w) * 0.012);
+  border-radius: calc(var(--pf-w) * 0.004);
   background:
     repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px),
     linear-gradient(135deg, #8d5c2e 0%, #6f4521 46%, #85552a 100%);
@@ -5294,6 +5296,13 @@ body {
 .ind-cell-board [data-board-root] { border-radius: var(--cell-r); }
 /* 기술 카드 띠의 "내가 고를 차례" 맥동 링(.skill-bar-my-turn — 띠 바깥 box-shadow)도 카드 모서리와 같은 둥글기로 */
 .ind-cards .play-cards-grid { border-radius: var(--cell-r); }
+
+/* 개인전 기술 카드는 테두리(금색·고유 색 5px)를 두르지 않는다 — 초기 모습처럼 카드 그림이 칸을 꽉 채운다(요청).
+   팀전 카드는 그대로다(.ind-cards 아래에서만 끈다). */
+.ind-cards .play-card-frame {
+  border: 0;
+  background-image: none;
+}
 
 /* 기술 카드 띠 — 팀전의 .play-cards(절대배치) 대신 grid 칸이다. 안의 5칸 나눔은 그대로(.play-cards-grid).
    틀 없이 카드 다섯 장이 바깥 판 위에 바로 놓인다(한때 안쪽 나무 틀을 둘렀다가 걷었다).
@@ -5377,7 +5386,7 @@ body {
   display: flex;
   gap: calc(var(--pf-w) * 0.004);
   padding: calc(var(--pf-w) * 0.0032);
-  border-radius: calc(var(--pf-w) * 0.0085);
+  border-radius: calc(var(--pf-w) * 0.0035);
   background:
     linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)),
     color-mix(in srgb, var(--opp-color) 20%, #fff3d6);
