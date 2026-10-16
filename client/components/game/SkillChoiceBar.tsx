@@ -17,8 +17,9 @@ const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 // ⚠️ 참고한 사이트(poke-holo.simey.me)의 원본 저장소는 GPL-3.0이라 코드를 가져오지 않는다.
 const HOLO_TILT_DEG = 14; // 가장자리에서의 최대 기울기
 // 카드 두께 — 기울기 1도당 드러나는 옆면 길이(px)와, 기울지 않아도 늘 보이는 아래 옆면(px). globals.css의 .holo-edge.
-const HOLO_EDGE_PER_DEG = 0.4;
-const HOLO_EDGE_BASE = 2;
+// (0.4 / 2에서 요청으로 절반으로 줄였다 — 가장자리에서 최대 약 3px)
+const HOLO_EDGE_PER_DEG = 0.2;
+const HOLO_EDGE_BASE = 1;
 
 /**
  * 카드 한 칸을 감싸는 칸 — **기울기와 확대는 버튼이 아니라 이 칸에 건다.** 버튼은 모서리를 다듬느라
