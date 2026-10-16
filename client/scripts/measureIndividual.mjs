@@ -20,7 +20,10 @@ const CHROME = process.env.CHROME_PATH ?? 'C:\\Program Files\\Google\\Chrome\\Ap
 const OUT = path.resolve('individual-shots');
 const COUNTS = process.argv.slice(2).map(Number).filter(n => n >= 2 && n <= 8);
 const SIZES = COUNTS.length > 0 ? COUNTS : [2, 5, 8];
+// 개인전 판은 팀전 액자보다 1.2배 넓어서 꽉 찬 16:9에서는 판이 비율대로 줄어든다. 실제 브라우저 창은 주소창·
+// 탭만큼 세로가 짧아(아래 1920×960) 대개 그대로 들어간다 — 둘 다 잰다.
 const VIEWPORTS = [
+  { w: 1920, h: 960 },
   { w: 1600, h: 900 },
   { w: 1366, h: 768 },
 ];
