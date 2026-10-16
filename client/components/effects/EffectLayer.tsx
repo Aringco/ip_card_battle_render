@@ -30,9 +30,12 @@ function generateLeaves(count: number, seed: number): LeafParticle[] {
 export function EffectLayer({
   leafParticleCount,
   floatingTexts,
+  leftSide = 'A',
 }: {
   leafParticleCount: number;
   floatingTexts: FloatingTextItem[];
+  /** 왼쪽 패널에 앉은 편 — 팀전은 'A'(기본값), 개인전은 내 편. 그 편의 숫자는 왼쪽에, 나머지는 오른쪽에 뜬다. */
+  leftSide?: string;
 }) {
   const seedId = useId();
   const seed = seedId.charCodeAt(1) || 7;
@@ -67,9 +70,9 @@ export function EffectLayer({
           key={ft.id}
           className={`float-text float-text-${ft.type}`}
           style={{
-            /* 팀 A = 왼쪽 패널, 팀 B = 오른쪽 패널 */
-            left: ft.team === 'A' ? '3.5rem' : 'auto',
-            right: ft.team === 'B' ? '3.5rem' : 'auto',
+            /* 왼쪽 패널의 편(팀전은 A) = 왼쪽, 그 밖(팀전은 B, 개인전은 상대들) = 오른쪽 패널 */
+            left: ft.team === leftSide ? '3.5rem' : 'auto',
+            right: ft.team !== leftSide ? '3.5rem' : 'auto',
             top: '38%',
           }}
         >

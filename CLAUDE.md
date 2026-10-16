@@ -122,6 +122,20 @@ npm run build
 - **기술 단계는 `allowedSkills`만으로 뜨지 않는다.** 행동 선택 칸은 서버의 `state.pendingChoice`가 세워져야 살아나므로 감독이 대본 줄을 옮길 때마다 함께 맞춘다(`syncPending`). 장소를 누를 줄에서는 반드시 비운다 — 남아 있으면 `handleDrawCard`가 그 클릭을 에러로 되돌려보낸다.
 - **대본은 눈으로 검사할 수 없다.** 숫자를 고치면 `server/__tests__/demo.test.ts`의 검산이 먼저 걸린다(게임을 켜지 않는 순수 데이터 테스트). 장을 더할 때는 **장 사이의 이음매**도 함께 본다 — 앞 장의 마지막 클릭과 다음 장의 첫 클릭이 같은 장소면 `state.lastPlace`에 막혀 그 클릭이 먹통이 되는데, 화면에는 아무 일도 일어나지 않는다.
 
+### 개인전(순위전) — "편이 N개"인 게임 (`INDIVIDUAL_MODE_ROADMAP.md`)
+
+'다같이 놀기'의 방 만들기에서 **팀전 / 개인전**을 고른다(방 종류는 만든 사람이 정하고 불변 — `Room.mode`). 개인전은 최대 8명이 각자 겨뤄 **순위**를 매긴다. 규칙 전문은 로드맵 §2가 기준이고, 여기서는 코드에 손대기 전에 알아야 할 것만 적는다.
+
+- **엔진은 "편(side) N개"로 일반화돼 있다.** 팀전은 편이 `'A'`·`'B'` 둘이고 개인전은 `'p1'…'p8'`(한 사람이 한 편). 타입은 `SideId`(string)이고 `Team`(`'A'|'B'`)은 **팀전 전용 코드**(대기실 팀 이름·시연·CPU)만 쓴다. 상태에는 `mode`·`turnOrder`·`skillsPerTurn`·`skillsUsedThisTurn`·`ranks`가, 편에는 `color`·`finish`가 있다(팀전에서는 고정값).
+- ⚠️ **상대를 `team === 'A' ? 'B' : 'A'`로 뒤집어 구하지 말 것.** `Team`을 넓혀 둔 탓에 그 식은 컴파일되지만 개인전에서는 조용히 없는 편 `'B'`를 가리킨다. 상대는 `shared/sides.ts`의 `opponentsOf`/`nextActiveSide`/`activeSides`로 구한다. `server/__tests__/noTeamFlip.test.ts`가 그물이다 — 팀전에서만 도는 줄만 그 파일의 허용 목록에 있다.
+- **순위 판정은 `server/engine/ranking.ts` 하나다.** 승리선(`targetScore×2`)에 닿으면 1위부터, 체력 0이면 꼴찌부터 순위가 정해지고, **정해진 사람은 판에서 빠진다**(차례 없음·특허랑이 대상 불가). 남은 한 명은 남은 순위를 받고 판이 끝난다(`gameEnd.reason 'ranked'`). 턴 제한(20)이면 남은 사람을 체력순(동률은 같은 순위)으로. 순위는 항상 **이미 기록된 사람 수**에서 구한다 — 항복(방)과 기술(엔진)이 따로 세면 어긋난다.
+- ⚠️ **개인전 경로에서 `checkKnockout`/`finishTurn`을 부르지 말 것.** 팀전의 "한쪽이 0이면 곧바로 판 끝"이라 한 명이 탈락하는 순간 전원의 판이 끝난다. 판정은 **기술마다**(`processIndividualSkill` → `resolveRanks`) 하고, 차례 종료는 `advanceTurn`만 부른다.
+- **시작 인원 5명 이상이면 한 차례에 기술 2장**(`skillsPerTurn`, 시작할 때 한 번 정해 불변). 두 번째 기술을 기다릴 때는 **`pendingChoice`를 세워 둔 채** 두고(비우면 화면의 행동 선택 칸이 안 살아난다), 방은 `resetTimer`를 새로 건다. 기술 선택 중 시간초과는 **서버가 대신 고르지 않고 차례만 끝낸다**(개인전에는 자동 선택이 없다). 특허랑이는 대상(`chooseSkill.target`)이 필수이고 순위 미확정 타인이어야 한다 — 아니면 엔진이 무시하고, 방은 빈 `actionResult` 대신 보낸 사람에게만 에러를 준다(빈 갱신은 화면이 "재접속"으로 읽는다).
+- **방**: 개인전의 자리는 `'player'`·`'spectator'`뿐이다(참가 화면이 보내는 `'A'`·`'B'`도 플레이어석으로 받는다). 8명이 차면 튕기지 않고 관전석으로 받는다. 색은 입장 때 비어 있는 첫 색을 받고(`PLAYER_COLORS` 12색) `selectColor`로 바꾸며 겹치면 `COLOR_TAKEN`. 시작하면 `p1…pN`을 붙이고 **`sidePlayerIds`(편→사람)는 나가도 지우지 않는다**(순위표에 남아야 한다). 일시정지는 **묻지 않고 즉시 멈추고** 횟수는 사람마다, 순위가 정해진 사람은 못 쓴다. 항복·나가기·`detach`는 그 사람만 패배(꼴찌 쪽부터)로 기록하고 판은 계속된다(`Room.forfeitIndividual` → `processForfeit`).
+- **화면**: 개인전은 새 컴포넌트 `IndividualLayout`이 그린다(팀전 `GameLayout`은 건드리지 않았다). 프레임은 그림이 아니라 **CSS**(`.play-frame-css`, 갈색·크림 — 개인전 먼저 시범 적용). 내 편은 `gameState.memberIds`에서 내 `playerId`가 든 편을 찾는다(`lib/individual.ts`의 `mySideOf`) — 저장된 `cardBattle_team`(A/B)으로는 알 수 없다. ⚠️ **`mySide === null`은 "처음부터 관전자"다.** 순위가 정해진 플레이어는 `mySide`를 그대로 두고 조작만 잠근다(내 패널·내 색이 사라지면 안 된다). 색은 **사람마다 고정**(`PLAYER_COLORS`)이라 팀 색 체계(`teamColors.ts`)와 섞지 않는다 — 개인전 화면에서 팀 팔레트 함수를 부르면 모두 같은 색(또는 undefined)이다. 색만으로 사람을 구분하지 않는다(색 칩 옆에는 언제나 닉네임).
+- 연출이 칸을 찾는 표식은 개인전도 그대로다: `data-team-score-row="side:animal"`(날아가는 카드의 목적지)·`data-player-anchor="side:0"`·`data-rabbit-target="side"`. 오른쪽 상대 칸(`OpponentList`)이 이를 모두 달고 있다. 특허랑이의 연출 대상은 화면이 계산하지 않고 서버가 실은 `skillApplied.target`을 읽는다. 상대 목록의 경험치·레벨은 `animState.displayedExp`(연출 뒤의 값)를 쓴다.
+- **측정**: 팀전은 `client/scripts/measurePlay.mjs --diff team-before`(움직인 상자 0개여야 한다), 개인전은 `client/scripts/measureIndividual.mjs`(2·5·8명 × 1600×900·1366×768), 로비 폼은 `measureLobby.mjs`(개인전 상태 포함). 봇 시뮬레이션은 `server/scripts/individualSim.ts`.
+
 ### 배포 — 루트 `server.ts` / `Dockerfile`
 Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼에서는 WS용 포트를 따로 열 수 없으므로(브라우저가 WS 서버에 직접 접속하는 구조라, 그 포트가 공개되지 않으면 접속 자체가 안 됨), 루트 `server.ts`가 Next.js 커스텀 서버 위에 같은 HTTP 서버·같은 포트(`$PORT`, 기본 3000)로 `/ws` 경로의 WebSocket을 함께 띄운다. 로컬 개발 시에는 이 파일을 쓰지 않는다 — 위의 "개발 명령어"대로 서버(8080)와 클라이언트(3000)를 분리 실행하는 방식을 그대로 쓴다. `npm run start`(루트, `ts-node --transpile-only server.ts`) 또는 `docker build -t ip-card-battle .` && `docker run -p 3000:3000 ip-card-battle`로 실행한다. Render는 `render.yaml`(Blueprint)이 서비스를 정의하며, 대시보드에서 한 번 연결하면 그 뒤로는 `main` push마다 자동 재배포된다.
 

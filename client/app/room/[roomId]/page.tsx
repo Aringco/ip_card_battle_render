@@ -6,9 +6,12 @@ import type { Animal, Place, SideId } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAnimationQueue } from '@/hooks/useAnimationQueue';
 import { GameLayout } from '@/components/game/GameLayout';
+import { IndividualLayout } from '@/components/game/IndividualLayout';
 import { GameEndScreen } from '@/components/game/GameEndScreen';
+import { IndividualEndScreen } from '@/components/game/IndividualEndScreen';
 import { PauseMenu } from '@/components/game/PauseMenu';
 import { playBgm } from '@/lib/bgm';
+import { isFinished, mySideOf } from '@/lib/individual';
 import { startPreload } from '@/lib/preload';
 
 const STORAGE_TEAM = 'cardBattle_team';
@@ -59,8 +62,9 @@ export default function GamePage() {
   );
 
   const handleChooseSkill = useCallback(
-    (animal: Animal) => {
-      chooseSkill(animal);
+    // target은 개인전의 특허랑이가 노릴 상대(편 id) — 팀전·다른 기술은 비워 보낸다.
+    (animal: Animal, target?: SideId) => {
+      chooseSkill(animal, target);
     },
     [chooseSkill],
   );
@@ -114,10 +118,20 @@ export default function GamePage() {
     );
   }
 
+  // 개인전 — 내 편은 대기실에서 저장한 자리가 아니라 **서버가 알려준 편→사람 대응**(memberIds)에서 찾는다.
+  // 개인전의 편 id는 시작할 때 'p1'…로 붙으므로 저장해 둔 값(A/B)으로는 알 수 없다. null은 처음부터 관전자.
+  const individual = gameState.mode === 'individual';
+  const mySide = individual ? mySideOf(gameState, playerId) : null;
+  // 순위가 정해진 사람은 판에서 빠진 관전자와 같다 — 일시정지 메뉴에서는 [나가기]만 쓴다.
+  const canActInGame = individual ? mySide !== null && !isFinished(gameState, mySide) : myTeam !== null;
+
   // 체력이 즉시 10/0에 닿아 게임이 끝난 경우, 그 결정타 연출(체력 구슬 반응 +
   // "결정타!" 강조)이 끝까지 재생된 뒤에야 종료 화면으로 넘어간다 — 승리를 만든
   // 그 행동의 손맛을 화면 전환이 잘라먹지 않도록.
   if (gameState.phase === 'ended' && !animState.isSettling) {
+    if (individual) {
+      return <IndividualEndScreen gameState={gameState} mySide={mySide} onBack={handleLeave} />;
+    }
     return (
       <GameEndScreen
         gameState={gameState}
@@ -132,6 +146,20 @@ export default function GamePage() {
 
   return (
     <>
+      {individual ? (
+        <IndividualLayout
+          gameState={gameState}
+          turnDeadline={turnDeadline}
+          mySide={mySide}
+          playerId={playerId}
+          onPlaceClick={handlePlaceClick}
+          onChooseSkill={handleChooseSkill}
+          onPassSkill={handlePassSkill}
+          error={error}
+          animState={animState}
+          paused={gameState.paused}
+        />
+      ) : (
       <GameLayout
         gameState={gameState}
         turnDeadline={turnDeadline}
@@ -146,6 +174,7 @@ export default function GamePage() {
         animState={animState}
         paused={gameState.paused}
       />
+      )}
       {/* 게임 중 메뉴(⏸) — 판 바깥에 둔다. GameLayout 안에 넣으면 결정타 연출의
           화면 흔들기(transform)가 쌓임 맥락을 만들어 이 창까지 함께 흔들린다. */}
       <PauseMenu
@@ -153,10 +182,17 @@ export default function GamePage() {
         pausedBy={gameState.pausedBy}
         pausePending={gameState.pausePendingAnswer}
         // 관전자(myTeam === null)는 애초에 멈출 수 없어 이 숫자를 쓰지 않는다.
-        pauseLeft={myTeam ? Math.max(0, gameState.settings.pauseMaxCount - gameState.pauseUsed[myTeam]) : 0}
+        pauseLeft={
+          individual
+            ? canActInGame && mySide
+              ? Math.max(0, gameState.settings.pauseMaxCount - (gameState.pauseUsed[mySide] ?? 0))
+              : 0
+            : myTeam ? Math.max(0, gameState.settings.pauseMaxCount - gameState.pauseUsed[myTeam]) : 0
+        }
         pauseUnlimited={gameState.pauseUnlimited}
         pauseUntil={pauseUntil}
-        myTeam={myTeam}
+        myTeam={individual ? (canActInGame ? mySide : null) : myTeam}
+        individual={individual}
         pauseRequest={pauseRequest}
         pauseWaitingUntil={pauseWaitingUntil}
         pauseNotice={pauseNotice}

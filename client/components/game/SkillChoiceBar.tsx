@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
 import { previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeSkill } from '@/lib/skillInfo';
@@ -9,6 +10,92 @@ import { emVar } from '@/lib/textFit';
 import { GuideFinger } from './GuideFinger';
 
 const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
+
+// 홀로 카드 — 포인터를 따라 기울어지고 무지개빛이 번지는 효과(요구 G6, 팀전·개인전 공통).
+// 기법만 참고하고 새로 썼다: 포인터 좌표를 카드 기준 0~1로 바꿔 CSS 변수(--mx/--my 광택 위치,
+// --rx/--ry 기울기 각도)에 쓰고, 나머지는 전부 CSS(globals.css의 .holo-*)가 그린다.
+// ⚠️ 참고한 사이트(poke-holo.simey.me)의 원본 저장소는 GPL-3.0이라 코드를 가져오지 않는다.
+const HOLO_TILT_DEG = 14; // 가장자리에서의 최대 기울기
+
+/**
+ * 카드 한 칸을 감싸는 칸 — **기울기와 확대는 버튼이 아니라 이 칸에 건다.** 버튼은 모서리를 다듬느라
+ * overflow-hidden이라 버튼 자신을 확대하면 튀어나온 부분이 잘린다(가이드 손가락을 버튼 밖에 그리는 것과
+ * 같은 이유). 잠긴 카드(enabled=false)에는 효과를 걸지 않는다. pointermove는 requestAnimationFrame으로
+ * 묶어 프레임당 한 번만 쓰고, 터치는 hover가 없으므로 마우스일 때만 반응한다.
+ */
+function HoloCell({
+  enabled,
+  className,
+  children,
+}: {
+  enabled: boolean;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const frame = useRef(0);
+  const point = useRef<{ x: number; y: number } | null>(null);
+
+  const reset = () => {
+    if (frame.current) cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    point.current = null;
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('--mx', '50%');
+    el.style.setProperty('--my', '50%');
+    el.style.setProperty('--rx', '0deg');
+    el.style.setProperty('--ry', '0deg');
+  };
+
+  // 칸이 잠기는 순간(차례가 끝남) 남아 있던 기울기를 걷어낸다 — 안 걷으면 기울어진 채 굳는다.
+  useEffect(() => {
+    if (!enabled) reset();
+    return () => {
+      if (frame.current) cancelAnimationFrame(frame.current);
+    };
+  }, [enabled]);
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!enabled || e.pointerType !== 'mouse') return;
+    point.current = { x: e.clientX, y: e.clientY };
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      const el = ref.current;
+      const p = point.current;
+      if (!el || !p) return;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return;
+      const px = Math.min(1, Math.max(0, (p.x - r.left) / r.width));
+      const py = Math.min(1, Math.max(0, (p.y - r.top) / r.height));
+      el.style.setProperty('--mx', `${(px * 100).toFixed(1)}%`);
+      el.style.setProperty('--my', `${(py * 100).toFixed(1)}%`);
+      // 위쪽을 가리키면 위가 뒤로 젖혀지고, 오른쪽을 가리키면 오른쪽이 들어간다.
+      el.style.setProperty('--rx', `${((0.5 - py) * 2 * HOLO_TILT_DEG).toFixed(2)}deg`);
+      el.style.setProperty('--ry', `${((px - 0.5) * 2 * HOLO_TILT_DEG).toFixed(2)}deg`);
+    });
+  };
+
+  return (
+    <div
+      ref={ref}
+      className={`holo-cell ${className}`}
+      data-holo={enabled || undefined}
+      onPointerMove={onPointerMove}
+      onPointerLeave={reset}
+    >
+      {children}
+      {/* 무지개빛 층과 포인터를 따라가는 광택 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
+      {enabled && (
+        <>
+          <span className="holo-shine" aria-hidden />
+          <span className="holo-glare" aria-hidden />
+        </>
+      )}
+    </div>
+  );
+}
 
 // 줄바꿈은 여기서 정해진 그대로 그려진다(CSS가 `white-space: pre`) — 길면 접히는 게
 // 아니라 글자가 작아진다. 그래서 문구와 함께 상수로 꺼내 두고 폭을 재어 넘긴다.
@@ -96,8 +183,8 @@ export function SkillChoiceBar({
         // 접혔다 — 어디서 접힐지는 글자 수에 달려 있어 그때그때 달랐다.
         const effectParts: string[] = [];
         if (preview.extraDraws > 0) effectParts.push(`다음 턴 카드 +${preview.extraDraws}회`);
-        if (preview.myHpDelta > 0) effectParts.push(`내 체력 +${preview.myHpDelta}`);
-        if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpDelta}`);
+        if (preview.myHpDelta > 0) effectParts.push(`내 체력 ${preview.oppHpIsMax ? '최대 ' : ''}+${preview.myHpDelta}`);
+        if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpIsMax ? '최대 ' : ''}${preview.oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${preview.multiplierAfter}`);
         const effectLabel = eligible ? effectParts.join(',\n') : '레벨 부족';
 
@@ -105,7 +192,7 @@ export function SkillChoiceBar({
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
         // — 그래서 가이드는 이 바깥의, 잘리지 않는 래퍼에 그린다(패스 버튼과 동일한 처리).
         return (
-          <div key={animal} className="relative h-full">
+          <HoloCell key={animal} enabled={clickable} className="relative h-full">
             <button
               onClick={() => clickable && onChoose(animal)}
               disabled={!clickable}
@@ -176,14 +263,14 @@ export function SkillChoiceBar({
             {showSkillGuide && eligible && demoOpen(animal) && (
               <GuideFinger team={spectatorGuideTeam} animal={animal} />
             )}
-          </div>
+          </HoloCell>
         );
       })}
 
       {/* 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
           다듬으려고) overflow-hidden이라 그 안에 두면 잘려 보인다 — 그래서 가이드는
           이 바깥의, 잘리지 않는 래퍼에 그린다(장소 타일에서 겪었던 것과 같은 문제). */}
-      <div className="relative">
+      <HoloCell enabled={passable} className="relative">
         <button
           onClick={() => passable && onPass()}
           disabled={!passable}
@@ -205,7 +292,7 @@ export function SkillChoiceBar({
         {/* 언제나 누를 수 있는 이 버튼도, 행동 선택 차례마다 손가락으로 짚어준다
             (시연에서는 잠겨 있으므로 짚지 않는다 — 누를 수 없는 곳을 가리키면 안 된다). */}
         {showSkillGuide && demoAllowed === null && <GuideFinger team={spectatorGuideTeam} />}
-      </div>
+      </HoloCell>
     </div>
   );
 }

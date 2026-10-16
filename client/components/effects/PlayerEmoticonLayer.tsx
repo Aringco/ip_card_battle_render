@@ -38,23 +38,26 @@ export function PlayerEmoticonLayer({ items }: { items: PlayerEmoticon[] }) {
 }
 
 function EmoticonBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) {
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
-
-  // 왼쪽 팀(A)은 프로필 오른쪽(보드 쪽)에, 오른쪽 팀(B)은 프로필 왼쪽(보드 쪽)에 붙인다.
-  const onCenterSide = item.team === 'A';
+  const [anchor, setAnchor] = useState<{ x: number; y: number; onCenterSide: boolean } | null>(null);
 
   useLayoutEffect(() => {
     const el = document.querySelector(`[data-player-anchor="${item.team}:${item.playerIndex}"]`);
     if (!el) return;
     const r = el.getBoundingClientRect();
+    // 왼쪽에 있는 프로필은 그 오른쪽(보드 쪽)에, 오른쪽에 있는 프로필은 그 왼쪽(보드 쪽)에 붙인다.
+    // 팀 이름('A'/'B')이 아니라 **화면 위치**로 가른다 — 개인전은 편이 'p1'…이고, 내 편이 항상 왼쪽이다.
+    // 팀전에서는 A가 왼쪽·B가 오른쪽이라 예전 판정과 똑같은 결과다.
+    const onCenterSide = r.left + r.width / 2 < window.innerWidth / 2;
     setAnchor({
       x: onCenterSide ? r.right + 12 : r.left - 12,
       y: r.top + r.height / 2,
+      onCenterSide,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
   if (!anchor) return null;
+  const onCenterSide = anchor.onCenterSide;
 
   return (
     <span

@@ -49,6 +49,7 @@ export function GameBoard({
   mermaidPopup,
   spectatorGuideTeam,
   turnGlow,
+  leftTeam,
 }: {
   gameState: ClientGameState;
   myTeam: SideId | null;
@@ -79,6 +80,8 @@ export function GameBoard({
   // 지금 "눈길을 둘 곳"이 이 카드판인지(=장소 선택 단계). 행동 선택 단계로 넘어가면
   // 이 값이 false가 되고 강조가 화면 아래 행동 선택 띠로 옮겨간다(GameLayout이 정한다).
   turnGlow: boolean;
+  /** 개인전 — 왼쪽 패널에 앉은 편(=나). 그 편의 디자인어 팝업은 왼쪽, 나머지는 오른쪽 모서리에 뜬다. 팀전은 비운다. */
+  leftTeam?: SideId;
 }) {
   // 예전엔 게임당 첫 턴에만 손가락 가이드를 잠깐 보여줬는데, 그 순간을 놓친 사람은
   // 규칙을 다시 확인할 방법이 없었다("규칙을 모르겠다" 피드백의 원인). 이제는 내가
@@ -162,7 +165,12 @@ export function GameBoard({
       </div>
 
       {festivalFlash && <div className="expand-flash" />}
-      {mermaidPopup && <MermaidPopup team={mermaidPopup.team} />}
+      {mermaidPopup && (
+        <MermaidPopup
+          team={mermaidPopup.team}
+          side={leftTeam === undefined ? undefined : mermaidPopup.team === leftTeam ? 'left' : 'right'}
+        />
+      )}
 
       <CardCaptionLayer captions={captions} myTeam={myTeam} />
       <CardFocusLayer items={placeFocusBursts} />

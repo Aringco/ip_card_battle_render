@@ -6,8 +6,9 @@ import type { SideId } from 'shared';
 const NOTE_COUNT = 5;
 
 // 디자인어 스킬 발동 — 발동한 팀 쪽 모서리에 큰 인어가 떠오르며 음표가 흩날린다.
-export function MermaidPopup({ team }: { team: SideId }) {
-  const side = team === 'A' ? 'left' : 'right';
+export function MermaidPopup({ team, side: sideOverride }: { team: SideId; side?: 'left' | 'right' }) {
+  // 팀전은 A가 왼쪽·B가 오른쪽. 개인전은 내 편이 왼쪽이라 호출하는 쪽이 side를 정해 준다.
+  const side = sideOverride ?? (team === 'A' ? 'left' : 'right');
 
   return (
     <div className={`mermaid-popup ${side}`} aria-hidden>

@@ -36,6 +36,9 @@ export interface SkillPreview {
   oppHpDelta: number;      // 상대 체력 증감 — 항상 0 이하(음수 그대로)
   extraDraws: number;
   multiplierAfter: number; // 인어를 고르면 발동 후 배율, 그 외엔 항상 1(발동하면 소모되므로)
+  // 개인전의 특허랑이 — 누구를 노릴지 정해지기 전이라 "상대가 가진 만큼으로 자르기"를 할 수 없다.
+  // oppHpDelta는 자르지 않은 값이고, 화면은 "최대"를 붙여 보여준다. 팀전은 언제나 false.
+  oppHpIsMax: boolean;
 }
 
 export function previewSkill(gameState: ClientGameState, team: SideId, animal: Animal): SkillPreview {
@@ -47,6 +50,7 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   let oppHpDelta = 0;
   let extraDraws = 0;
   let multiplierAfter = 1;
+  let oppHpIsMax = false;
 
   if (animal === 'sheep') {
     extraDraws = level * mult;
@@ -54,7 +58,11 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
     myHpDelta = level * mult;
   } else if (animal === 'tiger') {
     const amount = level * mult;
-    const steal = Math.min(amount, Math.max(0, gameState.teams[opponent]?.hp ?? 0));
+    // 개인전은 대상이 정해지기 전이라 자를 상대가 없다 — 자르지 않은 값을 "최대 n"으로 보여준다.
+    const steal = gameState.mode === 'individual'
+      ? amount
+      : Math.min(amount, Math.max(0, gameState.teams[opponent]?.hp ?? 0));
+    oppHpIsMax = gameState.mode === 'individual';
     oppHpDelta = -steal;
     myHpDelta = steal;
   } else if (animal === 'mermaid') {
@@ -63,5 +71,5 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
     multiplierAfter = mult + level;
   }
 
-  return { animal, level, myHpDelta, oppHpDelta, extraDraws, multiplierAfter };
+  return { animal, level, myHpDelta, oppHpDelta, extraDraws, multiplierAfter, oppHpIsMax };
 }

@@ -4,10 +4,17 @@ import type { FestivalProgress } from '@/hooks/useAnimationQueue';
 // 자리는 SheepProgressBar와 같지만(둘은 동시에 뜨지 않는다) **생김새는 다르다** —
 // 이쪽만 도토리가 그려진 나무 띠(acorn_bar)를 쓴다. 축제 전용 그림이라 무슨 일이
 // 벌어지는지 글을 읽기 전에 알아볼 수 있다.
-export function FestivalProgressBar({ progress }: { progress: FestivalProgress | null }) {
+export function FestivalProgressBar({
+  progress,
+  label,
+}: {
+  progress: FestivalProgress | null;
+  /** 팀 표시를 대신할 글자 — 개인전은 그 사람의 닉네임(팀전은 비워 둔다: 🟢/🔵) */
+  label?: string;
+}) {
   if (!progress) return null;
 
-  const teamLabel = progress.team === 'A' ? '🟢' : '🔵';
+  const teamLabel = label ?? (progress.team === 'A' ? '🟢' : '🔵');
 
   return (
     // ⚠️ 🌰를 글에 쓰지 않는다 — 띠 그림의 왼쪽 마구리에 도토리 두 알이 이미 그려져 있어

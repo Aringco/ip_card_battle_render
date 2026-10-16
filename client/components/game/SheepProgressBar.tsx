@@ -1,10 +1,17 @@
 import type { SheepProgress } from '@/hooks/useAnimationQueue';
 
 // 실용신양 스킬로 예약된 추가 뽑기가 지금 이번 액션에서 몇 번째까지 소모됐는지 보여준다.
-export function SheepProgressBar({ progress }: { progress: SheepProgress | null }) {
+export function SheepProgressBar({
+  progress,
+  label,
+}: {
+  progress: SheepProgress | null;
+  /** 팀 표시를 대신할 글자 — 개인전은 그 사람의 닉네임(팀전은 비워 둔다: 🟢/🔵) */
+  label?: string;
+}) {
   if (!progress) return null;
 
-  const teamLabel = progress.team === 'A' ? '🟢' : '🔵';
+  const teamLabel = label ?? (progress.team === 'A' ? '🟢' : '🔵');
 
   return (
     // 자리는 액자 윗머리 **가운데**다(요청: 이쪽은 그대로 둔다).

@@ -5165,3 +5165,556 @@ body {
   .color-swatch { transition: none; }
   .color-swatch:hover:not(:disabled) { transform: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   개인전(순위전) 게임 화면 — `.play-frame-css` + `.ind-*`
+   (INDIVIDUAL_MODE_ROADMAP.md T5-2 · components/game/IndividualLayout.tsx)
+
+   팀전의 `.play-frame`은 칸막이까지 그려진 **그림 한 장**(play_frame.webp) 위에 칸 10개를 %로
+   얹는다. 개인전은 그 그림을 쓰지 않고 **CSS만으로** 갈색 나무와 크림 베이지 프레임을 다시 그린다 —
+   개인전 먼저 시범 적용이고, 팀전 화면은 한 픽셀도 건드리지 않는다(`.play-frame`·`.play-cell-*`는 그대로).
+
+   ⚠️ 크기는 팀전 프레임과 **같은 상자**(--pf-w × --pf-h)를 쓴다. 상단 바·`--stage-w` 계산이 이 높이를
+   전제로 "세로가 넘치지 않는" 폭을 정해 두었기 때문이다 — 여기서 비율을 바꾸면 화면 밖으로 밀린다.
+
+   칸 배치(grid-template-areas):
+        위:   me(내 동물) · board(카드 필드) · opp(상대 전원 — 두 줄에 걸친 한 열)
+        아래: hp(내 체력) · cards(기술 카드 5장)
+   열 폭은 액자 폭(--pf-w)의 비율이고, 오른쪽 열이 8명 판의 상대 7칸을 담을 만큼 넓다(팀전의 오른쪽
+   패널 14.3% → 19%). 그만큼 카드 필드와 기술 카드 띠가 좁아진다(64.5% → 56.9%).
+   ══════════════════════════════════════════════════════════════════════════ */
+.play-frame-css {
+  --pf-w: var(--stage-w);
+  --pf-h: calc(var(--pf-w) * 1000 / 1965);
+  --cell-r: calc(var(--pf-w) * 22 / 1965);
+  --fr-line: calc(var(--pf-w) * 0.0028);
+
+  position: relative;
+  box-sizing: border-box;
+  width: var(--pf-w);
+  height: var(--pf-h);
+  margin-inline: auto;
+  padding:
+    calc(var(--pf-h) * 0.059)
+    calc(var(--pf-w) * 0.02805)
+    calc(var(--pf-h) * 0.059)
+    calc(var(--pf-w) * 0.02545);
+
+  display: grid;
+  grid-template-columns:
+    calc(var(--pf-w) * 0.1435)
+    calc(var(--pf-w) * 0.569)
+    calc(var(--pf-w) * 0.19);
+  grid-template-rows: calc(var(--pf-h) * 0.493) calc(var(--pf-h) * 0.342);
+  column-gap: calc(var(--pf-w) * 0.022);
+  row-gap: calc(var(--pf-h) * 0.047);
+  grid-template-areas:
+    "me board opp"
+    "hp cards opp";
+
+  /* 나무 — 결 무늬 위에 갈색 바탕. 안쪽으로 얇은 크림(베이지) 선과 짙은 선을 겹쳐 틀처럼 읽히게 한다. */
+  border-radius: calc(var(--pf-w) * 0.012);
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px),
+    linear-gradient(135deg, #8d5c2e 0%, #6f4521 46%, #85552a 100%);
+  box-shadow:
+    inset 0 0 0 var(--fr-line) #3a220f,
+    inset 0 0 0 calc(var(--fr-line) * 2.6) #c79a5e,
+    inset 0 0 0 calc(var(--fr-line) * 3.4) #3a220f,
+    inset 0 0 calc(var(--pf-w) * 0.03) rgba(0, 0, 0, 0.35),
+    0 calc(var(--pf-w) * 0.006) calc(var(--pf-w) * 0.02) rgba(0, 0, 0, 0.45);
+}
+
+/* 칸 하나 — 팀전의 .play-cell과 같은 생김새(양피지 + 둥근 모서리)인데, 자리는 grid가 정한다.
+   ⚠️ overflow: hidden과 border-radius는 짝이다(.play-cell 주석). 칸 둘레에는 크림 선과 짙은 선을 두른다. */
+.ind-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--cell-r);
+  background: var(--cell-paper, #fee9bb);
+  box-shadow:
+    0 0 0 var(--fr-line) #f3dfb4,
+    0 0 0 calc(var(--fr-line) * 2) #4a2d15;
+}
+.ind-cell-me    { grid-area: me; --exp-w: calc(var(--pf-w) * 0.1435); }
+.ind-cell-hp    { grid-area: hp; }
+.ind-cell-opp   { grid-area: opp; }
+/* 보드 칸만 클립 경계를 바깥으로 넓힌다 — 장소를 짚는 손이 타일 위로 솟는다(.play-cell-board와 같은 이유). */
+.ind-cell-board { grid-area: board; overflow: clip; overflow-clip-margin: 48px; }
+
+/* 체력 숫자 — 액자 폭에 비례(.play-cell-hp-a와 같은 값) */
+.ind-cell-hp .hp-orb-value { font-size: calc(var(--pf-w) * 0.032); }
+
+/* 기술 카드 띠 — 팀전의 .play-cards(절대배치) 대신 grid 칸이다. 안의 5칸 나눔은 그대로(.play-cards-grid). */
+.ind-cards {
+  grid-area: cards;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 안내 쪽지는 보드 칸과 카드 줄 사이의 가로 들보 위에 앉는다 — 개인전의 보드 폭(56.9%)에 맞춘다. */
+.play-frame-css .play-prompt-strip {
+  left: 19.095%;
+  width: 56.9%;
+}
+
+/* 카드 필드의 빛(요구 G3) — 상대(또는 지금 차례인 사람)의 턴일 때 **그 사람이 고른 색**으로 은은하게
+   숨 쉰다. 안쪽 inset 그림자라 칸의 overflow에 잘리지 않는다. --glow-color는 레이아웃이 넘긴다. */
+.ind-board-glow {
+  position: relative;
+  height: 100%;
+}
+.ind-board-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: var(--cell-r);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  box-shadow:
+    inset 0 0 calc(var(--pf-w) * 0.03) calc(var(--pf-w) * 0.004) color-mix(in srgb, var(--glow-color, #888) 62%, transparent),
+    inset 0 0 0 calc(var(--pf-w) * 0.0022) color-mix(in srgb, var(--glow-color, #888) 80%, transparent);
+}
+.ind-board-glow[data-on]::after {
+  opacity: 1;
+  animation: indGlowBreath 2.6s ease-in-out infinite;
+}
+@keyframes indGlowBreath {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ind-board-glow[data-on]::after { animation: none; opacity: 0.85; }
+}
+
+/* 순위가 정해진 내 패널 — 조작은 잠겨 있고 정보만 남는다 */
+.ind-finished { filter: grayscale(0.35); }
+
+/* ── 오른쪽 열: 상대 전원(요구 G5) ────────────────────────────────────────────
+   한 칸 = [체력바 | 위: 색 칩+닉네임 / 아래: 동물 네 마리의 레벨·경험치]. 최대 7칸이 한 열에 들어가야 해서
+   글자·간격을 전부 액자 폭(--pf-w)에서 뽑는다(고정 px면 8명 판에서 넘친다). */
+.ind-opp-list {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--pf-w) * 0.0045);
+  padding: calc(var(--pf-w) * 0.0045);
+}
+.ind-opp-empty {
+  margin: auto;
+  font-size: calc(var(--pf-w) * 0.0095 * var(--font-scale));
+  color: #7d6a55;
+}
+.ind-opp-card {
+  --opp-color: #8a8a8a;
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  /* 인원이 적을 때 칸이 열 전체로 늘어나 휑해지지 않게 상한을 둔다(7칸이 꽉 찼을 때의 높이 가까이) */
+  max-height: calc(var(--pf-w) * 0.0925);
+  display: flex;
+  gap: calc(var(--pf-w) * 0.004);
+  padding: calc(var(--pf-w) * 0.0032);
+  border-radius: calc(var(--pf-w) * 0.0085);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)),
+    color-mix(in srgb, var(--opp-color) 20%, #fff3d6);
+  box-shadow: inset 0 0 0 calc(var(--pf-w) * 0.0016) color-mix(in srgb, var(--opp-color) 60%, #4a2d15);
+  transition: box-shadow 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+}
+.ind-opp-card-active {
+  box-shadow:
+    inset 0 0 0 calc(var(--pf-w) * 0.0036) var(--opp-color),
+    inset 0 0 calc(var(--pf-w) * 0.014) calc(var(--pf-w) * 0.002) color-mix(in srgb, var(--opp-color) 55%, transparent);
+  animation: indOppPulse 2.2s ease-in-out infinite;
+}
+@keyframes indOppPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.08); }
+}
+/* 순위가 정해진 사람 — 칸은 남기되 흐리게(칸이 빠지면 나머지가 밀려 올라가 누가 떨어졌는지 따라가기 어렵다) */
+.ind-opp-card-finished {
+  opacity: 0.6;
+  filter: grayscale(0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ind-opp-card-active { animation: none; }
+}
+.ind-opp-hp {
+  flex: none;
+  width: calc(var(--pf-w) * 0.0205);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--pf-w) * 0.0012);
+}
+.ind-opp-hp-track {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 62%;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(60, 40, 20, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(60, 40, 20, 0.35);
+}
+.ind-opp-hp-fill {
+  width: 100%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--opp-color) 62%, #ffffff), var(--opp-color));
+  transition: height 0.5s ease;
+}
+.ind-opp-hp-surge,
+.ind-opp-hp-crack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ind-opp-hp-surge { background: linear-gradient(0deg, transparent, rgba(190, 255, 170, 0.85), transparent); animation: indHpSurge 0.7s ease-out both; }
+.ind-opp-hp-crack { background: rgba(220, 38, 38, 0.65); animation: indHpCrack 0.7s ease-out both; }
+@keyframes indHpSurge { from { transform: translateY(100%); opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+@keyframes indHpCrack { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+.ind-opp-hp-value {
+  font-size: calc(var(--pf-w) * 0.0088 * var(--font-scale));
+  font-weight: 800;
+  line-height: 1;
+  color: #4a2d15;
+}
+.ind-opp-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--pf-w) * 0.0018);
+}
+.ind-opp-name-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--pf-w) * 0.0036);
+  min-width: 0;
+}
+.ind-opp-chip {
+  flex: none;
+  width: calc(var(--pf-w) * 0.0078);
+  height: calc(var(--pf-w) * 0.0078);
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+.ind-opp-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(var(--pf-w) * 0.0094 * var(--font-scale));
+  font-weight: 800;
+  color: #3a2410;
+}
+.ind-opp-finish {
+  margin-left: auto;
+  flex: none;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: #6b4a2b;
+  color: #fff4d6;
+  white-space: nowrap;
+  font-size: calc(var(--pf-w) * 0.0076 * var(--font-scale));
+  font-weight: 800;
+}
+.ind-opp-animals {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--pf-w) * 0.0028);
+}
+.ind-animal {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  line-height: 1;
+  border-radius: calc(var(--pf-w) * 0.0042);
+  background: rgba(255, 255, 255, 0.72);
+}
+/* 얼굴 크기 — 8명 판(상대 7칸)에서 칸 높이가 76px(1366×768)까지 줄어도 얼굴·Lv·경험치·막대가 다 들어가는 한계값이다.
+   더 키우면 맨 아래 막대가 잘린다(measureIndividual.mjs의 "본문잘림"이 지킨다). */
+.ind-animal-face {
+  width: calc(var(--pf-w) * 0.0135);
+  height: calc(var(--pf-w) * 0.0135);
+  object-fit: contain;
+}
+.ind-animal-lv {
+  font-size: calc(var(--pf-w) * 0.0078 * var(--font-scale));
+  font-weight: 900;
+  color: #2f6f2f;
+}
+.ind-animal-exp {
+  font-size: calc(var(--pf-w) * 0.0066 * var(--font-scale));
+  color: #6b5640;
+}
+.ind-animal-bar {
+  width: 88%;
+  height: calc(var(--pf-w) * 0.0028);
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+}
+.ind-animal-bar > div { height: 100%; background: #4caf50; transition: width 0.3s ease; }
+/* 인어 배율·양 예약 뽑기 스티커 */
+.ind-animal-badge {
+  position: absolute;
+  top: calc(var(--pf-w) * -0.0022);
+  right: calc(var(--pf-w) * -0.0016);
+  z-index: 2;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: calc(var(--pf-w) * 0.0068 * var(--font-scale));
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+/* ── "n위 확정!" 알림 ─────────────────────────────────────────────────────────
+   승리(1위로 확정)는 밝은 금색, 탈락·기권은 어두운 회갈색 — 색만이 아니라 글자("n위 확정!")가 말한다. */
+.ranked-banner {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  z-index: 75;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.9rem 2.4rem;
+  border: 4px solid;
+  border-radius: 1.4rem;
+  text-align: center;
+  animation: rankedPop 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.ranked-banner-good {
+  background: linear-gradient(180deg, #fff6d0, #fcd877);
+  border-color: #b8791a;
+  color: #6b3a06;
+  box-shadow: 0 16px 40px rgba(180, 120, 20, 0.5);
+}
+.ranked-banner-bad {
+  background: linear-gradient(180deg, #ddd6cc, #9b9086);
+  border-color: #4b4036;
+  color: #2b231b;
+  box-shadow: 0 16px 40px rgba(20, 12, 4, 0.5);
+}
+.ranked-banner-rank { font-size: calc(2.6rem * var(--font-scale)); font-weight: 900; line-height: 1.1; }
+.ranked-banner-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: calc(1.25rem * var(--font-scale));
+  font-weight: 800;
+}
+.ranked-banner-chip {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+@keyframes rankedPop {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  32%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  82%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.94); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranked-banner { animation: none; transform: translate(-50%, -50%); }
+}
+
+/* ── 특허랑이 상대 선택 화면(요구 G2) ───────────────────────────────────────────
+   화면을 어둡게(검정, 불투명도 0.5) 하고 상대 닉네임 버튼으로 고른다. 시연 4장의 결말 고르기
+   (.demo-scene-menu)를 본떴다. z-index 80은 배너들(75) 위, 일시정지 창(95~100) 아래 — 멈춘 동안에는
+   멈춤 창이 이 판을 덮는다. */
+.target-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.4vh, 24px);
+  padding: 4vh 16px;
+  background: rgba(0, 0, 0, 0.5);
+  animation: demoSceneFadeIn 200ms ease-out both;
+}
+.target-picker-title {
+  color: #fff6df;
+  font-size: calc(1.7rem * var(--font-scale));
+  font-weight: 900;
+  text-shadow: 0 2px 8px #000000cc;
+}
+.target-picker-sub {
+  color: #f7e6c2;
+  font-size: calc(1.05rem * var(--font-scale));
+  font-weight: 700;
+  text-shadow: 0 2px 6px #000000cc;
+}
+.target-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(10px, 1.4vw, 18px);
+  max-width: 62rem;
+}
+.target-picker-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 12.5rem;
+  padding: 0.85rem 1.2rem;
+  border: 3px solid #211505;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fdf3dc 0%, #efd9ad 100%);
+  color: #2a1a08;
+  box-shadow: 0 6px 0 #2115055c, 0 10px 22px #00000066;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+.target-picker-card:hover,
+.target-picker-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 0 #2115055c, 0 14px 28px #00000077;
+  filter: brightness(1.05);
+}
+.target-picker-card:active { transform: translateY(1px); box-shadow: 0 3px 0 #2115055c, 0 6px 14px #00000066; }
+.target-picker-index {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: #3f2410;
+  color: #f7e6c2;
+  font-size: calc(0.9rem * var(--font-scale));
+  font-weight: 700;
+}
+.target-picker-chip {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 4px;
+  border: 2px solid rgba(0, 0, 0, 0.45);
+}
+.target-picker-name { font-size: calc(1.15rem * var(--font-scale)); white-space: nowrap; }
+.target-picker-hp { margin-left: auto; font-size: calc(0.95rem * var(--font-scale)); font-weight: 700; color: #6b4a2b; }
+.target-picker-cancel {
+  padding: 0.5rem 1.4rem;
+  border: 2px solid #f7e6c2aa;
+  border-radius: 999px;
+  background: transparent;
+  color: #f7e6c2;
+  font-size: calc(1rem * var(--font-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.target-picker-cancel:hover { background: #ffffff22; }
+@media (prefers-reduced-motion: reduce) {
+  .target-picker { animation: none; }
+  .target-picker-card { transition: none; }
+  .target-picker-card:hover,
+  .target-picker-card:focus-visible { transform: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   홀로 카드 — 기술 카드에 마우스를 올리면 커지고, 포인터를 따라 기울어지고, 무지개빛이 번진다
+   (INDIVIDUAL_MODE_ROADMAP.md T7-1 · 요구 G6 · 팀전·개인전 공통)
+   components/game/SkillChoiceBar.tsx의 HoloCell이 --mx/--my(광택 위치)·--rx/--ry(기울기)를 쓴다.
+
+   ⚠️ **참고한 사이트(poke-holo.simey.me)의 코드는 가져오지 않았다.** 원본 저장소는 GPL-3.0이라 복사하면
+      이 저장소 전체에 그 조건이 걸릴 수 있다. 기법(포인터 좌표 → CSS 변수 → 기울기·광택·무지개 층)만 새로 썼다.
+
+   ⚠️ 기울기·확대는 **버튼이 아니라 감싸는 칸**(.holo-cell)에 건다 — 버튼은 모서리를 다듬느라
+      overflow-hidden이라 버튼 자신을 확대하면 튀어나온 부분이 잘린다.
+   ⚠️ 효과는 transform·opacity뿐이라 배치를 바꾸지 않는다(팀전 measurePlay --diff로 확인한다).
+   ⚠️ 잠긴 카드(disabled)에는 걸지 않는다 — HoloCell이 enabled일 때만 data-holo와 두 층을 그린다.
+   ══════════════════════════════════════════════════════════════════════════ */
+.holo-cell {
+  --mx: 50%;
+  --my: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), filter 0.25s ease;
+  will-change: auto;
+}
+.holo-cell[data-holo]:hover {
+  z-index: 30;
+  /* 위로 떠오르며(기존 hover와 같은 -16px) 1.1배로 커진다. 기울기는 포인터를 짧은 지연으로 따라간다. */
+  transform: perspective(900px) translateY(-16px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.1);
+  transition: transform 0.09s linear, filter 0.25s ease;
+  filter: drop-shadow(0 18px 16px rgba(0, 0, 0, 0.45));
+  will-change: transform;
+}
+/* 버튼 자신의 옛 hover(떠오름·확대)는 끈다 — 같은 일을 감싸는 칸이 하므로 겹치면 두 번 커진다. */
+.holo-cell[data-holo] .skill-choice-panel:not(:disabled):hover {
+  transform: none;
+}
+
+/* 무지개빛 — 포인터 위치에 따라 흐르는 색띠. color-dodge로 카드 그림 위에 번지게 한다. */
+.holo-shine,
+.holo-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border-radius: var(--cell-r, 16px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.holo-shine {
+  background-image:
+    repeating-linear-gradient(
+      115deg,
+      #ff7aa8 0%, #ffd06b 12%, #8dff9f 24%, #6bd5ff 36%, #b08cff 48%, #ff7aa8 60%
+    ),
+    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.55), transparent 55%);
+  background-size: 260% 260%, 100% 100%;
+  background-position: var(--mx) var(--my), center;
+  mix-blend-mode: color-dodge;
+  filter: brightness(0.62) contrast(1.35) saturate(1.2);
+}
+/* 광택 — 포인터 아래가 하얗게 빛나고 가장자리는 살짝 어두워져 입체감이 생긴다. */
+.holo-glare {
+  z-index: 5;
+  background: radial-gradient(
+    farthest-corner circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.22) 20%,
+    rgba(0, 0, 0, 0.32) 95%
+  );
+  mix-blend-mode: overlay;
+}
+.holo-cell[data-holo]:hover .holo-shine { opacity: 0.5; }
+.holo-cell[data-holo]:hover .holo-glare { opacity: 0.85; }
+
+/* 터치 기기는 hover가 없다 — 효과를 아예 켜지 않는다(HoloCell도 마우스일 때만 좌표를 쓴다). */
+@media (hover: none) {
+  .holo-shine,
+  .holo-glare { display: none; }
+  .holo-cell[data-holo]:hover { transform: none; filter: none; }
+}
+/* 움직임을 줄이는 설정이면 기울기·광택을 끈다 — 기존 hover(떠오름)도 이미 꺼져 있다. */
+@media (prefers-reduced-motion: reduce) {
+  .holo-shine,
+  .holo-glare { display: none; }
+  .holo-cell,
+  .holo-cell[data-holo]:hover { transform: none; transition: none; filter: none; }
+}

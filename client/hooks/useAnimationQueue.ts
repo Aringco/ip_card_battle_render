@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Animal, ClientGameEvent, ClientGameState, Place, StackedCard, SideId } from 'shared';
+import type { Animal, ClientGameEvent, ClientGameState, FinishReason, Place, StackedCard, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { playRandomSound, playRandomSoundSequence } from '@/lib/sounds';
@@ -179,6 +179,15 @@ export interface AnimationState {
   displayedActivePlayerIndex: number;
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
   decisiveHit: { winner: SideId } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
+  rankBanner: RankBanner | null; // 개인전 — 한 사람의 순위가 정해진 순간 "n위 확정!" 알림
+}
+
+/** 개인전 — 순위가 정해진 사람과 그 사유(RankedBanner가 그린다). */
+export interface RankBanner {
+  id: number;
+  team: SideId;
+  rank: number;
+  reason: FinishReason;
 }
 
 const EMPTY_SCORE_MAP = new Map<string, number>() as ReadonlyMap<string, number>;
@@ -212,6 +221,7 @@ const RABBIT_PRESSURE_DUR = 700;
 const FESTIVAL_BURST_DUR = 2000;
 const FESTIVAL_START_INFO_DUR = 2600; // "이제부터 K턴마다 N회!" 규칙 안내 배너 — 두 줄이라 다른 배너보다 조금 더 오래 보여준다
 const DECISIVE_HIT_DUR = 1800;
+const RANK_BANNER_DUR = 1700; // 한 사람의 "n위 확정!" 알림 — 한 기술에서 둘이 정해지면 차례로 하나씩 띄운다
 // ── 결정타를 맞은 팀의 좌절 연출 ───────────────────────────────────────────
 const DESPAIR_LEAD_MS = 300;  // 화면이 흔들린 직후 첫 마리가 뜨기까지
 const DESPAIR_STEP_MS = 240;  // 네 마리가 "주루룩" 이어서 뜨는 간격
@@ -256,6 +266,7 @@ export function useAnimationQueue(
   const [shakingPile, setShakingPile] = useState<ShakingPile | null>(null);
   const [newCardId, setNewCardId] = useState<number | null>(null);
   const [decisiveHit, setDecisiveHit] = useState<{ winner: SideId } | null>(null);
+  const [rankBanner, setRankBanner] = useState<RankBanner | null>(null);
   // 실제 서버 경험치(gameState.teams[t].exp)는 페어가 맞는 즉시 반영되지만, 화면에는 그
   // 페어 카드가 팀 쪽으로 날아가 도착하는 순간에야 숫자가 오르는 게 더 직관적이다.
   //
@@ -505,6 +516,7 @@ export function useAnimationQueue(
     setShakingPile(null);
     setNewCardId(null);
     setDecisiveHit(null);
+    setRankBanner(null);
     // pendingExpCredit는 이제 이 이펙트가 아니라 렌더 도중(위쪽 lastEventsForCreditRef
     // 블록)에 이미 이번 액션의 정답값으로 동기 반영돼 있다 — 여기서 다시 건드리지 않는다.
 
@@ -924,8 +936,12 @@ export function useAnimationQueue(
               sched(() => setRabbitFlights(prev => prev.filter(f => f.id !== flightId)), RABBIT_FLIGHT_DUR);
               addFloat(`+${myHpDelta}`, team, 'bonus');
 
-              setRabbitPressure({ sourceTeam: team, targetTeam: opp });
-              sched(() => setRabbitPressure(null), RABBIT_PRESSURE_DUR);
+              // 토끼떼가 "상대"에게 압박을 주는 연출은 상대가 한 편뿐일 때만 성립한다 — 개인전(3명 이상)에서는
+              // 누구를 압박하는 것인지 정해져 있지 않으므로 건너뛴다.
+              if (Object.keys(skillEv.hpAfter).length === 2) {
+                setRabbitPressure({ sourceTeam: team, targetTeam: opp });
+                sched(() => setRabbitPressure(null), RABBIT_PRESSURE_DUR);
+              }
             }
           } else if (animal === 'mermaid') {
             // 디자인어 — 큰 인어 팝업. 즉시 체력 변화는 없고 다음 행동의 배율만 키운다.
@@ -961,6 +977,21 @@ export function useAnimationQueue(
         cursor = animal === 'tiger'
           ? at + TIGER_RECOIL_DUR + TIGER_HIT_DUR + 80
           : at + EFFECT_DUR;
+      }
+    }
+
+    // ── 개인전: 순위가 정해진 사람마다 "n위 확정!"을 차례로 띄운다(승리가 먼저 기록된다). ────
+    // 항복·나가기로 정해진 순위는 기술이 없는 갱신에 실려 오므로 위 재생과 무관하게 여기서 바로 돈다.
+    {
+      const rankedEvs = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'ranked' }> => e.type === 'ranked');
+      for (const ev of rankedEvs) {
+        const at = cursor;
+        const id = ++floatIdCounter;
+        sched(() => {
+          setRankBanner({ id, team: ev.team, rank: ev.rank, reason: ev.reason });
+          sched(() => setRankBanner(prev => (prev?.id === id ? null : prev)), RANK_BANNER_DUR);
+        }, at);
+        cursor = at + RANK_BANNER_DUR;
       }
     }
 
@@ -1144,5 +1175,6 @@ export function useAnimationQueue(
     displayedActivePlayerIndex,
     isSettling,
     decisiveHit,
+    rankBanner,
   };
 }

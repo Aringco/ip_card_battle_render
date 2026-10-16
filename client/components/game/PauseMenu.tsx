@@ -32,6 +32,12 @@ const CONFIRM_TEXT: Record<Exclude<Confirm, null>, { title: string; detail: stri
   leave: { title: '게임을 포기하고 나가시겠습니까?', detail: '상대 팀의 승리로 게임이 끝나고 로비로 돌아갑니다.' },
 };
 
+// 개인전은 상대 팀이 없다 — 항복·나가기는 "나만 패배로 기록되고 판은 계속된다".
+const INDIVIDUAL_CONFIRM_TEXT: Record<Exclude<Confirm, null>, { title: string; detail: string }> = {
+  surrender: { title: '정말 항복하시겠습니까?', detail: '나는 패배로 기록되고, 남은 사람들의 판은 계속됩니다.' },
+  leave: { title: '게임을 포기하고 나가시겠습니까?', detail: '나는 패배로 기록되고, 남은 사람들의 판은 계속됩니다. 로비로 돌아갑니다.' },
+};
+
 /** 마감 시각까지 남은 초(올림). 마감이 없으면 null. */
 function useSecondsLeft(until: number | null): number | null {
   const [left, setLeft] = useState<number | null>(null);
@@ -98,6 +104,7 @@ export function PauseMenu({
   onRespond,
   onSurrender,
   onLeave,
+  individual = false,
 }: {
   paused: boolean;
   /** 멈춘 팀 — 이 팀만 다시 시작할 수 있다(서버가 같은 규칙으로 막는다). */
@@ -121,6 +128,8 @@ export function PauseMenu({
   onRespond: (accept: boolean) => void;
   onSurrender: () => void;
   onLeave: () => void;
+  /** 개인전 — 항복·나가기의 안내 문구가 "상대 팀의 승리"가 아니라 "나만 패배로 기록"이 된다. */
+  individual?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -267,8 +276,8 @@ export function PauseMenu({
                 </>
               ) : (
                 <>
-                  <h2 className="pause-title">{CONFIRM_TEXT[confirm].title}</h2>
-                  <p className="pause-note">{CONFIRM_TEXT[confirm].detail}</p>
+                  <h2 className="pause-title">{(individual ? INDIVIDUAL_CONFIRM_TEXT : CONFIRM_TEXT)[confirm].title}</h2>
+                  <p className="pause-note">{(individual ? INDIVIDUAL_CONFIRM_TEXT : CONFIRM_TEXT)[confirm].detail}</p>
                   <YesNo
                     onYes={confirm === 'surrender' ? onSurrender : onLeave}
                     onNo={() => setConfirm(null)}
