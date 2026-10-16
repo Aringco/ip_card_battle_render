@@ -11,7 +11,7 @@ import { GuideFinger } from './GuideFinger';
 
 const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 
-// 홀로 카드 — 포인터를 따라 기울어지고 무지개빛이 번지는 효과(요구 G6, 팀전·개인전 공통).
+// 홀로 카드 — 포인터를 따라 기울어지고 위쪽 광원의 빛이 반사되는 효과(요구 G6, 팀전·개인전 공통).
 // 기법만 참고하고 새로 썼다: 포인터 좌표를 카드 기준 0~1로 바꿔 CSS 변수(--mx/--my 광택 위치,
 // --rx/--ry 기울기 각도)에 쓰고, 나머지는 전부 CSS(globals.css의 .holo-*)가 그린다.
 // ⚠️ 참고한 사이트(poke-holo.simey.me)의 원본 저장소는 GPL-3.0이라 코드를 가져오지 않는다.
@@ -86,7 +86,7 @@ function HoloCell({
       onPointerLeave={reset}
     >
       {children}
-      {/* 무지개빛 층과 포인터를 따라가는 광택 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
+      {/* 반사 띠 층과 위쪽 광원 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
       {enabled && (
         <>
           <span className="holo-shine" aria-hidden />
