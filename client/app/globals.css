@@ -5297,11 +5297,13 @@ body {
 /* 기술 카드 띠의 "내가 고를 차례" 맥동 링(.skill-bar-my-turn — 띠 바깥 box-shadow)도 카드 모서리와 같은 둥글기로 */
 .ind-cards .play-cards-grid { border-radius: var(--cell-r); }
 
-/* 개인전 기술 카드는 테두리(금색·고유 색 5px)를 두르지 않는다 — 초기 모습처럼 카드 그림이 칸을 꽉 채운다(요청).
-   팀전 카드는 그대로다(.ind-cards 아래에서만 끈다). */
+/* 개인전 기술 카드: 카드끼리 **붙어 있고**(간격 0) 테두리는 5px 대신 **2px**(금색 / 카드별 고유 색 — 그라디언트는 그대로)다.
+   한때 테두리를 아예 없앴다가 요청으로 2px로 복원했다. 팀전 카드는 그대로다(.ind-cards 아래에서만 바꾼다). */
 .ind-cards .play-card-frame {
-  border: 0;
-  background-image: none;
+  border-width: 2px;
+}
+.ind-cards .play-cards-grid {
+  gap: 0;
 }
 
 /* 기술 카드 띠 — 팀전의 .play-cards(절대배치) 대신 grid 칸이다. 안의 5칸 나눔은 그대로(.play-cards-grid).
