@@ -5723,16 +5723,19 @@ body {
   --my: 50%;
   --rx: 0deg;
   --ry: 0deg;
-  /* 커질 때 **아래 변을 기준으로 위로** 자란다 — 가운데 기준이면 카드 아래가 판 밖(화면 아래)으로 나간다. */
-  transform-origin: 50% 100%;
+  /* 기울기·확대의 기준은 **카드 중앙**이다 — 한때 아래 변을 기준으로 두었더니(카드 아래가 판 밖으로 나가지 않게)
+     기울기까지 아래 변을 축으로 돌아 위쪽만 크게 휘둘렸다. 아래 변이 제자리에 남는 것은 hover 쪽의
+     translateY(-10.5%)가 맡는다. */
+  transform-origin: 50% 50%;
   transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), filter 0.25s ease;
   will-change: auto;
 }
 .holo-cell[data-holo]:hover {
   z-index: 30;
-  /* 위로 떠오르며(기존 hover와 같은 -16px) 1.21배로 커진다(1.1배 → 1.32배 → 요청으로 1.1배의 1.1배).
-     기울기는 포인터를 짧은 지연으로 따라간다. */
-  transform: perspective(900px) translateY(-16px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.21);
+  /* 1.21배로 커지고(1.1배 → 1.32배 → 요청으로 1.1배의 1.1배), 중앙 기준으로 커진 만큼(높이의 (1.21 − 1) / 2 =
+     10.5%) 위로 옮겨 아래 변을 제자리에 둔 뒤 기존 hover처럼 16px 더 떠오른다. translate의 %는 칸 자신의 높이 기준이다.
+     ⚠️ 배율을 바꾸면 10.5%도 함께 고칠 것((배율 − 1) / 2). 기울기는 포인터를 짧은 지연으로 따라간다. */
+  transform: perspective(900px) translateY(calc(-10.5% - 16px)) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.21);
   transition: transform 0.09s linear, filter 0.25s ease;
   filter: drop-shadow(0 18px 16px rgba(0, 0, 0, 0.45));
   will-change: transform;
@@ -5841,4 +5844,28 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .emoticon-bubble,
   .emoticon-bubble.is-staying { animation: none; }
+}
+
+/* ── 끝낼 수 있는 수 — 빨간 빛 ───────────────────────────────────────────────────
+   이 기술 하나로 판을 끝낼 수 있을 때(상표토끼·특허랑이 — lib/skills.ts의 finishingMove) 카드 둘레와, 특허랑이의
+   상대 선택 화면에서 끝낼 수 있는 상대 버튼에 띄운다. 카드 쪽은 버튼이 아니라 **감싸는 칸**(.holo-cell)에 건다 —
+   버튼의 box-shadow는 "누를 수 있음" 깜빡임(.skill-choice-glow)이 애니메이션으로 덮어쓴다. */
+@keyframes lethalPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.9), 0 0 12px 3px rgba(239, 68, 68, 0.55); }
+  50%      { box-shadow: 0 0 0 3px rgba(239, 68, 68, 1), 0 0 24px 8px rgba(239, 68, 68, 0.85); }
+}
+.skill-card-lethal {
+  border-radius: var(--cell-r, 16px);
+  animation: lethalPulse 1.4s ease-in-out infinite;
+}
+.target-picker-card-lethal {
+  border-color: #b91c1c;
+  animation: lethalPulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skill-card-lethal,
+  .target-picker-card-lethal {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.95), 0 0 16px 5px rgba(239, 68, 68, 0.7);
+  }
 }

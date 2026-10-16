@@ -36,6 +36,7 @@ function useSecondsLeft(deadline: number, paused: boolean): number {
 export function TargetPicker({
   gameState,
   targets,
+  lethalTargets = [],
   turnDeadline,
   paused,
   onPick,
@@ -44,6 +45,8 @@ export function TargetPicker({
   gameState: ClientGameState;
   /** 고를 수 있는 편들(위에서 아래 순서 = 숫자 키 순서) */
   targets: SideId[];
+  /** 이번 특허랑이로 끝낼 수 있는 상대(탈락시키거나, 그만큼 빼앗아 내가 1위를 확정) — 버튼에 빨간 빛 */
+  lethalTargets?: SideId[];
   turnDeadline: number;
   paused: boolean;
   onPick: (target: SideId) => void;
@@ -88,7 +91,7 @@ export function TargetPicker({
           <button
             key={side}
             type="button"
-            className="target-picker-card"
+            className={`target-picker-card${lethalTargets.includes(side) ? ' target-picker-card-lethal' : ''}`}
             onClick={() => onPick(side)}
             aria-keyshortcuts={String(i + 1)}
             title={sideName(gameState, side)}

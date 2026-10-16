@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
-import { previewSkill, withDisplayedExp } from '@/lib/skills';
+import { finishingMove, previewSkill, withDisplayedExp } from '@/lib/skills';
 import { isFinished, opponentOrder, sideColor, sideName } from '@/lib/individual';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { EffectLayer } from '@/components/effects/EffectLayer';
@@ -283,6 +283,7 @@ export function IndividualLayout({
         <TargetPicker
           gameState={gameState}
           targets={targets}
+          lethalTargets={mySide ? finishingMove(skillPreviewGameState, mySide, 'tiger').targets : []}
           turnDeadline={turnDeadline}
           paused={paused}
           onPick={handlePick}

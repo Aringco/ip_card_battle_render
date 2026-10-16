@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { previewSkill } from '@/lib/skills';
+import { finishingMove, previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
 import { spectatorTeamVars } from '@/lib/teamColors';
@@ -195,7 +195,13 @@ export function SkillChoiceBar({
         return (
           // 홀로 효과는 "지금 누를 수 있는가"가 아니라 "레벨이 있어 활성인가"로 켠다 — 상대 차례에도 내 활성 카드는
           // 빛난다. (시연은 대본이 열어 준 칸만.) 잠긴(레벨 0) 카드에는 걸지 않는다.
-          <HoloCell key={animal} enabled={eligible && demoOpen(animal)} className="relative h-full">
+          // 이 기술 하나로 판을 끝낼 수 있으면(상표토끼·특허랑이) 카드 둘레에 빨간 빛 — lib/skills.ts의 finishingMove.
+          // 시연은 대본대로만 진행하므로 표시하지 않는다.
+          <HoloCell
+            key={animal}
+            enabled={eligible && demoOpen(animal)}
+            className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
+          >
             <button
               onClick={() => clickable && onChoose(animal)}
               disabled={!clickable}

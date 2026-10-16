@@ -41,6 +41,43 @@ export interface SkillPreview {
   oppHpIsMax: boolean;
 }
 
+/**
+ * 이 기술 하나로 **판을 끝낼 수 있는가**(상표토끼·특허랑이만) — 카드 테두리와 상대 선택 버튼에 빨간 빛을 띄우는 근거다.
+ *
+ * - 팀전: 상표토끼로 내 체력이 승리선에 닿거나, 특허랑이로 상대를 0으로 만들거나 그 강탈로 내가 승리선에 닿으면 승리.
+ * - 개인전: 특허랑이로 **어떤 상대든** 0으로 만들 수 있으면(그 상대의 탈락) 그 상대가 targets에 들어간다. 그리고 아직
+ *   아무도 승리하지 않았을 때 내가 승리선에 닿으면 **1위 확정**이라 이것도 끝내는 수로 친다(상표토끼, 또는 그만큼
+ *   빼앗아 올 수 있는 상대를 노리는 특허랑이). 이미 1위가 나온 뒤의 승리선 도달은 1위가 아니라서 치지 않는다.
+ *
+ * 계산은 서버 엔진과 같은 공식(레벨 × 배율, 강탈은 상대가 가진 만큼)이다. gameState에는 화면상 경험치
+ * (withDisplayedExp)를 넣어 카드가 도착하기 전에 표시가 먼저 뜨지 않게 한다.
+ */
+export function finishingMove(
+  gameState: ClientGameState,
+  team: SideId,
+  animal: Animal,
+): { finishes: boolean; targets: SideId[] } {
+  const none = { finishes: false, targets: [] as SideId[] };
+  if (animal !== 'rabbit' && animal !== 'tiger') return none;
+  const me = gameState.teams[team];
+  if (!me) return none;
+  const level = levelOf(gameState, team, animal);
+  if (level <= 0) return none;
+  const amount = level * me.pendingMultiplier;
+  const winHp = gameState.settings.targetScore * 2;
+  // 개인전에서 승리선 도달이 "1위 확정"인 것은 아직 아무도 승리하지 않았을 때뿐이다.
+  const reachingWinIsFirst =
+    gameState.mode !== 'individual' || !Object.values(gameState.teams).some(t => t.finish?.reason === 'win');
+
+  if (animal === 'rabbit') return { finishes: reachingWinIsFirst && me.hp + amount >= winHp, targets: [] };
+
+  const targets = opponentsOf(gameState, team).filter(foe => {
+    const hp = gameState.teams[foe]?.hp ?? 0;
+    return hp <= amount || (reachingWinIsFirst && me.hp + Math.min(amount, hp) >= winHp);
+  });
+  return { finishes: targets.length > 0, targets };
+}
+
 export function previewSkill(gameState: ClientGameState, team: SideId, animal: Animal): SkillPreview {
   const opponent = opponentsOf(gameState, team)[0];
   const level = levelOf(gameState, team, animal);
