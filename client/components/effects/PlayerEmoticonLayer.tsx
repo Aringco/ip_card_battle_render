@@ -17,7 +17,27 @@ const REFLOW_MS = 260;
  * 그래서 자리 번호를 이모티콘이 만들어질 때 박아두지 않고 **매 렌더마다 현재 목록에서
  * 다시 센다.** 박아두면 앞엣것이 사라져도 뒤엣것은 제자리에 남아 중간이 텅 빈다.
  */
-export function PlayerEmoticonLayer({ items }: { items: PlayerEmoticon[] }) {
+// ── 'left' 배치(개인전) ──────────────────────────────────────────────────────
+// 풍선과 플레이어 칸 사이 간격 — 꼬리(뾰족한 부분)가 이 틈을 건너 플레이어를 가리킨다.
+const BUBBLE_GAP = 22;
+// 화면 가장자리에서 띄울 최소 여백
+const VIEW_MARGIN = 8;
+// 꼬리가 풍선의 둥근 모서리에 걸리지 않도록 위아래 끝에서 이만큼은 비운다
+const TAIL_EDGE = 26;
+
+export function PlayerEmoticonLayer({
+  items,
+  placement = 'center',
+}: {
+  items: PlayerEmoticon[];
+  /**
+   * 'center'(팀전, 기본값) — 프로필의 보드 쪽(왼쪽 팀은 오른쪽, 오른쪽 팀은 왼쪽)에 붙인다.
+   * 'left'(개인전) — 플레이어 칸의 **왼쪽**에 꼬리 달린 풍선으로 띄운다. 왼쪽이 화면 밖이면(왼쪽 열의 내 칸)
+   *   오른쪽으로 넘기되 꼬리가 여전히 플레이어를 가리킨다. 아래로 넘치면 화면 안으로 끌어올리고 꼬리가
+   *   플레이어 높이를 따라간다.
+   */
+  placement?: 'center' | 'left';
+}) {
   // 앵커(팀:플레이어)별로 따로 줄을 세운다 — 서로 다른 사람의 이모티콘은 각자 0번부터.
   const slotOf = new Map<number, number>();
   const filled = new Map<string, number>();
@@ -31,7 +51,9 @@ export function PlayerEmoticonLayer({ items }: { items: PlayerEmoticon[] }) {
   return (
     <>
       {items.map(item => (
-        <EmoticonBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
+        placement === 'left'
+          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
+          : <EmoticonBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
       ))}
     </>
   );
@@ -82,6 +104,59 @@ function EmoticonBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) 
         className={`player-emoticon${item.persist ? ' is-staying' : ''}`}
         style={{ width: SIZE, height: SIZE }}
       />
+    </span>
+  );
+}
+
+/**
+ * 개인전의 이모티콘 — 플레이어 칸(`data-rabbit-target`이 달린 패널·상대 칸)의 왼쪽에 꼬리 달린 풍선으로 띄운다.
+ * 칸 전체를 기준으로 삼는 이유: 닉네임(앵커) 바로 옆에 두면 180px 풍선이 그 사람의 칸을 덮어 체력·경험치가 가려진다.
+ */
+function SideBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) {
+  const [anchor, setAnchor] = useState<{ ay: number; boxLeft: number; boxRight: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = document.querySelector(`[data-player-anchor="${item.team}:${item.playerIndex}"]`);
+    if (!el) return;
+    const box = (el.closest('[data-rabbit-target]') ?? el).getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    setAnchor({ ay: r.top + r.height / 2, boxLeft: box.left, boxRight: box.right });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+
+  if (!anchor) return null;
+
+  // 왼쪽에 다 들어가면 왼쪽, 아니면(화면 밖으로 나가면) 오른쪽. 어느 쪽이든 꼬리는 플레이어 쪽을 향한다.
+  const side: 'left' | 'right' = anchor.boxLeft - BUBBLE_GAP - SIZE >= VIEW_MARGIN ? 'left' : 'right';
+  const x = side === 'left' ? anchor.boxLeft - BUBBLE_GAP : anchor.boxRight + BUBBLE_GAP;
+  // 큐 자리만큼 아래로 내리되 화면 밖으로 나가면 끌어올린다 — 그래도 꼬리는 플레이어 높이를 가리킨다.
+  const half = SIZE / 2;
+  const maxY = (typeof window === 'undefined' ? 1080 : window.innerHeight) - VIEW_MARGIN - half;
+  const y = Math.min(Math.max(anchor.ay + slot * STACK_STEP, VIEW_MARGIN + half), maxY);
+  const tailY = Math.min(Math.max(anchor.ay - y, -(half - TAIL_EDGE)), half - TAIL_EDGE);
+
+  return (
+    <span
+      style={{
+        position: 'fixed',
+        left: x,
+        top: y,
+        transform: `translate(${side === 'left' ? '-100%' : '0'}, -50%)`,
+        // 앞엣것이 사라지면 남은 것들이 스르륵 올라온다(자리는 top으로 잡으므로 top에 transition)
+        transition: `top ${REFLOW_MS}ms ease-out`,
+        zIndex: 80 + slot,
+        pointerEvents: 'none',
+      }}
+    >
+      {/* 등장·퇴장 연출은 풍선 전체(그림 + 꼬리)에 건다 — 그림에만 걸면 꼬리만 덩그러니 남는다. */}
+      <span className={`emoticon-bubble${item.persist ? ' is-staying' : ''}`}>
+        <img src={`/emoticon/${item.file}.png`} alt="" className="player-emoticon" style={{ width: SIZE, height: SIZE }} />
+        <span
+          aria-hidden
+          className={`emoticon-tail emoticon-tail-${side === 'left' ? 'right' : 'left'}`}
+          style={{ ['--tail-y' as string]: `${tailY}px` }}
+        />
+      </span>
     </span>
   );
 }

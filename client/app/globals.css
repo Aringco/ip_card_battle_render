@@ -5180,8 +5180,15 @@ body {
    칸 배치(grid-template-areas):
         위:   me(내 동물) · board(카드 필드) · opp(상대 전원 — 두 줄에 걸친 한 열)
         아래: hp(내 체력) · cards(기술 카드 5장)
-   열 폭은 액자 폭(--pf-w)의 비율이고, 오른쪽 열이 8명 판의 상대 7칸을 담을 만큼 넓다(팀전의 오른쪽
-   패널 14.3% → 19%). 그만큼 카드 필드와 기술 카드 띠가 좁아진다(64.5% → 56.9%).
+   열 폭은 액자 폭(--pf-w)의 비율이다. **오른쪽 열은 왼쪽 열(내 정보)과 같은 폭**(14.35%)이고, 그 덕에
+   가운데 열 = 기술 카드 띠가 팀전과 같은 64.529%가 된다(카드 한 장의 폭이 팀전과 같다). 한때 오른쪽
+   열을 19%로 넓혔다가 카드가 좁아져(56.9%) 되돌렸다.
+
+   안여백은 팀전 액자의 0.8배다(위아래 5.9% → 4.72%, 좌우 2.545/2.805% → 2.036/2.244%).
+   ⚠️ 아래 숫자들은 한 묶음이다 — 안여백·열 폭·열 간격의 합이 정확히 1이어야 하고(세로도 마찬가지),
+      .play-frame-css .play-prompt-strip의 left/top이 이 값들에서 나온다. 하나를 고치면 셋을 함께 고칠 것.
+        가로: 0.02036 + 0.1435 + 0.012455 + 0.64529 + 0.012455 + 0.1435 + 0.02244 = 1
+        세로: 0.0472 + 0.50692 + 0.047 + 0.35168 + 0.0472 = 1   (위·아래 줄 비율은 팀전과 같은 49.3 : 34.2)
    ══════════════════════════════════════════════════════════════════════════ */
 .play-frame-css {
   --pf-w: var(--stage-w);
@@ -5195,18 +5202,18 @@ body {
   height: var(--pf-h);
   margin-inline: auto;
   padding:
-    calc(var(--pf-h) * 0.059)
-    calc(var(--pf-w) * 0.02805)
-    calc(var(--pf-h) * 0.059)
-    calc(var(--pf-w) * 0.02545);
+    calc(var(--pf-h) * 0.0472)
+    calc(var(--pf-w) * 0.02244)
+    calc(var(--pf-h) * 0.0472)
+    calc(var(--pf-w) * 0.02036);
 
   display: grid;
   grid-template-columns:
     calc(var(--pf-w) * 0.1435)
-    calc(var(--pf-w) * 0.569)
-    calc(var(--pf-w) * 0.19);
-  grid-template-rows: calc(var(--pf-h) * 0.493) calc(var(--pf-h) * 0.342);
-  column-gap: calc(var(--pf-w) * 0.022);
+    calc(var(--pf-w) * 0.64529)
+    calc(var(--pf-w) * 0.1435);
+  grid-template-rows: calc(var(--pf-h) * 0.50692) calc(var(--pf-h) * 0.35168);
+  column-gap: calc(var(--pf-w) * 0.012455);
   row-gap: calc(var(--pf-h) * 0.047);
   grid-template-areas:
     "me board opp"
@@ -5254,10 +5261,13 @@ body {
   min-height: 0;
 }
 
-/* 안내 쪽지는 보드 칸과 카드 줄 사이의 가로 들보 위에 앉는다 — 개인전의 보드 폭(56.9%)에 맞춘다. */
+/* 안내 쪽지는 보드 칸과 카드 줄 사이의 가로 들보 위에 앉는다 — 가운데 열에 맞춘다(위 .play-frame-css의 숫자 묶음).
+   left = 2.036 + 14.35 + 1.2455,  top = 4.72 + 50.692 */
 .play-frame-css .play-prompt-strip {
-  left: 19.095%;
-  width: 56.9%;
+  left: 17.6315%;
+  width: 64.529%;
+  top: 55.412%;
+  height: 4.7%;
 }
 
 /* 카드 필드의 빛(요구 G3) — 상대(또는 지금 차례인 사람)의 턴일 때 **그 사람이 고른 색**으로 은은하게
@@ -5717,4 +5727,48 @@ body {
   .holo-glare { display: none; }
   .holo-cell,
   .holo-cell[data-holo]:hover { transform: none; transition: none; filter: none; }
+}
+
+/* ── 개인전 이모티콘 풍선 — 꼬리(뾰족한 부분)가 플레이어를 가리킨다 ───────────────────
+   components/effects/PlayerEmoticonLayer.tsx의 SideBubble이 쓴다(팀전 이모티콘은 그대로).
+   풍선은 플레이어 칸의 왼쪽에 뜨고, 왼쪽이 화면 밖이면 오른쪽으로 넘어간다 — 어느 쪽이든 꼬리는 플레이어 쪽.
+   등장·퇴장 연출(emoticonLifecycle)은 그림이 아니라 **풍선 전체**에 건다 — 그림에만 걸면 꼬리가 남는다.
+   꼬리 높이(--tail-y)는 풍선 가운데에서 플레이어(닉네임) 높이까지의 거리다(화면 아래로 넘쳐 풍선을
+   끌어올렸을 때도 꼬리는 플레이어를 가리킨다). */
+.emoticon-bubble {
+  position: relative;
+  display: block;
+  animation: emoticonLifecycle 2000ms ease-out both;
+}
+.emoticon-bubble.is-staying {
+  animation: emoticonEnter 900ms ease-out both;
+}
+.emoticon-bubble .player-emoticon { animation: none; }
+/* 꼬리 — 검은 테두리 삼각형 위에 흰 삼각형을 얹어, 그림의 3px 테두리와 이어지게 한다.
+   그림 쪽으로 3px 파고들어 테두리 선을 흰색으로 덮어 풍선과 꼬리가 한 몸으로 보인다. */
+.emoticon-tail {
+  position: absolute;
+  top: calc(50% + var(--tail-y, 0px));
+  width: 22px;
+  height: 30px;
+  margin-top: -15px;
+  background: rgba(0, 0, 0, 0.85);
+}
+.emoticon-tail::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: 15px;
+  height: 20px;
+  background: #fff;
+}
+/* 풍선이 플레이어의 왼쪽 — 꼬리는 오른쪽으로 */
+.emoticon-tail-right { left: calc(100% - 3px); clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.emoticon-tail-right::after { left: 0; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+/* 풍선이 플레이어의 오른쪽(왼쪽이 화면 밖) — 꼬리는 왼쪽으로 */
+.emoticon-tail-left { right: calc(100% - 3px); clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.emoticon-tail-left::after { right: 0; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+@media (prefers-reduced-motion: reduce) {
+  .emoticon-bubble,
+  .emoticon-bubble.is-staying { animation: none; }
 }

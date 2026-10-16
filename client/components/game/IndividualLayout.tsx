@@ -258,7 +258,7 @@ export function IndividualLayout({
       <FestivalStartBanner info={animState.festivalStartInfo} />
       <SheepComboLayer combos={animState.sheepCombos} />
       <MainComboBanner combo={animState.mainCombo} />
-      <PlayerEmoticonLayer items={animState.emoticons} />
+      <PlayerEmoticonLayer items={animState.emoticons} placement="left" />
       <SheepProgressBar
         progress={animState.sheepProgress}
         label={animState.sheepProgress ? sideName(gameState, animState.sheepProgress.team) : undefined}
