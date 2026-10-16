@@ -16,10 +16,10 @@ const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 // --rx/--ry 기울기 각도)에 쓰고, 나머지는 전부 CSS(globals.css의 .holo-*)가 그린다.
 // ⚠️ 참고한 사이트(poke-holo.simey.me)의 원본 저장소는 GPL-3.0이라 코드를 가져오지 않는다.
 const HOLO_TILT_DEG = 14; // 가장자리에서의 최대 기울기
-// 카드 두께 — 기울기 1도당 드러나는 옆면 길이(px)와, 기울지 않아도 늘 보이는 아래 옆면(px). globals.css의 .holo-edge.
-// (0.4 / 2에서 요청으로 절반으로 줄였다 — 가장자리에서 최대 약 3px)
-const HOLO_EDGE_PER_DEG = 0.2;
-const HOLO_EDGE_BASE = 1;
+// 카드 두께(px) — 드러나는 옆면의 길이는 기울기와 상관없이 언제나 이 값이고, 기울기는 **방향만** 정한다
+// (기울지 않으면 아래로). globals.css의 .holo-edge.
+// 변천: 기울기 1도당 0.4px + 기본 2px → 절반(0.2 / 1, 가장자리에서 약 3.8px) → 두께 2px 고정 → 3px → **2px**(요청).
+const HOLO_EDGE_PX = 2;
 
 /**
  * 카드 한 칸을 감싸는 칸 — **기울기와 확대는 버튼이 아니라 이 칸에 건다.** 버튼은 모서리를 다듬느라
@@ -51,7 +51,7 @@ function HoloCell({
     el.style.setProperty('--rx', '0deg');
     el.style.setProperty('--ry', '0deg');
     el.style.setProperty('--ex', '0');
-    el.style.setProperty('--ey', String(HOLO_EDGE_BASE));
+    el.style.setProperty('--ey', String(HOLO_EDGE_PX));
   };
 
   // 칸이 잠기는 순간(차례가 끝남) 남아 있던 기울기를 걷어낸다 — 안 걷으면 기울어진 채 굳는다.
@@ -83,8 +83,14 @@ function HoloCell({
       el.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
       el.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
       // 옆면 — 오른쪽이 들어가면(ry > 0) 왼쪽 옆면이, 위가 젖혀지면(rx > 0) 아래 옆면이 보인다.
-      el.style.setProperty('--ex', (-ry * HOLO_EDGE_PER_DEG).toFixed(2));
-      el.style.setProperty('--ey', (HOLO_EDGE_BASE + rx * HOLO_EDGE_PER_DEG).toFixed(2));
+      // 방향은 "기본 아래쪽 + 기울기"로 정하고 길이는 두께(HOLO_EDGE_PX)로 맞춘다. 위가 앞으로 숙여진
+      // 가운데(방향이 0에 가까움)에서는 옆면이 보이지 않는 게 맞으므로 그 길이만큼 줄어든다.
+      const dx = -ry / HOLO_TILT_DEG;
+      const dy = 1 + rx / HOLO_TILT_DEG;
+      const len = Math.hypot(dx, dy);
+      const k = len > 1 ? HOLO_EDGE_PX / len : HOLO_EDGE_PX;
+      el.style.setProperty('--ex', (dx * k).toFixed(2));
+      el.style.setProperty('--ey', (dy * k).toFixed(2));
     });
   };
 

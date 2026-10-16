@@ -140,7 +140,12 @@ export function GameLayout({
 
   return (
     <div
-      className={`h-screen play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
+      // ⚠️ `h-screen`(100vh)이 아니라 `h-dvh`다 — 모바일에서 100vh는 주소창이 숨은
+      //    상태를 기준으로 잡혀, 주소창이 보이는 동안 화면 아래가 잘린다. dvh는 "지금
+      //    실제로 보이는 높이"라 항상 화면에 꼭 맞는다.
+      //    무대(--stage-w)는 반대로 **가장 작은** 높이(svh)를 기준으로 잡는다 —
+      //    주소창이 나타났다 사라져도 무대 크기가 출렁이지 않게 하기 위해서다.
+      className={`h-dvh play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
     >
       {/* 모서리 잎사귀 장식 — 좌상단은 왼쪽 팀 패널 바로 위라 다른 세 모서리보다 커

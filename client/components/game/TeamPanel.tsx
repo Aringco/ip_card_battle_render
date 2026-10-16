@@ -80,9 +80,11 @@ export function TeamPanel({
       {/* 칸이 좁고 길어졌다(244×434) — 안여백은 나무 구멍과 글자가 붙지 않을 만큼만 */}
       {/* .play-team-scroll — 가로 스크롤바가 생기지 않게 막는다. 이유는 globals.css의
           그 클래스 주석에 있다(초록 스크롤바가 특허랑이 행 아래 띠로 보이던 문제). */}
-      <div className="play-team-scroll relative z-[1] h-full min-h-0 flex flex-col gap-1.5 overflow-y-auto p-2">
+      {/* ⚠️ 글자·안여백 크기는 Tailwind 고정 클래스가 아니라 `.play-team-*`(globals.css)가
+          정한다 — 그래야 칸이 작아질 때 머리가 경험치 줄을 밀어내지 않는다(그 주석 참고). */}
+      <div className="play-team-scroll relative z-[1] h-full min-h-0 flex flex-col overflow-y-auto">
         <div
-          className={`text-base font-bold ${teamColor} flex items-center gap-1.5 flex-wrap`}
+          className={`play-team-head font-bold ${teamColor} flex items-center flex-wrap`}
           style={spectating ? { color: SPECTATOR_TEAM_PALETTE[team].deep } : undefined}
         >
           {label}
@@ -90,7 +92,7 @@ export function TeamPanel({
               StepPill 등)과 같은 알약 배지 모양으로 바꿨다 — 배경 없이 튀는 색 글자만
               둥둥 떠 있던 것보다 하나의 "표식"처럼 보이게 하기 위함. */}
           {isMine && (
-            <span className="inline-flex items-center gap-1 bg-white/80 text-amber-600 text-2xs font-bold px-2 py-0.5 rounded-full shadow-sm border border-amber-200">
+            <span className="play-team-mine inline-flex items-center bg-white/80 text-amber-600 font-bold rounded-full shadow-sm border border-amber-200">
               <span aria-hidden>⭐</span> 내 팀
             </span>
           )}

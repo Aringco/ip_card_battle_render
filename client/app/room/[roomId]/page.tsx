@@ -10,6 +10,7 @@ import { IndividualLayout } from '@/components/game/IndividualLayout';
 import { GameEndScreen } from '@/components/game/GameEndScreen';
 import { IndividualEndScreen } from '@/components/game/IndividualEndScreen';
 import { PauseMenu } from '@/components/game/PauseMenu';
+import { RotateHint } from '@/components/game/RotateHint';
 import { playBgm } from '@/lib/bgm';
 import { isFinished, mySideOf } from '@/lib/individual';
 import { startPreload } from '@/lib/preload';
@@ -203,6 +204,10 @@ export default function GamePage() {
         onSurrender={surrender}
         onLeave={handleLeave}
       />
+      {/* 세로로 든 폰에 "가로로 돌려 주세요"를 덮는다. **항상 마운트하고** 보이는 조건은
+          CSS가 정한다(RotateHint 주석 — hydration과 회전 리렌더를 피하기 위해서다).
+          결과 화면에는 뜨지 않는다 — 이 return 위에서 GameEndScreen이 먼저 돌아간다. */}
+      <RotateHint />
     </>
   );
 }

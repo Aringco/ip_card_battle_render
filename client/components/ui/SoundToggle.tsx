@@ -176,7 +176,9 @@ function GuideToggleRow() {
  * 그 2.5rem은 40px가 아니라 **32px**로 그려졌다. 그 1.3배가 42px다 — 클래스 이름이
  * 아니라 실제로 그려지던 크기를 기준으로 잡았다.
  */
-const COG_BUTTON_PX = 42;
+/* ⚠️ 44 아래로 내리지 말 것 — 손가락으로 누르는 대상의 하한이다(Apple HIG 44pt).
+   42px였을 때 모바일 실측(measureMobile.mjs)에서 "작은 버튼"으로 잡혔다. */
+const COG_BUTTON_PX = 44;
 
 export function SoundToggle() {
   const [settings, setSettings] = useState<AudioSettings>(getAudioSettings());

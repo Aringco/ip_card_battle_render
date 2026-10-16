@@ -69,14 +69,17 @@ export function StackCardView({
       ref={elRef}
       data-stack-card-id={card.id}
       className={`stack-card card-shadow ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
-      style={{ zIndex: index, marginLeft: index === 0 ? 0 : -46, ...flingVars }}
+      // ⚠️ 겹침 간격(예전 marginLeft: -46)은 이제 CSS(.stack-card + .stack-card)가 맡는다 —
+      //    카드 크기가 무대를 따라 줄어들므로 겹침도 같은 비율로 줄어야 한다.
+      style={{ zIndex: index, ...flingVars }}
     >
       <img
         src={`/emoticon/${card.animal}_focus.png`}
         alt={card.animal}
         className="w-[68%] h-auto object-contain"
       />
-      <span className="text-2xl font-black text-jungle-900 tabular-nums">{card.num}</span>
+      {/* 글자 크기는 `.stack-card-num`(globals.css)이 카드 폭에서 뽑는다 */}
+      <span className="stack-card-num font-black text-jungle-900 tabular-nums">{card.num}</span>
     </div>
   );
 }

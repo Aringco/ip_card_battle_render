@@ -19,7 +19,9 @@ export function PlayerList({
           <div
             key={name}
             data-player-anchor={`${team}:${i}`}
-            className={`text-xs px-3 py-1 rounded-full truncate transition-all ${
+            // 글자·안여백은 `.play-team-member`(globals.css)가 무대 크기를 따라 정한다 —
+            // 고정 크기로 두면 좁은 칸에서 이 줄이 경험치 네 줄을 밀어낸다.
+            className={`play-team-member rounded-full truncate transition-all ${
               isActive
                 ? 'glow-pulse bg-jungle-700 text-white font-bold'
                 : 'bg-jungle-50 text-jungle-800'

@@ -28,11 +28,19 @@ export function LeafDecoration({
   return (
     <div
       className={`absolute ${POSITIONS[position]} z-10 pointer-events-none`}
-      style={{ width: size, height: size, transform: offsetY ? `translateY(${offsetY}px)` : undefined }}
+      // ⚠️ 크기가 **무대를 따라간다**(--sp, globals.css의 :root 주석). 고정 px이면 폰에서
+      //    판이 1/3로 줄어도 잎만 제 크기로 남아 팀 이름과 참가자 줄을 덮는다(실제로 덮었다).
+      //    데스크톱(무대폭 ≥ 1286.6)에서는 --sp ≥ 1이라 size가 그대로 이긴다.
+      //    svg의 width/height 속성은 아래에서 100%로 두어 이 상자를 따른다.
+      style={{
+        width: `min(${size}px, calc(${size} * var(--sp)))`,
+        height: `min(${size}px, calc(${size} * var(--sp)))`,
+        transform: offsetY ? `translateY(${offsetY}px)` : undefined,
+      }}
     >
       <svg
-        width={size}
-        height={size}
+        width="100%"
+        height="100%"
         viewBox="0 0 80 80"
         fill="none"
         style={{ transform: TRANSFORMS[position] }}

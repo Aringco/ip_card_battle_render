@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { SoundToggle } from "@/components/ui/SoundToggle";
 import "./globals.css";
@@ -53,6 +53,25 @@ const cafe24 = localFont({
 export const metadata: Metadata = {
   title: '한국특허정보원 카드배틀',
   description: '🐑🐰🧜‍♀️🐯 실용신양·상표토끼·디자인어·특허랑이 팀 대전 카드 게임',
+};
+
+/**
+ * 모바일 뷰포트 — 이것이 없으면 폰 브라우저가 화면을 980px짜리로 그린 뒤 통째로 축소해,
+ * 플레이 화면이 손톱만 하게 보인다(반응형 CSS가 아예 발동하지 않는다).
+ *
+ * `viewportFit: 'cover'` — 노치·홈 표시줄까지 화면을 쓰되, 그만큼을 CSS가
+ * `env(safe-area-inset-*)`로 읽을 수 있게 한다. 이 값이 없으면 그 변수가 늘 0이라
+ * 가로로 눕힌 노치 폰에서 무대 왼쪽이 노치에 가린다(globals.css의 `--stage-pad` 참고).
+ *
+ * ⚠️ **`userScalable: false`·`maximumScale: 1`을 넣지 말 것.** 확대를 막는 것은 접근성
+ *    위반이고(글씨가 작아 보이는 사람이 키울 방법이 사라진다), 이 게임에는 글씨 크기
+ *    설정이 따로 있다. 실수로 확대되는 문제(더블탭)는 `.play-bg`의 `touch-action`으로
+ *    막으므로 확대 자체를 잠글 이유가 없다.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

@@ -119,7 +119,9 @@ export function GameBoard({
       // 뒤에야 1366×768에서 보였다(보드가 행 286px인데 329px로 버텼다).
       // 액자는 이제 통짜 그림(.play-frame)이 두른다 — 여기서는 칸을 꽉 채우기만 한다.
       // 안여백은 칸(나무 구멍)과 내용 사이 숨통이다(p-2).
-      className={`h-full min-h-0 relative grid gap-2 p-2 ${borderClass}`}
+      // 간격·안여백은 `[data-board-root]`(globals.css)가 무대에 맞춰 정한다 —
+      // 고정 8px이면 폰에서 칸 높이의 상당 부분을 여백이 먹는다.
+      className={`h-full min-h-0 relative grid ${borderClass}`}
       style={{
         gridTemplateAreas: '"house center center dock" "forest center center river"',
         gridTemplateColumns: '1fr 1.15fr 1.15fr 1fr',
