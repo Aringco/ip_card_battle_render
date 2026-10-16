@@ -198,7 +198,9 @@ export function SkillChoiceBar({
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
         // — 그래서 가이드는 이 바깥의, 잘리지 않는 래퍼에 그린다(패스 버튼과 동일한 처리).
         return (
-          <HoloCell key={animal} enabled={clickable} className="relative h-full">
+          // 홀로 효과는 "지금 누를 수 있는가"가 아니라 "레벨이 있어 활성인가"로 켠다 — 상대 차례에도 내 활성 카드는
+          // 빛난다. (시연은 대본이 열어 준 칸만.) 잠긴(레벨 0) 카드에는 걸지 않는다.
+          <HoloCell key={animal} enabled={eligible && demoOpen(animal)} className="relative h-full">
             <button
               onClick={() => clickable && onChoose(animal)}
               disabled={!clickable}

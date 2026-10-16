@@ -117,12 +117,17 @@ export function IndividualLayout({
   const handleChoose = useCallback(
     (animal: Animal) => {
       if (animal === 'tiger') {
+        // 1:1 판(시작 인원 2명)은 상대가 하나뿐이라 고를 것이 없다 — 화면을 띄우지 않고 그 사람을 바로 지목한다.
+        if (gameState.turnOrder.length === 2 && targets.length === 1) {
+          onChooseSkill('tiger', targets[0]);
+          return;
+        }
         if (targets.length > 0) setPicking(true);
         return;
       }
       onChooseSkill(animal);
     },
-    [targets.length, onChooseSkill],
+    [targets, gameState.turnOrder.length, onChooseSkill],
   );
   const handlePick = useCallback(
     (target: SideId) => {

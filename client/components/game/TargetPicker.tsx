@@ -25,7 +25,8 @@ function useSecondsLeft(deadline: number, paused: boolean): number {
  *
  * - 화면을 어둡게(검정, 불투명도 0.5) 하고 상대 닉네임 버튼으로 고른다. 시연 4장의 결말 고르기(DemoSceneMenu)
  *   를 본떴다 — 판 위에 덮는 `position: fixed` 오버레이라 배치에 끼어들지 않는다.
- * - 대상은 **순위가 정해지지 않은 다른 사람**이다(서버도 같은 규칙으로 거른다).
+ * - 대상은 **순위가 정해지지 않은 다른 사람**이다(서버도 같은 규칙으로 거른다). 4열로 놓는다(최대 7명 → 4 + 3).
+ * - 1:1 판(시작 인원 2명)에서는 이 화면을 띄우지 않는다 — 고를 상대가 하나뿐이다(IndividualLayout.handleChoose).
  * - 숫자 키 1~7로도 고른다. ESC·바깥 클릭·[취소]로 닫는다(다른 기술로 바꿀 수 있게).
  * - ⚠️ **턴 타이머는 멈추지 않는다.** 대상을 고르다 시간이 다 되면 서버가 기술 없이 차례를 끝내므로, 이
  *   안에 남은 시간을 함께 보여준다. 차례가 끝나 이 판을 열 이유가 없어지면 부모가 닫는다.
@@ -82,7 +83,7 @@ export function TargetPicker({
       <p className="target-picker-sub">
         🐯 특허랑이가 상대의 체력을 빼앗아 와요 · 남은 시간 <strong className="tabular-nums">{secondsLeft}</strong>초
       </p>
-      <div className="target-picker-list">
+      <div className="target-picker-list" style={{ ['--tp-cols' as string]: Math.min(4, targets.length) }}>
         {targets.map((side, i) => (
           <button
             key={side}
@@ -90,6 +91,7 @@ export function TargetPicker({
             className="target-picker-card"
             onClick={() => onPick(side)}
             aria-keyshortcuts={String(i + 1)}
+            title={sideName(gameState, side)}
           >
             <span className="target-picker-index tabular-nums">{i + 1}</span>
             {/* 색만으로 구분하지 않는다 — 칩 옆에 닉네임과 체력이 있다. */}
