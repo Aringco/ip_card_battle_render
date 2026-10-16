@@ -5292,6 +5292,8 @@ body {
 
 /* 보드의 "내 차례" 맥동 링(.board-my-turn)도 칸 모서리를 따라 둥글게 */
 .ind-cell-board [data-board-root] { border-radius: var(--cell-r); }
+/* 기술 카드 띠의 "내가 고를 차례" 맥동 링(.skill-bar-my-turn — 띠 바깥 box-shadow)도 카드 모서리와 같은 둥글기로 */
+.ind-cards .play-cards-grid { border-radius: var(--cell-r); }
 
 /* 기술 카드 띠 — 팀전의 .play-cards(절대배치) 대신 grid 칸이다. 안의 5칸 나눔은 그대로(.play-cards-grid).
    틀 없이 카드 다섯 장이 바깥 판 위에 바로 놓인다(한때 안쪽 나무 틀을 둘렀다가 걷었다).
