@@ -200,7 +200,7 @@ export function SkillChoiceBar({
           <HoloCell
             key={animal}
             enabled={eligible && demoOpen(animal)}
-            className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
+            className={`relative h-full holo-glow-${animal} ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
               onClick={() => clickable && onChoose(animal)}
@@ -270,7 +270,7 @@ export function SkillChoiceBar({
             {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다.
                 손은 그 칸의 주인 캐릭터 것이라, 어느 칸을 짚고 있는지 손만 봐도 안다. */}
             {showSkillGuide && eligible && demoOpen(animal) && (
-              <GuideFinger team={spectatorGuideTeam} animal={animal} />
+              <GuideFinger team={spectatorGuideTeam} />
             )}
           </HoloCell>
         );
