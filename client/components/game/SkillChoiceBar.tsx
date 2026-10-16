@@ -16,6 +16,9 @@ const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 // --rx/--ry 기울기 각도)에 쓰고, 나머지는 전부 CSS(globals.css의 .holo-*)가 그린다.
 // ⚠️ 참고한 사이트(poke-holo.simey.me)의 원본 저장소는 GPL-3.0이라 코드를 가져오지 않는다.
 const HOLO_TILT_DEG = 14; // 가장자리에서의 최대 기울기
+// 카드 두께 — 기울기 1도당 드러나는 옆면 길이(px)와, 기울지 않아도 늘 보이는 아래 옆면(px). globals.css의 .holo-edge.
+const HOLO_EDGE_PER_DEG = 0.4;
+const HOLO_EDGE_BASE = 2;
 
 /**
  * 카드 한 칸을 감싸는 칸 — **기울기와 확대는 버튼이 아니라 이 칸에 건다.** 버튼은 모서리를 다듬느라
@@ -46,6 +49,8 @@ function HoloCell({
     el.style.setProperty('--my', '50%');
     el.style.setProperty('--rx', '0deg');
     el.style.setProperty('--ry', '0deg');
+    el.style.setProperty('--ex', '0');
+    el.style.setProperty('--ey', String(HOLO_EDGE_BASE));
   };
 
   // 칸이 잠기는 순간(차례가 끝남) 남아 있던 기울기를 걷어낸다 — 안 걷으면 기울어진 채 굳는다.
@@ -72,8 +77,13 @@ function HoloCell({
       el.style.setProperty('--mx', `${(px * 100).toFixed(1)}%`);
       el.style.setProperty('--my', `${(py * 100).toFixed(1)}%`);
       // 위쪽을 가리키면 위가 뒤로 젖혀지고, 오른쪽을 가리키면 오른쪽이 들어간다.
-      el.style.setProperty('--rx', `${((0.5 - py) * 2 * HOLO_TILT_DEG).toFixed(2)}deg`);
-      el.style.setProperty('--ry', `${((px - 0.5) * 2 * HOLO_TILT_DEG).toFixed(2)}deg`);
+      const rx = (0.5 - py) * 2 * HOLO_TILT_DEG;
+      const ry = (px - 0.5) * 2 * HOLO_TILT_DEG;
+      el.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
+      el.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+      // 옆면 — 오른쪽이 들어가면(ry > 0) 왼쪽 옆면이, 위가 젖혀지면(rx > 0) 아래 옆면이 보인다.
+      el.style.setProperty('--ex', (-ry * HOLO_EDGE_PER_DEG).toFixed(2));
+      el.style.setProperty('--ey', (HOLO_EDGE_BASE + rx * HOLO_EDGE_PER_DEG).toFixed(2));
     });
   };
 
@@ -87,7 +97,13 @@ function HoloCell({
     >
       {children}
       {/* 사선 반사 띠 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
-      {enabled && <span className="holo-shine" aria-hidden />}
+      {enabled && (
+        <>
+          {/* 카드 옆면(두께) — 카드 뒤에 깔린다 */}
+          <span className="holo-edge" aria-hidden />
+          <span className="holo-shine" aria-hidden />
+        </>
+      )}
     </div>
   );
 }
@@ -200,7 +216,7 @@ export function SkillChoiceBar({
           <HoloCell
             key={animal}
             enabled={eligible && demoOpen(animal)}
-            className={`relative h-full holo-glow-${animal} ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
+            className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
               onClick={() => clickable && onChoose(animal)}
@@ -209,7 +225,7 @@ export function SkillChoiceBar({
               // 잎 데칼을 얹는다 — 컷신 이미지 위에 덧그릴 뿐 그림은 그대로다.
               // 다섯 장이 각자 제 나무 구멍에 앉으므로 **모두** 같은 둥글기를 쓴다
               // (예전에는 한 덩어리 띠라 양 끝만 둥글렸다).
-              className={`play-card-frame play-card-frame-${animal} skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
+              className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
                 clickable ? 'skill-choice-glow' : ''
               }`}
             >
