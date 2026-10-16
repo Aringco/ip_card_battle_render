@@ -2083,15 +2083,19 @@ body {
 /* 컷신 이미지를 어둡게 하는 filter는 반드시 이 배경 레이어(자막과 분리된 별도
    div)에만 걸어야 한다 — 버튼 전체에 filter를 걸면 그 위에 얹은 자막까지 함께
    어두워져 "레벨 부족"일 때 제목/설명 글자가 거의 안 보이는 문제가 있었다. */
+/* 밝기 — 평소 0.78, 가리키면 1.1(2026-10 요청으로 0.55 → 0.78, 1 → 1.1). 글자는 검은 외곽선(.skill-outline-text)과
+   아래쪽 어둠(.skill-choice-dim)이 받쳐 주므로 그림을 밝혀도 읽힌다. 레벨이 없는 칸은 아래 -disabled가 그대로 어둡게 둔다. */
 .skill-choice-bg {
   background-size: cover;
   background-position: center;
-  filter: brightness(0.55);
+  filter: brightness(0.78);
   transition: filter 0.2s ease;
 }
 .skill-choice-panel:hover .skill-choice-bg,
-.skill-choice-panel:focus-visible .skill-choice-bg {
-  filter: brightness(1);
+.skill-choice-panel:focus-visible .skill-choice-bg,
+/* 상대 차례에는 버튼이 disabled라(포인터를 감싸는 칸이 받는다) 버튼의 :hover가 안 걸린다 — 칸 기준으로도 밝힌다 */
+.holo-cell[data-holo]:hover .skill-choice-bg {
+  filter: brightness(1.1);
 }
 .skill-choice-bg-disabled,
 .skill-choice-panel:hover .skill-choice-bg-disabled,
@@ -2117,8 +2121,9 @@ body {
 }
 /* 컷신 이미지는 거의 안 보일 만큼 어둡게, 그 위 자막(하얀 글자 + 검정 테두리)만
    또렷하게 읽히도록 전체적으로 진하게 깐다. */
+/* 아래쪽(글자 자리)만 어둡게 받치고 위쪽 그림은 거의 그대로 둔다 — 예전에는 위까지 0.24로 덮어 카드가 칙칙했다. */
 .skill-choice-dim {
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.31) 55%, rgba(0, 0, 0, 0.24) 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0.06) 70%, rgba(0, 0, 0, 0.04) 100%);
   pointer-events: none;
 }
 
@@ -5255,7 +5260,9 @@ body {
 /* 지금 차례 표시(.play-panel-turn — 안쪽 링)가 칸의 둥근 모서리를 따라가게 한다. 둥글기가 없으면 링이
    네모난 채로 칸에 잘려 모서리만 각져 보인다. */
 .ind-cell > .play-panel-body { border-radius: var(--cell-r); }
-.ind-cell-hp    { grid-area: hp; }
+/* 내 체력(목표 점수) 창은 열 폭(0.19)의 0.8배(0.152)만 쓰고, 남는 0.038은 오른쪽 기술 카드 띠가 가져간다
+   (.ind-cards의 음수 margin-left). 위 칸(내 동물 패널)은 열 폭을 그대로 쓴다. */
+.ind-cell-hp    { grid-area: hp; width: 80%; justify-self: start; }
 .ind-cell-opp   { grid-area: opp; }
 /* 보드 칸만 클립 경계를 바깥으로 넓힌다 — 장소를 짚는 손이 타일 위로 솟는다(.play-cell-board와 같은 이유). */
 .ind-cell-board { grid-area: board; overflow: clip; overflow-clip-margin: 48px; }
@@ -5273,6 +5280,9 @@ body {
   grid-area: cards;
   min-width: 0;
   min-height: 0;
+  /* 체력 창이 내준 0.038(= 0.19 × 0.2)만큼 왼쪽으로 넓힌다 — 카드 띠 0.6522 → 0.6902.
+     ⚠️ 이 값은 .ind-cell-hp의 width: 80%와 짝이다. 한쪽만 고치면 체력 창과 카드가 겹치거나 틈이 벌어진다. */
+  margin-left: calc(var(--pf-w) * -0.038);
 }
 
 /* 안내 쪽지는 보드 칸과 카드 줄 사이의 가로 들보 위에 앉는다 — 가운데 열에 맞춘다(위 .play-frame-css의 숫자 묶음).
@@ -5326,8 +5336,9 @@ body {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--pf-w) * 0.0045);
-  padding: calc(var(--pf-w) * 0.0045);
+  gap: calc(var(--pf-w) * 0.0055);
+  /* 지금 차례인 칸의 바깥 그림자가 칸 가장자리에서 잘리지 않을 만큼의 여백(.ind-opp-card-active 참고) */
+  padding: calc(var(--pf-w) * 0.0075);
 }
 .ind-opp-empty {
   margin: auto;
@@ -5351,10 +5362,13 @@ body {
   box-shadow: inset 0 0 0 calc(var(--pf-w) * 0.0016) color-mix(in srgb, var(--opp-color) 60%, #4a2d15);
   transition: box-shadow 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
 }
+/* 지금 차례인 상대 — 안쪽 굵은 테두리 대신 **바깥으로 번지는 그 사람 색 그림자**만 둔다(요청). 평소의 얇은 선은 그대로.
+   ⚠️ 칸(.ind-cell-opp)이 overflow: hidden이라 그림자가 목록 안여백(.ind-opp-list padding) 너머로는 잘린다 —
+      번지는 폭을 그 안여백보다 크게 잡지 말 것. */
 .ind-opp-card-active {
   box-shadow:
-    inset 0 0 0 calc(var(--pf-w) * 0.0036) var(--opp-color),
-    inset 0 0 calc(var(--pf-w) * 0.014) calc(var(--pf-w) * 0.002) color-mix(in srgb, var(--opp-color) 55%, transparent);
+    inset 0 0 0 calc(var(--pf-w) * 0.0016) color-mix(in srgb, var(--opp-color) 60%, #4a2d15),
+    0 0 calc(var(--pf-w) * 0.006) calc(var(--pf-w) * 0.0022) color-mix(in srgb, var(--opp-color) 85%, transparent);
   animation: indOppPulse 2.2s ease-in-out infinite;
 }
 @keyframes indOppPulse {
@@ -5717,9 +5731,10 @@ body {
   box-shadow: inset 0 0 0 3px rgba(163, 230, 53, 0.85);
 }
 
-/* 빛 반사 — 광원은 **마우스 위치**다(무지개 색띠 → 위쪽 광원의 사선 띠 → 지금). 기법만 참고하고 새로 썼다.
-   .holo-glare: 포인터 자리가 가장 밝고 멀어질수록 어두워지는 반사광(overlay) — 카드가 빛을 받아 기운 것처럼 보인다.
-   .holo-shine: 포인터 바로 아래의 작고 또렷한 하이라이트(screen) — 광원이 카드 면에 비친 점. */
+/* 빛 반사 — **사선 반사 띠 + 마우스 광원**(무지개 → 사선 띠 → 마우스 광원만 → 둘을 함께). 기법만 참고하고 새로 썼다.
+   .holo-shine: ① 카드 면을 가로지르는 하얀 사선 띠 — 포인터 높이(--my)에 따라 위아래로 미끄러진다.
+                ② 포인터 바로 아래의 작고 또렷한 하이라이트 — 광원이 카드 면에 비친 점. (둘 다 screen)
+   .holo-glare: 포인터 자리가 가장 밝고 멀어질수록 어두워지는 반사광(overlay) — 카드가 빛을 받아 기운 것처럼 보인다. */
 /* ⚠️ z-index는 버튼보다 높아야 한다 — 누를 수 있는 카드에 마우스를 올리면 버튼이 z-index 30이 된다
    (.skill-choice-panel:not(:disabled):hover). 처음에 4로 두었더니 정확히 hover하는 순간 버튼에 덮여
    무지개·광택이 하나도 보이지 않았다. 손가락 가이드(95)보다는 낮게 둔다. */
@@ -5734,12 +5749,26 @@ body {
   transition: opacity 0.25s ease;
 }
 .holo-shine {
-  background: radial-gradient(
-    circle at var(--mx) var(--my),
-    rgba(255, 255, 255, 0.6) 0%,
-    rgba(255, 255, 255, 0.22) 14%,
-    transparent 36%
-  );
+  background-image:
+    radial-gradient(
+      circle at var(--mx) var(--my),
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.22) 14%,
+      transparent 36%
+    ),
+    linear-gradient(
+      168deg,
+      transparent 0%,
+      transparent 37%,
+      rgba(255, 255, 255, 0.22) 43%,
+      rgba(255, 255, 255, 0.8) 48%,
+      rgba(255, 255, 255, 0.22) 53%,
+      transparent 59%,
+      transparent 100%
+    );
+  background-size: 100% 100%, 100% 260%;
+  background-position: center, 50% var(--my);
+  background-repeat: no-repeat;
   mix-blend-mode: screen;
 }
 .holo-glare {
