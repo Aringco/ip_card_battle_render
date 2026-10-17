@@ -1,0 +1,8947 @@
+{
+ "T0/Fold펼침-가로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 28,
+    "y": 218,
+    "w": 1049,
+    "h": 534
+   },
+   "보드": {
+    "x": 228,
+    "y": 250,
+    "w": 643,
+    "h": 264
+   },
+   "카드띠": {
+    "x": 210,
+    "y": 539,
+    "w": 677,
+    "h": 183
+   },
+   "안내쪽지": {
+    "x": 228,
+    "y": 513,
+    "w": 643,
+    "h": 25
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.6,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.6,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.8,
+    "text": "▶새침한 판다",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.8,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.8,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.5,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 12.5,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 12.5,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 12.5,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 12.5,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 13.4,
+    "text": "새침한 판다 차례",
+    "box": "들보"
+   },
+   {
+    "px": 14.3,
+    "text": "🟢 디자인 개발팀⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.3,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 17.6,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 17.6,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 17.6,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 17.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 17.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.1,
+    "text": "디자인 개발팀",
+    "box": "들보"
+   },
+   {
+    "px": 20.5,
+    "text": "25",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 32.3,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 32.3,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 33.6,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 33.6,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 1049,
+   "usedH": 71,
+   "rotateHint": false
+  }
+ },
+ "T0/Fold펼침-가로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 28,
+    "y": 218,
+    "w": 1049,
+    "h": 534
+   },
+   "보드": {
+    "x": 228,
+    "y": 250,
+    "w": 643,
+    "h": 264
+   },
+   "카드띠": {
+    "x": 210,
+    "y": 539,
+    "w": 677,
+    "h": 183
+   },
+   "안내쪽지": {
+    "x": 228,
+    "y": 513,
+    "w": 643,
+    "h": 25
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.6,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.6,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.8,
+    "text": "새침한 판다",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.8,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10.8,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.5,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 12.5,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 12.5,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 12.5,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 12.5,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 13.4,
+    "text": "CPU 병사 차례",
+    "box": "들보"
+   },
+   {
+    "px": 14.3,
+    "text": "🟢 디자인 개발팀⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.3,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 17.6,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 17.6,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 17.6,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 17.8,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 17.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 17.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.1,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 21.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 32.3,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 32.3,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 32.3,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 33.6,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 33.6,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 1049,
+   "usedH": 71,
+   "rotateHint": false
+  }
+ },
+ "T0/16:10-노트북/draw": {
+  "boxes": {
+   "액자": {
+    "x": 32,
+    "y": 140,
+    "w": 1216,
+    "h": 619
+   },
+   "보드": {
+    "x": 264,
+    "y": 176,
+    "w": 745,
+    "h": 306
+   },
+   "카드띠": {
+    "x": 244,
+    "y": 511,
+    "w": 785,
+    "h": 212
+   },
+   "안내쪽지": {
+    "x": 264,
+    "y": 482,
+    "w": 745,
+    "h": 29
+   }
+  },
+  "fonts": [
+   {
+    "px": 7.5,
+    "text": "\"빠르게 등록해 실리를 챙기는",
+    "box": "카드1"
+   },
+   {
+    "px": 7.7,
+    "text": "\"독점적 실시를 통해 상대를 ",
+    "box": "카드4"
+   },
+   {
+    "px": 8.5,
+    "text": "양 레벨(0)만큼 동물을 더 ",
+    "box": "카드1"
+   },
+   {
+    "px": 8.6,
+    "text": "지금은 할 수 있는게 없네요.",
+    "box": "카드5"
+   },
+   {
+    "px": 8.7,
+    "text": "\"점점 더 브랜드 가치가 더해",
+    "box": "카드2"
+   },
+   {
+    "px": 8.9,
+    "text": "\"보기 좋은 떡이 먹기도 좋다",
+    "box": "카드3"
+   },
+   {
+    "px": 9,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10.3,
+    "text": "토끼 레벨(0)만큼 체력이 상",
+    "box": "카드2"
+   },
+   {
+    "px": 10.3,
+    "text": "인어 레벨(0)만큼 (중첩가능",
+    "box": "카드3"
+   },
+   {
+    "px": 10.3,
+    "text": "호랑이 레벨(0)만큼 상대 체",
+    "box": "카드4"
+   },
+   {
+    "px": 10.8,
+    "text": "▶배부른 잠자리",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.8,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.8,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.3,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 12.3,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 13.9,
+    "text": "배부른 잠자리 차례",
+    "box": "들보"
+   },
+   {
+    "px": 14.3,
+    "text": "🟢 실용신안 지키미⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.3,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 14.5,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 14.5,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 14.5,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 14.5,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 14.5,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 18.3,
+    "text": "실용신안 지키미",
+    "box": "들보"
+   },
+   {
+    "px": 18.7,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.8,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20.4,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 20.4,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 20.4,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 20.4,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 21.5,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 21.5,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 23.8,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 32.3,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 32.3,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 38.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 38.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 1216,
+   "usedH": 92,
+   "rotateHint": false
+  }
+ },
+ "T0/16:10-노트북/choice": {
+  "boxes": {
+   "액자": {
+    "x": 32,
+    "y": 140,
+    "w": 1216,
+    "h": 619
+   },
+   "보드": {
+    "x": 264,
+    "y": 176,
+    "w": 745,
+    "h": 306
+   },
+   "카드띠": {
+    "x": 244,
+    "y": 511,
+    "w": 785,
+    "h": 212
+   },
+   "안내쪽지": {
+    "x": 264,
+    "y": 482,
+    "w": 745,
+    "h": 29
+   }
+  },
+  "fonts": [
+   {
+    "px": 7.5,
+    "text": "\"빠르게 등록해 실리를 챙기는",
+    "box": "카드1"
+   },
+   {
+    "px": 7.7,
+    "text": "\"독점적 실시를 통해 상대를 ",
+    "box": "카드4"
+   },
+   {
+    "px": 8.5,
+    "text": "양 레벨(0)만큼 동물을 더 ",
+    "box": "카드1"
+   },
+   {
+    "px": 8.6,
+    "text": "지금은 할 수 있는게 없네요.",
+    "box": "카드5"
+   },
+   {
+    "px": 8.7,
+    "text": "\"점점 더 브랜드 가치가 더해",
+    "box": "카드2"
+   },
+   {
+    "px": 8.9,
+    "text": "\"보기 좋은 떡이 먹기도 좋다",
+    "box": "카드3"
+   },
+   {
+    "px": 9,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 9.7,
+    "text": "Lv.",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10.3,
+    "text": "토끼 레벨(0)만큼 체력이 상",
+    "box": "카드2"
+   },
+   {
+    "px": 10.3,
+    "text": "인어 레벨(0)만큼 (중첩가능",
+    "box": "카드3"
+   },
+   {
+    "px": 10.3,
+    "text": "호랑이 레벨(0)만큼 상대 체",
+    "box": "카드4"
+   },
+   {
+    "px": 10.8,
+    "text": "배부른 잠자리",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.8,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10.8,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.3,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 12.3,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 14.3,
+    "text": "🟢 실용신안 지키미⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.3,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 14.5,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 14.5,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 14.5,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 14.5,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 14.5,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 15.5,
+    "text": "CPU 병사 차례",
+    "box": "들보"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 18.7,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.7,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 18.8,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 18.8,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20.4,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 20.4,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 20.4,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 20.4,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 20.9,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 21.5,
+    "text": "5",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 21.5,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 21.5,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 24.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 25,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 32.3,
+    "text": "5",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 32.3,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 32.3,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 38.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 38.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 1216,
+   "usedH": 92,
+   "rotateHint": false
+  }
+ },
+ "T1/iPad-가로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 26,
+    "y": 176,
+    "w": 973,
+    "h": 495
+   },
+   "보드": {
+    "x": 211,
+    "y": 206,
+    "w": 596,
+    "h": 245
+   },
+   "카드띠": {
+    "x": 195,
+    "y": 473,
+    "w": 628,
+    "h": 169
+   },
+   "안내쪽지": {
+    "x": 211,
+    "y": 450,
+    "w": 596,
+    "h": 23
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.2,
+    "text": "▶어색한 알파카",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.2,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.2,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.1,
+    "text": "어색한 알파카 차례",
+    "box": "들보"
+   },
+   {
+    "px": 11.6,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11.6,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11.6,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11.6,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11.6,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 13.5,
+    "text": "🟢 특허 변호단⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.5,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.3,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 16.3,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 16.3,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 16.3,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 16.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.8,
+    "text": "특허 변호단",
+    "box": "들보"
+   },
+   {
+    "px": 19.1,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 30.5,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 30.5,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 31.1,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 31.1,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 973,
+   "usedH": 76,
+   "rotateHint": false
+  }
+ },
+ "T1/iPad-가로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 26,
+    "y": 176,
+    "w": 973,
+    "h": 495
+   },
+   "보드": {
+    "x": 211,
+    "y": 206,
+    "w": 596,
+    "h": 245
+   },
+   "카드띠": {
+    "x": 195,
+    "y": 473,
+    "w": 628,
+    "h": 169
+   },
+   "안내쪽지": {
+    "x": 211,
+    "y": 450,
+    "w": 596,
+    "h": 23
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.2,
+    "text": "어색한 알파카",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.2,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10.2,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.6,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11.6,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11.6,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11.6,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11.6,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 12.4,
+    "text": "CPU 병사 차례",
+    "box": "들보"
+   },
+   {
+    "px": 13.5,
+    "text": "🟢 특허 변호단⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.5,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.3,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 16.3,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 16.3,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 16.3,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 16.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.8,
+    "text": "5",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.8,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.8,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 19.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 20,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 30.5,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 30.5,
+    "text": "5",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 30.5,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 31.1,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 31.1,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 973,
+   "usedH": 76,
+   "rotateHint": false
+  }
+ },
+ "T1/4:3-좁은창/draw": {
+  "boxes": {
+   "액자": {
+    "x": 23,
+    "y": 168,
+    "w": 855,
+    "h": 435
+   },
+   "보드": {
+    "x": 186,
+    "y": 193,
+    "w": 524,
+    "h": 215
+   },
+   "카드띠": {
+    "x": 171,
+    "y": 429,
+    "w": 552,
+    "h": 149
+   },
+   "안내쪽지": {
+    "x": 186,
+    "y": 408,
+    "w": 524,
+    "h": 20
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶수상한 하마",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.2,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 10.2,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 10.2,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 10.2,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 10.2,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 10.9,
+    "text": "수상한 하마 차례",
+    "box": "들보"
+   },
+   {
+    "px": 11.9,
+    "text": "🟢 상표 관리자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.4,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 14.4,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 14.4,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.4,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.7,
+    "text": "상표 관리자",
+    "box": "들보"
+   },
+   {
+    "px": 14.9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 14.9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.7,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 26.8,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 26.8,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 27.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 27.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 855,
+   "usedH": 74,
+   "rotateHint": false
+  }
+ },
+ "T1/4:3-좁은창/choice": {
+  "boxes": {
+   "액자": {
+    "x": 23,
+    "y": 168,
+    "w": 855,
+    "h": 435
+   },
+   "보드": {
+    "x": 186,
+    "y": 193,
+    "w": 524,
+    "h": 215
+   },
+   "카드띠": {
+    "x": 171,
+    "y": 429,
+    "w": 552,
+    "h": 149
+   },
+   "안내쪽지": {
+    "x": 186,
+    "y": 408,
+    "w": 524,
+    "h": 20
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶수상한 하마",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "이번 턴의 행동을 선택하세요!",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.2,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 10.2,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 10.2,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 10.2,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 10.2,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 10.9,
+    "text": "수상한 하마 차례",
+    "box": "들보"
+   },
+   {
+    "px": 11.9,
+    "text": "🟢 상표 관리자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.1,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.2,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "2/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.2,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.4,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 14.4,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 14.4,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.4,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.7,
+    "text": "상표 관리자",
+    "box": "들보"
+   },
+   {
+    "px": 14.9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "내 체력 +2",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.7,
+    "text": "12",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.5,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "2",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.6,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 26.8,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 27.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 27.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 855,
+   "usedH": 74,
+   "rotateHint": false
+  }
+ },
+ "T3/Fold펼침-세로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 22,
+    "y": 374,
+    "w": 840,
+    "h": 427
+   },
+   "보드": {
+    "x": 182,
+    "y": 400,
+    "w": 515,
+    "h": 211
+   },
+   "카드띠": {
+    "x": 168,
+    "y": 631,
+    "w": 542,
+    "h": 146
+   },
+   "안내쪽지": {
+    "x": 182,
+    "y": 611,
+    "w": 515,
+    "h": 20
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶발랄한 사자",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.7,
+    "text": "발랄한 사자 차례",
+    "box": "들보"
+   },
+   {
+    "px": 11.7,
+    "text": "🟢 특허 파괴자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.7,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.1,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 14.1,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 14.1,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.1,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.5,
+    "text": "특허 파괴자",
+    "box": "들보"
+   },
+   {
+    "px": 14.6,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 14.6,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.4,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 26.3,
+    "text": "12",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 26.3,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 26.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 26.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 840,
+   "usedH": 46,
+   "rotateHint": true
+  }
+ },
+ "T3/Fold펼침-세로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 22,
+    "y": 374,
+    "w": 840,
+    "h": 427
+   },
+   "보드": {
+    "x": 182,
+    "y": 400,
+    "w": 515,
+    "h": 211
+   },
+   "카드띠": {
+    "x": 168,
+    "y": 631,
+    "w": 542,
+    "h": 146
+   },
+   "안내쪽지": {
+    "x": 182,
+    "y": 611,
+    "w": 515,
+    "h": 20
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶발랄한 사자",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "이번 턴의 행동을 선택하세요!",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.7,
+    "text": "다음 턴 카드 +2회",
+    "box": "카드1"
+   },
+   {
+    "px": 10.7,
+    "text": "발랄한 사자 차례",
+    "box": "들보"
+   },
+   {
+    "px": 11.7,
+    "text": "🟢 특허 파괴자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.7,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 14.1,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 14.1,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 14.1,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.1,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 14.5,
+    "text": "특허 파괴자",
+    "box": "들보"
+   },
+   {
+    "px": 14.6,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 16.4,
+    "text": "12",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.2,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 17.3,
+    "text": "2",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 17.3,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 26.3,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 26.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 26.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 840,
+   "usedH": 46,
+   "rotateHint": true
+  }
+ },
+ "T3/좁은창-세로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 19,
+    "y": 481,
+    "w": 732,
+    "h": 373
+   },
+   "보드": {
+    "x": 159,
+    "y": 503,
+    "w": 449,
+    "h": 184
+   },
+   "카드띠": {
+    "x": 147,
+    "y": 705,
+    "w": 473,
+    "h": 127
+   },
+   "안내쪽지": {
+    "x": 159,
+    "y": 688,
+    "w": 449,
+    "h": 18
+   }
+  },
+  "fonts": [
+   {
+    "px": 8.7,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 8.7,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 8.7,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 8.7,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 8.7,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶개구쟁이 두루미",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "개구쟁이 두루미 차례",
+    "box": "들보"
+   },
+   {
+    "px": 10.2,
+    "text": "🟢 상표 관리자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.2,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.3,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 12.6,
+    "text": "상표 관리자",
+    "box": "들보"
+   },
+   {
+    "px": 12.9,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 12.9,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 14.3,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 23,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 23,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 23.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 23.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 732,
+   "usedH": 35,
+   "rotateHint": true
+  }
+ },
+ "T3/좁은창-세로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 19,
+    "y": 481,
+    "w": 732,
+    "h": 373
+   },
+   "보드": {
+    "x": 159,
+    "y": 503,
+    "w": 449,
+    "h": 184
+   },
+   "카드띠": {
+    "x": 147,
+    "y": 705,
+    "w": 473,
+    "h": 127
+   },
+   "안내쪽지": {
+    "x": 159,
+    "y": 688,
+    "w": 449,
+    "h": 18
+   }
+  },
+  "fonts": [
+   {
+    "px": 8.7,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 8.7,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 8.7,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 8.7,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 8.7,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 10,
+    "text": "⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "개구쟁이 두루미",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "방 설정에 의해 먼저 시작하는",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사 차례",
+    "box": "들보"
+   },
+   {
+    "px": 10.2,
+    "text": "🟢 상표 관리자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.2,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.3,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.3,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 12.6,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 12.9,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 12.9,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 12.9,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 15.1,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 16.1,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 23,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 23,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 23,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 23.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 23.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 732,
+   "usedH": 35,
+   "rotateHint": true
+  }
+ },
+ "T2/iPhone15-가로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 95,
+    "y": 55,
+    "w": 653,
+    "h": 332
+   },
+   "보드": {
+    "x": 220,
+    "y": 75,
+    "w": 400,
+    "h": 164
+   },
+   "카드띠": {
+    "x": 209,
+    "y": 255,
+    "w": 422,
+    "h": 114
+   },
+   "안내쪽지": {
+    "x": 220,
+    "y": 239,
+    "w": 400,
+    "h": 16
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 특허 출원모임⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶뻔뻔한 해파리",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.1,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 12.8,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.6,
+    "text": "특허 출원모임",
+    "box": "들보"
+   },
+   {
+    "px": 20.5,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 20.5,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 20.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 20.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 653,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/iPhone15-가로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 95,
+    "y": 55,
+    "w": 653,
+    "h": 332
+   },
+   "보드": {
+    "x": 220,
+    "y": 75,
+    "w": 400,
+    "h": 164
+   },
+   "카드띠": {
+    "x": 209,
+    "y": 255,
+    "w": 422,
+    "h": 114
+   },
+   "안내쪽지": {
+    "x": 220,
+    "y": 239,
+    "w": 400,
+    "h": 16
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 특허 출원모임⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶뻔뻔한 해파리",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "이번 턴의 행동을 선택하세요!",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.1,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "9/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10.1,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 12.8,
+    "text": "12",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "내 체력 +1",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "1",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13.6,
+    "text": "특허 출원모임",
+    "box": "들보"
+   },
+   {
+    "px": 20.5,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 20.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 20.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 653,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/S23-가로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 88,
+    "y": 51,
+    "w": 603,
+    "h": 307
+   },
+   "보드": {
+    "x": 204,
+    "y": 69,
+    "w": 370,
+    "h": 152
+   },
+   "카드띠": {
+    "x": 193,
+    "y": 235,
+    "w": 389,
+    "h": 105
+   },
+   "안내쪽지": {
+    "x": 204,
+    "y": 221,
+    "w": 370,
+    "h": 14
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 상표 지키미⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶고집스런 거북이",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.1,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.7,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.7,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.8,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.6,
+    "text": "상표 지키미",
+    "box": "들보"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 18.9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.9,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 19.3,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 19.3,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 603,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/S23-가로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 88,
+    "y": 51,
+    "w": 603,
+    "h": 307
+   },
+   "보드": {
+    "x": 204,
+    "y": 69,
+    "w": 370,
+    "h": 152
+   },
+   "카드띠": {
+    "x": 193,
+    "y": 235,
+    "w": 389,
+    "h": 105
+   },
+   "안내쪽지": {
+    "x": 204,
+    "y": 221,
+    "w": 370,
+    "h": 14
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 상표 지키미⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "고집스런 거북이",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.1,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.7,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.7,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.7,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.4,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.6,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 18.9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.9,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.9,
+    "text": "8",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 19.3,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 19.3,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 603,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/SE-가로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 19,
+    "y": 53,
+    "w": 628,
+    "h": 320
+   },
+   "보드": {
+    "x": 139,
+    "y": 72,
+    "w": 385,
+    "h": 158
+   },
+   "카드띠": {
+    "x": 129,
+    "y": 245,
+    "w": 405,
+    "h": 109
+   },
+   "안내쪽지": {
+    "x": 139,
+    "y": 230,
+    "w": 385,
+    "h": 15
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 실용신안 관리자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶늠름한 판다",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.5,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10.5,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10.5,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.5,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.3,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.3,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.5,
+    "text": "실용신안 관리자",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 19.7,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 19.7,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 20.1,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 20.1,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 628,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/SE-가로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 19,
+    "y": 53,
+    "w": 628,
+    "h": 320
+   },
+   "보드": {
+    "x": 139,
+    "y": 72,
+    "w": 385,
+    "h": 158
+   },
+   "카드띠": {
+    "x": 129,
+    "y": 245,
+    "w": 405,
+    "h": 109
+   },
+   "안내쪽지": {
+    "x": 139,
+    "y": 230,
+    "w": 385,
+    "h": 15
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 실용신안 관리자⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶늠름한 판다",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "2/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "이번 턴의 행동을 선택하세요!",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10.5,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10.5,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10.5,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.5,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.3,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.5,
+    "text": "실용신안 관리자",
+    "box": "들보"
+   },
+   {
+    "px": 12.3,
+    "text": "12",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 12.8,
+    "text": "내 체력 +2",
+    "box": "카드2"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "2",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 12.9,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 19.7,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 20.1,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 20.1,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 628,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/Fold접힘-가로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 153,
+    "y": 49,
+    "w": 576,
+    "h": 293
+   },
+   "보드": {
+    "x": 263,
+    "y": 66,
+    "w": 353,
+    "h": 145
+   },
+   "카드띠": {
+    "x": 253,
+    "y": 224,
+    "w": 372,
+    "h": 100
+   },
+   "안내쪽지": {
+    "x": 263,
+    "y": 211,
+    "w": 353,
+    "h": 14
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 디자인 변호단⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶다정한 참새",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.1,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.3,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12,
+    "text": "디자인 변호단",
+    "box": "들보"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 18.1,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.1,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 18.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 576,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T2/Fold접힘-가로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 153,
+    "y": 49,
+    "w": 576,
+    "h": 293
+   },
+   "보드": {
+    "x": 263,
+    "y": 66,
+    "w": 353,
+    "h": 145
+   },
+   "카드띠": {
+    "x": 253,
+    "y": 224,
+    "w": 372,
+    "h": 100
+   },
+   "안내쪽지": {
+    "x": 263,
+    "y": 211,
+    "w": 353,
+    "h": 14
+   }
+  },
+  "fonts": [
+   {
+    "px": 10,
+    "text": "🟢 디자인 변호단⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "다정한 참새",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.1,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.1,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.1,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.8,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 12,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 13,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 18.1,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.1,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.1,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 18.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 18.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   },
+   {
+    "px": 21.5,
+    "text": "8",
+    "box": "play-cell-board"
+   }
+  ],
+  "overflowText": [],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 576,
+   "usedH": 101,
+   "rotateHint": false
+  }
+ },
+ "T3/iPhone15-세로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 10,
+    "y": 345,
+    "w": 371,
+    "h": 189
+   },
+   "보드": {
+    "x": 80,
+    "y": 356,
+    "w": 227,
+    "h": 93
+   },
+   "카드띠": {
+    "x": 74,
+    "y": 458,
+    "w": 239,
+    "h": 64
+   },
+   "안내쪽지": {
+    "x": 80,
+    "y": 449,
+    "w": 227,
+    "h": 9
+   }
+  },
+  "fonts": [
+   {
+    "px": 7.3,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 9,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 특허 지키미⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶사나운 원숭이",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "특허 지키미",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.6,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.6,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 2
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 2
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   }
+  ],
+  "smallTargets": [
+   {
+    "kind": "장소",
+    "w": 50,
+    "h": 43,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 50,
+    "h": 43,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 50,
+    "h": 43,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 50,
+    "h": 43,
+    "text": ""
+   }
+  ],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 371,
+   "usedH": 26,
+   "rotateHint": true
+  }
+ },
+ "T3/iPhone15-세로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 10,
+    "y": 345,
+    "w": 371,
+    "h": 189
+   },
+   "보드": {
+    "x": 80,
+    "y": 356,
+    "w": 227,
+    "h": 93
+   },
+   "카드띠": {
+    "x": 74,
+    "y": 458,
+    "w": 239,
+    "h": 64
+   },
+   "안내쪽지": {
+    "x": 80,
+    "y": 449,
+    "w": 227,
+    "h": 9
+   }
+  },
+  "fonts": [
+   {
+    "px": 9,
+    "text": "5",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 특허 지키미⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "사나운 원숭이",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.6,
+    "text": "5",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.6,
+    "text": "9",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.6,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 11.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 2
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 2
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 21
+   }
+  ],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 371,
+   "usedH": 26,
+   "rotateHint": true
+  }
+ },
+ "T3/SE-세로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 9,
+    "y": 259,
+    "w": 356,
+    "h": 181
+   },
+   "보드": {
+    "x": 77,
+    "y": 270,
+    "w": 218,
+    "h": 90
+   },
+   "카드띠": {
+    "x": 71,
+    "y": 368,
+    "w": 230,
+    "h": 62
+   },
+   "안내쪽지": {
+    "x": 77,
+    "y": 359,
+    "w": 218,
+    "h": 9
+   }
+  },
+  "fonts": [
+   {
+    "px": 7,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 9,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 저작권 기사단⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶늠름한 라마",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "저작권 기사단",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.2,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.2,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 11.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   }
+  ],
+  "smallTargets": [
+   {
+    "kind": "장소",
+    "w": 48,
+    "h": 41,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 48,
+    "h": 41,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 48,
+    "h": 41,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 48,
+    "h": 41,
+    "text": ""
+   }
+  ],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 356,
+   "usedH": 32,
+   "rotateHint": true
+  }
+ },
+ "T3/SE-세로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 9,
+    "y": 259,
+    "w": 356,
+    "h": 181
+   },
+   "보드": {
+    "x": 77,
+    "y": 270,
+    "w": 218,
+    "h": 90
+   },
+   "카드띠": {
+    "x": 71,
+    "y": 368,
+    "w": 230,
+    "h": 62
+   },
+   "안내쪽지": {
+    "x": 77,
+    "y": 359,
+    "w": 218,
+    "h": 9
+   }
+  },
+  "fonts": [
+   {
+    "px": 7,
+    "text": "12",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 9,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 저작권 기사단⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶늠름한 라마",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "2/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "다음 턴 카드 +1회",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "이번 턴의 행동을 선택하세요!",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "저작권 기사단",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 11,
+    "text": "1",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   },
+   {
+    "px": 11.2,
+    "text": "13",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 11.4,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 11.4,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "카드1",
+    "text": "다음 턴 카드 +1회",
+    "over": 14
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 31
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 23
+   }
+  ],
+  "smallTargets": [
+   {
+    "kind": "기술카드",
+    "w": 44,
+    "h": 62,
+    "text": "다음 턴 카드 +1"
+   }
+  ],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 356,
+   "usedH": 32,
+   "rotateHint": true
+  }
+ },
+ "T3/S23-세로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 9,
+    "y": 319,
+    "w": 342,
+    "h": 174
+   },
+   "보드": {
+    "x": 74,
+    "y": 329,
+    "w": 210,
+    "h": 86
+   },
+   "카드띠": {
+    "x": 69,
+    "y": 423,
+    "w": 221,
+    "h": 60
+   },
+   "안내쪽지": {
+    "x": 74,
+    "y": 415,
+    "w": 210,
+    "h": 8
+   }
+  },
+  "fonts": [
+   {
+    "px": 6.7,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 9,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 특허 출원모임⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶배고픈 고양이",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "특허 출원모임",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.7,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.7,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 10.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   }
+  ],
+  "smallTargets": [
+   {
+    "kind": "장소",
+    "w": 46,
+    "h": 40,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 46,
+    "h": 40,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 46,
+    "h": 40,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 46,
+    "h": 40,
+    "text": ""
+   }
+  ],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 342,
+   "usedH": 26,
+   "rotateHint": true
+  }
+ },
+ "T3/S23-세로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 9,
+    "y": 319,
+    "w": 342,
+    "h": 174
+   },
+   "보드": {
+    "x": 74,
+    "y": 329,
+    "w": 210,
+    "h": 86
+   },
+   "카드띠": {
+    "x": 69,
+    "y": 423,
+    "w": 221,
+    "h": 60
+   },
+   "안내쪽지": {
+    "x": 74,
+    "y": 415,
+    "w": 210,
+    "h": 8
+   }
+  },
+  "fonts": [
+   {
+    "px": 9,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "6",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 특허 출원모임⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "배고픈 고양이",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "상대 턴이에요.",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "AI 군단",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "상대팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.7,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.7,
+    "text": "6",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.7,
+    "text": "10",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.9,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 10.9,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 3
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   }
+  ],
+  "smallTargets": [],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 342,
+   "usedH": 26,
+   "rotateHint": true
+  }
+ },
+ "T3/Fold접힘-세로/draw": {
+  "boxes": {
+   "액자": {
+    "x": 9,
+    "y": 374,
+    "w": 327,
+    "h": 166
+   },
+   "보드": {
+    "x": 71,
+    "y": 384,
+    "w": 200,
+    "h": 82
+   },
+   "카드띠": {
+    "x": 65,
+    "y": 473,
+    "w": 211,
+    "h": 57
+   },
+   "안내쪽지": {
+    "x": 71,
+    "y": 466,
+    "w": 200,
+    "h": 8
+   }
+  },
+  "fonts": [
+   {
+    "px": 6.4,
+    "text": "26",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 9,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 9,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 디자인 수호대⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶불타는 사슴",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "디자인 수호대",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.2,
+    "text": "7",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.2,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.5,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 10.5,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 4
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 4
+   },
+   {
+    "box": "안내쪽지",
+    "text": "장소를 클릭해 카드를 뽑으세요",
+    "over": 4
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   }
+  ],
+  "smallTargets": [
+   {
+    "kind": "장소",
+    "w": 44,
+    "h": 38,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 44,
+    "h": 38,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 44,
+    "h": 38,
+    "text": ""
+   },
+   {
+    "kind": "장소",
+    "w": 44,
+    "h": 38,
+    "text": ""
+   }
+  ],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 327,
+   "usedH": 22,
+   "rotateHint": true
+  }
+ },
+ "T3/Fold접힘-세로/choice": {
+  "boxes": {
+   "액자": {
+    "x": 9,
+    "y": 374,
+    "w": 327,
+    "h": 166
+   },
+   "보드": {
+    "x": 71,
+    "y": 384,
+    "w": 200,
+    "h": 82
+   },
+   "카드띠": {
+    "x": 65,
+    "y": 473,
+    "w": 211,
+    "h": 57
+   },
+   "안내쪽지": {
+    "x": 71,
+    "y": 466,
+    "w": 200,
+    "h": 8
+   }
+  },
+  "fonts": [
+   {
+    "px": 6.4,
+    "text": "12",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 9,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10,
+    "text": "🟢 디자인 수호대⭐ 내 팀",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶불타는 사슴",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "▶",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "5/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 10,
+    "text": "🔵 AI 군단",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "CPU 병사",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/10",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "0/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "/20",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드1"
+   },
+   {
+    "px": 10,
+    "text": "내 체력 +1",
+    "box": "카드2"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드3"
+   },
+   {
+    "px": 10,
+    "text": "레벨 부족",
+    "box": "카드4"
+   },
+   {
+    "px": 10,
+    "text": "이번 턴의 행동을 선택하세요!",
+    "box": "안내쪽지"
+   },
+   {
+    "px": 10,
+    "text": "디자인 수호대",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "1 / 20턴",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "우리팀",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "장소 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10,
+    "text": "행동 선택",
+    "box": "들보"
+   },
+   {
+    "px": 10.2,
+    "text": "11",
+    "box": "play-cell-board"
+   },
+   {
+    "px": 10.5,
+    "text": "7",
+    "box": "play-cell-hp-a"
+   },
+   {
+    "px": 10.5,
+    "text": "7",
+    "box": "play-cell-hp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "1",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-a"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "0",
+    "box": "play-cell-exp-b"
+   },
+   {
+    "px": 11,
+    "text": "[실용신양]",
+    "box": "카드1"
+   },
+   {
+    "px": 11,
+    "text": "[상표토끼]",
+    "box": "카드2"
+   },
+   {
+    "px": 11,
+    "text": "[디자인어]",
+    "box": "카드3"
+   },
+   {
+    "px": 11,
+    "text": "[특허랑이]",
+    "box": "카드4"
+   },
+   {
+    "px": 11,
+    "text": "[턴 마치기]",
+    "box": "카드5"
+   }
+  ],
+  "overflowText": [
+   {
+    "box": "play-cell-exp-a",
+    "text": "0",
+    "over": 4
+   },
+   {
+    "box": "play-cell-exp-b",
+    "text": "0",
+    "over": 4
+   },
+   {
+    "box": "카드1",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드2",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드3",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   },
+   {
+    "box": "카드4",
+    "text": "이름↔효과 겹침",
+    "over": 11
+   }
+  ],
+  "smallTargets": [
+   {
+    "kind": "기술카드",
+    "w": 41,
+    "h": 73,
+    "text": "내 체력 +1[상표"
+   },
+   {
+    "kind": "기술카드",
+    "w": 40,
+    "h": 73,
+    "text": "[턴 마치기]지금은"
+   }
+  ],
+  "page": {
+   "overflowX": 0,
+   "overflowY": 0,
+   "stageW": 327,
+   "usedH": 22,
+   "rotateHint": true
+  }
+ }
+}

@@ -39,8 +39,13 @@ const BASE_DIR = path.join(__dirname, '..', 'play-baselines');
 // ⚠️ 폴드 펼침 크기는 **근사값**이다. 실기기로 한 번 확인할 것.
 const DEVICES = [
   ['T0', 'Fold펼침-가로', 1104, 884, 2.5],   // 데스크톱 규칙이 그대로 적용되는지 확인용
-  ['T1', 'Fold펼침-세로', 884, 1104, 2.5],
+  // 폭이 무대를 정하는 가로 화면 — 여기서 vh로 잡은 크기가 무대보다 크게 남는다(MOBILE_ROADMAP.md M2b).
+  ['T0', '16:10-노트북', 1280, 800, 2],
   ['T1', 'iPad-가로', 1024, 768, 2],
+  ['T1', '4:3-좁은창', 900, 700, 1],
+  // 세로 화면 — 가로 ≤ 세로이면 기기와 상관없이 회전 안내가 덮는다(2026-10-16부터).
+  ['T3', 'Fold펼침-세로', 884, 1104, 2.5],
+  ['T3', '좁은창-세로', 771, 1270, 1],    // 데스크톱 브라우저를 좁게 세운 창(사용자 제보 2026-10-16)
   ['T2', 'iPhone15-가로', 844, 390, 3],
   ['T2', 'S23-가로', 780, 360, 3],
   ['T2', 'SE-가로', 667, 375, 2],
@@ -120,6 +125,14 @@ async function measure(page) {
       return true;
     }
 
+    /** 글자가 실제로 그려진 범위 — 요소 상자 밖으로 흘러넘친 글자까지 포함한다. */
+    function textRect(el) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const r = range.getBoundingClientRect();
+      return r.width > 0 ? r : rect(el);
+    }
+
     /** 직접 텍스트 노드를 가진 요소만 — 부모까지 세면 같은 글자를 여러 번 센다. */
     function ownsText(el) {
       return [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 0);
@@ -152,7 +165,11 @@ async function measure(page) {
       const horizontalOnly = boxName === '안내쪽지';
       for (const el of boxEl.querySelectorAll('*')) {
         if (!ownsText(el) || !visible(el)) continue;
-        const b = rect(el);
+        // ⚠️ 요소의 상자가 아니라 **글자가 실제로 그려진 범위**를 잰다(2026-10-16). 상자는 `min-width: 0`으로
+        //    줄어 칸 안에 있는데 글자는 `nowrap` + `overflow: visible`로 상자 밖에 흘러나가는 일이 있었다 —
+        //    타이머 문구가 액자 밖으로 나갔는데 여기서는 0건이었다. 말줄임(`overflow: hidden`)한 글자는
+        //    잘린 데까지만 보이므로 상자로 잰다.
+        const b = getComputedStyle(el).overflow === 'visible' ? textRect(el) : rect(el);
         const px = parseFloat(getComputedStyle(el).fontSize);
         const text = el.textContent.trim().replace(/\s+/g, ' ').slice(0, 16);
         out.fonts.push({ px: Math.round(px * 10) / 10, text, box: boxName });
@@ -163,6 +180,18 @@ async function measure(page) {
       }
     }
     out.fonts.sort((a, b) => a.px - b.px);
+
+    // ── 글자 겹침 — 기술 카드의 이름과 효과 문구("레벨 부족" 등) ────────────────────
+    // 카드 장식 크기(--deco)가 카드에 비해 커지면 효과 문구 자리가 내려와 이름 위에 얹힌다(2026-10-16 제보).
+    for (const [i, card] of [...document.querySelectorAll('.play-cards-grid > *')].entries()) {
+      const a = card.querySelector('.skill-text-title');
+      const b = card.querySelector('.skill-effect-label');
+      if (!a || !b || !visible(a) || !visible(b)) continue;
+      const ra = textRect(a), rb = textRect(b);
+      const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+      const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+      if (ox > 2 && oy > 2) out.overflowText.push({ box: `카드${i + 1}`, text: '이름↔효과 겹침', over: round(oy) });
+    }
 
     // ── 누름 대상 크기 ──────────────────────────────────────────────────────
     const tapSels = [
@@ -288,9 +317,13 @@ if (diffWith) {
 // ── 종합 ────────────────────────────────────────────────────────────────────
 let bad = 0;
 let covered = 0;
-for (const m of Object.values(results)) {
+for (const [key, m] of Object.entries(results)) {
   if (m.page.rotateHint) { covered++; continue; }   // 위와 같은 이유로 세지 않는다
-  const n = m.overflowText.length + m.smallTargets.length + m.fonts.filter(f => f.px < 10).length +
+  // ⚠️ T0(데스크톱 규칙이 그대로 적용되는 화면)에서는 작은 글자를 세지 않는다. 기술 카드 설명·인용구는
+  //    1366×768에서도 7~10px로 **원래 그렇게 작고**(C1 — 지금 데스크톱의 기준값), T0 뷰포트는 겹침·넘침을
+  //    보려고 넣은 것이다. 세면 고칠 수 없는 항목이 영원히 빨간불로 남는다(16:10 노트북 1280×800).
+  const smallFonts = key.startsWith('T0/') ? 0 : m.fonts.filter(f => f.px < 10).length;
+  const n = m.overflowText.length + m.smallTargets.length + smallFonts +
     m.page.overflowX + m.page.overflowY;
   if (n > 0) bad++;
 }

@@ -37,13 +37,20 @@
      쓰는 법: 고정값 L을 `min(L, calc(L숫자 * var(--sp)))`로 바꾼다.
        · 무대폭 ≥ 1286.6(1366×768 이상 16:9 전부) → L이 이겨 **값이 그대로**다
        · 그보다 작은 무대 → 무대와 같은 비율로 함께 작아진다
-     `clamp(하한, vh식, 상한)`은 **하한만** 이렇게 바꾼다 — vh식은 데스크톱·폰 가로
-     양쪽에서 이미 무대와 비례하므로(무대폭 = 167.52vh) 건드리면 16:10에서 어긋난다.
+     `clamp(하한, 가운데, 상한)`은 하한을 이렇게 바꾸고, **가운데의 vh는 아래 `--sv`로** 바꾼다.
 
      ⚠️ 글자에 쓸 때 `* var(--font-scale)`을 **양쪽에** 곱할 것. 한쪽만 곱하면 사용자가
      고른 글씨 크기가 작은 화면에서만(또는 큰 화면에서만) 안 먹는다.
      자세한 배경은 MOBILE_ROADMAP.md §3-2. */
   --sp: calc(var(--stage-w) / 1286.6);
+  /* ══ 무대 vh `--sv` — 화면 높이 대신 **무대**를 따라가는 1vh ══════════════════════
+     무대폭 = min(폭 식, 98svh ÷ 0.585)라, 높이가 무대를 정하는 화면(16:9 데스크톱·폰 가로)에서는
+     무대폭 ÷ 167.52가 **정확히 1svh**다(0.585 × 167.52 = 98) — 그 화면들에서는 값이 그대로다.
+     차이가 나는 것은 **폭이 무대를 정하는 화면**(세운 태블릿·4:3·16:10·좁은 창)뿐인데, 그쪽에서 vh는
+     무대보다 크게 남아 타이머 창·카드 장식이 판에 비해 거대해졌다(2026-10-16 사용자 제보 —
+     MOBILE_ROADMAP.md M2b). 무대 위에 얹히는 크기에 vh를 쓰지 말고 `calc(N * var(--sv))`를 쓸 것.
+     ⚠️ 화면 전체를 덮는 겹침창(`position: fixed; inset: 0`)의 여백은 화면 기준이 맞으니 그대로 vh. */
+  --sv: calc(var(--stage-w) / 167.52);
   --beam-h: calc(var(--stage-w) * 233 / 2500);
   /* 상단 바가 **실제로 차지하는 높이** — 그림 아래 44/233은 비어 있어 음수 margin으로
      걷어내므로, 그 몫을 뺀 189/233에 사이 숨통을 더한 만큼만 자리를 차지한다. */
@@ -4346,7 +4353,7 @@ body {
    이 값의 배수라 하나만 고치면 **같은 비율로 함께** 작아진다 — 그게 이 변수를 둔 이유다. */
   /* ⚠️ 하한이 **무대를 따라간다**(--sp). 예전 고정 50px는 폰 가로에서 이 창이 앉을
      자리(들보 16px)보다 커서, 창이 보드 아래 절반과 팀 패널을 통째로 덮었다. */
-  --timer-h: clamp(min(50px, calc(50 * var(--sp))), 5.75vh, 75px);
+  --timer-h: clamp(min(50px, calc(50 * var(--sp))), calc(5.75 * var(--sv)), 75px);
   display: inline-flex;
   align-items: center;
   /* 상대 턴처럼 **타이머가 없는** 때는 문구만 남는데, 최소 길이 때문에 창은 그대로라
@@ -4572,7 +4579,7 @@ body {
 /* 제목 `[실용신양]`은 굵은 글꼴(Cafe24Ssurround v2.0)을 그대로 쓴다 — JSX의
    `font-extrabold`가 그쪽 얼굴을 고른다. 한 낱말이라 폭 맞춤이 필요 없다. */
 /* 하한만 무대를 따라간다(--sp) — 고정 0.95rem이면 폰 가로에서 제목이 "레벨 부족"과 겹친다. */
-.skill-text-title { font-size: clamp(min(0.95rem, calc(15.2 * var(--sp))), 2vh, 1.25rem); }
+.skill-text-title { font-size: clamp(min(0.95rem, calc(15.2 * var(--sp))), calc(2 * var(--sv)), 1.25rem); }
 /* ⚠️ 효과 설명은 **가는 글꼴(Air)** 로 그린다(요청). 굵은 얼굴을 쓰는 제목·대사와
    달리 두 줄이 길어 Air가 읽기 편하다. 대사는 아래에서 다시 굵게 돌린다. */
 .skill-text-desc { font-weight: 400; }
@@ -4582,10 +4589,10 @@ body {
      넘칠 것 같으면 접히는 게 아니라 아래 font-size가 글자를 줄인다. */
   white-space: pre;
 }
-.skill-text-desc  { font-size: min(clamp(0.68rem, 1.42vh, 0.88rem), calc(var(--fit-w) / var(--desc-em, 15))); }
+.skill-text-desc  { font-size: min(clamp(0.68rem, calc(1.42 * var(--sv)), 0.88rem), calc(var(--fit-w) / var(--desc-em, 15))); }
 /* 대사는 **굵은 글꼴(Cafe24Ssurround v2.0)** 이다(요청) — JSX의 `font-bold`가 그
    얼굴을 고르므로, 예전처럼 여기서 400으로 되돌리지 **않는다**. */
-.skill-text-quote { font-size: min(clamp(0.6rem, 1.22vh, 0.78rem), calc(var(--fit-w) / var(--quote-em, 16))); }
+.skill-text-quote { font-size: min(clamp(0.6rem, calc(1.22 * var(--sv)), 0.78rem), calc(var(--fit-w) / var(--quote-em, 16))); }
 
 /* 결과 화면 배경 — 승패가 정해진 뒤(`GameEndScreen`)의 탁자 그림.
    그림이 밝고 복잡해 판 **바깥**에 얹히는 글자(승패 문구·안내)가 묻힌다. 그래서 위쪽을
@@ -4822,15 +4829,15 @@ body {
    가운데로 갈수록 나무 구멍과 어긋난다.
    띠 = 첫 칸 왼쪽(x 342)부터 끝 칸 오른쪽(x 1610)까지 1268px. */
 .play-cards {
-  /* 기술 카드 칸의 둥글기 — 그림의 카드 구멍은 **모서리마다 다르다**(구멍 경계를 줄마다 재서 원에 맞춘 값):
-       카드끼리 맞닿는 안쪽 모서리(가는 나무 기둥 쪽)   r ≈ 7.5~8.5 → 8
-       띠의 바깥 모서리(첫 카드 왼쪽·끝 카드 오른쪽)     r ≈ 13~19  → 17
-     다른 칸처럼 22 하나로 두면 카드 모서리 바깥에 구멍이 비어 배경이 비쳐 보인다(요청: 액자에 맞출 것).
-     칸마다의 네 모서리 값은 아래 .play-cards .play-cards-grid > * 가 --card-radius로 묶어 내려 주고,
-     카드 뒤 양피지·카드 칸·카드 액자·홀로 층이 모두 그 값을 따른다.
+  /* 기술 카드 칸의 둥글기 — 그림의 카드 구멍은 모서리마다 다르다(구멍 경계를 줄마다 재서 원에 맞춘 값):
+       카드끼리 맞닿는 안쪽 모서리(가는 나무 기둥 쪽)   r ≈ 7.5~8.5
+       띠의 바깥 모서리(첫 카드 왼쪽·끝 카드 오른쪽)     r ≈ 13~19
+     **다섯 장 모두 네 모서리를 8로 같게 둔다**(요청). 한때 바깥 모서리만 17로 구멍을 따라갔더니 양 끝 카드만
+     더 둥글어 보였다. 바깥 모서리는 구멍보다 덜 둥근 만큼 카드 귀가 나무 위에 살짝 얹힌다(칸이 액자 위에 그려진다).
+     다른 칸처럼 22로 두면 카드 모서리 바깥에 구멍이 비어 배경이 비쳐 보인다.
+     카드 뒤 양피지·카드 칸·카드 액자·홀로 층이 모두 --card-radius(= 이 값)를 따른다.
      개인전(.ind-cards)에는 이 변수들이 없으므로 그쪽은 각자의 --cell-r로 돌아간다. */
   --card-r: calc(var(--pf-w) * 8 / 1965);
-  --card-r-out: calc(var(--pf-w) * 17 / 1965);
   /* 카드가 기울 때 드러나는 옆면(.holo-edge) 색 — 고동색(요청, 개인전과 같은 색). 두께는 SkillChoiceBar의 HOLO_EDGE_PX. */
   --card-side: #5a2a06;
   position: absolute;
@@ -4854,8 +4861,6 @@ body {
    그래서 **128%로 키워 가운데만** 쓴다(background-position: center). 결 무늬라 키워도
    티가 나지 않고, 찢긴 변은 상자 밖으로 밀려난다. */
 .play-cards .play-cards-grid > * { --card-radius: var(--card-r); }
-.play-cards .play-cards-grid > :first-child { --card-radius: var(--card-r-out) var(--card-r) var(--card-r) var(--card-r-out); }
-.play-cards .play-cards-grid > :last-child  { --card-radius: var(--card-r) var(--card-r-out) var(--card-r-out) var(--card-r); }
 .play-cards-grid > * {
   border-radius: var(--card-radius, var(--cell-r));
   background-image: url('/play/pg_card.webp');
@@ -4870,7 +4875,7 @@ body {
      띠 전체에 두면 카드도 손도 같은 값을 본다 — 둘의 자리를 맞춰야 하므로 중요하다. */
   /* 하한이 무대를 따라간다 — 고정 24px면 폰 가로에서 손가락 하나가 장소 칸만 해진다.
      `--label-top`이 이 값의 1.3배라 손과 효과 문구가 **함께** 작아진다(아래 주석). */
-  --deco: clamp(min(24px, calc(24 * var(--sp))), 3.4vh, 39px);
+  --deco: clamp(min(24px, calc(24 * var(--sp))), calc(3.4 * var(--sv)), 39px);
   /* **손끝이 멈추는 자리**이자, 그 바로 아래(금색 테두리 5px 뒤)가 효과 문구의 윗선이다.
      한 값으로 둘을 묶어야 "손이 문구를 가리지 않는다"가 해상도와 무관하게 지켜진다.
      1.3배는 손이 위쪽 안내 띠를 **예전보다 덜 침범하도록** 잡은 값이다(1920에서 19→14px,
@@ -4919,7 +4924,7 @@ body {
 .demo-caption {
   /* 하한은 타이머 창과 같은 이유로 무대를 따라간다(--sp 주석 참고) — 이 자막은
      타이머 창이 있던 자리를 그대로 쓰므로 두 값이 어긋나면 안 된다. */
-  --demo-h: clamp(min(50px, calc(50 * var(--sp))), 5.75vh, 75px);
+  --demo-h: clamp(min(50px, calc(50 * var(--sp))), calc(5.75 * var(--sv)), 75px);
   position: absolute;
   left: 50%;
   top: 50%;
@@ -6099,6 +6104,13 @@ body {
   .skill-text-desc,
   .skill-text-quote { display: none; }
 
+  /* ①-b 타이머 문구 하한 10px — 타이머 창 높이(--timer-h)가 무대를 따라가게 된 뒤(--sv, 2026-10-16)
+     폭이 무대를 정하는 가로 화면(아이패드 1024×768 등)에서 문구가 9.8px로 내려갔다. 예전엔 vh가 무대보다
+     커서 우연히 10px을 넘고 있었다. 창은 문구에 맞춰 늘어나므로(상한 판 폭의 0.92) 하한을 줘도 넘치지 않는다.
+     T2 블록에도 같은 하한 + 한 줄 말줄임이 있다(그쪽이 뒤에 있어 덮는다). */
+  .play-timer-text,
+  .play-timer-note { font-size: max(10px, calc(var(--timer-h) * 0.2325 * var(--font-scale))); }
+
   /* ② 중앙 스택 카드 — **줄 높이를 넘지 않게** 상한을 하나 더 건다.
      카드는 88:116(세로로 긴) 비율이라 폭을 무대에 맞춰 줄여도 키가 줄 높이를 넘는다.
      폰 가로에서 줄 하나가 23px인데 카드가 59px이라, 위아래 줄을 그대로 덮었다.
@@ -6144,7 +6156,7 @@ body {
   /* 이름과 효과 — `min()`의 두 번째 인자(글 길이에 맞춘 축소)는 그대로 두고 **바닥만** 올린다.
      `max()`로 감싸면 "글이 길어도 이 크기 밑으로는 안 내려간다"가 된다. 카드 폭을 넘치면
      말줄임이 받는다(아래 overflow). */
-  .skill-text-title { font-size: max(11px, clamp(min(0.95rem, calc(15.2 * var(--sp))), 2vh, 1.25rem)); }
+  .skill-text-title { font-size: max(11px, clamp(min(0.95rem, calc(15.2 * var(--sp))), calc(2 * var(--sv)), 1.25rem)); }
   .skill-effect-label { font-size: max(10px, min(calc(1.125rem * var(--font-scale)), calc(var(--fit-w) / var(--label-em, 8)))); }
 
   /* ② 경험치 줄 — 값("0/10")과 레벨 숫자는 **필수**라 하한을 준다
@@ -6225,15 +6237,20 @@ body {
   .play-nameplate-team { font-size: max(10px, calc(var(--beam-h) * 0.2 * var(--font-scale) * var(--name-fit, 1))); }
 }
 
-/* ── T3 — 세로 폰 ─────────────────────────────────────────────────────────────
+/* ── T3 — 세로 화면 ───────────────────────────────────────────────────────────
    ⚠️ **T2 블록보다 뒤에 있어야 한다.** 세로 폰은 폭이 757 미만이라 T2 조건에도 걸리므로,
       앞에 두면 T2 압축 규칙이 그대로 남는다(MOBILE_ROADMAP.md §3-1).
 
-   지금은 "가로로 돌려 주세요" 안내 하나뿐이다. 세로 전용 배치는 별개의 작업이고
-   (MOBILE_ROADMAP.md M6), 그 작업이 끝나면 아래 `display: flex`를 `none`으로 되돌린다. */
+   지금은 "가로로 돌려 주세요" 안내 하나뿐이다. 개인전 세로 배치(INDIVIDUAL_PORTRAIT_ROADMAP.md)가
+   끝나면 개인전에서만 이 안내를 끈다 — 팀전은 이 안내가 최종이다(2026-10-16 결정).
+
+   **조건은 "가로가 세로 이하"(`orientation: portrait` = 높이 ≥ 폭) 하나다**(2026-10-16 요청).
+   예전에는 `and (max-width: 757px)`로 폰만 잡았는데, 데스크톱 창을 좁고 길게 세우거나 폴드를 펼쳐 세로로
+   들면 가로 판이 화면 위쪽 한 줄로만 남아 타이머·카드가 무너졌다(MOBILE_ROADMAP.md "2026-10-16 사용자 제보").
+   폭과 높이가 같아지는 순간부터 안내가 뜬다 — 정사각형 창도 세로로 본다. */
 .rotate-hint { display: none; }
 
-@media (orientation: portrait) and (max-width: 757px) {
+@media (orientation: portrait) {
   .rotate-hint {
     position: fixed;
     inset: 0;
