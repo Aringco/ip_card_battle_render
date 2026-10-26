@@ -90,6 +90,7 @@ export const IMAGE_FILES: string[] = [
   "/lobby/loading_bg_3.webp",
   "/lobby/logo.png",
   "/lobby/panel_create.webp",
+  "/lobby/panel_event.webp",
   "/lobby/panel_join.webp",
   "/lobby/panel_multi.webp",
   "/lobby/panel_solo.webp",

@@ -1,5 +1,5 @@
 import type { ClientGameState, SideId } from 'shared';
-import { MAX_TURN, festivalDrawInfoAt } from 'shared';
+import { festivalDrawInfoAt, maxTurnOf } from 'shared';
 import { PLAY_ASSETS } from '@/lib/playAssets';
 import { sideColor, sideName } from '@/lib/individual';
 
@@ -56,7 +56,7 @@ export function IndividualHeader({
 
   const isDrawPhase = gameState.pendingChoice === null;
   const isChoicePhase = !isDrawPhase && !isSettling;
-  const festivalInfo = festivalDrawInfoAt(gameState.turn, gameState.settings);
+  const festivalInfo = festivalDrawInfoAt(gameState.turn, gameState.settings, maxTurnOf(gameState));
 
   return (
     <header className="play-beam relative text-white shrink-0">
@@ -75,7 +75,7 @@ export function IndividualHeader({
       <div className="play-hdr-group absolute -translate-x-1/2 -translate-y-1/2 flex items-center">
         <div className="play-step-bar flex items-center gap-1.5 py-1">
           <span className="play-turn-inner font-bold tabular-nums whitespace-nowrap">
-            {gameState.turn} / {MAX_TURN}턴
+            {gameState.turn} / {maxTurnOf(gameState)}턴
           </span>
           <span className={`play-pill ${isMyTurn ? 'play-pill-green' : 'play-pill-red'} font-bold whitespace-nowrap`}>
             {isMyTurn ? '내 차례' : mySide === null ? '관전 중' : '다른 사람 차례'}

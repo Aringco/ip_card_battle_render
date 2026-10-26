@@ -1,4 +1,13 @@
 import type { GameState, SideId } from './types';
+import { MAX_TURN } from './constants';
+
+/**
+ * 이 판의 턴 상한 — 평소에는 MAX_TURN(20), 이벤트 '목표점수 달성하기'(scoreRace)에서는 그 판의 maxTurn(10)이다.
+ * 서버의 종료 판정(turnManager)과 화면의 "n / 20턴" 표시가 같은 값을 써야 하므로 여기 한 곳에 둔다.
+ */
+export function maxTurnOf(state: Pick<GameState, 'scoreRace'>): number {
+  return state.scoreRace?.maxTurn ?? MAX_TURN;
+}
 
 // "상대가 누구인가"를 구하는 유일한 길 — 팀전은 편이 둘이라 `team === 'A' ? 'B' : 'A'`로 뒤집으면
 // 됐지만, 개인전은 편이 최대 8개라 그 뒤집기가 조용히 없는 편을 가리킨다. 엔진·방·화면 어디서든

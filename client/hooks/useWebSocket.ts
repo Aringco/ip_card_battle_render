@@ -6,8 +6,14 @@ import type {
   ClientGameEvent,
   ClientGameState,
   ClientMessage,
+  ErrorCode,
+  EventAdminState,
+  EventDevStatus,
+  EventKind,
+  EventQueueStatus,
   GameMode,
   GameSettings,
+  Leaderboard,
   LobbyChatMessage,
   LobbyPlayer,
   Place,
@@ -20,6 +26,19 @@ import type {
 import { DEFAULT_SETTINGS, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
 
 type LobbyTeamNames = Record<Team, string | null>;
+
+/** 이벤트 폼 안에서 보여 줄 에러 — 전역 빨간 배너가 아니라 폼의 설명 줄을 갈아끼운다(로비 폼 높이 규칙). */
+export interface EventFormError {
+  code: ErrorCode;
+  message: string;
+}
+
+// 운영자 명령 — action마다 필드가 달라 유니온의 각 갈래에서 type만 뺀다(Omit을 유니온에 그냥 쓰면 갈래가 뭉개진다).
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+export type EventAdminPayload = DistributiveOmit<Extract<ClientMessage, { type: 'eventAdmin' }>, 'type'>;
+
+// 이벤트 응답 코드 — 이 코드의 에러는 전역 배너가 아니라 이벤트 폼으로 보낸다.
+const EVENT_ERROR_CODES: ErrorCode[] = ['EVENT_AUTH', 'EVENT_PIN', 'EVENT_UNAVAILABLE', 'NICKNAME_TAKEN'];
 
 /**
  * 붙을 WebSocket 주소를 정한다 — 세 갈래다.
@@ -144,6 +163,33 @@ export interface UseWebSocketReturn {
   surrender: () => void;
   /** 나가기 — 항복과 같은 승패 처리 뒤 방에서까지 빠진다(저장된 세션도 함께 지운다). */
   leaveGame: () => void;
+
+  // ─ 이벤트 모드(EVENT_MODE_ROADMAP.md) ─
+  /** 목표점수 달성하기의 시작 룰렛이 끝나는 시각(내 시계 기준, 받은 순간 환산). 룰렛이 없거나 끝났으면 0 */
+  eventIntroUntil: number;
+  /** 개발자 대기실 상태(대기 중이 아니면 null) — 개발자가 정한 규칙(settings)도 여기 실려 온다 */
+  eventDevStatus: EventDevStatus | null;
+  /** 개발자를 이겨라 대기 줄의 내 순번(줄에 서 있지 않으면 null) */
+  eventQueue: EventQueueStatus | null;
+  /** 매칭됐다 — 시작 시각(내 시계)과 상대 이름. 경기가 시작되면(gameStart) 지운다 */
+  eventMatched: { startsAt: number; opponentName: string; role: 'developer' | 'challenger' } | null;
+  /** 서버가 확정한 내 도전자 닉네임(비워 두면 서버가 지어 준다) */
+  eventRegistered: { name: string; firstTime: boolean } | null;
+  /** 이벤트 폼에 띄울 에러(닉네임 중복·PIN·암호) — 폼의 설명 줄을 갈아끼운다 */
+  eventError: EventFormError | null;
+  clearEventError: () => void;
+  leaderboard: Leaderboard | null;
+  adminState: EventAdminState | null;
+  /** 개발자로 대기 — settings는 그 개발자가 정한 '개발자를 이겨라' 규칙(서버가 다시 잘라 낸다) */
+  eventDevStandby: (token: string, name: string, devId?: string, settings?: Partial<GameSettings>) => void;
+  /** 대기 중 규칙 변경 — 다음 판부터 적용된다 */
+  eventDevSettings: (settings: Partial<GameSettings>) => void;
+  eventDevAway: (away: boolean) => void;
+  eventDevLeave: () => void;
+  eventChallenge: (kind: EventKind, name: string, pin: string) => void;
+  eventCancel: () => void;
+  getLeaderboard: () => void;
+  eventAdmin: (msg: EventAdminPayload) => void;
 }
 
 export function useWebSocket(): UseWebSocketReturn {
@@ -172,6 +218,15 @@ export function useWebSocket(): UseWebSocketReturn {
   const [pauseUntil, setPauseUntil] = useState<number | null>(null);
   const [pauseNotice, setPauseNotice] = useState<string | null>(null);
 
+  const [eventDevStatus, setEventDevStatus] = useState<EventDevStatus | null>(null);
+  const [eventQueue, setEventQueue] = useState<EventQueueStatus | null>(null);
+  const [eventMatched, setEventMatched] = useState<UseWebSocketReturn['eventMatched']>(null);
+  const [eventRegistered, setEventRegistered] = useState<UseWebSocketReturn['eventRegistered']>(null);
+  const [eventError, setEventError] = useState<EventFormError | null>(null);
+  const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [adminState, setAdminState] = useState<EventAdminState | null>(null);
+  const [eventIntroUntil, setEventIntroUntil] = useState(0);
+
   // 상태를 받은 "그 순간"을 기준으로 데드라인을 내 시계로 환산해둔다. 화면에 타이머가
   // 실제로 보이기 시작하는 건 연출이 끝난 뒤(수 초 뒤)라, 이 환산을 타이머 컴포넌트가
   // 마운트될 때 하면 그 사이 흘러간 시간이 통째로 사라져버린다 — 반드시 수신 시점에 한다.
@@ -180,6 +235,9 @@ export function useWebSocket(): UseWebSocketReturn {
     setTurnDeadline(state.turnRemainingMs > 0 ? Date.now() + state.turnRemainingMs : 0);
     // 자동 재개까지 남은 시간도 **받은 그 순간** 내 시계로 환산한다(턴 타이머와 같은 규칙).
     setPauseUntil(state.pauseRemainingMs > 0 ? Date.now() + state.pauseRemainingMs : null);
+    // 목표점수 달성하기의 시작 룰렛 — 같은 규칙. 끝난 뒤의 스냅샷에는 실려 오지 않으므로 0으로 돌아간다(F5 뒤 다시 돌지 않는다).
+    const intro = state.event?.introRemainingMs ?? 0;
+    setEventIntroUntil(intro > 0 ? Date.now() + intro : 0);
   }, []);
 
   const send = useCallback((msg: ClientMessage) => {
@@ -282,6 +340,45 @@ export function useWebSocket(): UseWebSocketReturn {
           applyState(msg.state);
           setLobbyPlayers([]);
           setChatLog([]); // 채팅은 대기실 전용 — 게임에 들어가면 기록을 들고 있지 않는다
+          setEventMatched(null); // 매칭 카운트다운이 끝나 경기가 시작됐다
+          setEventQueue(null);
+          break;
+
+        // ─ 이벤트 모드 ─
+        case 'eventDevStatus':
+          setEventDevStatus(msg.status);
+          if (msg.status) setEventError(null);
+          // 판에 들어가면(playing) 매칭 안내는 할 일을 다 했다 — 결과 화면에서 돌아와 다시 대기할 때 남아 있지 않게.
+          if (msg.status?.state === 'idle' || msg.status?.state === 'away') setEventMatched(null);
+          break;
+
+        case 'eventQueue':
+          setEventQueue(msg.status);
+          break;
+
+        case 'eventMatched':
+          // 시작 시각을 **받은 그 순간** 내 시계로 환산한다(서버 시계의 절대 시각을 쓰지 않는다 — 턴 타이머와 같은 규칙).
+          setEventMatched({ startsAt: Date.now() + msg.countdownMs, opponentName: msg.opponentName, role: msg.role });
+          setEventQueue(null);
+          break;
+
+        case 'eventRegistered':
+          setEventRegistered({ name: msg.name, firstTime: msg.firstTime });
+          setEventError(null);
+          break;
+
+        case 'eventRecorded':
+          // 기록 번호는 저장이 끝난 뒤 따로 온다(결과 화면이 이미 떠 있을 수 있다) — 들고 있는 상태에 얹는다.
+          setGameState(prev => (prev?.event ? { ...prev, event: { ...prev.event, recordId: msg.recordId } } : prev));
+          break;
+
+        case 'leaderboard':
+          setLeaderboard(msg.data);
+          break;
+
+        case 'eventAdminState':
+          setAdminState(msg.state);
+          setEventError(null);
           break;
 
         case 'actionResult':
@@ -344,6 +441,12 @@ export function useWebSocket(): UseWebSocketReturn {
           // 클릭이 원인인 무해한 안내라, 화면 위에 빨간 배너로 띄울 필요가 없다
           // (버튼 자체가 이미 막혀 있어 사용자가 조치할 일도 없다).
           if (msg.code === 'NO_PENDING_CHOICE') break;
+          // 이벤트 폼의 응답(닉네임 중복·PIN·암호)은 폼 안에서 보여 준다 — 로비 위에 빨간 배너가 한 줄 더 생기면
+          // 폼이 밀려 좁은 화면에서 스크롤바가 생긴다(CLAUDE.md "경고·안내는 새 줄로 덧붙이지 말고").
+          if (EVENT_ERROR_CODES.includes(msg.code)) {
+            setEventError({ code: msg.code, message: msg.message });
+            break;
+          }
           setError(msg.message);
           break;
       }
@@ -449,6 +552,33 @@ export function useWebSocket(): UseWebSocketReturn {
 
   const clearPauseNotice = useCallback(() => setPauseNotice(null), []);
 
+  // ─ 이벤트 모드 ─
+  const clearEventError = useCallback(() => setEventError(null), []);
+  const eventDevStandby = useCallback((token: string, name: string, devId?: string, settings?: Partial<GameSettings>) => {
+    setEventError(null);
+    send({ type: 'eventDevStandby', token, name, ...(devId ? { devId } : {}), ...(settings ? { settings } : {}) });
+  }, [send]);
+  const eventDevSettings = useCallback((settings: Partial<GameSettings>) => send({ type: 'eventDevSettings', settings }), [send]);
+  const eventDevAway = useCallback((away: boolean) => send({ type: 'eventDevAway', away }), [send]);
+  const eventDevLeave = useCallback(() => {
+    setEventDevStatus(null);
+    setEventMatched(null);
+    send({ type: 'eventDevLeave' });
+  }, [send]);
+  const eventChallenge = useCallback((kind: EventKind, name: string, pin: string) => {
+    setEventError(null);
+    setError(null);
+    send({ type: 'eventChallenge', kind, name, pin });
+  }, [send]);
+  const eventCancel = useCallback(() => {
+    setEventQueue(null);
+    send({ type: 'eventCancel' });
+  }, [send]);
+  const getLeaderboard = useCallback(() => send({ type: 'getLeaderboard' }), [send]);
+  const eventAdmin = useCallback((msg: EventAdminPayload) => {
+    send({ type: 'eventAdmin', ...msg } as ClientMessage);
+  }, [send]);
+
   return {
     connected, roomId, playerId, memberId,
     lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, hostMemberId,
@@ -460,5 +590,8 @@ export function useWebSocket(): UseWebSocketReturn {
     movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat,
     drawCard, chooseSkill, passSkill, demoContinue, demoScene,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
+    eventDevStatus, eventQueue, eventMatched, eventRegistered, eventError, clearEventError,
+    eventIntroUntil, leaderboard, adminState,
+    eventDevStandby, eventDevSettings, eventDevAway, eventDevLeave, eventChallenge, eventCancel, getLeaderboard, eventAdmin,
   };
 }

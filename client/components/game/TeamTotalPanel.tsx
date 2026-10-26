@@ -22,7 +22,8 @@ export function TeamTotalPanel({
   pulse?: { id: number; direction: 'gain' | 'loss' } | null;
 }) {
   const hp = gameState.teams[team].hp;
-  const winHp = gameState.settings.targetScore * 2;
+  // 구슬이 가득 차는 점수 — 평소엔 승리선(targetScore × 2), 목표점수 달성하기는 그 판의 목표 점수(가득 차면 달성).
+  const winHp = gameState.scoreRace?.target ?? gameState.settings.targetScore * 2;
   const spectating = myTeam === null;
   const toneClass = spectating ? 'hp-orb-spectator' : myTeam === team ? 'hp-orb-mine' : 'hp-orb-enemy';
   const fillPct = Math.max(0, Math.min(100, (hp / winHp) * 100));

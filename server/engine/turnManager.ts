@@ -1,10 +1,11 @@
 import {
-  MAX_TURN,
   LOSE_HP,
   INDIVIDUAL_TWO_SKILLS_FROM,
   clampSettings,
   festivalDrawInfoAt,
+  maxTurnOf,
   nextActiveSide,
+  opponentsOf,
 } from 'shared';
 import type { GameEvent, GameSettings, GameState, PlayerColorId, SideId, Team, TeamState } from 'shared';
 import { dealOpeningSharedCards, initStacks } from './places';
@@ -28,7 +29,7 @@ function determineWinnerByHp(state: GameState): Team | 'draw' {
 }
 
 /** 게임 종료를 한 곳에서 처리한다 — phase/winner/pendingChoice를 모두 정리하고 gameEnd를 낸다. */
-function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' | 'turnLimit'): GameEvent[] {
+function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' | 'turnLimit' | 'target'): GameEvent[] {
   state.phase = 'ended';
   state.winner = winner;
   state.pendingChoice = null;
@@ -42,6 +43,9 @@ function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' |
  */
 export function checkKnockout(state: GameState): GameEvent[] {
   if (state.phase !== 'playing') return [];
+  // 이벤트 '목표점수 달성하기'에는 즉시 승패가 없다 — 0점에서 시작하므로 그대로 두면 첫 턴에 넉아웃으로 끝나고,
+  // 판정은 마지막 턴이 끝났을 때 점수로만 한다(advanceTurn).
+  if (state.scoreRace) return [];
 
   const winHp = winHpOf(state);
   const aWins = state.teams.A.hp >= winHp || state.teams.B.hp <= LOSE_HP;
@@ -113,7 +117,8 @@ export function advanceTurn(state: GameState): GameEvent[] {
     // 크게 설정돼 있으면(입력 자체는 막지 않는다 — SETTINGS_LIMITS 참고) 그 턴엔 아예
     // 도달할 수 없어 축제가 영영 안 열리므로, MAX_TURN을 넘는 값은 암묵적으로 MAX_TURN
     // 그 자체로 취급한다 — 마지막 턴에라도 축제가 열리게 하는 것이다.
-    const effectiveFestivalTurn = Math.min(state.settings.festivalTurn, MAX_TURN);
+    // (턴 상한은 평소 MAX_TURN, 목표점수 달성하기는 그 판의 maxTurn — maxTurnOf)
+    const effectiveFestivalTurn = Math.min(state.settings.festivalTurn, maxTurnOf(state));
     if (!state.festival && state.turn >= effectiveFestivalTurn) {
       state.festival = true;
       events.push({ type: 'festival' });
@@ -125,15 +130,22 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // (server/engine/drawCard.ts) 실행된다. 축제 시작 이후로는 A/B 어느 팀 차례든 매 턴 계속
   // 예약된다 — "라운드당 한 번"이 아니라 "누구든 자기 턴이 오면 무조건" 받는 보너스다.
   if (state.festival) {
-    const drawCount = festivalDrawInfoAt(state.turn, state.settings).count;
+    const drawCount = festivalDrawInfoAt(state.turn, state.settings, maxTurnOf(state)).count;
     if (drawCount > 0) {
       state.teams[nextTeam].pendingFestivalDraws += drawCount;
     }
   }
 
   // 종료 판정 — 턴 상한 초과 시 체력 비교. 개인전은 승패가 아니라 남은 사람들의 순위를 정한다.
-  if (state.turn > MAX_TURN) {
+  if (state.turn > maxTurnOf(state)) {
     if (state.mode === 'individual') return [...events, ...rankByHpAndEnd(state)];
+    // 목표점수 달성하기 — 마지막 턴이 끝난 순간의 점수가 목표 이상이면 그 편, 아니면 상대가 이긴다(체력 비교가 아니다).
+    if (state.scoreRace) {
+      const race = state.scoreRace;
+      const reached = (state.teams[race.side]?.hp ?? 0) >= race.target;
+      const winner = reached ? race.side : (opponentsOf(state, race.side)[0] ?? 'draw');
+      return [...events, ...endGame(state, winner, 'target')];
+    }
     return [...events, ...endGame(state, determineWinnerByHp(state), 'turnLimit')];
   }
 

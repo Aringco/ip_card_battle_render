@@ -3,7 +3,7 @@ import type { Animal, GameEvent, GameState, Place, SideId } from 'shared';
 import { drawCard } from './drawCard';
 import { advanceTurn, finishTurn, initGame } from './turnManager';
 import { forfeitRank, resolveRanks } from './ranking';
-import { applySkillChoice, applyPass, eligibleAnimals, randomEligibleSkill, levelOf } from './skills';
+import { applySkillChoice, applyPass, eligibleAnimals, randomEligibleSkill } from './skills';
 import { randomPlace } from './places';
 import type { RNG } from './places';
 
@@ -50,7 +50,8 @@ export function processSkillChoice(
   target?: SideId,
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice === null) return { state, events: [] };
-  if (levelOf(state, state.pendingChoice, animal) <= 0) return { state, events: [] };
+  // 레벨이 0이거나 한 우물만 파기에서 잠긴 카드면 무시한다 — 둘 다 eligibleAnimals 한 곳이 판정한다.
+  if (!eligibleAnimals(state, state.pendingChoice).includes(animal)) return { state, events: [] };
   if (state.mode === 'individual') return processIndividualSkill(state, animal, target);
 
   const team = state.pendingChoice;

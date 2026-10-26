@@ -1860,8 +1860,12 @@ body {
 }
 /* ⚠️ 커서가 있는 기기에서만 — 터치에서는 탭한 뒤 `:hover`가 **붙은 채 남아**, 방금 누른
    장소만 계속 확대된 상태로 굳는다(손가락을 뗐는데도). 크기·위치를 바꾸는 hover는
-   전부 이 조건 안에 둔다(MOBILE_ROADMAP.md M1). */
-@media (hover: hover) and (pointer: fine) {
+   전부 이 조건 안에 둔다(MOBILE_ROADMAP.md M1).
+   ⚠️ 조건은 `(any-hover: hover)`다 — "붙어 있는 입력 장치 중 하나라도 hover가 되면". 처음에는
+      `(hover: hover) and (pointer: fine)`(= **주 입력**이 마우스일 때만)였는데, 터치스크린 노트북·원격 데스크톱처럼
+      주 입력이 터치로 잡히는 PC에서는 마우스를 쓰는데도 카드·장소 hover가 통째로 사라졌다(2026-10-26 요청으로 되돌림).
+      폰·태블릿은 붙은 장치가 터치뿐이라 any-hover가 none이므로 위의 "굳는 hover"는 여전히 막힌다. */
+@media (any-hover: hover) {
   .place-tile-active:hover {
     filter: brightness(1);
     transform: scale(1.015);
@@ -1935,7 +1939,7 @@ body {
   height: 100%;
   object-fit: contain;
 }
-@media (hover: hover) and (pointer: fine) {
+@media (any-hover: hover) {
   .dice-button:hover {
     filter: brightness(1.07) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
     transform: translateY(-1px);
@@ -2111,7 +2115,7 @@ body {
 .pick-image-button-action {
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28));
 }
-@media (hover: hover) and (pointer: fine) {
+@media (any-hover: hover) {
   .pick-image-button-action:hover {
     filter: brightness(1.07) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.34));
     transform: translateY(-1px);
@@ -2134,7 +2138,7 @@ body {
 /* 지금 실제로 고를 수 있는 칸에 마우스를 올리면, 카드 게임에서 손에 쥔 카드를
    고르듯 살짝 떠오르며 커진다. disabled(레벨 부족/내 차례 아님)에는 걸리지 않는다. */
 /* ⚠️ 커서가 있는 기기에서만 — 터치에서는 고른 카드가 떠오른 채로 굳는다(위 주석 참고). */
-@media (hover: hover) and (pointer: fine) {
+@media (any-hover: hover) {
   .skill-choice-panel:not(:disabled):hover {
     transform: translateY(-16px) scale(1.06);
     z-index: 30;
@@ -2157,8 +2161,9 @@ body {
 }
 .skill-choice-panel:hover .skill-choice-bg,
 .skill-choice-panel:focus-visible .skill-choice-bg,
-/* 상대 차례에는 버튼이 disabled라(포인터를 감싸는 칸이 받는다) 버튼의 :hover가 안 걸린다 — 칸 기준으로도 밝힌다 */
-.holo-cell[data-holo]:hover .skill-choice-bg {
+/* 상대 차례에는 버튼이 disabled라(포인터를 감싸는 칸이 받는다) 버튼의 :hover가 안 걸린다 — 칸 기준으로도 밝힌다
+   (칸은 :hover가 아니라 HoloCell이 다는 data-hover로 본다 — .holo-cell 절 참고) */
+.holo-cell[data-holo][data-hover] .skill-choice-bg {
   filter: brightness(1.1);
 }
 .skill-choice-bg-disabled,
@@ -2549,6 +2554,8 @@ body {
 .lobby-panel-multi  { --panel-a: #166534; --panel-b: #031c0d; }
 .lobby-panel-create { --panel-a: #166534; --panel-b: #052e16; }
 .lobby-panel-join   { --panel-a: #15803d; --panel-b: #031c0d; }
+/* 이벤트 — 축제 그림의 노을 톤(그림이 도착하기 전 한 프레임의 바탕) */
+.lobby-panel-event  { --panel-a: #f59e0b; --panel-b: #7c2d12; }
 .lobby-panel-active:hover .lobby-panel-bg,
 .lobby-panel-active:focus-visible .lobby-panel-bg {
   opacity: 0.8;
@@ -2597,14 +2604,17 @@ body {
 /* 방 만들기·방 참가하기는 문구를 위로 올린다 — 두 그림 모두 아래쪽에 주인공(양·셋)이
    있어서, 가운데에 두면 정확히 그들을 가린다. 위쪽은 초가지붕이라 덮어도 잃을 게 없다.
    (혼자/다같이 놀기는 인물이 위아래로 고루 퍼져 있어 가운데가 맞다.) */
+/* 이벤트 방 참가하기도 위로 — 축제 그림은 네 캐릭터가 가운데~아래에 모여 있고 위쪽은 깃발·현수막·하늘이다. */
 .lobby-panel-create .stage-panel-label,
-.lobby-panel-join   .stage-panel-label {
+.lobby-panel-join   .stage-panel-label,
+.lobby-panel-event  .stage-panel-label {
   justify-content: flex-start;
   padding-top: 1.1rem;
 }
 /* 어둠도 문구를 따라 위로 — 아래쪽 동물들은 그대로 밝게 남는다 */
 .lobby-panel-art.lobby-panel-create .stage-panel-label,
-.lobby-panel-art.lobby-panel-join   .stage-panel-label {
+.lobby-panel-art.lobby-panel-join   .stage-panel-label,
+.lobby-panel-art.lobby-panel-event  .stage-panel-label {
   background: linear-gradient(to bottom,
               rgba(3, 18, 10, 0.80) 0%,
               rgba(3, 18, 10, 0.76) 32%,
@@ -2778,6 +2788,7 @@ body {
 .lobby-table:has(> .lobby-safe[data-stage="solo"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="create"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="join"])::after,
+.lobby-table:has(> .lobby-safe[data-stage="event"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="waiting"])::after {
   opacity: 0.6;
 }
@@ -2824,6 +2835,7 @@ body {
 .lobby-safe[data-stage="solo"] .lobby-hero-slot,
 .lobby-safe[data-stage="create"] .lobby-hero-slot,
 .lobby-safe[data-stage="join"] .lobby-hero-slot,
+.lobby-safe[data-stage="event"] .lobby-hero-slot,
 .lobby-safe[data-stage="waiting"] .lobby-hero-slot {
   height: 0;
   opacity: 0;
@@ -2878,7 +2890,8 @@ body {
 }
 .lobby-stage[data-stage="multi"],
 .lobby-stage[data-stage="create"],
-.lobby-stage[data-stage="join"] {
+.lobby-stage[data-stage="join"],
+.lobby-stage[data-stage="event"] {
   grid-template-columns: 0fr 1fr;
   gap: 0;
   transition-delay: 0s;
@@ -2897,16 +2910,26 @@ body {
 }
 .stage-col-solo   { justify-content: flex-end; }   /* 멀티 선택 시 왼쪽으로 슬라이드 아웃 */
 .stage-col-multi  { justify-content: flex-start; } /* 싱글 선택 시 오른쪽으로 슬라이드 아웃 */
-.stage-col-create { justify-content: flex-end; }   /* 방 참가 선택 시 왼쪽으로 슬라이드 아웃 */
+.stage-col-create { justify-content: flex-end; }   /* 방 참가·이벤트 선택 시 왼쪽으로 슬라이드 아웃 */
 .stage-col-join   { justify-content: flex-start; } /* 방 만들기 선택 시 오른쪽으로 슬라이드 아웃 */
+.stage-col-event  { justify-content: flex-start; } /* 방 만들기·참가 선택 시 오른쪽으로 슬라이드 아웃 */
+/* 가운데 열(방 참가하기)만은 고른 쪽에 따라 밀려날 방향이 바뀐다 — 이벤트를 고르면 왼쪽으로.
+   ⚠️ 열이 꽉 차 있을 때는 패널이 열을 정확히 채우므로 붙는 쪽이 바뀌어도 눈에 띄지 않는다. 되돌아올 때(이벤트 →
+   다같이 놀기)는 이 규칙이 즉시 떨어져 나가 오른쪽에서 들어오지만, 그 순간 열 폭이 0이라 잘 보이지 않는다. */
+.lobby-stage[data-stage="event"] .stage-col-join { justify-content: flex-end; }
 
 /* 밀려나가는 열은 함께 옅어진다 */
 .lobby-stage[data-stage="solo"]   .stage-col-multi,
 .lobby-stage[data-stage="multi"]  .stage-col-solo,
 .lobby-stage[data-stage="create"] .stage-col-solo,
 .lobby-stage[data-stage="join"]   .stage-col-solo,
+.lobby-stage[data-stage="event"]  .stage-col-solo,
 .lobby-stage[data-stage="create"] .stage-col-join,
-.lobby-stage[data-stage="join"]   .stage-col-create {
+.lobby-stage[data-stage="create"] .stage-col-event,
+.lobby-stage[data-stage="join"]   .stage-col-create,
+.lobby-stage[data-stage="join"]   .stage-col-event,
+.lobby-stage[data-stage="event"]  .stage-col-create,
+.lobby-stage[data-stage="event"]  .stage-col-join {
   opacity: 0;
   pointer-events: none;
 }
@@ -2917,6 +2940,21 @@ body {
   width: 100%;
   height: 100%;
   min-width: calc((100cqw - var(--stage-gap)) / 2);
+}
+/* 멀티 안쪽은 **세 열**(방 만들기 · 방 참가하기 · 이벤트)이라 원래 폭이 3분의 1이다. 100cqw는 여기서
+   .multi-inner(컨테이너)의 폭이다. ⚠️ 이 값을 반으로 두면 줄어드는 열 안의 패널이 원래보다 넓게 그려져
+   슬라이드가 아니라 찌그러짐처럼 보인다. */
+.multi-inner .stage-panel {
+  min-width: calc((100cqw - 2 * var(--stage-gap)) / 3);
+}
+/* 세 열이라 패널이 좁다(1366×768에서 약 200px) — "이벤트 방 참가하기"가 두 줄로 접혀 "기" 한 글자만 내려앉았다.
+   넓은 화면에서는 제목을 한 줄로 두고 패널 폭(100cqw = .multi-inner 폭의 약 3분의 1)에 맞춰 줄인다.
+   좁은 화면(≤767px)은 세 패널이 세로로 쌓여 폭이 넉넉하므로 손대지 않는다. */
+@media (min-width: 768px) {
+  .multi-inner .stage-panel-title {
+    white-space: nowrap;
+    font-size: min(calc(1.5rem * var(--font-scale, 1)), 3.3cqw);
+  }
 }
 /* hover 강조 — 흰 빛이 버튼 주변으로 살짝 번진다.
    그림자를 패널이 아니라 **열**에 거는 것이 요령이다: 열은 overflow: hidden이라 그 안의
@@ -2941,7 +2979,8 @@ body {
    패널을 잘라내야 하는데, 늘 열어두면 그때 패널 조각이 화면 오른쪽에 띠처럼 남는다.
    overflow는 애니메이션 대상이 아니라 hover에 맞춰 즉시 켜지고 꺼진다. */
 .lobby-stage[data-stage="multi"] .stage-col-create,
-.lobby-stage[data-stage="multi"] .stage-col-join {
+.lobby-stage[data-stage="multi"] .stage-col-join,
+.lobby-stage[data-stage="multi"] .stage-col-event {
   overflow: clip;
   overflow-clip-margin: var(--glow-reach);
 }
@@ -2962,22 +3001,27 @@ body {
 .lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel,
+.lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi,
 .lobby-stage[data-stage="create"] .stage-panel-multi,
-.lobby-stage[data-stage="join"]   .stage-panel-multi {
+.lobby-stage[data-stage="join"]   .stage-panel-multi,
+.lobby-stage[data-stage="event"]  .stage-panel-multi {
   pointer-events: none;
 }
 .lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="create"] .stage-panel-multi .stage-panel-label,
-.lobby-stage[data-stage="join"]   .stage-panel-multi .stage-panel-label {
+.lobby-stage[data-stage="join"]   .stage-panel-multi .stage-panel-label,
+.lobby-stage[data-stage="event"]  .stage-panel-multi .stage-panel-label {
   opacity: 0;
 }
 .lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .lobby-panel-bg,
-.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg {
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel .lobby-panel-bg {
   filter: brightness(0.8);
 }
 /* 폼이 열린 패널도 .stage-panel의 흰 테두리를 그대로 지닌다 — 확장된 영역의 윤곽을
@@ -2990,7 +3034,8 @@ body {
    글자와 경쟁한다. 밝기만 조금 올려 "열려 있다"는 신호를 준다. */
 .lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel.lobby-panel-art .lobby-panel-bg,
-.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel.lobby-panel-art .lobby-panel-bg {
+.lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel.lobby-panel-art .lobby-panel-bg {
   filter: brightness(0.62) saturate(0.85) blur(4px);
 }
 
@@ -3010,7 +3055,8 @@ body {
    기본 transition이 맡으므로, 안쪽 열이 접히는 동안 곧바로 제 모습으로 돌아온다. */
 .lobby-stage[data-stage="multi"]  .stage-panel-multi,
 .lobby-stage[data-stage="create"] .stage-panel-multi,
-.lobby-stage[data-stage="join"]   .stage-panel-multi {
+.lobby-stage[data-stage="join"]   .stage-panel-multi,
+.lobby-stage[data-stage="event"]  .stage-panel-multi {
   box-shadow: none;
   /* none이 아니라 transparent — 1px이 사라지면 그만큼 안쪽 배치가 밀리고,
      투명도를 따라 서서히 옅어지지도 못한다 */
@@ -3021,7 +3067,8 @@ body {
 }
 .lobby-stage[data-stage="multi"]  .stage-panel-multi .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-panel-multi .lobby-panel-bg,
-.lobby-stage[data-stage="join"]   .stage-panel-multi .lobby-panel-bg {
+.lobby-stage[data-stage="join"]   .stage-panel-multi .lobby-panel-bg,
+.lobby-stage[data-stage="event"]  .stage-panel-multi .lobby-panel-bg {
   opacity: 0;
   transition: opacity var(--t-reveal) ease var(--t-expand);
 }
@@ -3032,7 +3079,8 @@ body {
   inset: 0;
   container-type: size;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 세 열 — 방 만들기 · 방 참가하기 · 이벤트 방 참가하기(EVENT_MODE_ROADMAP.md §2.1) */
+  grid-template-columns: 1fr 1fr 1fr;
   gap: var(--stage-gap);
   clip-path: inset(0 0 0 100%);
   opacity: 0;
@@ -3051,14 +3099,16 @@ body {
   transition-delay: var(--t-expand), var(--t-expand), var(--t-form), var(--t-form);
 }
 .lobby-stage[data-stage="create"] .multi-inner,
-.lobby-stage[data-stage="join"]   .multi-inner {
+.lobby-stage[data-stage="join"]   .multi-inner,
+.lobby-stage[data-stage="event"]  .multi-inner {
   clip-path: inset(0 0 0 0);
   opacity: 1;
   gap: 0;
   transition-delay: 0s;
 }
-.lobby-stage[data-stage="create"] .multi-inner { grid-template-columns: 1fr 0fr; }
-.lobby-stage[data-stage="join"]   .multi-inner { grid-template-columns: 0fr 1fr; }
+.lobby-stage[data-stage="create"] .multi-inner { grid-template-columns: 1fr 0fr 0fr; }
+.lobby-stage[data-stage="join"]   .multi-inner { grid-template-columns: 0fr 1fr 0fr; }
+.lobby-stage[data-stage="event"]  .multi-inner { grid-template-columns: 0fr 0fr 1fr; }
 
 /* 버튼·제목 앞의 그림 아이콘 — 이모지가 있던 자리를 대신한다.
    em 단위라 글자 크기를 그대로 따라가고(글씨 크기 설정 5단계에도 같이 움직인다),
@@ -3108,7 +3158,7 @@ body {
   user-select: none;
 }
 /* ⚠️ 커서가 있는 기기에서만 — 터치에서는 방금 누른 버튼이 커진 채로 굳는다. */
-@media (hover: hover) and (pointer: fine) {
+@media (any-hover: hover) {
   .icon-button:hover:not(:disabled),
   .bar-button:hover:not(:disabled) {
     transform: scale(1.06);
@@ -3548,6 +3598,8 @@ body {
    .lobby-form-scroll까지 재므로, 고치고 나서 반드시 다시 돌릴 것. */
 @media (min-width: 768px) and (max-height: 999px) {
   .lobby-safe[data-stage="create"] .lobby-form-board { --form-zoom: 1.15; }
+  /* 이벤트 도전 폼은 닉네임 · PIN · 도전 세 줄로 방 만들기만큼 길다 — 같은 값에서 시작해 measureLobby.mjs로 잰다. */
+  .lobby-safe[data-stage="event"]  .lobby-form-board { --form-zoom: 1.15; }
   /* 참가하기는 평소엔 1.35로도 들어가지만, **초대 링크로 들어오면** 안내 배너가 한
      덩어리 더 붙어 6px 넘쳤다. 그 상태까지 담는 값으로 내린다. */
   .lobby-safe[data-stage="join"]   .lobby-form-board { --form-zoom: 1.3; }
@@ -3557,6 +3609,7 @@ body {
   /* 1.15면 평소 참가 폼은 들어가지만 초대 링크 배너가 붙으면 14px 넘친다 */
   .lobby-safe[data-stage="join"]   .lobby-form-board { --form-zoom: 1; }
   .lobby-safe[data-stage="create"] .lobby-form-board { --form-zoom: 0.95; }
+  .lobby-safe[data-stage="event"]  .lobby-form-board { --form-zoom: 0.95; }
 }
 
 /* 세로가 넉넉한 화면에서만 배율을 더 올린다.
@@ -3573,6 +3626,7 @@ body {
      두 줄이 늘어, 1.6으로는 1920×1080에서 넘쳤다. 이 파일이 말하는 그대로 "항목을 더하면 상한도
      함께 내린다"를 따른 값이고, measureLobby.mjs로 다시 재서 고른 것이다. */
   .lobby-safe[data-stage="create"] .lobby-form-board { --form-zoom: 1.4; }
+  .lobby-safe[data-stage="event"]  .lobby-form-board { --form-zoom: 1.4; }
 }
 
 /* 버튼 줄 — 예전에는 카드 폭을 꿉 채우는 막대였지만 지금은 그림 하나라 가운데 둔다. */
@@ -3890,7 +3944,8 @@ body {
 }
 .lobby-stage[data-stage="solo"]   .stage-form-solo,
 .lobby-stage[data-stage="create"] .stage-form-create,
-.lobby-stage[data-stage="join"]   .stage-form-join {
+.lobby-stage[data-stage="join"]   .stage-form-join,
+.lobby-stage[data-stage="event"]  .stage-form-event {
   opacity: 1;
   pointer-events: auto;
   transition-delay: var(--t-expand);   /* 확장이 끝난 뒤 나타난다 */
@@ -3956,7 +4011,8 @@ body {
   }
   .lobby-stage[data-stage="multi"],
   .lobby-stage[data-stage="create"],
-  .lobby-stage[data-stage="join"] {
+  .lobby-stage[data-stage="join"],
+  .lobby-stage[data-stage="event"] {
     grid-template-columns: 1fr;
     grid-template-rows: 0fr 1fr;
   }
@@ -3967,19 +4023,27 @@ body {
     min-width: 0;
     min-height: calc((100cqh - var(--stage-gap)) / 2);
   }
+  .multi-inner .stage-panel {
+    min-width: 0;
+    min-height: calc((100cqh - 2 * var(--stage-gap)) / 3);
+  }
 
   .multi-inner {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
     clip-path: inset(100% 0 0 0);
   }
   .lobby-stage[data-stage="create"] .multi-inner {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 0fr;
+    grid-template-rows: 1fr 0fr 0fr;
   }
   .lobby-stage[data-stage="join"] .multi-inner {
     grid-template-columns: 1fr;
-    grid-template-rows: 0fr 1fr;
+    grid-template-rows: 0fr 1fr 0fr;
+  }
+  .lobby-stage[data-stage="event"] .multi-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 0fr 0fr 1fr;
   }
 }
 
@@ -5053,7 +5117,7 @@ body {
   box-shadow: 0 9px 0 #2115055c, 0 14px 28px #00000077;
   filter: brightness(1.05);
 }
-@media (hover: hover) and (pointer: fine) {
+@media (any-hover: hover) {
   .demo-scene-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 9px 0 #2115055c, 0 14px 28px #00000077;
@@ -5303,6 +5367,264 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .mode-toggle-button { transition: none; }
+}
+
+/* ── 이벤트 방 참가하기 폼(EventForm) ─────────────────────────────────────────
+   방 종류 토글(.mode-toggle-button)과 같은 갈색·크림 문법이다. 폼이 절대배치라 세로를 아껴 쓴다 —
+   항목을 더하면 measureLobby.mjs로 다시 잴 것. */
+.event-role-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.7rem 0.4rem;
+  border: 2px solid #8b6b45;
+  border-radius: 0.75rem;
+  background: #f6ead0;
+  color: #5a4128;
+  cursor: pointer;
+  transition: background 0.14s ease, transform 0.14s ease;
+}
+.event-role-button:hover:not(:disabled) { background: #fbf1da; transform: translateY(-1px); }
+.event-role-button:disabled { opacity: 0.55; cursor: not-allowed; }
+.event-role-button:focus-visible { outline: none; box-shadow: 0 0 0 2px #4ade80; }
+
+/* 대기실·대기 줄·매칭 카운트다운을 담는 상자 */
+.event-status-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.6rem 0.5rem;
+  border: 2px dashed #b08a5a;
+  border-radius: 0.75rem;
+  background: rgba(255, 248, 230, 0.75);
+  color: #4a3220;
+  text-align: center;
+}
+.event-status-box-dim { opacity: 0.7; }
+.event-status-box-hot {
+  border-style: solid;
+  border-color: #d97706;
+  background: #fff3c4;
+  animation: eventPulse 1s ease-in-out infinite;
+}
+@keyframes eventPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.0); }
+  50%      { box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.35); }
+}
+
+/* 도전 고르기 — 한 줄에 하나. 목표점수 달성하기를 고르면 그 줄 **안에** 15/20/30 토글이 붙는다(새 줄 없음). */
+.event-kind-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 2px solid #c8ab80;
+  border-radius: 0.6rem;
+  background: #fbf3df;
+  padding-right: 0.3rem;
+}
+.event-kind-row[data-selected] {
+  border-color: #6b4a2b;
+  background: #f1dfb8;
+}
+.event-kind-button {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  background: none;
+  border: 0;
+  color: #4a3220;
+  font-size: calc(0.85rem * var(--font-scale, 1));
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.event-kind-button:focus-visible { outline: none; box-shadow: inset 0 0 0 2px #4ade80; border-radius: 0.5rem; }
+.event-kind-hint {
+  margin-left: auto;
+  font-size: calc(0.7rem * var(--font-scale, 1));
+  color: #8b6b45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-kind-row:has(.mode-toggle) .event-kind-hint { display: none; } /* 목표 토글이 들어갈 자리를 비운다 */
+.event-kind-row .mode-toggle-button { padding: 0.08rem 0.4rem; }
+
+/* ── 이벤트 판 머리표(EventHud) ───────────────────────────────────────────────
+   판 위에 fixed로 띄운다 — 액자·상단 바 배치에 끼어들면 measurePlay.mjs가 지키는 팀전 배치가 움직인다.
+   자리는 오른쪽 위 [일시정지] 버튼 바로 아래다(상단 바 가운데는 차례·단계 알약이 쓴다). */
+.event-hud {
+  position: fixed;
+  /* [일시정지] 나무판(.pause-fab) 바로 아래. 그 판은 글씨 크기(1.04rem × --font-scale)를 따라 커지고 높이가 글씨의
+     약 3.45배라(기본 설정에서 51px), 같은 배수로 따라 내려간다. 그보다 위로 올리면 판에 가려진다(실제로 가렸다). */
+  top: calc(max(6px, env(safe-area-inset-top)) + 3.6rem * var(--font-scale, 1) + 6px);
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  padding: 0.35rem 0.7rem;
+  border: 2px solid #6b4a2b;
+  border-radius: 0.75rem;
+  background: rgba(251, 241, 218, 0.94);
+  color: #4a3220;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.event-hud-title { font-weight: 800; font-size: calc(0.85rem * var(--font-scale, 1)); white-space: nowrap; }
+.event-hud-clock { font-weight: 900; font-size: calc(1.6rem * var(--font-scale, 1)); line-height: 1.05; }
+.event-hud-sub { font-size: calc(0.75rem * var(--font-scale, 1)); font-weight: 700; color: #7a5a38; white-space: nowrap; }
+.event-hud[data-urgent] { border-color: #b91c1c; }
+.event-hud[data-urgent] .event-hud-clock { color: #b91c1c; animation: eventClockBlink 1s steps(2, start) infinite; }
+@keyframes eventClockBlink { to { visibility: hidden; } }
+
+/* 한 우물만 파기 — 카드가 고정되는 순간 화면 가운데에 잠깐 */
+.event-lock-toast {
+  position: fixed;
+  left: 50%;
+  top: 38%;
+  z-index: 90;
+  transform: translate(-50%, -50%);
+  padding: 0.8rem 1.6rem;
+  border: 3px solid #6b4a2b;
+  border-radius: 1rem;
+  background: #fff3c4;
+  color: #4a3220;
+  font-weight: 900;
+  font-size: calc(1.5rem * var(--font-scale, 1));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  animation: eventToastIn 2.6s ease both;
+}
+@keyframes eventToastIn {
+  0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
+  12%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  20%  { transform: translate(-50%, -50%) scale(1); }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-hud[data-urgent] .event-hud-clock,
+  .event-lock-toast { animation: none; }
+}
+
+/* ── 목표점수 달성하기 — 시작 룰렛(components/game/ScoreRaceIntro.tsx) ─────────────────────────────
+   화면 전체를 검정 0.62로 덮고(그동안 판은 서버에서 멈춰 있다 — 클릭도 이 막이 받는다), 가운데에 화면의 50% 크기
+   패널을 띄워 숫자를 돌리다 목표에서 멈춘다. 일시정지 창·머리표(55)·좌절 이모티콘보다 위, 회전 안내(120)보다 아래.
+   패널 크기는 화면 비율에 묶어 둔다(50vw × 50vh) — 좁은 화면에서는 글자가 들어갈 최소 폭만 지킨다. */
+.race-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.62);
+  animation: raceIntroIn 0.25s ease both;
+  transition: opacity 0.3s ease;
+}
+.race-intro[data-leaving] { opacity: 0; }
+@keyframes raceIntroIn { from { opacity: 0; } to { opacity: 1; } }
+.race-intro-panel {
+  width: 50vw;
+  height: 50vh;
+  min-width: min(92vw, 300px);
+  min-height: min(80vh, 220px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2vh;
+  padding: 2vh 2vw;
+  border: 6px solid #6b4a2b;
+  border-radius: 1.5rem;
+  background: radial-gradient(ellipse at 50% 40%, #fff8dc 0%, #f6e3b0 70%, #e9cd8a 100%);
+  box-shadow: 0 0 0 3px #c9952e inset, 0 18px 48px rgba(0, 0, 0, 0.55);
+  color: #4a3220;
+  text-align: center;
+  animation: raceIntroPanelIn 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+@keyframes raceIntroPanelIn { from { transform: scale(0.8); opacity: 0; } to { transform: none; opacity: 1; } }
+.race-intro-title {
+  font-weight: 900;
+  font-size: clamp(1rem, 3.6vh, 2.2rem);
+}
+/* 숫자 칸 — 넘치는 위아래를 잘라 슬롯처럼 한 칸씩 내려오게 한다 */
+.race-intro-reel {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5vw;
+  overflow: hidden;
+  line-height: 1;
+}
+.race-intro-num {
+  display: inline-block;
+  min-width: 2ch;
+  font-weight: 900;
+  font-size: min(24vh, 18vw);
+  color: #7c2d12;
+  text-shadow: 0 4px 0 #e9cd8a, 0 6px 12px rgba(0, 0, 0, 0.25);
+  animation: raceReelTick 0.12s ease-out both;
+}
+.race-intro-unit {
+  font-weight: 900;
+  font-size: min(7vh, 5vw);
+  color: #7c2d12;
+}
+@keyframes raceReelTick {
+  from { transform: translateY(-45%); opacity: 0.25; }
+  to   { transform: none; opacity: 1; }
+}
+/* 멈춘 순간 — 금빛으로 한 번 크게 튄다 */
+.race-intro-panel[data-landed] .race-intro-num {
+  color: #b45309;
+  animation: raceReelLand 0.6s cubic-bezier(0.34, 1.6, 0.64, 1) both;
+  text-shadow: 0 4px 0 #fde68a, 0 0 28px rgba(251, 191, 36, 0.9);
+}
+@keyframes raceReelLand {
+  0%   { transform: scale(0.6); }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.race-intro-sub {
+  font-weight: 800;
+  font-size: clamp(0.9rem, 3vh, 1.8rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  .race-intro,
+  .race-intro-panel,
+  .race-intro-num,
+  .race-intro-panel[data-landed] .race-intro-num { animation: none; }
+}
+
+/* 결과 화면의 이벤트 상자 — 기록 번호를 크게(상품 수령 때 결과 화면과 순위표를 맞춰 본다) */
+.event-result-box {
+  margin-top: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  border: 2px solid #6b4a2b;
+  border-radius: 0.9rem;
+  background: rgba(251, 241, 218, 0.94);
+  color: #4a3220;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* 닉네임 중복 — 칸에 붉은 링(높이를 바꾸지 않는 ring만 쓴다 — TeamNameField와 같은 이유) */
+.event-field-invalid .input-base {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 1px #f87171;
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-role-button { transition: none; }
+  .event-status-box-hot { animation: none; }
 }
 
 /* ── 개인전 색 고르기 사각형 (대기실 ColorPicker) ─────────────────────────────
@@ -5903,7 +6225,7 @@ body {
   transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), filter 0.25s ease;
   will-change: auto;
 }
-.holo-cell[data-holo]:hover {
+.holo-cell[data-holo][data-hover] {
   z-index: 30;
   /* 1.21배로 커지고(1.1배 → 1.32배 → 요청으로 1.1배의 1.1배), 중앙 기준으로 커진 만큼(높이의 (1.21 − 1) / 2 =
      10.5%) 위로 옮겨 아래 변을 제자리에 둔 뒤 기존 hover처럼 16px 더 떠오른다. translate의 %는 칸 자신의 높이 기준이다.
@@ -5925,7 +6247,7 @@ body {
 /* ⚠️ 가리키고 있는 카드에서는 "누를 수 있음" 깜빡임(.skill-choice-glow — 1초마다 밝기·안쪽 빛이 출렁인다)을
    멈춘다. 그대로 두면 밝기가 계속 오르내려 홀로그램 무지개·광택이 묻혀 보이지 않는다. 빛 대신 고정된
    연두 테두리 한 줄만 남겨 "누를 수 있다"는 신호는 유지한다. */
-.holo-cell[data-holo]:hover .skill-choice-glow {
+.holo-cell[data-holo][data-hover] .skill-choice-glow {
   animation: none;
   filter: none;
   box-shadow: inset 0 0 0 3px rgba(163, 230, 53, 0.85);
@@ -5963,18 +6285,19 @@ body {
   background-repeat: no-repeat;
   mix-blend-mode: screen;
 }
-.holo-cell[data-holo]:hover .holo-shine { opacity: 0.85; }
+.holo-cell[data-holo][data-hover] .holo-shine { opacity: 0.85; }
 
-/* 터치 기기는 hover가 없다 — 효과를 아예 켜지 않는다(HoloCell도 마우스일 때만 좌표를 쓴다). */
-@media (hover: none) {
-  .holo-shine { display: none; }
-  .holo-cell[data-holo]:hover { transform: none; filter: none; }
-}
+/* ⚠️ 이 효과는 CSS `:hover`도, "hover 되는 기기인가" 미디어 쿼리도 쓰지 않는다 — **`data-hover`가 켜는 일**이다.
+   HoloCell이 포인터가 들어올 때 그 종류(pointerType)를 보고 **마우스·펜일 때만** `data-hover`를 단다.
+   변천: `(hover: hover) and (pointer: fine)` → `(any-hover: …)`(2026-10-26) → 이 방식(같은 날). 미디어 쿼리는 브라우저가
+   기기를 어떻게 판정하느냐에 달려 있어, 터치스크린 노트북·원격 데스크톱처럼 판정이 어긋나는 PC에서는 마우스로 가리켜도
+   카드만 그대로였다(같은 화면의 손가락 가이드는 조건 없는 애니메이션이라 멀쩡히 움직여 원인을 가리기 어려웠다).
+   터치는 pointerType이 'touch'라 애초에 켜지지 않으므로, 폰에서 손을 뗀 뒤에도 카드가 떠 있는 "굳는 hover"도 없다. */
 /* 움직임을 줄이는 설정이면 기울기·광택을 끈다 — 기존 hover(떠오름)도 이미 꺼져 있다. */
 @media (prefers-reduced-motion: reduce) {
   .holo-shine { display: none; }
   .holo-cell,
-  .holo-cell[data-holo]:hover { transform: none; transition: none; filter: none; }
+  .holo-cell[data-holo][data-hover] { transform: none; transition: none; filter: none; }
 }
 
 /* ── 개인전 이모티콘 풍선 — 꼬리(뾰족한 부분)가 플레이어를 가리킨다 ───────────────────
@@ -6066,10 +6389,7 @@ body {
     calc(var(--ex, 0) * 0.8px) calc(var(--ey, 2) * 0.8px) 0 color-mix(in srgb, var(--card-side, #c9952e) 60%, #000),
     calc(var(--ex, 0) * 1px) calc(var(--ey, 2) * 1px) 0 color-mix(in srgb, var(--card-side, #c9952e) 50%, #000);
 }
-.holo-cell[data-holo]:hover .holo-edge { opacity: 1; }
-@media (hover: none) {
-  .holo-edge { display: none; }
-}
+.holo-cell[data-holo][data-hover] .holo-edge { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .holo-edge { display: none; }
 }

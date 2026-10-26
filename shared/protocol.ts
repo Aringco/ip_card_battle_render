@@ -1,5 +1,13 @@
 import type { Animal, GameEvent, GameMode, GameSettings, GameState, Place, Seat, SideId, Team } from './types';
 import type { PlayerColorId } from './constants';
+import type {
+  EventAdminState,
+  EventDevStatus,
+  EventInfo,
+  EventKind,
+  EventQueueStatus,
+  Leaderboard,
+} from './events';
 
 // ─── 클라이언트 → 서버 ───────────────────────────────────────────────────────
 
@@ -57,7 +65,27 @@ export type ClientMessage =
   //    넘긴다"는 한 가지 동작이라 메시지를 따로 만들지 않았다.
   | { type: 'demoContinue' }
   // 4장에서 볼 장면(강탈승·회복승·패배)을 골랐다. key는 서버가 내려준 DemoView.scenes의 값이다.
-  | { type: 'demoScene'; key: string };
+  | { type: 'demoScene'; key: string }
+  // ─ 이벤트 모드(EVENT_MODE_ROADMAP.md) ─
+  // 개발자로 대기한다 — token은 서버 환경변수 EVENT_DEV_TOKEN과 같아야 한다(틀리면 EVENT_AUTH).
+  // devId는 서버가 처음 대기할 때 내려준 값으로, 판이 끝나 대기실로 돌아오거나 새로고침해도 같은
+  // 개발자(전적)로 이어 붙이는 데 쓴다. settings는 그 개발자가 정한 게임 규칙(방 만들기의 규칙과 같은 항목) —
+  // 서버가 beatDevSettings로 완성한다(일시정지는 언제나 0). 생략하면 이미 정해 둔 규칙(없으면 기본값)을 쓴다.
+  | { type: 'eventDevStandby'; token: string; name: string; devId?: string; settings?: Partial<GameSettings> }
+  // 대기 중에 규칙을 바꾼다 — 다음 판부터 적용된다.
+  | { type: 'eventDevSettings'; settings: Partial<GameSettings> }
+  | { type: 'eventDevAway'; away: boolean } // [잠시 자리 비움] — 비운 동안은 매칭되지 않는다
+  | { type: 'eventDevLeave' }               // 개발자 대기를 그만둔다
+  // 도전 시작. name이 비어 있으면 서버가 아직 안 쓰인 무작위 이름을 준다. pin은 숫자 4자리 — 처음 쓰는
+  // 닉네임이면 그 PIN으로 등록되고, 이미 쓴 닉네임이면 등록 때의 PIN과 같아야 재도전으로 받는다(§7-1).
+  // 목표점수 달성하기의 목표 점수는 서버가 판마다 10~20에서 뽑는다(도전자가 고르지 않는다).
+  | { type: 'eventChallenge'; kind: EventKind; name: string; pin: string }
+  | { type: 'eventCancel' }      // 개발자를 이겨라 대기 줄에서 빠진다
+  | { type: 'getLeaderboard' }   // 순위표(동물의 왕 등)
+  // 운영자 화면 — token은 서버 환경변수 EVENT_ADMIN_TOKEN과 같아야 한다. 검사는 서버가 한다.
+  | { type: 'eventAdmin'; token: string; action: 'state' }
+  | { type: 'eventAdmin'; token: string; action: 'invalidate'; recordId: number; invalid: boolean }
+  | { type: 'eventAdmin'; token: string; action: 'wipe' };
 
 // ─── 서버 → 클라이언트 ──────────────────────────────────────────────────────
 
@@ -90,7 +118,20 @@ export type ServerMessage =
   // 상대가 일시정지를 요청했다 — 요청한 팀의 **상대 팀 사람들에게만** 간다.
   | { type: 'pauseRequest'; fromTeam: Team; fromNickname: string; timeoutMs: number }
   // 그 요청이 끝났다 — 요청자와 요청받은 쪽 **모두**에게 가서 양쪽 창을 함께 닫는다.
-  | { type: 'pauseRequestResult'; accepted: boolean; reason: 'accepted' | 'declined' | 'timeout' | 'cancelled' };
+  | { type: 'pauseRequestResult'; accepted: boolean; reason: 'accepted' | 'declined' | 'timeout' | 'cancelled' }
+  // ─ 이벤트 모드 ─
+  // 개발자 대기실 상태 — 대기 줄 길이·전적이 바뀔 때마다 온다. null이면 대기를 그만뒀다.
+  | { type: 'eventDevStatus'; status: EventDevStatus | null }
+  // 개발자를 이겨라 대기 줄 — 순번이 바뀔 때마다 온다. null이면 줄에서 빠졌다(취소·매칭).
+  | { type: 'eventQueue'; status: EventQueueStatus | null }
+  // 개발자와 도전자가 맞물렸다 — countdownMs 뒤 roomJoined → gameStart 순서로 경기가 시작된다.
+  | { type: 'eventMatched'; countdownMs: number; opponentName: string; role: 'developer' | 'challenger' }
+  // 도전자의 닉네임이 확정됐다(비워 두면 서버가 지어 준 이름) — 화면이 다음 재도전을 위해 기억한다.
+  | { type: 'eventRegistered'; name: string; firstTime: boolean }
+  // 결과가 DB에 들어가 기록 번호가 생겼다(저장은 게임을 막지 않으므로 결과 화면이 뜬 뒤에 올 수 있다).
+  | { type: 'eventRecorded'; recordId: number }
+  | { type: 'leaderboard'; data: Leaderboard }
+  | { type: 'eventAdminState'; state: EventAdminState };
 
 export interface LobbyPlayer {
   memberId: string;
@@ -138,6 +179,9 @@ export type ErrorCode =
   | 'COLOR_TAKEN'       // 개인전 — 고르려는 색을 다른 사람이 이미 쓰고 있다
   | 'CANNOT_START'      // 아직 시작 조건(양 팀 한 명 이상 + 전원 준비)을 못 채웠다
   | 'PAUSE_UNAVAILABLE' // 지금은 일시정지(또는 재개)를 할 수 없다
+  | 'EVENT_AUTH'        // 이벤트 — 개발자 암호·운영 토큰이 틀렸다
+  | 'EVENT_PIN'         // 이벤트 — PIN이 숫자 4자리가 아니거나, 이미 쓴 닉네임의 PIN과 다르다
+  | 'EVENT_UNAVAILABLE' // 이벤트 — 지금은 그 도전을 할 수 없다(이미 줄 서 있음 등)
   | 'INTERNAL';         // 서버가 그 메시지를 처리하다 예외를 냈다(그 사람에게만 알린다)
 
 // ─── 클라이언트 게임 상태 ─────────────────────────────────────────────────────
@@ -203,6 +247,8 @@ export interface ClientGameState extends GameState {
   activePlayerNickname: string;
   /** 시연 모드일 때만 실린다. 없으면 평범한 게임이다. */
   demo?: DemoView;
+  /** 이벤트 판일 때만 실린다(EVENT_MODE_ROADMAP.md). 재접속 스냅샷에도 실려 F5 뒤 배지·결과가 그대로 돌아온다. */
+  event?: EventInfo;
   // 남은 턴 제한시간(ms) — 서버가 이 상태를 직렬화하는 순간을 기준으로 잰 "상대 시간"이다.
   // 예전에는 서버 시계의 절대 시각(turnDeadline)을 그대로 보냈는데, 그러면 클라이언트 PC
   // 시계가 서버와 어긋난 만큼 표시가 그대로 틀어졌다(엉뚱한 숫자에서 시작해 0에 멈춰

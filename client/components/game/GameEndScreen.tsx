@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { ANIMALS, LOSE_HP } from 'shared';
+import { ANIMALS, EVENT_DEV_RETURN_SEC, EVENT_LABELS, LOSE_HP } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { DEMO_CONTINUE_KEYS } from '@/lib/demoKeys';
 import { BoardFrame } from '@/components/ui/BoardFrame';
@@ -85,6 +85,8 @@ export function GameEndScreen({
   myTeam,
   onBack,
   onReplay,
+  onEventBack,
+  onNextChallenger,
 }: {
   gameState: ClientGameState;
   myTeam: SideId | null;
@@ -97,21 +99,48 @@ export function GameEndScreen({
    * 버튼이 뜬다(1~3장 도중 항복으로 끝난 판에는 되돌아갈 곳이 없다).
    */
   onReplay?: () => void;
+  /** 이벤트 도전자 — [이벤트로 돌아가기](로비가 도전 폼을 연 채로 시작한다) */
+  onEventBack?: () => void;
+  /** 이벤트 개발자 — [다음 도전자 받기]. 누르지 않아도 EVENT_DEV_RETURN_SEC 뒤 저절로 대기실로 돌아간다(상시 대기) */
+  onNextChallenger?: () => void;
 }) {
   const { winner } = gameState;
+  const ev = gameState.event ?? null;
   const hpA = gameState.teams.A.hp;
   const hpB = gameState.teams.B.hp;
   const winHp = gameState.settings.targetScore * 2;
-  const isKnockout = hpA >= winHp || hpB >= winHp || hpA <= LOSE_HP || hpB <= LOSE_HP;
+  // 목표점수 달성하기에는 즉시 승부가 없다 — 도전자가 0점에서 시작해 체력만 보면 늘 "즉시 승부"로 읽힌다.
+  const race = gameState.scoreRace ?? null;
+  const isKnockout = !race && (hpA >= winHp || hpB >= winHp || hpA <= LOSE_HP || hpB <= LOSE_HP);
   // 항복하기·나가기로 끝난 판은 체력만 봐서는 알 수 없다 — 격차가 나지 않은 채로
   // 끝나므로 "제한 턴 종료 — 체력 비교"라는 엉뚱한 설명이 붙는다. 서버가 실어 보낸
   // forfeitedBy가 그 경우를 가리는 유일한 단서다.
+  // 목표점수 달성하기는 체력 비교가 아니라 "마지막 턴의 점수가 목표 이상인가"로 끝난다 — 그 사유를 따로 말한다.
   const forfeitedBy = gameState.forfeitedBy ?? null;
+  const raceScore = race ? (gameState.teams[race.side]?.hp ?? 0) : 0;
   const reasonText = forfeitedBy
     ? `${gameState.teamNames[forfeitedBy]} 기권 — 남은 팀 승리`
-    : isKnockout
-      ? '체력 즉시 승부 — GAME OVER!'
-      : '제한 턴 종료 — 체력 비교';
+    : race
+      ? `${race.maxTurn}턴 종료 — 목표 ${race.target}점 ${raceScore >= race.target ? '달성' : '미달'} (최종 ${raceScore}점)`
+      : isKnockout
+        ? '체력 즉시 승부 — GAME OVER!'
+        : '제한 턴 종료 — 체력 비교';
+
+  // 이벤트 개발자 — 결과를 잠깐 보여 준 뒤 저절로 대기실로 돌아간다(상시 대기).
+  const [returnLeft, setReturnLeft] = useState(EVENT_DEV_RETURN_SEC);
+  useEffect(() => {
+    if (!onNextChallenger) return;
+    const startedAt = Date.now();
+    const t = setInterval(() => {
+      const left = EVENT_DEV_RETURN_SEC - Math.floor((Date.now() - startedAt) / 1000);
+      setReturnLeft(Math.max(0, left));
+      if (left <= 0) {
+        clearInterval(t);
+        onNextChallenger();
+      }
+    }, 250);
+    return () => clearInterval(t);
+  }, [onNextChallenger]);
 
   const confetti = useMemo(
     () => (winner && winner !== 'draw' ? generateConfetti(45, winner) : []),
@@ -129,7 +158,7 @@ export function GameEndScreen({
     : { src: LOBBY_ASSETS.medalSecond, alt: '2등', first: false };
   // 관전자(myTeam === null)에게는 "우리팀"이 없다 — 예전엔 그 경우가 그대로 "우리팀
   // 패배!"로 떨어져 이긴 팀을 구경하고도 패배 문구를 보게 됐다.
-  const winnerText =
+  const baseWinnerText =
     winner !== 'A' && winner !== 'B'
       ? '무승부!'
       : myTeam === null
@@ -137,6 +166,12 @@ export function GameEndScreen({
         : winner === myTeam
           ? '우리팀 승리!'
           : '우리팀 패배!';
+  // 이벤트 판은 "팀"이 아니라 도전이다 — 도전자(A)에게는 성공/실패로, 개발자(B)에게는 지켜냈는지로 말한다.
+  const winnerText = !ev || myTeam === null
+    ? baseWinnerText
+    : myTeam === 'A'
+      ? (ev.success ? '🎉 도전 성공!' : '도전 실패')
+      : (ev.success ? '도전자에게 졌어요!' : '개발자 승리!');
   const flavorAnimal = useMemo(() => pickFlavorAnimal(gameState, winner), [gameState, winner]);
   // 배경 그림은 들어올 때마다 둘 중 하나. **렌더 중에 뽑아도 되는 자리다** —
   // 이 화면은 서버 렌더에 한 번도 나오지 않기 때문이다(그때는 gameState가 null이라
@@ -209,8 +244,27 @@ export function GameEndScreen({
         {/* 판 바깥에서 그림 위에 바로 얹히는 글자라 초록 글씨로는 묻힌다 — `.result-bg-text` */}
         <h2 className="text-3xl font-bold result-bg-text">{winnerText}</h2>
         <p className="text-xs font-semibold result-bg-text -mt-1">{reasonText}</p>
-        {flavorAnimal && (
+        {flavorAnimal && !ev && (
           <p className="text-sm result-bg-text -mt-1">{FLAVOR_TEXT[flavorAnimal]}</p>
+        )}
+        {/* 이벤트 판 — 기록 번호(상품 수령 때 맞춰 본다)와 도전별 결과. 기록 번호는 저장이 끝난 뒤에 따로 온다. */}
+        {ev && (
+          <div className="event-result-box">
+            <p className="font-extrabold">🎉 {race ? `목표 ${race.target}점 달성하기` : EVENT_LABELS[ev.kind]} · {ev.challengerName}</p>
+            {race && !forfeitedBy && (
+              <p>최종 점수 <b className="tabular-nums">{raceScore}점</b> / 목표 {race.target}점</p>
+            )}
+            {ev.kind === 'oneWell' && gameState.oneWell?.locked && (
+              <p>고른 카드 {ANIMAL_INFO[gameState.oneWell.locked].emoji} {ANIMAL_INFO[gameState.oneWell.locked].name}</p>
+            )}
+            <p className="text-lg">
+              기록 번호{' '}
+              <b className="tabular-nums text-2xl">{ev.recordId !== null ? `#${ev.recordId}` : '저장 중…'}</b>
+            </p>
+            {ev.kind === 'beatDev' && ev.success && myTeam === 'A' && (
+              <p className="text-xs">승리 기록은 &quot;동물의 왕&quot; 순위에 들어가요 — 순위표에서 확인하세요!</p>
+            )}
+          </div>
         )}
       </div>
 
@@ -347,6 +401,26 @@ export function GameEndScreen({
             다른 결말 보기 ▶
           </button>
         )}
+        {/* 이벤트 — 개발자는 다음 도전자를 받으러, 도전자는 이벤트 폼으로 돌아간다. 이쪽이 먼저다. */}
+        {onNextChallenger && (
+          <button
+            onClick={onNextChallenger}
+            className="wood-button wood-button-lg py-[1.125rem] px-[3.75rem]"
+            style={{ animation: 'bounceIn 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 400ms both' }}
+          >
+            다음 도전자 받기 ({returnLeft})
+          </button>
+        )}
+        {onEventBack && (
+          <button
+            onClick={onEventBack}
+            className="wood-button wood-button-lg py-[1.125rem] px-[3.75rem]"
+            style={{ animation: 'bounceIn 0.6s cubic-bezier(0.36,0.07,0.19,0.97) 400ms both' }}
+          >
+            이벤트로 돌아가기
+          </button>
+        )}
+        {!onNextChallenger && (
         <button
           onClick={onBack}
           // 1.5배 — 안여백(py-3/px-10 → 4.5/15)은 여기서, 나무테 두께와 글씨 크기는
@@ -356,6 +430,7 @@ export function GameEndScreen({
         >
           로비로 돌아가기
         </button>
+        )}
       </div>
       </div>
 

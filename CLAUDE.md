@@ -136,6 +136,21 @@ npm run build
 - 연출이 칸을 찾는 표식은 개인전도 그대로다: `data-team-score-row="side:animal"`(날아가는 카드의 목적지)·`data-player-anchor="side:0"`·`data-rabbit-target="side"`. 오른쪽 상대 칸(`OpponentList`)이 이를 모두 달고 있다. 특허랑이의 연출 대상은 화면이 계산하지 않고 서버가 실은 `skillApplied.target`을 읽는다. 상대 목록의 경험치·레벨은 `animState.displayedExp`(연출 뒤의 값)를 쓴다.
 - **측정**: 팀전은 `client/scripts/measurePlay.mjs --diff team-before`(움직인 상자 0개여야 한다), 개인전은 `client/scripts/measureIndividual.mjs`(2·5·8명 × 1600×900·1366×768), 로비 폼은 `measureLobby.mjs`(개인전 상태 포함). 봇 시뮬레이션은 `server/scripts/individualSim.ts`.
 
+### 이벤트 모드 — 행사용 도전 세 가지 + 동물의 왕 (`EVENT_MODE_ROADMAP.md`)
+
+'다같이 놀기'의 세 번째 패널 **'이벤트 방 참가하기'** 에서 개발자/도전자를 고른다. 도전은 개발자를 이겨라(사람 개발자와 1:1, 상시 대기·자동 매칭) · 목표점수 달성하기(컴퓨터 상대, 10~20 무작위 목표를 10턴이 끝날 때 넘기면 성공) · 한 우물만 파기(상표토끼·특허랑이 중 처음 쓴 카드만)이고, **동물의 왕**은 판이 아니라 '개발자를 이겨라' 승리 기록의 동물별 최고 레벨 순위표다. 설계·결정·시뮬레이션 수치는 로드맵이 기준이다.
+
+- **엔진은 팀전 1:1 그대로다.** 도전자는 언제나 A팀, 상대(CPU 또는 개발자)는 B팀. 컴퓨터 대전 두 가지의 규칙은 `shared/events.ts`의 프리셋이 덮어쓰고(`clampSettings`를 거친다) 누구도 못 바꾼다. **'개발자를 이겨라'만은 개발자가 정한다** — 개발자 폼(입장·대기실)에 방 만들기와 같은 `GameRulesFields`가 있고(`hidePause` · `hideFirstTeam`), 값은 `eventDevStandby.settings`/`eventDevSettings`로 서버의 그 개발자(`devId`)에 붙어 **다음 판부터** 쓰인다. 서버는 `beatDevSettings`로 다시 잘라 내며 **도전자 선공·일시정지 0은 덮어쓴다**(화면 검증만 믿지 않는다). 대기 중 입력은 600ms 멈춘 뒤에 보낸다(치는 중간값이 판에 실리지 않게) — 화면 값을 서버 상태로 덮어쓰지 않는 것도 같은 이유다. 이벤트 판은 **일시정지가 없다**(`Room.handlePauseRequest`가 막고, 혼자 놀기의 "무제한"보다 먼저 걸린다).
+- **한 우물만 파기의 잠금은 엔진 한 곳(`skills.ts`의 `eligibleAnimals`)이 지킨다.** 고정도 `applySkillChoice` **안에서** 세운다 — 방에서 세우면 시간초과로 서버가 대신 고른 기술이 고정을 빠져나간다. 화면은 세 곳(기술 카드 `wellOpen` · `GameLayout`의 "고를 게 없으면 자동 패스" · `finishingMove`)에 같은 잠금을 반영한다(`lib/skills.ts`의 `oneWellOpen`). 기술 없이 이기는 것은 규칙상 불가능하다(`oneWell.test.ts`가 500판으로 지킨다 — 체력을 바꾸는 규칙이 새로 생기면 다시 볼 것).
+- **목표점수 달성하기는 엔진의 `GameState.scoreRace`(`{ side, target, maxTurn }`)가 규칙이다**(2026-10-26에 "목표 선택 + 전체 제한시간"에서 바꿨다 — 시계·`timeUp`·운영자 제한시간 설정은 모두 걷어냈다). 목표는 허브가 10~20에서 뽑고(`randomScoreRaceTarget`), 방의 `applyEventRules`가 첫 스냅샷 **전에** 도전자 0점 · 컴퓨터 `SCORE_RACE_CPU_HP`(10)로 체력을 바꾼다. 엔진은 ① `checkKnockout`을 끄고(0점에서 시작하니 안 끄면 첫 수에 끝난다) ② 턴 상한을 `maxTurnOf(state)`(10)로 바꾸며 ③ 그 턴이 끝난 순간 **점수 ≥ 목표면 도전자, 아니면 상대 승리**(`gameEnd.reason 'target'`). ⚠️ **턴 상한을 `MAX_TURN`으로 직접 쓰지 말 것** — 상단 턴 표시·축제 시작 보정·종료 판정 모두 `maxTurnOf`를 쓴다. 이 판의 컴퓨터는 공격형이다(`pickScoreRaceComputerSkill` — 상표토끼 없음, 특허랑이 → 인어 → 양). 화면은 즉시 승리 표시(`finishingMove`)를 끄고, 체력 구슬의 만점을 목표 점수로 바꾸며, `EventHud`는 목표·남은 턴만 보여 준다(지금 점수를 HUD에 쓰면 연출보다 먼저 오른다). 축제 3턴·1회는 `eventBalance.ts` ②로 정했다(그리디 봇 승률 목표 10점 58% → 20점 21%).
+- **목표점수의 시작 룰렛(`ScoreRaceIntro`)이 도는 동안 판은 서버에서 멈춰 있다.** 방이 첫 턴 타이머에 `introGraceMs()`를 얹고 그 사이의 클릭을 `rejectIfIntro`로 거부한다. ⚠️ **룰렛은 판이 만들어질 때가 아니라 도전자의 게임 화면이 붙는 순간(`handleReconnect` → `startIntroIfWaiting`) 시작한다** — 판 생성 시각부터 세면 로비 → 게임 화면 전환(개발 서버는 첫 컴파일까지) 몇 초가 룰렛에서 깎여 숫자가 돌기도 전에 끝났다. 그 화면이 끝내 안 붙을 때를 위한 상한이 `SCORE_RACE_INTRO_WAIT_MS`다. 화면에는 남은 ms(`event.introRemainingMs`)만 보내고 `useWebSocket`이 받은 순간 `eventIntroUntil`로 환산한다(턴 타이머 규칙 1). 끝난 뒤에는 싣지 않으므로 F5로 다시 돌지 않는다. 룰렛은 연출일 뿐이다(목표는 첫 스냅샷에 이미 있다) — 그래서 그동안 `EventHud`가 목표를 "?"로 가린다.
+- **개발자는 연결이 아니라 `devId`로 기억한다**(`server/events/hub.ts`). 로비 → 게임 화면으로 갈 때마다 새 WebSocket이 열리므로, 연결로 기억하면 매칭되는 순간 "나간" 것이 된다. 판이 끝나면 결과 화면이 10초 뒤 로비로 보내고, 로비는 `client/lib/eventSession.ts`의 개발자 세션으로 **저절로 다시 대기**한다(상시 대기). ⚠️ 매칭 메시지 순서는 **`roomJoined` → `gameStart`**(뒤집히면 새 게임이 지워진다 — `Room.detach` 절과 같은 이유).
+- **기록은 `server/records/store.ts` — 메모리가 1차 사본, DB(Postgres, `DATABASE_URL`)는 붙드는 쪽이다.** 순위표·닉네임 검사는 메모리로 하고, 쓰기는 비동기 + 재시도 큐다(게임 흐름에서 await하지 말 것). 서버가 켜질 때 DB가 없으면 메모리로 돌면서 다시 붙을 때까지 재시도하고, **다 읽은 뒤에야** 쌓인 것을 넣는다(먼저 넣으면 같은 행이 두 번 잡힌다). DB 없이도 로컬 개발·테스트가 돈다.
+- **닉네임은 행사 전체에서 유일하다**(`normalizeNameKey` — 공백·대소문자·NFC). 재도전은 같은 닉네임 + 처음 정한 4자리 PIN. 겹침 안내·암호 오류는 전역 배너가 아니라 **폼의 설명 줄을 갈아끼운다**(`useWebSocket`의 `eventError` — 로비 폼 높이 규칙).
+- **비밀값은 서버 환경변수로만**(`EVENT_DEV_TOKEN` · `EVENT_ADMIN_TOKEN` · `EVENT_PIN_PEPPER` · `DATABASE_URL`, `render.yaml`에는 `sync: false`로 이름만). 프로덕션에서 비워 두면 그 기능이 꺼지고, 개발 빌드는 `dev1234`/`admin1234`를 쓴다. `shared/`에 두지 말 것(번들에 박힌다).
+- **로비 세 열**: `.multi-inner`가 `1fr 1fr 1fr`이고 안쪽 패널의 원래 폭은 `(100cqw − 2·gap) / 3`이다. 가운데 열(방 참가하기)만 고른 쪽에 따라 밀려날 방향이 바뀐다(`data-stage="event"`면 왼쪽). 이벤트 폼 상태 8가지는 `measureLobby.mjs`가 함께 잰다(서버가 떠 있어야 대기 줄·중복·암호 화면이 뜬다).
+- 화면: 순위표 `/events`, 부스 대형 화면 `/events/board`(30초 갱신), 운영자 `/admin`(현황 · 무효 처리 · CSV · 일괄 삭제 — 토큰 검사는 서버). 게임 화면의 머리표는 `EventHud`(fixed 오버레이 — 액자 배치에 끼우지 않는다).
+
 ### 배포 — 루트 `server.ts` / `Dockerfile`
 Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼에서는 WS용 포트를 따로 열 수 없으므로(브라우저가 WS 서버에 직접 접속하는 구조라, 그 포트가 공개되지 않으면 접속 자체가 안 됨), 루트 `server.ts`가 Next.js 커스텀 서버 위에 같은 HTTP 서버·같은 포트(`$PORT`, 기본 3000)로 `/ws` 경로의 WebSocket을 함께 띄운다. 로컬 개발 시에는 이 파일을 쓰지 않는다 — 위의 "개발 명령어"대로 서버(8080)와 클라이언트(3000)를 분리 실행하는 방식을 그대로 쓴다. `npm run start`(루트, `ts-node --transpile-only server.ts`) 또는 `docker build -t ip-card-battle .` && `docker run -p 3000:3000 ip-card-battle`로 실행한다. Render는 `render.yaml`(Blueprint)이 서비스를 정의하며, 대시보드에서 한 번 연결하면 그 뒤로는 `main` push마다 자동 재배포된다.
 
@@ -198,6 +213,8 @@ woff 906KB / **woff2 392KB**) 있지만 **woff2를 쓴다** — 한글 글꼴은
 클래스가 자기 테두리 두께에 맞춰 그 값을 정한다. **새 액자를 만들 때 이 짝을 함께 둘 것.**
 단, `<img>`를 직접 그 클래스로 앉히면 안 된다 — 절대배치된 대체 요소의 `width: auto`는
 네 변이 아니라 **내재 크기**로 풀려 `object-contain`이 먹지 않는다. `<div>`로 한 겹 감싼다.
+
+**⚠️ 기술 카드의 홀로 효과(확대·기울기·광택)는 CSS `:hover`가 아니라 `data-hover`가 켠다.** `SkillChoiceBar`의 `HoloCell`이 포인터가 들어올 때 종류(`pointerType`)를 보고 **마우스·펜일 때만** 그 속성을 단다. `(hover: hover) and (pointer: fine)` → `(any-hover: …)`로 고쳐도 사용자 PC에서 여전히 카드만 그대로였다(같은 화면의 손가락 가이드는 조건 없는 애니메이션이라 멀쩡히 움직여 원인을 가렸다) — 미디어 쿼리는 브라우저의 기기 판정에 달려 있어 터치스크린 노트북·원격 데스크톱에서 어긋난다. 이 효과를 다시 `:hover`나 미디어 쿼리로 묶지 말 것. 터치는 `pointerType`이 `'touch'`라 켜지지 않으므로 "굳는 hover"도 없다.
 
 **⚠️ 사진을 덮는 액자에는 `fill`을 쓰지 않는다.** 가운데 조각까지 그리면 액자 속
 양피지가 사진(장소 타일·기술 컷신)을 통째로 덮는다. 없이 쓰면 여덟 조각만 그려진다.

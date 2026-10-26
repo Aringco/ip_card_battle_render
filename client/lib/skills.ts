@@ -29,6 +29,25 @@ export function levelOf(gameState: ClientGameState, team: SideId, animal: Animal
   return Math.floor(gameState.teams[team].exp[animal] / THRESHOLDS[animal]);
 }
 
+/**
+ * 이벤트 '한 우물만 파기'의 잠금 — 그 편이 지금 쓸 수 있는 카드(서버 engine/skills.ts의 oneWellOpen과 같은 규칙).
+ * 잠금이 없는 편(일반 게임·상대 CPU)은 null. 처음 쓴 카드가 정해지기 전엔 상표토끼·특허랑이 둘, 정해진 뒤엔 한 장.
+ *
+ * ⚠️ 화면에서 이 잠금을 반영할 자리가 셋이다 — 기술 카드(SkillChoiceBar) · "고를 게 없으면 자동 패스" 타이머(GameLayout) ·
+ *    끝낼 수 있는 수 표시(finishingMove). 한 곳만 빠뜨려도 서버와 화면이 어긋난다(EVENT_MODE_ROADMAP.md §3-3).
+ */
+export function oneWellOpen(gameState: ClientGameState, team: SideId): readonly Animal[] | null {
+  const well = gameState.oneWell;
+  if (!well || well.side !== team) return null;
+  return well.locked ? [well.locked] : well.allowed;
+}
+
+/** 이 카드가 잠겨 있지 않은가(잠금이 없는 판이면 언제나 true). */
+export function isSkillOpen(gameState: ClientGameState, team: SideId, animal: Animal): boolean {
+  const open = oneWellOpen(gameState, team);
+  return open === null || open.includes(animal);
+}
+
 export interface SkillPreview {
   animal: Animal;
   level: number;
@@ -59,6 +78,10 @@ export function finishingMove(
 ): { finishes: boolean; targets: SideId[] } {
   const none = { finishes: false, targets: [] as SideId[] };
   if (animal !== 'rabbit' && animal !== 'tiger') return none;
+  // 한 우물만 파기에서 잠긴 카드로는 끝낼 수 없다 — 잠긴 호랑이에 빨간 빛이 뜨면 누를 수 없는 카드를 가리키게 된다.
+  if (!isSkillOpen(gameState, team, animal)) return none;
+  // 목표점수 달성하기에는 즉시 승패가 없다 — 판은 마지막 턴이 끝나야 판정된다(엔진의 scoreRace).
+  if (gameState.scoreRace) return none;
   const me = gameState.teams[team];
   if (!me) return none;
   const level = levelOf(gameState, team, animal);

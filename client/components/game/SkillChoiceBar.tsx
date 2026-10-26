@@ -46,6 +46,7 @@ function HoloCell({
     point.current = null;
     const el = ref.current;
     if (!el) return;
+    delete el.dataset.hover;
     el.style.setProperty('--mx', '50%');
     el.style.setProperty('--my', '50%');
     el.style.setProperty('--rx', '0deg');
@@ -62,8 +63,18 @@ function HoloCell({
     };
   }, [enabled]);
 
+  // ⚠️ "가리키고 있다"는 CSS :hover가 아니라 여기서 다는 data-hover로 판단한다(globals.css .holo-cell 절).
+  // 미디어 쿼리((any-)hover)는 브라우저의 기기 판정에 달려 있어, 터치스크린 노트북처럼 판정이 어긋나는 PC에서는
+  // 마우스로 가리켜도 효과가 꺼졌다. 포인터의 실제 종류를 보면 그 판정과 무관하고, 터치는 켜지지 않는다.
+  const canHover = (e: React.PointerEvent) => e.pointerType === 'mouse' || e.pointerType === 'pen';
+  const onPointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (enabled && canHover(e)) ref.current?.setAttribute('data-hover', '');
+  };
+
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!enabled || e.pointerType !== 'mouse') return;
+    if (!enabled || !canHover(e)) return;
+    // 카드가 커서 아래에서 새로 활성화되면(차례가 넘어옴) pointerenter가 오지 않는다 — 움직임으로도 켠다.
+    if (ref.current && !('hover' in ref.current.dataset)) ref.current.setAttribute('data-hover', '');
     point.current = { x: e.clientX, y: e.clientY };
     if (frame.current) return;
     frame.current = requestAnimationFrame(() => {
@@ -99,6 +110,7 @@ function HoloCell({
       ref={ref}
       className={`holo-cell ${className}`}
       data-holo={enabled || undefined}
+      onPointerEnter={onPointerEnter}
       onPointerMove={onPointerMove}
       onPointerLeave={reset}
     >
@@ -132,6 +144,7 @@ export function SkillChoiceBar({
   myTeamChoosing = false,
   demoAllowed = null,
   hideGuide = false,
+  wellOpen = null,
   onChoose,
   onPass,
 }: {
@@ -159,6 +172,11 @@ export function SkillChoiceBar({
    * 그 오버레이(80)보다 위에 그려져, 어두워진 화면 위로 손가락만 환하게 남는다.
    */
   hideGuide?: boolean;
+  /**
+   * 이벤트 '한 우물만 파기'에서 지금 쓸 수 있는 카드(lib/skills.ts의 oneWellOpen). null이면 잠금이 없는 평범한 판.
+   * 나머지 카드는 레벨이 있어도 🔒로 잠기고 누를 수 없다 — 서버(eligibleAnimals)도 같은 규칙으로 거부한다.
+   */
+  wellOpen?: readonly Animal[] | null;
   onChoose: (animal: Animal) => void;
   onPass: () => void;
 }) {
@@ -171,6 +189,9 @@ export function SkillChoiceBar({
   const showSkillGuide = guideEnabled && !hideGuide && (interactive || spectatorGuideTeam !== null);
   // 시연은 대본이 열어 준 칸만 누를 수 있고, 손가락도 그 한 칸만 짚는다(빈 배열=전부 잠금).
   const demoOpen = (animal: Animal) => (demoAllowed ? demoAllowed.includes(animal) : true);
+  // 한 우물만 파기 — 잠긴 카드(🔒)는 레벨이 있어도 누를 수 없다(서버 eligibleAnimals와 같은 규칙).
+  const wellOk = (animal: Animal) => (wellOpen ? wellOpen.includes(animal) : true);
+  const open = (animal: Animal) => demoOpen(animal) && wellOk(animal);
   // [턴 마치기]는 평소 언제나 누를 수 있지만, 시연에서는 턴이 넘어가는 순간 대본이
   // 끊기므로(상대 차례가 온다) 아예 잠근다 — 서버도 같은 이유로 무시한다.
   const passable = interactive && demoAllowed === null;
@@ -199,7 +220,7 @@ export function SkillChoiceBar({
       {ANIMAL_ORDER.map((animal, i) => {
         const preview = previews[i];
         const eligible = preview.level > 0;
-        const clickable = interactive && eligible && demoOpen(animal);
+        const clickable = interactive && eligible && open(animal);
         const desc = describeSkill(animal, preview.level);
         // 특허랑이처럼 효과가 둘 이상인 행동은 문구가 그냥 이어 붙어 "체력 +4상대 체력 -4"처럼
         // 읽히므로, 각 효과를 조각으로 모아 **쉼표 뒤에서 줄을 바꿔** 한 줄에 하나씩 둔다
@@ -210,7 +231,7 @@ export function SkillChoiceBar({
         if (preview.myHpDelta > 0) effectParts.push(`내 체력 ${preview.oppHpIsMax ? '최대 ' : ''}+${preview.myHpDelta}`);
         if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpIsMax ? '최대 ' : ''}${preview.oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${preview.multiplierAfter}`);
-        const effectLabel = eligible ? effectParts.join(',\n') : '레벨 부족';
+        const effectLabel = !wellOk(animal) ? '🔒 사용 불가' : eligible ? effectParts.join(',\n') : '레벨 부족';
 
         // 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
@@ -222,7 +243,7 @@ export function SkillChoiceBar({
           // 시연은 대본대로만 진행하므로 표시하지 않는다.
           <HoloCell
             key={animal}
-            enabled={eligible && demoOpen(animal)}
+            enabled={eligible && open(animal)}
             className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
@@ -245,7 +266,7 @@ export function SkillChoiceBar({
                   잠기면 어두워진다 — 그쪽과 같은 신호를 준다). 글씨는 그대로 둔다:
                   레벨이 모자란 것이 아니라 "지금은 아닌" 것이라 "레벨 부족"이 아니다. */}
               <div
-                className={`skill-choice-bg play-frame-inset absolute ${eligible && demoOpen(animal) ? '' : 'skill-choice-bg-disabled'}`}
+                className={`skill-choice-bg play-frame-inset absolute ${eligible && open(animal) ? '' : 'skill-choice-bg-disabled'}`}
                 style={{ backgroundImage: `url(/skills/${animal}_skill.png)` }}
               />
               <div className="skill-choice-dim play-frame-inset absolute" />
@@ -292,7 +313,7 @@ export function SkillChoiceBar({
 
             {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다.
                 손은 그 칸의 주인 캐릭터 것이라, 어느 칸을 짚고 있는지 손만 봐도 안다. */}
-            {showSkillGuide && eligible && demoOpen(animal) && (
+            {showSkillGuide && eligible && open(animal) && (
               <GuideFinger team={spectatorGuideTeam} />
             )}
           </HoloCell>

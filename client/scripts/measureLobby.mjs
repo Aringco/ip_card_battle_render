@@ -41,7 +41,7 @@ async function measure(page, label) {
       return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
     };
     let openForm = null;
-    for (const sel of ['.stage-form-solo', '.stage-form-create', '.stage-form-join']) {
+    for (const sel of ['.stage-form-solo', '.stage-form-create', '.stage-form-join', '.stage-form-event']) {
       const el = q(sel);
       if (el && getComputedStyle(el).opacity === '1') openForm = el;
     }
@@ -136,6 +136,29 @@ async function pickIndividualMode(page) {
   return false;
 }
 
+/** 그 폼 안에서 글자가 들어간 (누를 수 있는) 버튼을 누른다. */
+async function clickIn(page, formSel, text) {
+  return page.evaluate((sel, text) => {
+    const b = [...document.querySelectorAll(`${sel} button`)].find(x => (x.textContent || '').includes(text) && !x.disabled);
+    b?.click();
+    return !!b;
+  }, formSel, text);
+}
+
+/** 입력칸을 비운다 — 비밀번호 칸은 세 번 클릭해도 글자가 선택되지 않아(실제로 틀린 암호 뒤에 이어 쳐졌다) Ctrl+A로 지운다. */
+async function clearInput(page, sel) {
+  await page.focus(sel);
+  await page.keyboard.down('Control');
+  await page.keyboard.press('KeyA');
+  await page.keyboard.up('Control');
+  await page.keyboard.press('Backspace');
+}
+
+/** 그 폼에 글자가 보이는가 — 서버의 대답으로 뜨는 화면이 실제로 떴는지 확인한다. */
+async function formHas(page, formSel, text) {
+  return page.evaluate((sel, text) => (document.querySelector(sel)?.textContent ?? '').includes(text), formSel, text);
+}
+
 const { default: puppeteer } = await import('puppeteer-core');
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -226,6 +249,60 @@ for (const vp of VIEWPORTS) {
   });
   invite.note = inviteOk ? '' : '*** 안내/코드 채움 실패';
   results.push(invite);                                           await shot('7-join-invite');
+
+  // ── 이벤트 방 참가하기(EVENT_MODE_ROADMAP.md §2.1) — 화면이 여럿이라 하나씩 연다 ──
+  // ⚠️ 대기 줄·틀린 암호·닉네임 중복·개발자 대기실은 **서버의 대답**으로 뜨는 화면이라 WS 서버가 떠 있어야 한다.
+  //    (개발자 암호는 EVENT_DEV_TOKEN — 개발 서버 기본값 dev1234) 안 뜨면 비고에 표시해 "재지 못했다"를 드러낸다.
+  await page.goto(URL_BASE, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('.lobby-safe', { timeout: 60000 });
+  await sleep(1000);
+  await page.click('.stage-panel-multi');             await sleep(SETTLE);
+  await page.click('.stage-col-event > .stage-panel'); await sleep(SETTLE);
+  results.push(await measure(page, `event-role@${tag}`));         await shot('8a-event-role');
+  await clickIn(page, '.stage-form-event', '도전자');  await sleep(400);
+  results.push(await measure(page, `event-challenger@${tag}`));   await shot('8b-event-challenger');
+  // 목표점수 달성하기를 고른 상태 — 예전엔 목표 토글이 줄 안에 붙었다. 지금은 목표를 서버가 뽑아 줄이 늘지 않아야 한다.
+  await page.evaluate(() => [...document.querySelectorAll('.event-kind-button')].find(b => b.textContent.includes('목표점수'))?.click());
+  await sleep(300);
+  results.push(await measure(page, `event-race@${tag}`));         await shot('8c-event-race');
+  // 대기 줄 — 개발자를 이겨라로 줄을 선다(대기 중인 개발자가 없으면 줄에 남는다)
+  const evName = `측정${tag.replace('x', '')}`.slice(0, 12);
+  const nameBox = await page.$('.stage-form-event input[type="text"]');
+  await nameBox.click({ clickCount: 3 }); await nameBox.type(evName);
+  await page.type('.stage-form-event input[inputmode="numeric"]', '1234');
+  await page.evaluate(() => [...document.querySelectorAll('.event-kind-button')].find(b => b.textContent.includes('개발자를'))?.click());
+  await clickIn(page, '.stage-form-event', '대기 줄 서기'); await sleep(900);
+  const queue = await measure(page, `event-queue@${tag}`);
+  queue.note = (await formHas(page, '.stage-form-event', '번째')) ? '' : '*** 대기 줄 화면 안 뜸(서버?)';
+  results.push(queue);                                            await shot('8d-event-queue');
+  await clickIn(page, '.stage-form-event', '줄에서 빠지기'); await sleep(500);
+  // 같은 닉네임 · 다른 PIN → 설명 줄이 "이미 사용 중인 닉네임"으로 바뀐다(새 줄이 아니다)
+  await clearInput(page, '.stage-form-event input[inputmode="numeric"]');
+  await page.type('.stage-form-event input[inputmode="numeric"]', '9999');
+  await clickIn(page, '.stage-form-event', '대기 줄 서기'); await sleep(900);
+  const taken = await measure(page, `event-taken@${tag}`);
+  taken.note = (await formHas(page, '.stage-form-event', '이미 사용 중인 닉네임')) ? '' : '*** 중복 안내 안 뜸(서버?)';
+  results.push(taken);                                            await shot('8e-event-taken');
+  // 개발자 — 암호 화면, 틀린 암호, 대기실
+  await clickIn(page, '.stage-form-event', '역할');    await sleep(300);
+  await clickIn(page, '.stage-form-event', '개발자');  await sleep(400);
+  results.push(await measure(page, `event-devauth@${tag}`));      await shot('8f-event-devauth');
+  await page.type('.stage-form-event input[type="password"]', 'wrong-token');
+  await clickIn(page, '.stage-form-event', '대기 시작'); await sleep(900);
+  const devErr = await measure(page, `event-devauth+err@${tag}`);
+  devErr.note = (await formHas(page, '.stage-form-event', '맞지 않습니다')) ? '' : '*** 틀린 암호 안내 안 뜸(서버?)';
+  results.push(devErr);                                           await shot('8g-event-devauth-error');
+  await clearInput(page, '.stage-form-event input[type="password"]');
+  await page.type('.stage-form-event input[type="password"]', process.env.EVENT_DEV_TOKEN ?? 'dev1234');
+  await clickIn(page, '.stage-form-event', '대기 시작'); await sleep(1200);
+  const devWait = await measure(page, `event-devwait@${tag}`);
+  devWait.note = (await formHas(page, '.stage-form-event', '개발자 대기실')) ? '' : '*** 대기실 안 뜸(암호?)';
+  results.push(devWait);                                          await shot('8h-event-devwait');
+  // 개발자가 정하는 게임 규칙 — 접힌 상태는 위에서 쟀고(스크롤 없어야 한다), 펼치면 스크롤이 정상이다.
+  await openRules(page, '.stage-form-event');         await sleep(500);
+  results.push(await measure(page, `event-devwait+rules@${tag}`)); await shot('8i-event-devwait-rules');
+  await openRules(page, '.stage-form-event');         await sleep(300);
+  await clickIn(page, '.stage-form-event', '대기 그만두기'); await sleep(400);
 
   await page.close();
 }

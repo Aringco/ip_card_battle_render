@@ -12,6 +12,7 @@
 | `panel_multi.webp` | 768×768 / 80KB | "다같이 놀기" 패널 아트 — 네 동물이 테이블에 둘러앉은 그림 |
 | `panel_create.webp` | 768×768 / 78KB | "방 만들기" 패널 아트 — 실용신양이 오두막을 짓는 그림 |
 | `panel_join.webp` | 768×768 / 75KB | "방 참가하기" 패널 아트 — 셋이 오두막 문을 두드리는 그림 |
+| `panel_event.webp` | 768×768 / 105KB | "이벤트 방 참가하기" 패널 아트 — 노을 진 호숫가 축제에서 넷이 춤추는 그림(원본 `client/assets-src/panel_event.png`). 캐릭터가 가운데~아래에 모여 있어 문구를 **위로** 올린다 |
 
 두 경로 모두 [`client/lib/lobbyAssets.ts`](../../lib/lobbyAssets.ts) 한 곳에서만 참조하므로,
 파일을 바꿀 때는 그 상수만 고치면 된다.

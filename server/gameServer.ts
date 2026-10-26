@@ -1,15 +1,54 @@
 import type { WebSocket } from 'ws';
 import { randomUUID } from 'crypto';
-import type { ClientMessage } from 'shared';
+import type { ClientMessage, ServerMessage } from 'shared';
 import { RoomManager } from './roomManager';
+import { EventHub, eventTokensFromEnv } from './events/hub';
+import type { EventConn } from './events/hub';
+import { RecordStore } from './records/store';
+
+/**
+ * 이벤트 허브를 환경변수로 만든다 — 기록 저장소(DATABASE_URL이 있으면 Postgres, 없으면 메모리)까지 함께 세운다.
+ * 서버 하나에 하나만 있어야 한다(개발자 대기·도전자 줄이 여기 모인다).
+ */
+export function createEventHub(roomManager: RoomManager): EventHub {
+  const store = new RecordStore({
+    databaseUrl: process.env.DATABASE_URL || undefined,
+    pinPepper: process.env.EVENT_PIN_PEPPER || undefined,
+  });
+  void store.init();
+  return new EventHub(roomManager, store, eventTokensFromEnv());
+}
 
 // 독립 실행(server/index.ts, 로컬 개발용 8080 포트)과 통합 실행(루트 server.ts,
 // Next.js와 같은 포트를 쓰는 배포용) 양쪽에서 동일한 WS 연결 처리 로직을 쓰기 위해
 // WebSocketServer 생성과 분리해두었다.
-export function createConnectionHandler(roomManager: RoomManager) {
+export function createConnectionHandler(roomManager: RoomManager, eventHub: EventHub = createEventHub(roomManager)) {
   return (ws: WebSocket) => {
     let currentRoomId: string | null = null;
     let currentPlayerId: string | null = null;
+
+    // 이벤트 허브가 이 연결을 다루는 손잡이 — 매칭되면 허브가 enterRoom으로 이 연결을 새 방에 붙인다.
+    const eventConn: EventConn = {
+      id: randomUUID(),
+      ws,
+      isOpen: () => ws.readyState === 1 /* OPEN */,
+      send: (msg: ServerMessage) => {
+        if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+      },
+      enterRoom: (roomId: string, playerId: string) => {
+        detachFromPreviousRoom(roomId);
+        currentRoomId = roomId;
+        currentPlayerId = playerId;
+      },
+    };
+
+    /** 이벤트 허브의 비동기 처리(닉네임 등록 등)에서 난 예외도 서버를 끄지 않게 — 보낸 사람에게만 알린다. */
+    function runEvent(task: Promise<void>, type: string) {
+      task.catch(err => {
+        console.error(`[ws] '${type}' 처리 중 예외 —`, err);
+        eventConn.send({ type: 'error', code: 'INTERNAL', message: '요청을 처리하지 못했습니다.' });
+      });
+    }
 
     /**
      * 이 연결이 새 방에 자리를 잡은 **뒤에** 부른다 — 옛 방에 남아 있던 자리를 정리한다.
@@ -248,6 +287,32 @@ export function createConnectionHandler(roomManager: RoomManager) {
           break;
         }
 
+        // ─ 이벤트 모드 — 판정은 모두 이벤트 허브가 한다(server/events/hub.ts) ─
+        case 'eventDevStandby':
+          eventHub.devStandby(eventConn, String(msg.token ?? ''), String(msg.name ?? ''), msg.devId, msg.settings);
+          break;
+        case 'eventDevSettings':
+          if (msg.settings && typeof msg.settings === 'object') eventHub.devSettings(eventConn, msg.settings);
+          break;
+        case 'eventDevAway':
+          eventHub.devAway(eventConn, msg.away === true);
+          break;
+        case 'eventDevLeave':
+          eventHub.devLeave(eventConn);
+          break;
+        case 'eventChallenge':
+          runEvent(eventHub.challenge(eventConn, msg.kind, String(msg.name ?? ''), String(msg.pin ?? '')), msg.type);
+          break;
+        case 'eventCancel':
+          eventHub.cancel(eventConn);
+          break;
+        case 'getLeaderboard':
+          eventHub.sendLeaderboard(eventConn);
+          break;
+        case 'eventAdmin':
+          runEvent(eventHub.admin(eventConn, msg), msg.type);
+          break;
+
         case 'reconnect': {
           const room = roomManager.getRoom(msg.roomId);
           if (!room) {
@@ -270,6 +335,7 @@ export function createConnectionHandler(roomManager: RoomManager) {
       if (currentRoomId && currentPlayerId) {
         roomManager.getRoom(currentRoomId)?.handleDisconnect(currentPlayerId, ws);
       }
+      eventHub.connectionClosed(eventConn);
     });
   };
 }

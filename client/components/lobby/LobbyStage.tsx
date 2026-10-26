@@ -7,15 +7,18 @@ import { ModePanel } from './ModePanel';
 import { SoloForm } from './SoloForm';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
+import { EventForm } from './EventForm';
+import type { EventFormProps } from './EventForm';
 
-export type Stage = 'home' | 'solo' | 'multi' | 'create' | 'join';
+export type Stage = 'home' | 'solo' | 'multi' | 'create' | 'join' | 'event';
 
-/** 뒤로가기 한 단계 — create/join은 multi로, solo/multi는 home으로. */
+/** 뒤로가기 한 단계 — create/join/event는 multi로, solo/multi는 home으로. */
 export const BACK_OF: Record<Exclude<Stage, 'home'>, Stage> = {
   solo: 'home',
   multi: 'home',
   create: 'multi',
   join: 'multi',
+  event: 'multi',
 };
 
 // 폼이 다 나타난 뒤(확장 300ms + 페이드 200ms) 첫 입력에 포커스를 준다.
@@ -56,6 +59,9 @@ export interface LobbyStageProps {
   onStartSolo: () => void;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+
+  /** 이벤트 방 참가하기 폼에 넘길 값 — page.tsx가 모아 준다(EVENT_MODE_ROADMAP.md) */
+  event: Omit<EventFormProps, 'firstFieldRef' | 'blocked'>;
 }
 
 /**
@@ -73,10 +79,12 @@ export function LobbyStage(props: LobbyStageProps) {
   const soloFirstRef = useRef<HTMLInputElement>(null);
   const createFirstRef = useRef<HTMLInputElement>(null);
   const joinFirstRef = useRef<HTMLInputElement>(null);
+  const eventFirstRef = useRef<HTMLInputElement>(null);
   const soloPanelRef = useRef<HTMLButtonElement>(null);
   const multiPanelRef = useRef<HTMLButtonElement>(null);
   const createPanelRef = useRef<HTMLButtonElement>(null);
   const joinPanelRef = useRef<HTMLButtonElement>(null);
+  const eventPanelRef = useRef<HTMLButtonElement>(null);
 
   // 폼이 열리면 첫 입력으로, 패널 단계로 돌아오면 그 패널로 포커스를 옮긴다.
   // prev가 null인 첫 실행은 건너뛴다 — 페이지에 들어오자마자 포커스를 뺏지 않기 위해서고,
@@ -94,7 +102,8 @@ export function LobbyStage(props: LobbyStageProps) {
     const formTarget =
       stage === 'solo' ? soloFirstRef :
       stage === 'create' ? createFirstRef :
-      stage === 'join' ? joinFirstRef : null;
+      stage === 'join' ? joinFirstRef :
+      stage === 'event' ? eventFirstRef : null;
 
     if (formTarget) {
       const t = setTimeout(() => formTarget.current?.focus(), reduced ? 0 : FOCUS_DELAY_MS);
@@ -106,6 +115,7 @@ export function LobbyStage(props: LobbyStageProps) {
       from === 'solo' ? soloPanelRef :
       from === 'create' ? createPanelRef :
       from === 'join' ? joinPanelRef :
+      from === 'event' ? eventPanelRef :
       from === 'multi' ? multiPanelRef : null;
 
     if (panelTarget) {
@@ -114,7 +124,7 @@ export function LobbyStage(props: LobbyStageProps) {
     }
   }, [stage]);
 
-  const inMulti = stage === 'multi' || stage === 'create' || stage === 'join';
+  const inMulti = stage === 'multi' || stage === 'create' || stage === 'join' || stage === 'event';
 
   return (
     <div className="lobby-stage" data-stage={stage}>
@@ -161,7 +171,7 @@ export function LobbyStage(props: LobbyStageProps) {
 
         {/* 멀티 패널 위에 겹쳐 있다가 오른쪽에서 왼쪽으로 드러나는 2열 */}
         <div className="multi-inner" inert={!inMulti}>
-          <section className="stage-col stage-col-create" inert={stage === 'join'}>
+          <section className="stage-col stage-col-create" inert={stage === 'join' || stage === 'event'}>
             <ModePanel
               panelRef={createPanelRef}
               className="stage-panel"
@@ -196,7 +206,7 @@ export function LobbyStage(props: LobbyStageProps) {
             </div>
           </section>
 
-          <section className="stage-col stage-col-join" inert={stage === 'create'}>
+          <section className="stage-col stage-col-join" inert={stage === 'create' || stage === 'event'}>
             <ModePanel
               panelRef={joinPanelRef}
               className="stage-panel"
@@ -222,6 +232,23 @@ export function LobbyStage(props: LobbyStageProps) {
                 canSubmit={!blocked && props.canSubmitName && !!props.roomCode.trim()}
                 onSubmit={props.onJoinRoom}
               />
+            </div>
+          </section>
+
+          {/* 세 번째 열 — 이벤트 방 참가하기(EVENT_MODE_ROADMAP.md §2.1). 오른쪽 끝이라 다른 열을 고르면 오른쪽으로 밀려난다. */}
+          <section className="stage-col stage-col-event" inert={stage === 'create' || stage === 'join'}>
+            <ModePanel
+              panelRef={eventPanelRef}
+              className="stage-panel"
+              tone="event"
+              artSrc={LOBBY_ASSETS.panelEvent}
+              title="이벤트 방 참가하기"
+              subtitle="행사 도전 — 개발자를 이겨라!"
+              disabled={blocked}
+              onClick={() => onGo('event')}
+            />
+            <div className="stage-form stage-form-event" inert={stage !== 'event'}>
+              <EventForm {...props.event} firstFieldRef={eventFirstRef} blocked={blocked} />
             </div>
           </section>
         </div>

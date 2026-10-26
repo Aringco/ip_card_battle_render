@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
-import { previewSkill, withDisplayedExp } from '@/lib/skills';
+import { isSkillOpen, oneWellOpen, previewSkill, withDisplayedExp } from '@/lib/skills';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
+import { EventHud } from './EventHud';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { MainComboBanner } from '@/components/effects/MainComboBanner';
@@ -45,6 +46,7 @@ export function GameLayout({
   error,
   animState,
   paused,
+  eventIntro = false,
 }: {
   gameState: ClientGameState;
   // 턴 제한시간 만료 시각 — 서버 시계가 아니라 내 브라우저 시계 기준으로 환산된 값이
@@ -66,6 +68,8 @@ export function GameLayout({
   animState: AnimationState;
   /** 일시정지 중 — 타이머 표시와 "고를 게 없을 때의 자동 턴 종료"를 함께 멈춘다. */
   paused: boolean;
+  /** 목표점수 달성하기의 시작 룰렛이 도는 중 — 머리표가 목표를 미리 보여 주지 않게 한다 */
+  eventIntro?: boolean;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
   const spectating = myTeam === null;
@@ -93,7 +97,10 @@ export function GameLayout({
   // 미리보기한다. 관전자는 내 팀이 없으므로 "지금 고르고 있는 팀"(없으면 지금 차례인 팀)을
   // 대신 본다 — 그래야 관전자 손가락 가이드가 실제로 그 팀이 고를 수 있는 행동을 짚는다.
   const skillPreviewTeam = myTeam ?? gameState.pendingChoice ?? animState.displayedActiveTeam;
-  const noEligible = isMyChoiceTurn && ANIMALS.every(a => previewSkill(gameState, skillPreviewTeam, a).level === 0);
+  // ⚠️ 한 우물만 파기에서 **잠긴 카드만** 레벨이 있으면 그것도 "고를 게 없음"이다 — 서버는 그때 짧은 시간
+  //    (noActionTimeSec)을 거는데, 화면이 레벨만 보고 기다리면 둘이 어긋난다(EVENT_MODE_ROADMAP.md §3-3의 화면 3곳 중 하나).
+  const noEligible = isMyChoiceTurn && ANIMALS.every(a =>
+    previewSkill(gameState, skillPreviewTeam, a).level === 0 || !isSkillOpen(gameState, skillPreviewTeam, a));
   // 관전자용 손가락 가이드가 가리킬 팀 — 지금 어느 단계인지에 따라 보드(장소 선택)와
   // 행동 선택 영역 중 한쪽에만 켠다. 정산 연출이 도는 동안에는(플레이어 화면에서도
   // 조작이 잠기는 구간) 꺼둔다.
@@ -230,6 +237,8 @@ export function GameLayout({
               myTeamChoosing={myTeamChoosing}
               // 시연이면 대본이 열어 준 기술 한 칸만 누를 수 있다(없으면 null → 평소와 같다).
               demoAllowed={gameState.demo ? gameState.demo.allowedSkills : null}
+              // 한 우물만 파기 — 미리보기하는 편(내 팀)의 잠금. 상대 CPU는 잠금이 없어 null이다.
+              wellOpen={oneWellOpen(gameState, skillPreviewTeam)}
               onChoose={onChooseSkill}
               onPass={onPassSkill}
             />
@@ -279,6 +288,11 @@ export function GameLayout({
           잠깐 덮는 배너가 겹쳐 뜨면 그 팝업을 오히려 가렸다.
           축제 **시작** 배너는 남긴다 — 진입 순간 딱 한 번, 방 규칙을 알리는 다른 역할이다. */}
       <FestivalStartBanner info={animState.festivalStartInfo} />
+
+      {/* 이벤트 판 — 배지·전체 시계·한 우물 잠금 안내. 판 위에 띄우는 오버레이라 액자 배치에 끼어들지 않는다. */}
+      {gameState.event && (
+        <EventHud gameState={gameState} myTeam={myTeam} paused={paused} intro={eventIntro} />
+      )}
 
       {/* 시연 4장 — 볼 결말 고르기. 판 위에 덮는 오버레이라 배치에 끼어들지 않는다
           (자막 띠와 달리 액자 칸 안에 넣지 않는 이유는 DemoSceneMenu 주석 참고). */}

@@ -71,6 +71,8 @@ export function GameRulesFields({
   onChange,
   hidePause = false,
   mode = 'team',
+  hideFirstTeam = false,
+  heading = '게임 규칙 (방장이 정해요)',
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
@@ -78,6 +80,10 @@ export function GameRulesFields({
   hidePause?: boolean;
   /** 개인전이면 "선 플레이어(먼저 시작하는 팀)"가 없다 — 차례 순서는 시작할 때 섞어서 정한다. */
   mode?: GameMode;
+  /** 선 플레이어를 감춘다 — 이벤트 '개발자를 이겨라'는 언제나 도전자 선공이다(beatDevSettings가 고정). */
+  hideFirstTeam?: boolean;
+  /** 접힌 버튼의 제목 — 이벤트 개발자 대기실은 "개발자가 정해요"다. */
+  heading?: string;
 }) {
   const fields = hidePause ? RULE_FIELDS.filter(f => !PAUSE_KEYS.includes(f.key)) : RULE_FIELDS;
   const [open, setOpen] = useState(false);
@@ -106,7 +112,7 @@ export function GameRulesFields({
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600"
       >
-        <span><UiIcon name="iconCog" /> 게임 규칙 (방장이 정해요)</span>
+        <span><UiIcon name="iconCog" /> {heading}</span>
         <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
       {open && (
@@ -116,7 +122,7 @@ export function GameRulesFields({
         // 밖으로 나가 "펼치기를 눌러도 아무 일도 없는" 화면이 됐다(globals.css .lobby-rules 주석).
         <div ref={bodyRef} className="lobby-rules-body px-3 pb-2.5 border-t border-gray-100 pt-2 flex flex-col gap-1.5">
           {/* 선 플레이어 — 숫자 입력이 아니라 3지선다라 격자 위에 한 줄로 둔다 */}
-          {mode === 'team' && (
+          {mode === 'team' && !hideFirstTeam && (
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-gray-500">선 플레이어 (먼저 시작하는 팀)</label>
             <div className="flex gap-1.5 items-center">

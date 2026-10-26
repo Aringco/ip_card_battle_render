@@ -69,6 +69,9 @@ export function serializeState(
     skillsPerTurn: state.skillsPerTurn,
     skillsUsedThisTurn: state.skillsUsedThisTurn,
     ranks: { ...state.ranks },
+    // 이벤트 '한 우물만 파기'만 — 없는 판의 직렬화 모양은 예전과 똑같이 둔다. ⚠️ 빠뜨리면 F5 뒤 잠금이 풀려 보인다.
+    ...(state.oneWell ? { oneWell: { ...state.oneWell, allowed: [...state.oneWell.allowed] } } : {}),
+    ...(state.scoreRace ? { scoreRace: { ...state.scoreRace } } : {}),
   };
 }
 

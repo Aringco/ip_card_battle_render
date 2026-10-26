@@ -115,16 +115,17 @@ export interface FestivalDrawInfo {
  * 그 턴의 횟수는 n(festivalDrawCount) × 단계다. k가 크거나 이미 막판이라 다음 단계 턴이
  * MAX_TURN을 넘으면 "강화될 일이 없다"는 뜻이므로 예고값을 null로 돌려준다.
  */
-export function festivalDrawInfoAt(turn: number, settings: GameSettings): FestivalDrawInfo {
+export function festivalDrawInfoAt(turn: number, settings: GameSettings, maxTurn: number = MAX_TURN): FestivalDrawInfo {
   const { festivalDrawCount, festivalDrawIncreaseInterval } = settings;
   // MAX_TURN을 넘는 festivalTurn은 advanceTurn과 동일하게 MAX_TURN 그 자체로 취급한다
   // (그렇지 않으면 축제가 열렸는데도 매번 0회로 잘못 계산될 수 있다).
-  const festivalTurn = Math.min(settings.festivalTurn, MAX_TURN);
+  // maxTurn — 그 판의 턴 상한(평소 MAX_TURN, 목표점수 달성하기는 그 판의 maxTurn — shared/sides.ts의 maxTurnOf).
+  const festivalTurn = Math.min(settings.festivalTurn, maxTurn);
   if (turn < festivalTurn) return { count: 0, turnsToNextStage: null, nextCount: null };
 
   const stage = Math.floor((turn - festivalTurn) / festivalDrawIncreaseInterval) + 1;
   const nextStageTurn = festivalTurn + stage * festivalDrawIncreaseInterval;
-  const reachable = nextStageTurn <= MAX_TURN;
+  const reachable = nextStageTurn <= maxTurn;
   return {
     count: festivalDrawCount * stage,
     turnsToNextStage: reachable ? nextStageTurn - turn : null,

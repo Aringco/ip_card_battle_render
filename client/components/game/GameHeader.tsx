@@ -1,5 +1,5 @@
 import type { ClientGameState, SideId } from 'shared';
-import { MAX_TURN, festivalDrawInfoAt } from 'shared';
+import { festivalDrawInfoAt, maxTurnOf } from 'shared';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
 import { PLAY_ASSETS } from '@/lib/playAssets';
 
@@ -92,7 +92,7 @@ export function GameHeader({
   // 이번 턴의 도토리 축제 보너스 안내 — 팀의 pendingFestivalDraws를 그대로 읽으면 장소를
   // 클릭하는 순간 소모돼 0이 되므로(=행동 선택 단계에서 문구가 짧아진다), 예약과 똑같은 식
   // (festivalDrawInfoAt)으로 "이번 턴에 걸린 횟수"를 다시 계산해 두 단계에서 같은 문구를 쓴다.
-  const festivalInfo = festivalDrawInfoAt(gameState.turn, gameState.settings);
+  const festivalInfo = festivalDrawInfoAt(gameState.turn, gameState.settings, maxTurnOf(gameState));
 
   return (
     // 그림자(shadow-md)를 뺐다 — 들보는 양 끝이 덩굴로 마무리된 **모양 있는 그림**인데
@@ -124,7 +124,7 @@ export function GameHeader({
         <div className="play-step-bar flex items-center gap-1.5 py-1">
           {/* 턴 — 알약이 아니라 둥근 어두운 칸. 같은 판 안에서 성격이 다름을 보인다 */}
           <span className="play-turn-inner font-bold tabular-nums whitespace-nowrap">
-            {gameState.turn} / {MAX_TURN}턴
+            {gameState.turn} / {maxTurnOf(gameState)}턴
           </span>
           <span className={`play-pill ${teamPillClass} font-bold whitespace-nowrap`} style={spectatorLabelStyle}>
             {relativeLabel}

@@ -79,7 +79,7 @@ export function ModePanel({
             {emoji}
           </span>
         )}
-        <span className="text-xl md:text-2xl font-extrabold drop-shadow">{title}</span>
+        <span className="stage-panel-title text-xl md:text-2xl font-extrabold drop-shadow">{title}</span>
         <span className="text-xs md:text-sm text-white/85 leading-snug">{subtitle}</span>
       </span>
     </button>

@@ -54,6 +54,8 @@ export const LOBBY_ASSETS = {
   panelMulti: '/lobby/panel_multi.webp',
   panelCreate: '/lobby/panel_create.webp',
   panelJoin: '/lobby/panel_join.webp',
+  /** 이벤트 방 참가하기 — 노을 진 호숫가 축제에서 네 동물이 춤추는 그림(원본 1254² PNG는 client/assets-src/panel_event.png) */
+  panelEvent: '/lobby/panel_event.webp',
   /**
    * 폼(혼자 놀기·방 만들기·방 참가하기) 뒤에 깔리는 나무 액자와 네 귀퉁이 장식.
    *
@@ -197,7 +199,7 @@ export const LOBBY_ASSETS = {
  *
  * 싱글만 눈에 띄게 밝은 것은 의도다 — 첫 화면의 두 선택지가 같은 초록이면 구분이 안 된다.
  */
-export type PanelTone = 'solo' | 'multi' | 'create' | 'join';
+export type PanelTone = 'solo' | 'multi' | 'create' | 'join' | 'event';
 
 /**
  * 배경이 아직 임시 스탠드인인지 여부.

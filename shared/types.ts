@@ -138,6 +138,16 @@ export interface GameState {
   skillsPerTurn: 1 | 2;
   skillsUsedThisTurn: number; // 이번 차례에 지금까지 쓴 기술 수 — 차례가 넘어갈 때 0으로
   ranks: Record<SideId, number>; // 개인전 — 정해진 순위만. 팀전은 {}
+
+  // 이벤트 '한 우물만 파기'에서만 — 그 편은 allowed 안의 카드만 쓸 수 있고, 그중 하나를 처음 쓰는 순간
+  // locked가 세워져 이후로는 그 카드만 쓸 수 있다. 잠금은 엔진(skills.ts의 eligibleAnimals·applySkillChoice)이
+  // 한 곳에서 지킨다 — 방이 따로 세우면 시간초과 대체 선택 경로에서 고정이 빠진다(EVENT_MODE_ROADMAP.md §3-3).
+  oneWell?: { side: SideId; allowed: Animal[]; locked: Animal | null };
+
+  // 이벤트 '목표점수 달성하기'에서만 — 그 편은 maxTurn턴이 끝났을 때 점수(체력)가 target 이상이면 승리, 아니면 패배다.
+  // 이 판에는 체력 즉시 승패(넉아웃)가 없고(0점이어도 계속한다), 턴 상한도 MAX_TURN 대신 maxTurn이다
+  // (turnManager의 checkKnockout·advanceTurn, shared/sides.ts의 maxTurnOf). EVENT_MODE_ROADMAP.md §1-2.
+  scoreRace?: { side: SideId; target: number; maxTurn: number };
 }
 
 // 게임 이벤트 (클라이언트 연출 및 시뮬레이션 로그용)
@@ -166,13 +176,16 @@ export type GameEvent =
       hpAfter: Record<SideId, number>; // 적용 직후 모든 편의 체력
       // 특허랑이의 대상(개인전). 팀전은 비워 둔다 — 화면은 "상대"를 스스로 계산하지 않고 이 값을 읽는다.
       target?: SideId;
+      // 한 우물만 파기 — 이 발동으로 카드가 고정됐다(처음 쓴 순간에만 실린다). 화면이 "이제부터 ○○만!"을 띄운다.
+      oneWellLocked?: Animal;
     }
   | { type: 'skillPassed'; team: SideId; auto: boolean } // "아무것도 하지 않음"을 선택(auto=true면 고를 수 있는 행동이 없어 화면에 알리지 않고 자동 처리)
   | { type: 'festival' } // FESTIVAL_TURN 도달 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
   // reason: 'forfeit'은 엔진이 만들지 않는다 — 항복·나가기는 방(Room)에서 일어나는 일이라
   // Room.forfeit이 이 이벤트를 직접 만들어 보낸다(엔진은 두 팀이 끝까지 두는 경우만 안다).
   // 개인전의 reason 'ranked'는 "순위가 정해지지 않은 사람이 1명 이하가 됐다"는 뜻이다.
-  | { type: 'gameEnd'; winner: SideId | 'draw'; reason: 'knockout' | 'turnLimit' | 'forfeit' | 'ranked' }
+  // 'target'은 이벤트 '목표점수 달성하기'(scoreRace)의 마지막 턴 판정 — 점수가 목표 이상이면 그 편, 아니면 상대가 이긴다.
+  | { type: 'gameEnd'; winner: SideId | 'draw'; reason: 'knockout' | 'turnLimit' | 'forfeit' | 'ranked' | 'target' }
   // 개인전 — 한 사람의 순위가 정해졌다(승리선 도달·체력 0·항복·마지막 한 명).
   | { type: 'ranked'; team: SideId; rank: number; reason: FinishReason }
   | { type: 'timeout'; place: Place }

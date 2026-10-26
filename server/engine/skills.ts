@@ -6,9 +6,26 @@ export function levelOf(state: GameState, team: SideId, animal: Animal): number 
   return Math.floor(state.teams[team].exp[animal] / THRESHOLDS[animal]);
 }
 
-/** 레벨이 1 이상이라 지금 고를 수 있는 동물 목록. */
+/**
+ * 이벤트 '한 우물만 파기'의 잠금 — 그 편이 지금 쓸 수 있는 카드 목록. 잠금이 없는 편(일반 게임·CPU)은 null.
+ * 처음 쓴 카드가 정해지기 전에는 allowed(상표토끼·특허랑이) 둘, 정해진 뒤에는 그 한 장이다.
+ */
+export function oneWellOpen(state: GameState, team: SideId): readonly Animal[] | null {
+  const well = state.oneWell;
+  if (!well || well.side !== team) return null;
+  return well.locked ? [well.locked] : well.allowed;
+}
+
+/**
+ * 레벨이 1 이상이라 지금 고를 수 있는 동물 목록.
+ *
+ * ⚠️ "지금 쓸 수 있는 기술"의 **단일 관문**이다 — 기술 선택 검증(processSkillChoice)·시간초과 대체 선택
+ *    (randomEligibleSkill)·방의 "고를 행동이 없을 때" 짧은 타이머가 모두 여기를 본다. 한 우물만 파기의 잠금도
+ *    그래서 여기서 건다(다른 곳에 걸면 그 경로 중 하나가 잠금을 모른다).
+ */
 export function eligibleAnimals(state: GameState, team: SideId): Animal[] {
-  return ANIMALS.filter(a => levelOf(state, team, a) > 0);
+  const open = oneWellOpen(state, team);
+  return ANIMALS.filter(a => levelOf(state, team, a) > 0 && (open === null || open.includes(a)));
 }
 
 /**
@@ -100,6 +117,15 @@ export function applySkillChoice(
   stat.totalHpGained += myHpDelta;
   stat.totalExtraDraws += extraDrawsQueued;
 
+  // ⑥ 한 우물만 파기 — 허용 카드를 처음 쓰는 순간 그 카드로 고정한다. **여기(엔진 안)에서** 세워야
+  //    시간초과로 서버가 대신 고른 기술(randomEligibleSkill → applySkillChoice)도 똑같이 고정된다.
+  let oneWellLocked: Animal | undefined;
+  const well = state.oneWell;
+  if (well && well.side === team && well.locked === null && well.allowed.includes(animal)) {
+    well.locked = animal;
+    oneWellLocked = animal;
+  }
+
   return {
     type: 'skillApplied',
     team,
@@ -114,6 +140,7 @@ export function applySkillChoice(
     hpAfter: hpSnapshot(state),
     // 대상은 개인전의 특허랑이에만 싣는다 — 팀전 이벤트의 모양은 예전과 똑같이 둔다.
     ...(state.mode === 'individual' && animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
+    ...(oneWellLocked ? { oneWellLocked } : {}),
   };
 }
 

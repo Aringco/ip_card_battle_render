@@ -14,6 +14,9 @@ import { RotateHint } from '@/components/game/RotateHint';
 import { playBgm } from '@/lib/bgm';
 import { isFinished, mySideOf } from '@/lib/individual';
 import { startPreload } from '@/lib/preload';
+import { markEventReturn } from '@/lib/eventSession';
+import { useBefore } from '@/lib/useBefore';
+import { ScoreRaceIntro } from '@/components/game/ScoreRaceIntro';
 
 const STORAGE_TEAM = 'cardBattle_team';
 const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 BGM은 절반 볼륨으로
@@ -24,11 +27,13 @@ export default function GamePage() {
     gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, demoContinue, demoScene,
     error, connected, playerId,
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
-    requestPause, respondPause, resumeGame, surrender, leaveGame,
+    requestPause, respondPause, resumeGame, surrender, leaveGame, eventIntroUntil,
   } = useWebSocket();
   const [myTeam, setMyTeam] = useState<SideId | null>(null);
 
   const animState = useAnimationQueue(lastEvents, gameState);
+  // 목표점수 달성하기의 시작 룰렛이 도는 중인가 — 그동안 판은 서버에서 멈춰 있다(ScoreRaceIntro 주석).
+  const introActive = useBefore(eventIntroUntil);
 
   // 보통은 로비에서 이미 끝나 있지만, 새로고침·재접속으로 이 페이지에 바로
   // 들어온 경우를 대비해 여기서도 프리로드를 시작한다(이미 시작했으면 무시됨).
@@ -102,6 +107,13 @@ export default function GamePage() {
     router.push('/');
   }, [leaveGame, router]);
 
+  // 이벤트 — 도전자는 이벤트 폼으로(로비가 그 폼을 연 채로 시작), 개발자는 로비로 돌아가 저절로 다시 대기한다
+  // (개발자 세션은 eventSession에 남아 있으므로 로비가 마운트되자마자 대기를 다시 알린다 — 상시 대기).
+  const handleEventBack = useCallback(() => {
+    markEventReturn();
+    handleLeave();
+  }, [handleLeave]);
+
   if (!gameState) {
     return (
       <div className="min-h-screen bg-jungle-50 flex flex-col items-center justify-center gap-3">
@@ -141,6 +153,9 @@ export default function GamePage() {
         // 시연 4장에서만 쓰인다 — 서버가 demo.replay로 "되돌아갈 곳이 있다"고
         // 알려줄 때만 버튼이 뜬다(GameEndScreen 주석 참고).
         onReplay={handleDemoContinue}
+        // 이벤트 판이면 도전자(A)는 [이벤트로 돌아가기], 개발자(B)는 [다음 도전자 받기](10초 뒤 저절로)
+        onEventBack={gameState.event && myTeam === 'A' ? handleEventBack : undefined}
+        onNextChallenger={gameState.event?.kind === 'beatDev' && myTeam === 'B' ? handleLeave : undefined}
       />
     );
   }
@@ -174,6 +189,7 @@ export default function GamePage() {
         error={error}
         animState={animState}
         paused={gameState.paused}
+        eventIntro={introActive}
       />
       )}
       {/* 게임 중 메뉴(⏸) — 판 바깥에 둔다. GameLayout 안에 넣으면 결정타 연출의
@@ -203,10 +219,15 @@ export default function GamePage() {
         onRespond={respondPause}
         onSurrender={surrender}
         onLeave={handleLeave}
+        noPauseText={gameState.event ? '이벤트 판은 일시정지가 없어요' : undefined}
       />
       {/* 세로로 든 폰에 "가로로 돌려 주세요"를 덮는다. **항상 마운트하고** 보이는 조건은
           CSS가 정한다(RotateHint 주석 — hydration과 회전 리렌더를 피하기 위해서다).
           결과 화면에는 뜨지 않는다 — 이 return 위에서 GameEndScreen이 먼저 돌아간다. */}
+      {/* 목표점수 달성하기 — 시작 룰렛. 일시정지 창보다 위에 덮는다(그동안은 메뉴도 누를 수 없다). */}
+      {introActive && gameState.scoreRace && gameState.phase === 'playing' && (
+        <ScoreRaceIntro target={gameState.scoreRace.target} until={eventIntroUntil} maxTurn={gameState.scoreRace.maxTurn} />
+      )}
       <RotateHint />
     </>
   );

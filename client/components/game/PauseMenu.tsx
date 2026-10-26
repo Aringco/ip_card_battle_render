@@ -105,6 +105,7 @@ export function PauseMenu({
   onSurrender,
   onLeave,
   individual = false,
+  noPauseText,
 }: {
   paused: boolean;
   /** 멈춘 팀 — 이 팀만 다시 시작할 수 있다(서버가 같은 규칙으로 막는다). */
@@ -130,6 +131,8 @@ export function PauseMenu({
   onLeave: () => void;
   /** 개인전 — 항복·나가기의 안내 문구가 "상대 팀의 승리"가 아니라 "나만 패배로 기록"이 된다. */
   individual?: boolean;
+  /** 이 판은 일시정지가 아예 없다(이벤트 판) — 횟수 대신 이 문구를 보여 준다. */
+  noPauseText?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -208,7 +211,7 @@ export function PauseMenu({
         ? '게임 계속하기'
         : `${pausedBy?.nickname ?? '상대'} 님이 멈췄어요`
       : outOfPauses
-        ? '일시정지를 다 썼어요'
+        ? (noPauseText ?? '일시정지를 다 썼어요')
         : pauseUnlimited
           ? '게임 일시정지'
           : `게임 일시정지 (${pauseLeft}회 남음)`;

@@ -3,3 +3,4 @@ export * from './types';
 export * from './protocol';
 export * from './names';
 export * from './sides';
+export * from './events';
