@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import { Pool } from 'pg';
 import { normalizeNameKey } from 'shared';
-import type { EventResultRow, Leaderboard } from 'shared';
+import type { EventResultRow, Leaderboard, LeaderboardRange } from 'shared';
 import { computeLeaderboard } from './leaderboard';
 
 /**
@@ -20,7 +20,10 @@ import { computeLeaderboard } from './leaderboard';
  * 닉네임 중복의 최종 판정은 DB의 **유일 제약**이다(같은 이름으로 동시에 들어와도 먼저 들어간 쪽만 성공).
  */
 
-/** 새로 저장할 결과 한 건 — id·시각·무효 여부는 저장소가 붙인다. */
+/**
+ * 새로 저장할 결과 한 건 — id·끝난 시각·무효 여부는 저장소가 붙인다. 시작 시각(startedAt)은 방이 판을 시작할 때 잰 값을
+ * 넘긴다 — 개발자가 순위표를 행사 시간대로 잘라 볼 때(LeaderboardRange) 판의 시작·끝이 둘 다 필요하다.
+ */
 export type NewEventResult = Omit<EventResultRow, 'id' | 'createdAt' | 'invalid'>;
 
 export type RegisterOutcome =
@@ -51,6 +54,9 @@ export class RecordStore {
   // DB에 아직 못 넣은 결과(메모리의 행 객체 그 자체 — 넣는 데 성공하면 id가 채워진다)와 그 id를 기다리는 쪽
   private pendingRows: Array<{ row: EventResultRow; resolve: (id: number | null) => void }> = [];
   private pendingPlayers = new Set<string>(); // DB에 아직 못 넣은 닉네임 키
+  // 운영 설정(event_settings) — 지금은 개발자가 정하는 이벤트 규칙(EventConfig) 하나. 결과와 달리 재시도 큐가 없다:
+  // 마지막에 저장한 값 하나만 의미가 있어서, 실패하면 메모리 값으로 계속 돌고 다음 저장 때 다시 넣는다.
+  private settings = new Map<string, unknown>();
   private conflicts = 0;
   private localSeq = 0; // 메모리 전용일 때의 기록 번호
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -88,10 +94,13 @@ export class RecordStore {
     if (!this.pool) return;
     try {
       await this.pool.query(SCHEMA_SQL);
-      const [players, results] = await Promise.all([
+      const [players, results, settings] = await Promise.all([
         this.pool.query('select name_key, display_name, pin_hash from event_players'),
         this.pool.query('select * from event_results order by id'),
+        this.pool.query('select key, value from event_settings'),
       ]);
+      // DB에 붙기 전에 메모리에서 바꾼 설정이 있으면 그쪽이 더 새것이다 — 덮어쓰지 않는다.
+      for (const st of settings.rows) if (!this.settings.has(st.key)) this.settings.set(st.key, st.value);
       for (const p of players.rows) {
         this.players.set(p.name_key, { displayName: p.display_name, pinHash: p.pin_hash ?? '', persisted: true });
       }
@@ -181,6 +190,28 @@ export class RecordStore {
     return createHash('sha256').update(`${this.pepper}:${key}:${pin}`).digest('hex');
   }
 
+  // ─── 운영 설정 ──────────────────────────────────────────────────────────────
+
+  /** 메모리의 설정 값(없으면 undefined). DB에 붙을 때 읽어 둔 값도 여기 있다. */
+  setting(key: string): unknown {
+    return this.settings.get(key);
+  }
+
+  /** 설정을 바꾼다 — 메모리에 곧바로, DB에는 비동기로(실패해도 메모리 값으로 계속 돈다). */
+  async saveSetting(key: string, value: unknown): Promise<void> {
+    this.settings.set(key, value);
+    if (!this.pool) return;
+    try {
+      await this.pool.query(
+        `insert into event_settings (key, value, updated_at) values ($1, $2, now())
+         on conflict (key) do update set value = excluded.value, updated_at = now()`,
+        [key, JSON.stringify(value)],
+      );
+    } catch (err) {
+      this.log(`[event] 설정(${key})을 DB에 넣지 못했습니다 — 메모리 값으로 계속합니다(재시작하면 기본값).`, err);
+    }
+  }
+
   // ─── 결과 ──────────────────────────────────────────────────────────────────
 
   /**
@@ -201,11 +232,18 @@ export class RecordStore {
   }
 
   results(): EventResultRow[] {
-    return this.rows.map(r => ({ ...r, peakLevels: { ...r.peakLevels }, detail: { ...r.detail } }));
+    return this.rows.map(r => ({
+      ...r,
+      peakLevels: { ...r.peakLevels },
+      ...(r.peakExp ? { peakExp: { ...r.peakExp } } : {}),
+      ...(r.peakSkill ? { peakSkill: { ...r.peakSkill } } : {}),
+      detail: { ...r.detail },
+    }));
   }
 
-  leaderboard(): Leaderboard {
-    return computeLeaderboard(this.rows);
+  /** range를 주면 그 기간 안에 시작해 끝난 판만 센다(leaderboard.ts의 inRange). */
+  leaderboard(range?: LeaderboardRange): Leaderboard {
+    return computeLeaderboard(this.rows, range);
   }
 
   async invalidate(recordId: number, invalid: boolean): Promise<boolean> {
@@ -265,10 +303,12 @@ export class RecordStore {
         const { row, resolve } = this.pendingRows[0];
         const res = await this.pool.query(
           `insert into event_results
-             (created_at, event, player_name, developer, won, end_reason, peak_levels, detail, turns, duration_ms, invalid)
-           values (to_timestamp($1 / 1000.0), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
-          [row.createdAt, row.event, row.playerName, row.developer, row.won, row.endReason,
-           JSON.stringify(row.peakLevels), JSON.stringify(row.detail), row.turns, row.durationMs, row.invalid],
+             (created_at, started_at, event, player_name, developer, won, end_reason, peak_levels, peak_exp, peak_skill, detail, turns, duration_ms, invalid)
+           values (to_timestamp($1 / 1000.0), to_timestamp($2 / 1000.0), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning id`,
+          [row.createdAt, row.startedAt, row.event, row.playerName, row.developer, row.won, row.endReason,
+           JSON.stringify(row.peakLevels), row.peakExp ? JSON.stringify(row.peakExp) : null,
+           row.peakSkill ? JSON.stringify(row.peakSkill) : null, JSON.stringify(row.detail),
+           row.turns, row.durationMs, row.invalid],
         );
         row.id = Number(res.rows[0].id);
         this.pendingRows.shift();
@@ -310,18 +350,26 @@ function rowFromDb(r: Record<string, unknown>): EventResultRow {
     if (typeof v === 'string') { try { return JSON.parse(v) as T; } catch { return fallback; } }
     return fallback;
   };
+  const createdAt = new Date(r.created_at as string).getTime();
+  const durationMs = Number(r.duration_ms ?? 0);
   return {
     id: Number(r.id),
-    createdAt: new Date(r.created_at as string).getTime(),
+    // started_at 열이 생기기 전(2026-10-27 이전)의 행은 비어 있다 — 끝난 시각에서 판 길이를 빼 되짚는다.
+    startedAt: r.started_at ? new Date(r.started_at as string).getTime() : createdAt - durationMs,
+    createdAt,
     event: r.event as EventResultRow['event'],
     playerName: String(r.player_name),
     developer: (r.developer as string | null) ?? null,
     won: Boolean(r.won),
     endReason: r.end_reason as EventResultRow['endReason'],
     peakLevels: parse(r.peak_levels, { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 }),
+    // 카드별 최대 경험치 — 이 열이 생기기 전(2026-10-27 이전)의 행은 비어 있다(순위표는 레벨만 그린다)
+    ...(r.peak_exp ? { peakExp: parse(r.peak_exp, { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 }) } : {}),
+    // 카드별 기술 한 번의 최고 효과 — 이 열이 생기기 전(2026-10-27 이전)의 행은 비어 있다
+    ...(r.peak_skill ? { peakSkill: parse(r.peak_skill, { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 }) } : {}),
     detail: parse(r.detail, {}),
     turns: Number(r.turns ?? 0),
-    durationMs: Number(r.duration_ms ?? 0),
+    durationMs,
     invalid: Boolean(r.invalid),
   };
 }
@@ -367,6 +415,23 @@ create table if not exists event_results (
   invalid      boolean not null default false
 );
 create index if not exists event_results_event_won on event_results (event, won);
+-- 판이 시작된 시각(2026-10-27 추가). 이미 만들어진 표에는 열만 덧붙인다 — 그 전의 행은 비어 있고, 읽을 때
+-- created_at − duration_ms로 되짚는다(rowFromDb). created_at은 판이 끝나 기록된 시각이다.
+alter table event_results add column if not exists started_at timestamptz;
+-- 카드별 최대 경험치(2026-10-27 추가 — 순위표의 카드별 "점수"). 그 전 행은 비어 있다.
+alter table event_results add column if not exists peak_exp jsonb;
+-- 카드별 기술 한 번의 최고 효과(2026-10-27 추가 — 순위표의 카드별 점수·동물의 왕). 그 전 행은 비어 있다.
+alter table event_results add column if not exists peak_skill jsonb;
+-- 개발자가 순위표를 행사 시간대로 잘라 볼 때(LeaderboardRange) 시각으로 찾는다.
+create index if not exists event_results_started_at on event_results (started_at);
+create index if not exists event_results_created_at on event_results (created_at);
+-- 운영 설정(2026-10-27) — 개발자가 정하는 이벤트 규칙(EventConfig) 등. 행사 종료 일괄 삭제(wipe)에도 남는다.
+-- (옛 event_config 표와 이름을 일부러 달리했다 — 그 표가 남아 있는 DB에서 열 구성이 달라 부딪히지 않게)
+create table if not exists event_settings (
+  key          text primary key,
+  value        jsonb not null,
+  updated_at   timestamptz not null default now()
+);
 create table if not exists event_players (
   name_key     text primary key,
   display_name text not null,

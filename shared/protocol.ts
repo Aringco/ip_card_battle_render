@@ -2,6 +2,7 @@ import type { Animal, GameEvent, GameMode, GameSettings, GameState, Place, Seat,
 import type { PlayerColorId } from './constants';
 import type {
   EventAdminState,
+  EventConfig,
   EventDevStatus,
   EventInfo,
   EventKind,
@@ -74,14 +75,17 @@ export type ClientMessage =
   | { type: 'eventDevStandby'; token: string; name: string; devId?: string; settings?: Partial<GameSettings> }
   // 대기 중에 규칙을 바꾼다 — 다음 판부터 적용된다.
   | { type: 'eventDevSettings'; settings: Partial<GameSettings> }
-  | { type: 'eventDevAway'; away: boolean } // [잠시 자리 비움] — 비운 동안은 매칭되지 않는다
+  // 목표점수 달성하기·한 우물만 파기의 규칙(행사 전체) — 대기실에 들어온 개발자만. 서버가 normalizeEventConfig로 다시 자른다
+  | { type: 'eventDevConfig'; config: EventConfig }
+  | { type: 'eventDevAway'; away: boolean } // [자리 비움] — 비운 동안은 매칭되지 않는다
   | { type: 'eventDevLeave' }               // 개발자 대기를 그만둔다
   // 도전 시작. name이 비어 있으면 서버가 아직 안 쓰인 무작위 이름을 준다. pin은 숫자 4자리 — 처음 쓰는
   // 닉네임이면 그 PIN으로 등록되고, 이미 쓴 닉네임이면 등록 때의 PIN과 같아야 재도전으로 받는다(§7-1).
   // 목표점수 달성하기의 목표 점수는 서버가 판마다 10~20에서 뽑는다(도전자가 고르지 않는다).
   | { type: 'eventChallenge'; kind: EventKind; name: string; pin: string }
   | { type: 'eventCancel' }      // 개발자를 이겨라 대기 줄에서 빠진다
-  | { type: 'getLeaderboard' }   // 순위표(동물의 왕 등)
+  // 순위표(동물의 왕 등). from·to(ms)를 주면 그 기간 안에 시작해 끝난 판만 센다 — 개발자가 행사 시간대를 고를 때(LeaderboardRange)
+  | { type: 'getLeaderboard'; from?: number | null; to?: number | null }
   // 운영자 화면 — token은 서버 환경변수 EVENT_ADMIN_TOKEN과 같아야 한다. 검사는 서버가 한다.
   | { type: 'eventAdmin'; token: string; action: 'state' }
   | { type: 'eventAdmin'; token: string; action: 'invalidate'; recordId: number; invalid: boolean }

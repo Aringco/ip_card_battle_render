@@ -35,14 +35,17 @@ import {
   clampSettings,
   ANIMALS,
   THRESHOLDS,
-  ONE_WELL_SETTINGS,
+  oneWellSettings,
+  skillMultiplier,
+  skillPeakValue,
   ONE_WELL_ALLOWED,
+  ONE_WELL_MULTIPLIERS,
   SCORE_RACE_CPU_HP,
   SCORE_RACE_INTRO_MS,
   SCORE_RACE_INTRO_WAIT_MS,
   SCORE_RACE_START_SCORE,
   SCORE_RACE_TURNS,
-  TIME_ATTACK_SETTINGS,
+  timeAttackSettings,
   beatDevSettings,
   opponentsOf,
 } from 'shared';
@@ -144,7 +147,7 @@ function pickComputerSkill(state: GameState, team: Team): Animal | null {
 
   for (const animal of options) {
     if (animal === 'sheep' || animal === 'mermaid') continue;
-    const amount = levelOf(state, team, animal) * me.pendingMultiplier;
+    const amount = levelOf(state, team, animal) * skillMultiplier(state, team, animal);
     if (animal === 'rabbit' && me.hp + amount >= winHp) return animal;
     if (animal === 'tiger' && amount >= foe.hp) return animal;
   }
@@ -180,13 +183,19 @@ export interface EventGameResult {
   won: boolean;
   endReason: EventEndReason;
   peakLevels: Record<Animal, number>;
+  /** 카드별 최대 경험치(CSV용) */
+  peakExp: Record<Animal, number>;
+  /** 카드별 기술 한 번의 최고 효과(skillPeakValue) — 순위표의 카드별 점수·동물의 왕(2026-10-27) */
+  peakSkill: Record<Animal, number>;
   /** 목표점수 달성하기 — 그 판의 목표(10~20) */
   target?: number;
-  /** 목표점수 달성하기 — 판이 끝났을 때 도전자의 점수 */
+  /** 목표점수 달성하기·한 우물만 파기 — 판이 끝났을 때 도전자의 점수(체력). 한 우물만 파기는 순위표의 점수 칸이다 */
   finalScore: number | null;
   lockedAnimal: Animal | null;
   devForfeit: boolean;
   turns: number;
+  /** 판이 시작된 시각(ms) — 개발자가 순위표를 행사 시간대로 잘라 볼 때 쓴다(DB의 started_at) */
+  startedAt: number;
   durationMs: number;
 }
 
@@ -195,8 +204,15 @@ export interface EventRoomSetup {
   kind: EventKind;
   /** 목표점수 달성하기 — 그 판의 목표(허브가 10~20에서 뽑아 넘긴다) */
   target?: number;
-  /** 개발자를 이겨라 — 개발자가 정한 규칙(beatDevSettings로 완성된다) */
+  /**
+   * 규칙 — 개발자를 이겨라는 그 개발자가 정한 것(beatDevSettings로 완성), 목표점수·한 우물은 행사 전체 규칙
+   * (EventConfig — timeAttackSettings·oneWellSettings로 완성). 없으면 각 도전의 기본값.
+   */
   settings?: Partial<GameSettings>;
+  /** 목표점수 달성하기 — 목표를 뽑은 범위(시작 룰렛이 이 안의 숫자로 돈다) */
+  targetRange?: { min: number; max: number };
+  /** 한 우물만 파기 — 도전자 카드의 기본 배율(개발자가 정한 값). 없으면 ONE_WELL_MULTIPLIERS */
+  oneWellMultipliers?: { rabbit: number; tiger: number };
   onEnd: (result: EventGameResult) => Promise<number | null>;
 }
 
@@ -205,6 +221,8 @@ interface RoomEventState {
   challengerName: string;
   developerName: string | null;
   target?: number;
+  targetRange?: { min: number; max: number };
+  oneWellMultipliers?: { rabbit: number; tiger: number };
   onEnd: (result: EventGameResult) => Promise<number | null>;
   startedAt: number;
   // 목표점수 달성하기 — 시작 룰렛이 끝나는 시각(이 방의 시계). 그때까지 판은 멈춰 있다(첫 턴 타이머가 늦게 걸리고 클릭은 거부). 없으면 0
@@ -213,6 +231,10 @@ interface RoomEventState {
   introStarted: boolean;
   // 동물의 왕 — 그 판에서 도전자 편이 **도달했던** 최고 레벨(기술을 쓰면 경험치가 깎이므로 끝날 때 재면 안 된다)
   peakLevels: Record<Animal, number>;
+  // 같은 이유로 카드별 최대 경험치도(CSV용)
+  peakExp: Record<Animal, number>;
+  // 카드별 기술 한 번의 최고 효과 — 도전자(A)가 쓴 skillApplied에서 잰다(trackEvent에 이벤트를 넘겨야 한다)
+  peakSkill: Record<Animal, number>;
   // 엔진이 아니라 방이 끝낸 경우(항복·나가기) — 누가 왜 끝냈는지
   forcedEnd: { reason: EventEndReason; by: SideId } | null;
   finished: boolean;
@@ -581,7 +603,7 @@ export class Room {
    */
   setupEventSolo(ws: WebSocket, playerId: string, name: string, setup: EventRoomSetup): void {
     this.vsComputer = true;
-    this.settings = clampSettings(setup.kind === 'timeAttack' ? TIME_ATTACK_SETTINGS : ONE_WELL_SETTINGS);
+    this.settings = setup.kind === 'timeAttack' ? timeAttackSettings(setup.settings) : oneWellSettings(setup.settings);
     const nickname = normalizeNickname(name);
     this.players.set(playerId, {
       ws, playerId, memberId: this.nextMemberId(), nickname, team: 'A',
@@ -641,11 +663,15 @@ export class Room {
       challengerName,
       developerName,
       ...(setup.target !== undefined ? { target: setup.target } : {}),
+      ...(setup.targetRange ? { targetRange: setup.targetRange } : {}),
+      ...(setup.oneWellMultipliers ? { oneWellMultipliers: setup.oneWellMultipliers } : {}),
       onEnd: setup.onEnd,
       startedAt: 0,
       introUntil: 0,
       introStarted: false,
       peakLevels: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
+      peakExp: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
+      peakSkill: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
       forcedEnd: null,
       finished: false,
       success: null,
@@ -660,7 +686,13 @@ export class Room {
     if (!ev || !this.state) return;
     ev.startedAt = Date.now();
     if (ev.kind === 'oneWell') {
-      this.state.oneWell = { side: 'A', allowed: [...ONE_WELL_ALLOWED], locked: null };
+      // 기본 배율(상표토끼·특허랑이)은 판이 시작될 때의 값을 실어 판 끝까지 쓴다 — 엔진·화면이 같은 값을 본다(skillMultiplier).
+      this.state.oneWell = {
+        side: 'A',
+        allowed: [...ONE_WELL_ALLOWED],
+        locked: null,
+        multipliers: { ...(ev.oneWellMultipliers ?? ONE_WELL_MULTIPLIERS) },
+      };
     }
     // 목표점수 달성하기 — 도전자는 0점에서, 컴퓨터는 SCORE_RACE_CPU_HP에서 시작하고, 10턴이 끝난 순간 목표 이상이면 승리.
     // 엔진(scoreRace)이 넉아웃을 끄고 턴 상한을 바꾼다 — 체력을 여기서 바꾸는 것은 initGame이 목표 점수로 채워 두기 때문이다.
@@ -705,15 +737,23 @@ export class Room {
   /**
    * 상태가 바뀔 때마다(브로드캐스트 직전) 부른다 — 동물의 왕용 최고 레벨을 갱신하고, 판이 끝났으면 결과를 넘긴다.
    * 정산 직후(pendingChoice가 선 상태)가 경험치가 가장 높은 순간이고 매 액션 뒤를 보므로 놓치지 않는다.
+   * events를 넘기면 그 안의 도전자(A) 기술 발동에서 카드별 최고 효과(peakSkill)도 갱신한다 — ⚠️ 엔진 결과를 내보내는 자리에서는
+   * 반드시 넘길 것(빠뜨리면 그 길로 쓴 기술이 순위표에서 빠진다).
    */
-  private trackEvent(): void {
+  private trackEvent(events?: readonly GameEvent[]): void {
     const ev = this.event;
     if (!ev || !this.state) return;
+    for (const e of events ?? []) {
+      if (e.type !== 'skillApplied' || e.team !== 'A' || e.level <= 0) continue;
+      const v = skillPeakValue(e);
+      if (v > ev.peakSkill[e.animal]) ev.peakSkill[e.animal] = v;
+    }
     const exp = this.state.teams.A?.exp;
     if (exp) {
       for (const a of ANIMALS) {
         const level = Math.floor(exp[a] / THRESHOLDS[a]);
         if (level > ev.peakLevels[a]) ev.peakLevels[a] = level;
+        if (exp[a] > ev.peakExp[a]) ev.peakExp[a] = exp[a];
       }
     }
     if (this.state.phase === 'ended' && !ev.finished) this.finishEvent();
@@ -738,11 +778,15 @@ export class Room {
       won,
       endReason: reason,
       peakLevels: { ...ev.peakLevels },
+      peakExp: { ...ev.peakExp },
+      peakSkill: { ...ev.peakSkill },
       ...(ev.target !== undefined ? { target: ev.target } : {}),
-      finalScore: ev.kind === 'timeAttack' ? state.teams.A.hp : null,
+      finalScore: ev.kind === 'timeAttack' || ev.kind === 'oneWell' ? state.teams.A.hp : null,
       lockedAnimal: state.oneWell?.locked ?? null,
       devForfeit: ev.forcedEnd !== null && ev.forcedEnd.by === 'B',
       turns: state.turn,
+      // 판이 시작되지 않은 채 끝났다면(시작 전 이탈) 시작 시각이 0이다 — 끝난 시각으로 둔다(판 길이 0).
+      startedAt: ev.startedAt || Date.now(),
       durationMs: ev.startedAt ? Date.now() - ev.startedAt : 0,
     };
     // ⚠️ 저장은 게임 흐름을 막지 않는다 — 기록 번호가 생기면 그때 따로 알린다(결과 화면이 뜬 뒤일 수 있다).
@@ -766,6 +810,7 @@ export class Room {
       success: ev.success,
       endReason: ev.endReason,
       recordId: ev.recordId,
+      ...(ev.targetRange ? { targetRange: ev.targetRange } : {}),
       // 룰렛이 아직 시작 전이면(도전자가 로비에 있다) 화면에는 한 바퀴 길이만 알린다 — 로비는 룰렛을 그리지 않고,
       // 게임 화면이 붙는 순간 실제 남은 시간이 다시 온다.
       ...(this.introGraceMs() > 0
@@ -1362,7 +1407,7 @@ export class Room {
       this.clearTimer();
     }
 
-    this.trackEvent();
+    this.trackEvent(events);
     const clientState = this.snapshot();
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
 
@@ -1371,7 +1416,7 @@ export class Room {
 
   private broadcastResult(events: ReturnType<typeof processPlayerAction>['events']): void {
     if (!this.state) return;
-    this.trackEvent();
+    this.trackEvent(events);
     const clientEvents = serializeEvents(events);
     const clientState = this.snapshot();
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });

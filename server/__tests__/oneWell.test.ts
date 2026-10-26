@@ -105,3 +105,46 @@ describe('한 우물만 파기 — 기술 없이는 이길 수 없다(§1-3의 �
     expect(wins).toBe(0);
   });
 });
+
+describe('한 우물만 파기 — 기본 배율(상표토끼 2배 · 특허랑이 3배, 2026-10-27)', () => {
+  it('도전자의 특허랑이는 레벨 × 3을 빼앗는다(상대가 가진 만큼만)', () => {
+    const state = readyToChoose(oneWellGame()); // 특허랑이 경험치 40 → 레벨 2
+    state.teams.B.hp = 10;
+    const before = state.teams.A.hp;
+    const applied = processSkillChoice(state, 'tiger').events.find(e => e.type === 'skillApplied');
+    expect(applied).toMatchObject({ animal: 'tiger', level: 2, multiplierUsed: 3, oppHpDelta: -6, myHpDelta: 6 });
+    expect(state.teams.B.hp).toBe(4);
+    expect(state.teams.A.hp).toBe(before + 6);
+    // 쓴 뒤 쌓인 배율은 1로 돌아간다 — 기본 배율은 쌓인 값이 아니라 늘 걸리는 값이다.
+    expect(state.teams.A.pendingMultiplier).toBe(1);
+  });
+
+  it('도전자의 상표토끼는 레벨 × 2만큼 오른다', () => {
+    const state = readyToChoose(oneWellGame()); // 상표토끼 경험치 30 → 레벨 3
+    const applied = processSkillChoice(state, 'rabbit').events.find(e => e.type === 'skillApplied');
+    expect(applied).toMatchObject({ animal: 'rabbit', level: 3, multiplierUsed: 2, myHpDelta: 6 });
+  });
+
+  it('판에 실린 배율(개발자가 정한 값)을 쓴다', () => {
+    const state = readyToChoose(oneWellGame());
+    state.oneWell!.multipliers = { rabbit: 5, tiger: 1 };
+    state.teams.B.hp = 10;
+    const tiger = processSkillChoice(state, 'tiger').events.find(e => e.type === 'skillApplied');
+    expect(tiger).toMatchObject({ multiplierUsed: 1, oppHpDelta: -2 });
+  });
+
+  it('컴퓨터(B)의 특허랑이는 1배 그대로', () => {
+    const state = readyToChoose(oneWellGame(), 'B');
+    state.teams.A.hp = 10;
+    const applied = processSkillChoice(state, 'tiger').events.find(e => e.type === 'skillApplied');
+    expect(applied).toMatchObject({ animal: 'tiger', level: 2, multiplierUsed: 1, oppHpDelta: -2 });
+  });
+
+  it('한 우물만 파기가 아닌 판에서는 특허랑이도 1배', () => {
+    const state = initGame(['A'], ['B'], () => 0.3, clampSettings(ONE_WELL_SETTINGS));
+    readyToChoose(state);
+    state.teams.B.hp = 10;
+    const applied = processSkillChoice(state, 'tiger').events.find(e => e.type === 'skillApplied');
+    expect(applied).toMatchObject({ multiplierUsed: 1, oppHpDelta: -2 });
+  });
+});

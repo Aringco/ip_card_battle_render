@@ -130,6 +130,18 @@ describe('이벤트 방 — 목표점수 달성하기', () => {
     }
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({ kind: 'timeAttack', won: reached, target: 20, finalScore: end.state.teams.A.hp });
+    // 카드별 기술 최고 효과 — 도전자(A)가 쓴 skillApplied에서 방이 잰다(순위표·동물의 왕)
+    const best: Record<string, number> = { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 };
+    for (const m of ws.sent) {
+      if (m.type !== 'actionResult') continue;
+      for (const e of m.events) {
+        if (e.type !== 'skillApplied' || e.team !== 'A' || e.level <= 0) continue;
+        const v = e.animal === 'sheep' ? e.extraDrawsQueued : e.animal === 'rabbit' ? e.myHpDelta
+          : e.animal === 'mermaid' ? e.multiplierAfter : -e.oppHpDelta;
+        best[e.animal] = Math.max(best[e.animal], v);
+      }
+    }
+    expect(results[0].peakSkill).toEqual(best);
     // 저장이 끝나면 기록 번호가 따로 온다.
     await Promise.resolve();
     await Promise.resolve();
@@ -149,7 +161,8 @@ describe('이벤트 방 — 한 우물만 파기', () => {
     const room = new Room('EVT2', () => {});
     room.setupEventSolo(ws as never, 'p1', '도전자', { kind: 'oneWell', onEnd: async () => null });
     room.startEventGame();
-    expect(lastOf(ws, 'gameStart')!.state.oneWell).toEqual({ side: 'A', allowed: ['rabbit', 'tiger'], locked: null });
+    // 기본 배율(상표토끼 2 · 특허랑이 3)도 판에 실려 있다 — 화면의 미리보기가 같은 값을 쓴다
+    expect(lastOf(ws, 'gameStart')!.state.oneWell).toEqual({ side: 'A', allowed: ['rabbit', 'tiger'], locked: null, multipliers: { rabbit: 2, tiger: 3 } });
   });
 });
 
@@ -420,5 +433,49 @@ describe('이벤트 허브 — 운영자', () => {
     const op = fakeConn('op');
     hub.devStandby(op, '', '김개발');
     expect(lastOf(op.sock, 'error')).toMatchObject({ code: 'EVENT_AUTH' });
+  });
+});
+
+describe('이벤트 허브 — 컴퓨터 대전 규칙(행사 전체, 개발자가 정한다)', () => {
+  it('대기실에 들어온 개발자만 바꿀 수 있고, 다음 판의 목표 범위·규칙이 그 값을 따른다', async () => {
+    const { hub } = setupHub();
+    const stranger = fakeConn('x');
+    hub.devConfig(stranger, { timeAttack: { targetMin: 30, targetMax: 30, settings: {} }, oneWell: { settings: {} } } as never);
+    expect(hub.config().timeAttack.targetMin).toBe(SCORE_RACE_TARGET_MIN); // 무시됐다
+
+    const dev = fakeConn('d');
+    hub.devStandby(dev, 'devpw', '김개발');
+    hub.devConfig(dev, {
+      timeAttack: { targetMin: 15, targetMax: 12, settings: { festivalTurn: 2, pauseMaxCount: 5 } },
+      oneWell: { settings: { targetScore: 5, festivalDrawCount: 3 }, multipliers: { rabbit: 4, tiger: 99 } },
+    } as never);
+    const cfg = lastOf(dev.sock, 'eventDevStatus')!.status!.config;
+    expect([cfg.timeAttack.targetMin, cfg.timeAttack.targetMax]).toEqual([12, 15]); // 거꾸로 온 범위는 바꾼다
+    expect(cfg.timeAttack.settings).toMatchObject({ festivalTurn: 2, pauseMaxCount: 0, firstTeam: 'A' }); // 일시정지·선공은 고정
+
+    for (let i = 0; i < 20; i++) {
+      const a = fakeConn(`a${i}`);
+      await hub.challenge(a, 'timeAttack', `목표${i}`, '1234');
+      const start = lastOf(a.sock, 'gameStart')!;
+      expect(start.state.scoreRace!.target).toBeGreaterThanOrEqual(12);
+      expect(start.state.scoreRace!.target).toBeLessThanOrEqual(15);
+      expect(start.state.settings.festivalTurn).toBe(2);
+      expect(start.state.event?.targetRange).toEqual({ min: 12, max: 15 });
+    }
+    const w = fakeConn('w');
+    await hub.challenge(w, 'oneWell', '우물', '1234');
+    const wellStart = lastOf(w.sock, 'gameStart')!.state;
+    expect(wellStart.settings).toMatchObject({ targetScore: 5, festivalDrawCount: 3, festivalTurn: 3 });
+    // 배율은 판에 실린다 — 한계(1~10)로 잘린다
+    expect(wellStart.oneWell?.multipliers).toEqual({ rabbit: 4, tiger: 10 });
+  });
+
+  it('한 우물만 파기의 기본 규칙 — 축제 3턴부터, 뽑기는 2턴마다 는다(2026-10-27)', async () => {
+    const { hub } = setupHub();
+    const w = fakeConn('w');
+    await hub.challenge(w, 'oneWell', '우물', '1234');
+    const st = lastOf(w.sock, 'gameStart')!.state;
+    expect(st.settings).toMatchObject({ festivalTurn: 3, festivalDrawIncreaseInterval: 2, pauseMaxCount: 0 });
+    expect(st.oneWell?.multipliers).toEqual({ rabbit: 2, tiger: 3 });
   });
 });

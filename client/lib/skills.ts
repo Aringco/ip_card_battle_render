@@ -1,6 +1,6 @@
 // 턴 종료 행동 선택의 "예상 효과" 미리보기 — 서버 engine/skills.ts와 동일한
 // 공식을 클라이언트에서 그대로 복제한다(상태를 바꾸지 않는 순수 계산).
-import { THRESHOLDS, opponentsOf } from 'shared';
+import { THRESHOLDS, opponentsOf, skillMultiplier } from 'shared';
 import type { Animal, ClientGameState, SideId } from 'shared';
 
 /**
@@ -86,7 +86,8 @@ export function finishingMove(
   if (!me) return none;
   const level = levelOf(gameState, team, animal);
   if (level <= 0) return none;
-  const amount = level * me.pendingMultiplier;
+  // 한 우물만 파기의 특허랑이 기본 2배까지 — 서버 엔진과 같은 함수(skillMultiplier)
+  const amount = level * skillMultiplier(gameState, team, animal);
   const winHp = gameState.settings.targetScore * 2;
   // 개인전에서 승리선 도달이 "1위 확정"인 것은 아직 아무도 승리하지 않았을 때뿐이다.
   const reachingWinIsFirst =
@@ -105,6 +106,8 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   const opponent = opponentsOf(gameState, team)[0];
   const level = levelOf(gameState, team, animal);
   const mult = gameState.teams[team].pendingMultiplier;
+  // 특허랑이는 한 우물만 파기의 기본 2배까지 곱한 값(서버 엔진과 같은 함수 — skillMultiplier)
+  const tigerMult = skillMultiplier(gameState, team, 'tiger');
 
   let myHpDelta = 0;
   let oppHpDelta = 0;
@@ -117,7 +120,7 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   } else if (animal === 'rabbit') {
     myHpDelta = level * mult;
   } else if (animal === 'tiger') {
-    const amount = level * mult;
+    const amount = level * tigerMult;
     // 개인전은 대상이 정해지기 전이라 자를 상대가 없다 — 자르지 않은 값을 "최대 n"으로 보여준다.
     const steal = gameState.mode === 'individual'
       ? amount

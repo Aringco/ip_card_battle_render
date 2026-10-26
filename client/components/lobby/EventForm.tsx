@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { EventDevStatus, EventKind, EventQueueStatus, GameSettings } from 'shared';
-import { EVENT_LABELS, EVENT_PIN_LENGTH, NICKNAME_MAX_LEN, SCORE_RACE_TARGET_MAX, SCORE_RACE_TARGET_MIN, SCORE_RACE_TURNS } from 'shared';
+import type { EventConfig, EventDevStatus, EventKind, EventQueueStatus, GameSettings } from 'shared';
+import {
+  EVENT_LABELS, EVENT_PIN_LENGTH, NICKNAME_MAX_LEN, ONE_WELL_MULTIPLIER_LIMITS, SCORE_RACE_TARGET_LIMITS, SCORE_RACE_TURNS,
+} from 'shared';
 import type { EventFormError } from '@/hooks/useWebSocket';
 import { Field, FormCard } from './Field';
 import { GameRulesFields } from './GameRulesFields';
@@ -27,7 +29,8 @@ const KIND_ORDER: EventKind[] = ['beatDev', 'timeAttack', 'oneWell'];
 const KIND_ICON: Record<EventKind, string> = { beatDev: '👨‍💻', timeAttack: '🎯', oneWell: '🪣' };
 const KIND_HINT: Record<EventKind, string> = {
   beatDev: '개발자와 1:1',
-  timeAttack: `${SCORE_RACE_TURNS}턴 안에 ${SCORE_RACE_TARGET_MIN}~${SCORE_RACE_TARGET_MAX}점`,
+  // 목표 범위는 개발자가 정한다(EventConfig) — 도전자 화면은 그 값을 모르므로 숫자를 적지 않는다. 목표는 시작 룰렛이 알려 준다.
+  timeAttack: `${SCORE_RACE_TURNS}턴 안에 무작위 목표 점수`,
   oneWell: '🐰·🐯 중 한 장만',
 };
 
@@ -63,6 +66,12 @@ export interface EventFormProps {
   devSettings: GameSettings;
   onDevSettings: (next: GameSettings) => void;
   devStatus: EventDevStatus | null;
+  /**
+   * 목표점수 달성하기·한 우물만 파기의 규칙 — **행사 전체에 하나**(개발자 누구나 고친다, 다음 판부터). 대기실에 들어온 뒤에만
+   * 있다(서버가 암호를 확인한 개발자에게만 보낸다 — EventDevStatus.config). null이면 그 칸을 그리지 않는다.
+   */
+  devConfig: EventConfig | null;
+  onDevConfig: (next: EventConfig) => void;
   onDevAway: (away: boolean) => void;
   onDevLeave: () => void;
 }
@@ -102,8 +111,101 @@ function DevRules({ settings, onChange }: { settings: GameSettings; onChange: (n
       onChange={onChange}
       hidePause
       hideFirstTeam
-      heading="게임 규칙 (개발자가 정해요)"
+      heading="개발자를 이겨라 규칙 (내 판)"
     />
+  );
+}
+
+/**
+ * 숫자 한 칸 — 입력 중에는 그대로 두고, 칸을 떠날 때 한계로 자른다(GameRulesFields와 같은 방식).
+ * 목표 범위(1~100)와 한 우물 배율(1~10)이 같이 쓴다.
+ */
+function TargetInput({
+  value,
+  onChange,
+  label,
+  limits = SCORE_RACE_TARGET_LIMITS,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  label: string;
+  limits?: { min: number; max: number };
+}) {
+  const { min, max } = limits;
+  return (
+    <input
+      type="number"
+      min={min}
+      max={max}
+      value={value}
+      aria-label={label}
+      onChange={e => {
+        const v = Number(e.target.value);
+        if (Number.isFinite(v)) onChange(v);
+      }}
+      onBlur={e => onChange(Math.min(max, Math.max(min, Math.round(Number(e.target.value) || min))))}
+      className="input-base input-compact input-rule-num"
+    />
+  );
+}
+
+/**
+ * 컴퓨터와 하는 두 도전의 규칙(2026-10-27 요청) — 방 만들기의 게임 규칙과 같은 항목(선 플레이어·일시정지 제외 —
+ * 이벤트는 도전자 선공·일시정지 없음으로 고정). 목표점수 달성하기는 목표 점수 칸 대신 **목표 범위**(최소~최대)를 둔다 —
+ * 판마다 그 범위에서 서버가 목표를 뽑는다. 최소 > 최대로 넣으면 서버가 둘을 바꾼다.
+ */
+function EventConfigRules({ config, onChange }: { config: EventConfig; onChange: (next: EventConfig) => void }) {
+  const ta = config.timeAttack;
+  const setTa = (patch: Partial<EventConfig['timeAttack']>) => onChange({ ...config, timeAttack: { ...ta, ...patch } });
+  return (
+    <>
+      <GameRulesFields
+        settings={ta.settings}
+        onChange={next => setTa({ settings: next })}
+        hidePause
+        hideFirstTeam
+        hideTargetScore
+        heading="목표점수 달성하기 규칙 (공통)"
+        extra={
+          <div className="flex items-center justify-between gap-1 text-xs" title="판마다 이 범위에서 목표 점수를 뽑아요">
+            <label className="text-gray-500 truncate min-w-0">목표 점수 범위</label>
+            <div className="flex items-center gap-1 shrink-0">
+              <TargetInput label="목표 점수 최소" value={ta.targetMin} onChange={v => setTa({ targetMin: v })} />
+              <span className="text-gray-400">~</span>
+              <TargetInput label="목표 점수 최대" value={ta.targetMax} onChange={v => setTa({ targetMax: v })} />
+              <span className="text-gray-400 w-3">점</span>
+            </div>
+          </div>
+        }
+      />
+      <GameRulesFields
+        settings={config.oneWell.settings}
+        onChange={next => onChange({ ...config, oneWell: { ...config.oneWell, settings: next } })}
+        hidePause
+        hideFirstTeam
+        heading="한 우물만 파기 규칙 (공통)"
+        // 도전자 카드의 기본 배율(2026-10-27 — 기본 상표토끼 2 · 특허랑이 3). 쌓인 인어 배율 자리에 곱해진다.
+        extra={
+          <>
+            {(['rabbit', 'tiger'] as const).map(a => (
+              <div key={a} className="flex items-center justify-between gap-1 text-xs" title="이 카드를 쓸 때 효과가 이 배수만큼 커져요">
+                <label className="text-gray-500 truncate min-w-0">{a === 'rabbit' ? '상표토끼 배율' : '특허랑이 배율'}</label>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-gray-400">×</span>
+                  <TargetInput
+                    label={a === 'rabbit' ? '상표토끼 배율' : '특허랑이 배율'}
+                    limits={ONE_WELL_MULTIPLIER_LIMITS}
+                    value={config.oneWell.multipliers[a]}
+                    onChange={v => onChange({ ...config, oneWell: { ...config.oneWell, multipliers: { ...config.oneWell.multipliers, [a]: v } } })}
+                  />
+                  <span className="text-gray-400 w-3">배</span>
+                </div>
+              </div>
+            ))}
+          </>
+        }
+      />
+    </>
   );
 }
 
@@ -198,7 +300,7 @@ export function EventForm(props: EventFormProps) {
     const stateText = !st
       ? '서버에 대기를 알리는 중…'
       : st.state === 'idle' ? '도전자를 기다리는 중이에요. 도전자가 오면 자동으로 시작해요.'
-        : st.state === 'away' ? '잠시 자리 비움 — 지금은 매칭되지 않아요.'
+        : st.state === 'away' ? '자리 비움 — 지금은 매칭되지 않아요.'
           : st.state === 'matched' ? '매칭됐어요!'
             : '경기 중이에요.';
     return (
@@ -206,11 +308,18 @@ export function EventForm(props: EventFormProps) {
         title="👨‍💻 개발자 대기실"
         headerAside={<HeadLinks onShowBoard={onShowBoard} />}
         description={error ? <span className="text-red-700 font-bold">{error.message}</span> : stateText}
-        side={<DevRules settings={props.devSettings} onChange={props.onDevSettings} />}
+        side={
+          <>
+            <DevRules settings={props.devSettings} onChange={props.onDevSettings} />
+            {props.devConfig && <EventConfigRules config={props.devConfig} onChange={props.onDevConfig} />}
+          </>
+        }
         footer={
           <div className="flex gap-2">
-            <PlankButton onClick={() => props.onDevAway(!away)} disabled={blocked || !st || (st.state !== 'idle' && st.state !== 'away')} block>
-              {away ? '다시 대기' : '잠시 자리 비움'}
+            {/* 두 버튼이 한 줄을 반씩 나눠 써서 "잠시 자리 비움"이면 두 줄로 접혔다 — "자리 비움"으로 줄이고
+                줄바꿈도 막는다(2026-10-27 요청). */}
+            <PlankButton onClick={() => props.onDevAway(!away)} disabled={blocked || !st || (st.state !== 'idle' && st.state !== 'away')} block className="whitespace-nowrap">
+              {away ? '다시 대기' : '자리 비움'}
             </PlankButton>
             <PlankButton onClick={props.onDevLeave} disabled={blocked} block>
               대기 그만두기

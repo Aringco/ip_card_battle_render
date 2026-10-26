@@ -1,4 +1,4 @@
-import type { Animal, GameSettings } from './types';
+import type { Animal, GameSettings, SideId } from './types';
 import { clampSettings } from './constants';
 
 // ─── 이벤트 모드 — 행사용 도전 과제 ─────────────────────────────────────────────
@@ -94,20 +94,139 @@ export const SCORE_RACE_INTRO_MS = 5000;
  */
 export const SCORE_RACE_INTRO_WAIT_MS = 15_000;
 
-/** 10~20 사이의 정수 하나 — 판마다 서버가 뽑는다(모든 무작위는 서버에서만). */
-export function randomScoreRaceTarget(rng: () => number = Math.random): number {
-  return SCORE_RACE_TARGET_MIN + Math.floor(rng() * (SCORE_RACE_TARGET_MAX - SCORE_RACE_TARGET_MIN + 1));
+/** min~max 사이의 정수 하나(기본 10~20) — 판마다 서버가 뽑는다(모든 무작위는 서버에서만). 범위는 개발자가 정한다(EventConfig). */
+export function randomScoreRaceTarget(
+  rng: () => number = Math.random,
+  min: number = SCORE_RACE_TARGET_MIN,
+  max: number = SCORE_RACE_TARGET_MAX,
+): number {
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+/** 목표점수 달성하기 — 개발자가 정할 수 있는 목표 범위의 한계(방 만들기의 목표 점수와 같은 1~100) */
+export const SCORE_RACE_TARGET_LIMITS = { min: 1, max: 100 } as const;
+
+/**
+ * 목표점수 달성하기의 **완성된** 규칙 — 개발자가 정한 값을 기본값 위에 얹고 잘라 낸다. 서버(방)와 화면(개발자 대기실)이 같은 함수를 쓴다.
+ * 선공(도전자)·일시정지 없음은 바꿀 수 없다(beatDevSettings와 같은 이유). 목표 점수 칸(targetScore)은 이 도전에서 쓰지 않는다 —
+ * 목표는 범위(EventConfig.timeAttack.targetMin~Max)에서 판마다 뽑는다.
+ */
+export function timeAttackSettings(custom?: Partial<GameSettings>): GameSettings {
+  return clampSettings({ ...TIME_ATTACK_SETTINGS, ...custom, firstTeam: 'A', pauseMaxCount: 0 });
 }
 
 // ─── 한 우물만 파기 ─────────────────────────────────────────────────────────
 /** 쓸 수 있는 카드 — 둘 중 하나를 처음 쓰는 순간 그 카드로 고정된다(엔진이 GameState.oneWell로 관리). */
 export const ONE_WELL_ALLOWED: readonly Animal[] = ['rabbit', 'tiger'];
 
-/** 한 우물만 파기 — 일반 혼자 놀기 기본값(목표 7) 그대로, 일시정지만 막는다. */
+/**
+ * 한 우물만 파기 — **목표 점수 13**(2026-10-27 요청 — 혼자 놀기 기본값 7 → 20 → 13. 7점은 카드 기본 배율이 붙어 너무 빨리,
+ * 20점은 너무 길게 끝났다)에
+ * **축제를 당긴다**(같은 날 요청: 템포가 너무 느렸다).
+ * 축제 3턴부터 · 뽑기 증가 주기 2턴(처음엔 1턴이었다가 같은 날 2턴으로 — 카드 기본 배율이 붙어 1턴이면 너무 빨리 불어났다).
+ * 일시정지는 막는다. 개발자가 대기실에서 바꿀 수 있다(EventConfig).
+ */
 export const ONE_WELL_SETTINGS: Partial<GameSettings> = {
   firstTeam: 'A',
+  targetScore: 13,
+  festivalTurn: 3,
+  festivalDrawIncreaseInterval: 2,
   pauseMaxCount: 0,
 };
+
+/**
+ * 한 우물만 파기 — 도전자 카드의 **기본 배율**(2026-10-27 요청: 상표토끼 2배 · 특허랑이 3배 — 그 전에는 특허랑이만 2배였다).
+ * 레벨 3 특허랑이면 상대 체력 3이 아니라 9를 빼앗는다. 디자인어(인어)로 쌓는 배율과 같은 자리에 곱해지고, 화면도 인어 배율처럼
+ * "×N" 스티커로 보여 준다. 컴퓨터(B)는 1배 그대로. 개발자가 대기실에서 바꾼다(EventConfig.oneWell.multipliers).
+ */
+export const ONE_WELL_MULTIPLIERS: Readonly<{ rabbit: number; tiger: number }> = { rabbit: 2, tiger: 3 };
+/** 개발자가 정할 수 있는 기본 배율의 한계 */
+export const ONE_WELL_MULTIPLIER_LIMITS = { min: 1, max: 10 } as const;
+
+/** 한 우물 판에서 그 카드의 기본 배율 — 판에 실린 값(state.oneWell.multipliers), 없으면 기본값. 상표토끼·특허랑이 외에는 1. */
+export function oneWellBaseMultiplier(
+  oneWell: { multipliers?: Partial<Record<Animal, number>> } | null | undefined,
+  animal: Animal,
+): number {
+  if (animal !== 'rabbit' && animal !== 'tiger') return 1;
+  return oneWell?.multipliers?.[animal] ?? ONE_WELL_MULTIPLIERS[animal];
+}
+
+/**
+ * 이번 발동에 곱해질 배율 — 쌓인 인어 배율(pendingMultiplier)에 한 우물만 파기의 기본 배율(상표토끼·특허랑이)을 곱한 값.
+ * **엔진(효과 계산)·컴퓨터의 수 고르기·화면의 미리보기가 모두 이 함수를 쓴다** — 한 곳만 배율을 알면 카드에 적힌 숫자와
+ * 실제로 빠지는 체력이 어긋난다. 인어 자신은 배율을 쓰지 않으므로 이 값과 무관하다.
+ */
+export function skillMultiplier(
+  state: {
+    teams: Record<SideId, { pendingMultiplier: number }>;
+    oneWell?: { side: SideId; multipliers?: Partial<Record<Animal, number>> } | null;
+  },
+  team: SideId,
+  animal: Animal,
+): number {
+  const pending = state.teams[team]?.pendingMultiplier ?? 1;
+  return state.oneWell?.side === team ? pending * oneWellBaseMultiplier(state.oneWell, animal) : pending;
+}
+
+/** 한 우물만 파기의 완성된 규칙 — 선공·일시정지 없음은 고정(timeAttackSettings와 같다). */
+export function oneWellSettings(custom?: Partial<GameSettings>): GameSettings {
+  return clampSettings({ ...ONE_WELL_SETTINGS, ...custom, firstTeam: 'A', pauseMaxCount: 0 });
+}
+
+// ─── 개발자가 정하는 이벤트 규칙(행사 전체) ──────────────────────────────────
+/**
+ * 컴퓨터와 하는 두 도전의 규칙 — **행사 전체에 하나**다(개발자를 이겨라의 규칙은 개발자마다 따로 — DevEntry.settings).
+ * 대기실에 들어온 개발자 누구나 고칠 수 있고, 다음 판부터 적용된다. 서버가 DB(event_settings)에 남겨 재시작해도 유지된다.
+ */
+export interface EventConfig {
+  timeAttack: { targetMin: number; targetMax: number; settings: GameSettings };
+  /** multipliers — 도전자 카드의 기본 배율(상표토끼·특허랑이, 1~10배) */
+  oneWell: { settings: GameSettings; multipliers: { rabbit: number; tiger: number } };
+}
+
+export function defaultEventConfig(): EventConfig {
+  return {
+    timeAttack: { targetMin: SCORE_RACE_TARGET_MIN, targetMax: SCORE_RACE_TARGET_MAX, settings: timeAttackSettings() },
+    oneWell: { settings: oneWellSettings(), multipliers: { ...ONE_WELL_MULTIPLIERS } },
+  };
+}
+
+/**
+ * 밖에서 온 값(개발자 화면·DB)을 믿을 수 있는 규칙으로 — 없는 칸은 base(기본값)에서 채우고, 범위는 한계 안으로 자르며
+ * 최소 > 최대면 둘을 바꾼다. 서버가 저장·적용 전에 반드시 거친다(화면의 입력 검증만 믿지 않는다).
+ */
+export function normalizeEventConfig(raw: unknown, base: EventConfig = defaultEventConfig()): EventConfig {
+  const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
+  const r = obj(raw);
+  const ta = obj(r.timeAttack);
+  const ow = obj(r.oneWell);
+  const clampTarget = (v: unknown, fallback: number) => {
+    const n = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : fallback;
+    return Math.min(SCORE_RACE_TARGET_LIMITS.max, Math.max(SCORE_RACE_TARGET_LIMITS.min, n));
+  };
+  const owMult = obj(ow.multipliers);
+  const clampMult = (v: unknown, fallback: number) => {
+    const n = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : fallback;
+    return Math.min(ONE_WELL_MULTIPLIER_LIMITS.max, Math.max(ONE_WELL_MULTIPLIER_LIMITS.min, n));
+  };
+  // 예전 모양(배율이 없던 2026-10-27 이전 저장값)이면 base의 값으로 채운다.
+  const baseMult = base.oneWell.multipliers ?? ONE_WELL_MULTIPLIERS;
+  let min = clampTarget(ta.targetMin, base.timeAttack.targetMin);
+  let max = clampTarget(ta.targetMax, base.timeAttack.targetMax);
+  if (min > max) [min, max] = [max, min];
+  return {
+    timeAttack: {
+      targetMin: min,
+      targetMax: max,
+      settings: timeAttackSettings({ ...base.timeAttack.settings, ...(obj(ta.settings) as Partial<GameSettings>) }),
+    },
+    oneWell: {
+      settings: oneWellSettings({ ...base.oneWell.settings, ...(obj(ow.settings) as Partial<GameSettings>) }),
+      multipliers: { rabbit: clampMult(owMult.rabbit, baseMult.rabbit), tiger: clampMult(owMult.tiger, baseMult.tiger) },
+    },
+  };
+}
 
 // ─── 매칭·흐름 ────────────────────────────────────────────────────────────────
 /** 개발자와 도전자가 맞물린 뒤 경기가 시작되기까지(양쪽에 "매칭되었습니다!"를 띄우는 시간) */
@@ -151,6 +270,8 @@ export interface EventInfo {
   endReason: EventEndReason | null;
   /** 기록 번호(event_results.id). 저장이 끝나기 전·DB가 끊긴 동안은 null */
   recordId: number | null;
+  /** 목표점수 달성하기 — 이 판의 목표를 뽑은 범위. 시작 룰렛이 이 안의 숫자로 돈다(없으면 기본 10~20) */
+  targetRange?: { min: number; max: number };
   /**
    * 목표점수 달성하기 — 시작 룰렛이 끝날 때까지 남은 ms(끝났으면 없다). 절대 시각이 아니라 남은 시간이다(턴 타이머 규칙 1) —
    * 화면은 받은 순간 자기 시계로 환산한다(useWebSocket의 eventIntroUntil).
@@ -169,6 +290,8 @@ export interface EventDevStatus {
   losses: number; // 개발자 기준 — 도전자에게 진 판
   /** 다음 판부터 쓰는 규칙(개발자가 정한 값 — beatDevSettings로 완성된 것) */
   settings: GameSettings;
+  /** 컴퓨터와 하는 두 도전의 규칙 — 행사 전체에 하나(개발자 누구나 고친다) */
+  config: EventConfig;
 }
 
 /** 대기 줄에 선 도전자 화면 */
@@ -179,35 +302,96 @@ export interface EventQueueStatus {
   estimatedWaitSec: number | null; // 최근 판 길이 평균 × 앞 사람 수(기록이 없으면 null)
 }
 
-/** 순위표 한 줄 */
+/**
+ * 순위표 한 줄 — 화면은 **순위 · 닉네임 · 점수** 세 칸만 그린다(2026-10-27 요청). 점수 칸에 무엇이 들어가는지는 도전마다 다르다.
+ * recordId는 화면에 그리지 않는다(예전의 "#12" 표기는 지웠다) — 상품 수령 때 맞춰 볼 번호는 결과 화면과 운영자 화면에 남아 있다.
+ */
 export interface LeaderboardEntry {
   name: string;
   recordId: number | null;
-  level?: number;   // 동물의 왕
-  target?: number;  // 목표점수 달성하기 — 달성한 목표
-  score?: number;   // 목표점수 달성하기 — 마지막 턴의 점수
+  level?: number;   // (옛 동물의 왕 — 최고 레벨. 지금 동물의 왕은 score = 기술 한 번의 최고 효과)
+  /** 동물의 왕 — 그 기록을 낸 도전 */
+  event?: EventKind;
+  target?: number;  // 목표점수 달성하기 — 달성해야 했던 목표 점수
+  score?: number;   // 목표점수 달성하기·한 우물만 파기 — 달성 점수(이긴 판의 마지막 체력). 동물의 왕 — 그 카드의 기술 한 번 최고 효과
   animal?: Animal;  // 한 우물만 파기 — 고정된 카드
+  /**
+   * 그 판의 카드별 기록 — 화면은 **skill(기술 한 번의 최고 효과 — skillPeakValue)** 만 그린다(2026-10-27 요청).
+   * level(최고 레벨)·exp(최대 경험치)도 함께 싣지만 쓰지 않는다. 개발자를 이겨라·목표점수 달성하기는 네 장, 한 우물만 파기는
+   * 쓸 수 있던 두 장(상표토끼·특허랑이)만. skill은 그날부터 기록해 그 전 기록에는 없다.
+   */
+  cards?: Partial<Record<Animal, { level: number; exp?: number; skill?: number }>>;
+}
+
+/**
+ * 순위표를 집계하는 기간(ms, 양 끝 포함). null이면 그쪽으로 끝이 없다 — 둘 다 null이면 전체 기간.
+ * 판의 **시작 시각이 from 이후이고 끝난 시각이 to 이전**인 판만 센다 — "이벤트 시작부터 종료까지"에 온전히 들어간 판.
+ */
+export interface LeaderboardRange {
+  from: number | null;
+  to: number | null;
+}
+
+/**
+ * 판 하나가 기간 안인가 — **시작이 from 이후이고 끝이 to 이전**(양 끝 포함). 행사 시작 직전에 시작해 행사 중에 끝난 판,
+ * 행사 중에 시작해 마감 뒤에 끝난 판은 넣지 않는다. 서버(순위표 집계)와 운영자 화면(기록·CSV 거르기)이 같은 규칙을 쓴다.
+ */
+export function inLeaderboardRange(startedAt: number, endedAt: number, range: LeaderboardRange): boolean {
+  if (range.from !== null && startedAt < range.from) return false;
+  if (range.to !== null && endedAt > range.to) return false;
+  return true;
+}
+
+/**
+ * 기술 한 번 쓸 때의 효과 크기 — 순위표의 카드별 점수와 동물의 왕이 이 값의 **판 중 최댓값**으로 매긴다(2026-10-27 요청).
+ * 실용신양 = 예약한 추가 뽑기 수 · 상표토끼 = 회복한 체력 · 디자인어 = 쓴 뒤의 배율(쌓인 최대 배율) · 특허랑이 = 빼앗은 체력.
+ * 배율(인어·한 우물 기본 배율)이 반영된 **실제로 일어난 값**이다(skillApplied 이벤트의 값 그대로).
+ */
+export function skillPeakValue(e: {
+  animal: Animal;
+  extraDrawsQueued: number;
+  myHpDelta: number;
+  multiplierAfter: number;
+  oppHpDelta: number;
+}): number {
+  switch (e.animal) {
+    case 'sheep': return e.extraDrawsQueued;
+    case 'rabbit': return e.myHpDelta;
+    case 'mermaid': return e.multiplierAfter;
+    case 'tiger': return Math.max(0, -e.oppHpDelta);
+  }
 }
 
 export interface Leaderboard {
-  /** 동물의 왕 — '개발자를 이겨라' 승리 기록에서 동물별 최고 레벨 1~3위(닉네임당 1건, 동점은 먼저 달성한 사람) */
+  /** 이 순위표가 집계한 기간 — 요청한 기간을 그대로 돌려준다(화면이 어느 요청의 답인지 알 수 있게) */
+  range: LeaderboardRange;
+  /** 동물의 왕 — 모든 이벤트에서 이긴 판의 카드별 기술 최고 효과(skillPeakValue) 1~3위(닉네임당 1건, 동점은 먼저 달성한 사람) */
   animalKing: Record<Animal, LeaderboardEntry[]>;
-  beatDev: { played: number; wins: number; winners: LeaderboardEntry[] };
+  /** 이긴 사람만 — 처음 이긴 순, 닉네임당 1줄(그 첫 승리의 기록). 이겨야 순위에 오르므로 승/패 칸은 없다(2026-10-27) */
+  beatDev: { played: number; wins: number; ranking: LeaderboardEntry[] };
   /** 성공자 — 높은 목표를 달성한 사람부터(닉네임당 최고 목표 1건) */
-  timeAttack: { played: number; wins: number; winners: LeaderboardEntry[] };
-  oneWell: { played: number; wins: number; winners: LeaderboardEntry[] };
+  timeAttack: { played: number; wins: number; ranking: LeaderboardEntry[] };
+  /** 성공자 — 높은 점수로 이긴 사람부터(닉네임당 최고 점수 1건, 같으면 먼저 달성한 사람) */
+  oneWell: { played: number; wins: number; ranking: LeaderboardEntry[] };
 }
 
 /** 저장된 결과 한 건(운영자 화면·CSV) */
 export interface EventResultRow {
   id: number | null;       // DB에 들어가기 전이면 null(저장 대기)
-  createdAt: number;       // 기록 시각(ms) — 운영자 화면 표시용
+  /** 판이 시작된 시각(ms) — DB의 started_at. 이 열이 생기기 전(2026-10-27 이전)의 기록은 끝난 시각 − 판 길이로 되짚는다 */
+  startedAt: number;
+  createdAt: number;       // 판이 끝나 기록된 시각(ms) — DB의 created_at
   event: EventKind;
   playerName: string;
   developer: string | null;
   won: boolean;
   endReason: EventEndReason;
   peakLevels: Record<Animal, number>;
+  /** 카드별 최대 경험치(2026-10-27 추가 — DB의 peak_exp). 그 전 기록에는 없다 */
+  peakExp?: Record<Animal, number>;
+  /** 카드별 기술 한 번의 최고 효과(skillPeakValue — DB의 peak_skill, 2026-10-27 추가). 그 전 기록에는 없다 */
+  peakSkill?: Record<Animal, number>;
+  /** finalScore — 목표점수 달성하기·한 우물만 파기에서 판이 끝났을 때 도전자의 점수(체력) */
   detail: { target?: number; finalScore?: number; lockedAnimal?: Animal | null; devForfeit?: boolean };
   turns: number;
   durationMs: number;

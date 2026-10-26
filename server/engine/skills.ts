@@ -1,4 +1,4 @@
-import { ANIMALS, THRESHOLDS, opponentsOf } from 'shared';
+import { ANIMALS, THRESHOLDS, opponentsOf, skillMultiplier } from 'shared';
 import type { Animal, GameEvent, GameState, SideId } from 'shared';
 
 /** 레벨 = floor(누적 경험치 / 임계값). 임계값은 동물마다 다르다(양·토끼 10, 인어·호랑이 20). */
@@ -42,6 +42,7 @@ export function eligibleAnimals(state: GameState, team: SideId): Animal[] {
  *   (기본 배율 1에 레벨 2를 두 번 쌓으면 1+2+2=5, 곱연산이 아니라 합연산이다).
  *
  * 배율은 토끼·호랑이·양을 쓰는 순간 1로 초기화된다("다음을 노리기"로는 소모되지 않는다).
+ * 이벤트 '한 우물만 파기'의 도전자는 특허랑이에 기본 2배가 더 곱해진다(shared의 skillMultiplier — 화면 미리보기와 같은 함수).
  * 레벨이 0인 동물을 골랐다면(정상적인 클라이언트라면 UI에서 막힘) 아무 일도 일어나지 않는다.
  */
 export function applySkillChoice(
@@ -88,7 +89,8 @@ export function applySkillChoice(
     me.pendingMultiplier += level;
   } else {
     // ③ 나머지 셋은 지금까지 쌓인 배율을 곱해 쓰고, 쓴 뒤 1로 되돌린다.
-    multiplierUsed = me.pendingMultiplier;
+    //    (한 우물만 파기의 특허랑이는 기본 2배가 더 곱해진다 — skillMultiplier)
+    multiplierUsed = skillMultiplier(state, team, animal);
     const amount = level * multiplierUsed;
 
     if (animal === 'sheep') {

@@ -6,6 +6,7 @@ import {
   NICKNAME_MAX_LEN,
   beatDevSettings,
   isValidPin,
+  normalizeEventConfig,
   normalizeNameKey,
   randomNickname,
   randomScoreRaceTarget,
@@ -13,6 +14,7 @@ import {
 import type {
   ClientMessage,
   EventAdminState,
+  EventConfig,
   EventDevStatus,
   EventKind,
   EventQueueStatus,
@@ -22,6 +24,7 @@ import type {
 import type { RoomManager } from '../roomManager';
 import type { RecordStore } from '../records/store';
 import type { EventGameResult } from '../room';
+import { normalizeRange } from '../records/leaderboard';
 
 /**
  * 이벤트 허브 — 개발자 상시 대기 · 도전자 대기 줄 · 자동 매칭 · 이벤트 방 만들기(EVENT_MODE_ROADMAP.md §3-1).
@@ -74,6 +77,8 @@ type EventAdminMsg = Extract<ClientMessage, { type: 'eventAdmin' }>;
 const AUTH_MAX_FAILURES = 5;
 const AUTH_LOCK_MS = 30_000;
 const RECENT_DURATIONS = 10;
+/** 운영 설정 키 — 컴퓨터와 하는 두 도전의 규칙(EventConfig). RecordStore가 DB(event_settings)에 남긴다. */
+const CONFIG_KEY = 'eventConfig';
 
 export class EventHub {
   private devs = new Map<string, DevEntry>();
@@ -138,6 +143,22 @@ export class EventHub {
     if (!dev) return;
     dev.settings = beatDevSettings({ ...dev.settings, ...settings });
     this.broadcastStatuses();
+  }
+
+  /**
+   * 목표점수 달성하기·한 우물만 파기의 규칙(행사 전체)을 바꾼다 — 다음 판부터. 대기실에 들어온(암호를 통과한) 개발자만 —
+   * devOf가 그 확인이다. 값은 normalizeEventConfig가 다시 자르고, 지금 규칙 위에 얹는다(보내지 않은 칸은 그대로).
+   */
+  devConfig(conn: EventConn, raw: unknown): void {
+    if (!this.devOf(conn)) return;
+    const next = normalizeEventConfig(raw, this.config());
+    void this.store.saveSetting(CONFIG_KEY, next);
+    this.broadcastStatuses();
+  }
+
+  /** 지금의 이벤트 규칙 — 저장소에 둔 값(없으면 기본값)을 매번 다시 잘라 쓴다(DB에서 읽은 옛 모양도 안전하게). */
+  config(): EventConfig {
+    return normalizeEventConfig(this.store.setting(CONFIG_KEY));
   }
 
   devAway(conn: EventConn, away: boolean): void {
@@ -220,10 +241,16 @@ export class EventHub {
     // 컴퓨터 대전 — 곧바로 방을 세우고 시작한다(roomCreated → gameStart 순서).
     const { roomId, room } = this.rooms.createRoom();
     const playerId = randomUUID();
+    // 규칙은 개발자가 대기실에서 정한 값(행사 전체 — EventConfig). 판이 시작될 때의 값이 그 판 끝까지 간다.
+    const cfg = this.config();
+    const ta = cfg.timeAttack;
     room.setupEventSolo(conn.ws, playerId, name, {
       kind,
-      // 목표점수 달성하기 — 목표는 판마다 서버가 10~20에서 뽑는다(모든 무작위는 서버에서만).
-      ...(kind === 'timeAttack' ? { target: randomScoreRaceTarget() } : {}),
+      settings: kind === 'timeAttack' ? ta.settings : cfg.oneWell.settings,
+      // 목표점수 달성하기 — 목표는 판마다 서버가 개발자가 정한 범위(기본 10~20)에서 뽑는다(모든 무작위는 서버에서만).
+      ...(kind === 'timeAttack'
+        ? { target: randomScoreRaceTarget(Math.random, ta.targetMin, ta.targetMax), targetRange: { min: ta.targetMin, max: ta.targetMax } }
+        : { oneWellMultipliers: cfg.oneWell.multipliers }),
       onEnd: result => this.onGameEnd(key, result),
     });
     conn.enterRoom(roomId, playerId);
@@ -249,8 +276,9 @@ export class EventHub {
 
   // ─── 순위표 · 운영 ─────────────────────────────────────────────────────────
 
-  sendLeaderboard(conn: EventConn): void {
-    conn.send({ type: 'leaderboard', data: this.store.leaderboard() });
+  /** from·to(ms)를 주면 그 기간 안에 시작해 끝난 판만 센다. 읽기 전용이라 토큰을 묻지 않는다(순위표는 원래 누구나 본다). */
+  sendLeaderboard(conn: EventConn, from?: unknown, to?: unknown): void {
+    conn.send({ type: 'leaderboard', data: this.store.leaderboard(normalizeRange(from, to)) });
   }
 
   async admin(conn: EventConn, msg: EventAdminMsg): Promise<void> {
@@ -353,13 +381,16 @@ export class EventHub {
       won: r.won,
       endReason: r.endReason,
       peakLevels: r.peakLevels,
+      peakExp: r.peakExp,
+      peakSkill: r.peakSkill,
       detail: {
         ...(r.target !== undefined ? { target: r.target } : {}),
-        ...(r.kind === 'timeAttack' && r.finalScore !== null ? { finalScore: r.finalScore } : {}),
+        ...((r.kind === 'timeAttack' || r.kind === 'oneWell') && r.finalScore !== null ? { finalScore: r.finalScore } : {}),
         ...(r.kind === 'oneWell' ? { lockedAnimal: r.lockedAnimal } : {}),
         ...(r.devForfeit ? { devForfeit: true } : {}),
       },
       turns: r.turns,
+      startedAt: r.startedAt,
       durationMs: r.durationMs,
     });
     // 개발자 전적이 바뀌었다 — 대기실 화면에 곧바로 보인다.
@@ -386,7 +417,10 @@ export class EventHub {
       if (r.won) losses += 1;
       else wins += 1;
     }
-    return { devId: d.devId, name: d.name, state: d.state, queueLength: this.queue.length, wins, losses, settings: d.settings };
+    return {
+      devId: d.devId, name: d.name, state: d.state, queueLength: this.queue.length, wins, losses, settings: d.settings,
+      config: this.config(),
+    };
   }
 
   private queueStatus(position: number): EventQueueStatus {

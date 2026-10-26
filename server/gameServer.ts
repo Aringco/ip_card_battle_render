@@ -291,6 +291,9 @@ export function createConnectionHandler(roomManager: RoomManager, eventHub: Even
         case 'eventDevStandby':
           eventHub.devStandby(eventConn, String(msg.token ?? ''), String(msg.name ?? ''), msg.devId, msg.settings);
           break;
+        case 'eventDevConfig':
+          eventHub.devConfig(eventConn, msg.config);
+          break;
         case 'eventDevSettings':
           if (msg.settings && typeof msg.settings === 'object') eventHub.devSettings(eventConn, msg.settings);
           break;
@@ -307,7 +310,7 @@ export function createConnectionHandler(roomManager: RoomManager, eventHub: Even
           eventHub.cancel(eventConn);
           break;
         case 'getLeaderboard':
-          eventHub.sendLeaderboard(eventConn);
+          eventHub.sendLeaderboard(eventConn, msg.from, msg.to);
           break;
         case 'eventAdmin':
           runEvent(eventHub.admin(eventConn, msg), msg.type);

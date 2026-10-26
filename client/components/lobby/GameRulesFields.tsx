@@ -72,7 +72,9 @@ export function GameRulesFields({
   hidePause = false,
   mode = 'team',
   hideFirstTeam = false,
+  hideTargetScore = false,
   heading = '게임 규칙 (방장이 정해요)',
+  extra,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
@@ -82,10 +84,16 @@ export function GameRulesFields({
   mode?: GameMode;
   /** 선 플레이어를 감춘다 — 이벤트 '개발자를 이겨라'는 언제나 도전자 선공이다(beatDevSettings가 고정). */
   hideFirstTeam?: boolean;
+  /** 목표 점수 칸을 감춘다 — 이벤트 '목표점수 달성하기'는 목표를 범위에서 판마다 뽑아서 이 칸이 뜻이 없다(그 범위는 extra로 받는다). */
+  hideTargetScore?: boolean;
   /** 접힌 버튼의 제목 — 이벤트 개발자 대기실은 "개발자가 정해요"다. */
   heading?: string;
+  /** 펼친 몸통 맨 위에 끼우는 줄 — 이벤트 '목표점수 달성하기'의 목표 범위(최소~최대)처럼 이 목록에 없는 항목 */
+  extra?: React.ReactNode;
 }) {
-  const fields = hidePause ? RULE_FIELDS.filter(f => !PAUSE_KEYS.includes(f.key)) : RULE_FIELDS;
+  const fields = RULE_FIELDS.filter(
+    f => !(hidePause && PAUSE_KEYS.includes(f.key)) && !(hideTargetScore && f.key === 'targetScore'),
+  );
   const [open, setOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -121,6 +129,7 @@ export function GameRulesFields({
         // 한때 이 몸통을 절대배치해 카드를 아예 안 자라게 해봤지만, 몸통이 보이는 영역
         // 밖으로 나가 "펼치기를 눌러도 아무 일도 없는" 화면이 됐다(globals.css .lobby-rules 주석).
         <div ref={bodyRef} className="lobby-rules-body px-3 pb-2.5 border-t border-gray-100 pt-2 flex flex-col gap-1.5">
+          {extra}
           {/* 선 플레이어 — 숫자 입력이 아니라 3지선다라 격자 위에 한 줄로 둔다 */}
           {mode === 'team' && !hideFirstTeam && (
           <div className="flex flex-col gap-0.5">

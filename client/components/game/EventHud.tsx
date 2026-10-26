@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { EVENT_LABELS } from 'shared';
+import { EVENT_LABELS, oneWellBaseMultiplier } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 
 /**
@@ -51,10 +51,14 @@ export function EventHud({
   const title = race ? `목표 ${intro ? '?' : race.target}점 달성하기` : EVENT_LABELS[ev.kind];
 
   // 한 우물 — 지금 쓸 수 있는 카드(도전자 시점의 안내. 개발자·관전은 이 도전에 없다)
+  const wellMult = (a: Animal) => oneWellBaseMultiplier(gameState.oneWell, a);
+  const wellTag = (a: Animal) => (wellMult(a) > 1 ? `×${wellMult(a)}` : '');
+  const wellX = (a: Animal) => (wellMult(a) > 1 ? ` · 위력 ×${wellMult(a)}` : '');
   const wellText = gameState.oneWell
     ? locked
-      ? `${ANIMAL_INFO[locked].emoji} ${ANIMAL_INFO[locked].name}만 쓸 수 있어요`
-      : `${gameState.oneWell.allowed.map(a => ANIMAL_INFO[a].emoji).join(' · ')} 중 처음 쓴 카드만`
+      ? `${ANIMAL_INFO[locked].emoji} ${ANIMAL_INFO[locked].name}만 쓸 수 있어요${wellX(locked)}`
+      // 카드마다 기본 배율(그 판에 실린 값 — 기본 상표토끼 2 · 특허랑이 3) — 고르기 전에 알 수 있게 옆에 적는다
+      : `${gameState.oneWell.allowed.map(a => `${ANIMAL_INFO[a].emoji}${wellTag(a)}`).join(' · ')} 중 처음 쓴 카드만`
     : null;
 
   const sub = ev.kind === 'beatDev'

@@ -74,10 +74,11 @@ async function measure(page, label) {
   }, label);
 }
 
-async function openRules(page, formSel) {
+/** 접힌 규칙 묶음의 머리 버튼을 누른다 — 제목 글자로 찾는다(개발자 대기실은 묶음이 셋이라 어느 것인지 고른다). */
+async function openRules(page, formSel, heading = '게임 규칙') {
   for (const b of await page.$$(`${formSel} button`)) {
     const t = await page.evaluate(el => el.textContent, b);
-    if (t && t.includes('게임 규칙')) { await b.click(); return; }
+    if (t && t.includes(heading)) { await b.click(); return; }
   }
 }
 
@@ -299,9 +300,10 @@ for (const vp of VIEWPORTS) {
   devWait.note = (await formHas(page, '.stage-form-event', '개발자 대기실')) ? '' : '*** 대기실 안 뜸(암호?)';
   results.push(devWait);                                          await shot('8h-event-devwait');
   // 개발자가 정하는 게임 규칙 — 접힌 상태는 위에서 쟀고(스크롤 없어야 한다), 펼치면 스크롤이 정상이다.
-  await openRules(page, '.stage-form-event');         await sleep(500);
+  // 묶음이 셋(개발자를 이겨라 · 목표점수 달성하기 · 한 우물만 파기 — 2026-10-27)이라 가장 긴 목표점수 쪽(목표 범위 줄이 더 있다)을 편다.
+  await openRules(page, '.stage-form-event', '목표점수 달성하기 규칙'); await sleep(500);
   results.push(await measure(page, `event-devwait+rules@${tag}`)); await shot('8i-event-devwait-rules');
-  await openRules(page, '.stage-form-event');         await sleep(300);
+  await openRules(page, '.stage-form-event', '목표점수 달성하기 규칙'); await sleep(300);
   await clickIn(page, '.stage-form-event', '대기 그만두기'); await sleep(400);
 
   await page.close();

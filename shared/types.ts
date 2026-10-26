@@ -142,7 +142,9 @@ export interface GameState {
   // 이벤트 '한 우물만 파기'에서만 — 그 편은 allowed 안의 카드만 쓸 수 있고, 그중 하나를 처음 쓰는 순간
   // locked가 세워져 이후로는 그 카드만 쓸 수 있다. 잠금은 엔진(skills.ts의 eligibleAnimals·applySkillChoice)이
   // 한 곳에서 지킨다 — 방이 따로 세우면 시간초과 대체 선택 경로에서 고정이 빠진다(EVENT_MODE_ROADMAP.md §3-3).
-  oneWell?: { side: SideId; allowed: Animal[]; locked: Animal | null };
+  // multipliers는 그 편 카드의 **기본 배율**(쌓인 인어 배율에 곱해진다 — shared/events.ts의 skillMultiplier). 판이 시작될 때
+  // 개발자가 정해 둔 값(EventConfig)이 실리고 판 끝까지 그대로다. 없으면 기본값(ONE_WELL_MULTIPLIERS — 상표토끼 2·특허랑이 3).
+  oneWell?: { side: SideId; allowed: Animal[]; locked: Animal | null; multipliers?: Partial<Record<Animal, number>> };
 
   // 이벤트 '목표점수 달성하기'에서만 — 그 편은 maxTurn턴이 끝났을 때 점수(체력)가 target 이상이면 승리, 아니면 패배다.
   // 이 판에는 체력 즉시 승패(넉아웃)가 없고(0점이어도 계속한다), 턴 상한도 MAX_TURN 대신 maxTurn이다

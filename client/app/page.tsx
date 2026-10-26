@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { EventKind, GameMode, GameSettings, Seat } from 'shared';
+import type { EventConfig, EventKind, GameMode, GameSettings, Seat } from 'shared';
 import { DEFAULT_SETTINGS, beatDevSettings, isPlayingSeat, randomNickname } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { EventView } from '@/components/lobby/EventForm';
@@ -81,6 +81,8 @@ export default function LobbyPage() {
   const [devToken, setDevToken] = useState('');
   // 개발자가 정하는 '개발자를 이겨라' 규칙 — 서버가 devId별로 기억하고, 서버가 다시 켜졌을 때를 위해 세션에도 둔다.
   const [devSettings, setDevSettings] = useState<GameSettings>(() => beatDevSettings());
+  // 목표점수 달성하기·한 우물만 파기의 규칙(행사 전체) — 서버가 대기실에 들어온 개발자에게 내려 준 값에서 시작한다.
+  const [devConfig, setDevConfig] = useState<EventConfig | null>(null);
   // 개발자 대기를 서버에 알렸는가 — 연결이 다시 붙으면 다시 알린다(상시 대기)
   const devStandbyWanted = useRef(false);
 
@@ -137,6 +139,30 @@ export default function LobbyPage() {
     }, 600);
     return () => clearTimeout(t);
   }, [devSettings, eventView, ws.eventDevStatus, eventDevSettings]);
+
+  // 행사 전체 규칙 — 서버 값이 바뀌면(처음 받을 때 · 다른 개발자가 고쳤을 때 · 서버가 범위를 잘라 돌려줬을 때) 그 값을 쓴다.
+  // 내가 고친 값은 입력이 멈춘 뒤 보낸다(위 devSettings와 같은 이유). 보낸 값과 서버 값을 같은 열쇠로 기억해, 서버가 그대로
+  // 돌려준 값을 다시 보내거나 서버 값으로 치는 중인 칸을 덮지 않는다.
+  const { eventDevConfig } = ws;
+  const serverConfig = ws.eventDevStatus?.config ?? null;
+  const serverConfigKey = serverConfig ? JSON.stringify(serverConfig) : null;
+  const devConfigSent = useRef<string | null>(null);
+  useEffect(() => {
+    if (!serverConfig || serverConfigKey === null) return;
+    devConfigSent.current = serverConfigKey;
+    setDevConfig(serverConfig);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverConfigKey]);
+  useEffect(() => {
+    if (eventView !== 'devWait' || !devConfig) return;
+    const key = JSON.stringify(devConfig);
+    if (devConfigSent.current === key) return;
+    const t = setTimeout(() => {
+      devConfigSent.current = key;
+      eventDevConfig(devConfig);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [devConfig, eventView, eventDevConfig]);
 
   // 암호가 틀렸으면 대기실이 아니라 입력 화면에 머문다.
   useEffect(() => {
@@ -431,6 +457,8 @@ export default function LobbyPage() {
                   devSettings,
                   onDevSettings: setDevSettings,
                   devStatus: ws.eventDevStatus,
+                  devConfig: eventView === 'devWait' ? devConfig : null,
+                  onDevConfig: setDevConfig,
                   onDevAway: ws.eventDevAway,
                   onDevLeave: handleDevLeave,
                 }}

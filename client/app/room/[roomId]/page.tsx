@@ -226,7 +226,12 @@ export default function GamePage() {
           결과 화면에는 뜨지 않는다 — 이 return 위에서 GameEndScreen이 먼저 돌아간다. */}
       {/* 목표점수 달성하기 — 시작 룰렛. 일시정지 창보다 위에 덮는다(그동안은 메뉴도 누를 수 없다). */}
       {introActive && gameState.scoreRace && gameState.phase === 'playing' && (
-        <ScoreRaceIntro target={gameState.scoreRace.target} until={eventIntroUntil} maxTurn={gameState.scoreRace.maxTurn} />
+        <ScoreRaceIntro
+          target={gameState.scoreRace.target}
+          until={eventIntroUntil}
+          maxTurn={gameState.scoreRace.maxTurn}
+          range={gameState.event?.targetRange}
+        />
       )}
       <RotateHint />
     </>

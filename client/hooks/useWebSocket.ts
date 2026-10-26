@@ -8,12 +8,14 @@ import type {
   ClientMessage,
   ErrorCode,
   EventAdminState,
+  EventConfig,
   EventDevStatus,
   EventKind,
   EventQueueStatus,
   GameMode,
   GameSettings,
   Leaderboard,
+  LeaderboardRange,
   LobbyChatMessage,
   LobbyPlayer,
   Place,
@@ -184,11 +186,14 @@ export interface UseWebSocketReturn {
   eventDevStandby: (token: string, name: string, devId?: string, settings?: Partial<GameSettings>) => void;
   /** 대기 중 규칙 변경 — 다음 판부터 적용된다 */
   eventDevSettings: (settings: Partial<GameSettings>) => void;
+  /** 목표점수 달성하기·한 우물만 파기의 규칙(행사 전체) — 대기실에 들어온 개발자만 서버가 받는다 */
+  eventDevConfig: (config: EventConfig) => void;
   eventDevAway: (away: boolean) => void;
   eventDevLeave: () => void;
   eventChallenge: (kind: EventKind, name: string, pin: string) => void;
   eventCancel: () => void;
-  getLeaderboard: () => void;
+  /** range를 주면 그 기간 안에 시작해 끝난 판만 센 순위표가 온다(개발자의 기간 설정 — LeaderboardRange) */
+  getLeaderboard: (range?: LeaderboardRange) => void;
   eventAdmin: (msg: EventAdminPayload) => void;
 }
 
@@ -559,6 +564,7 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'eventDevStandby', token, name, ...(devId ? { devId } : {}), ...(settings ? { settings } : {}) });
   }, [send]);
   const eventDevSettings = useCallback((settings: Partial<GameSettings>) => send({ type: 'eventDevSettings', settings }), [send]);
+  const eventDevConfig = useCallback((config: EventConfig) => send({ type: 'eventDevConfig', config }), [send]);
   const eventDevAway = useCallback((away: boolean) => send({ type: 'eventDevAway', away }), [send]);
   const eventDevLeave = useCallback(() => {
     setEventDevStatus(null);
@@ -574,7 +580,10 @@ export function useWebSocket(): UseWebSocketReturn {
     setEventQueue(null);
     send({ type: 'eventCancel' });
   }, [send]);
-  const getLeaderboard = useCallback(() => send({ type: 'getLeaderboard' }), [send]);
+  const getLeaderboard = useCallback(
+    (range?: LeaderboardRange) => send({ type: 'getLeaderboard', from: range?.from ?? null, to: range?.to ?? null }),
+    [send],
+  );
   const eventAdmin = useCallback((msg: EventAdminPayload) => {
     send({ type: 'eventAdmin', ...msg } as ClientMessage);
   }, [send]);
@@ -592,6 +601,6 @@ export function useWebSocket(): UseWebSocketReturn {
     requestPause, respondPause, resumeGame, surrender, leaveGame,
     eventDevStatus, eventQueue, eventMatched, eventRegistered, eventError, clearEventError,
     eventIntroUntil, leaderboard, adminState,
-    eventDevStandby, eventDevSettings, eventDevAway, eventDevLeave, eventChallenge, eventCancel, getLeaderboard, eventAdmin,
+    eventDevStandby, eventDevSettings, eventDevConfig, eventDevAway, eventDevLeave, eventChallenge, eventCancel, getLeaderboard, eventAdmin,
   };
 }
