@@ -1,4 +1,5 @@
 import type { PlayerColorId } from './constants';
+import type { EnhanceState } from './enhance';
 
 export type Animal = 'sheep' | 'rabbit' | 'mermaid' | 'tiger';
 export type Team = 'A' | 'B';
@@ -42,7 +43,8 @@ export function isPlayingSeat(seat: Seat): seat is Team | typeof PLAYER_SEAT {
 export function isTeamSeat(seat: Seat): seat is Team {
   return seat === 'A' || seat === 'B';
 }
-export type CardNum = 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
+// 1은 카드 강화 모드에서만 나온다(모든 카드가 1 — shared/enhance.ts).
+export type CardNum = 1 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 export type GamePhase = 'lobby' | 'playing' | 'ended';
 
 // 맵 네 모서리의 장소 — 각 장소를 클릭하면 괄호 안 동물 중 하나가 무작위로 나온다.
@@ -150,6 +152,10 @@ export interface GameState {
   // 이 판에는 체력 즉시 승패(넉아웃)가 없고(0점이어도 계속한다), 턴 상한도 MAX_TURN 대신 maxTurn이다
   // (turnManager의 checkKnockout·advanceTurn, shared/sides.ts의 maxTurnOf). EVENT_MODE_ROADMAP.md §1-2.
   scoreRace?: { side: SideId; target: number; maxTurn: number };
+
+  // 혼자 놀기 '카드 강화'에서만 — 있으면 레벨·기술 효과·쿨타임이 강화 규칙(shared/enhance.ts)을 따르고, 카드 숫자는 모두 1이다.
+  // 레벨은 skillLevelFor로 구한다(엔진과 화면이 같은 함수). ENHANCE_MODE.md.
+  enhance?: EnhanceState;
 }
 
 // 게임 이벤트 (클라이언트 연출 및 시뮬레이션 로그용)
@@ -180,7 +186,19 @@ export type GameEvent =
       target?: SideId;
       // 한 우물만 파기 — 이 발동으로 카드가 고정됐다(처음 쓴 순간에만 실린다). 화면이 "이제부터 ○○만!"을 띄운다.
       oneWellLocked?: Animal;
+      // 카드 강화 — 고른 기술이 아니라 **짝이 맞아 저절로 발동한** 효과다(정산 직후, collect 바로 뒤에 실린다).
+      pair?: true;
+      // 카드 강화 — 실용신양 Lv.6+: 무작위로 고른 내 카드에 더해진 경험치(배율 반영 후)
+      randomExp?: { animal: Animal; amount: number };
+      // 카드 강화 — 디자인어 Lv.6+: 상대 배율이 실제로 깎인 양(×1 아래로는 안 내려가므로 표의 값보다 작을 수 있다)
+      oppMultiplierCut?: number;
+      // 카드 강화 — 디자인어 Lv.9+: 상대의 다음 고른 기술에 건 나눗셈(÷2 · ÷3 · ÷5)
+      oppDivisor?: number;
+      // 카드 강화 — 이번 기술의 효과가 상대 디자인어 때문에 이 수로 나뉘었다(반올림)
+      divisorUsed?: number;
     }
+  // 카드 강화 — 이 장소를 눌러 이번에 count장이 한꺼번에 나온다(뒤따르는 draw count개가 그 카드들이다). 화면은 겹쳐서 빠르게 띄운다.
+  | { type: 'placeDraws'; place: Place; count: number }
   | { type: 'skillPassed'; team: SideId; auto: boolean } // "아무것도 하지 않음"을 선택(auto=true면 고를 수 있는 행동이 없어 화면에 알리지 않고 자동 처리)
   | { type: 'festival' } // FESTIVAL_TURN 도달 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
   // reason: 'forfeit'은 엔진이 만들지 않는다 — 항복·나가기는 방(Room)에서 일어나는 일이라

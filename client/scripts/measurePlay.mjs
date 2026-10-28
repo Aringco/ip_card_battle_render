@@ -65,6 +65,9 @@ async function enterGame(page) {
       ?.click(),
   );
   await new Promise(r => setTimeout(r, 1100));
+  // 혼자 놀기는 두 갈래다(2026-10-28) — 일반 모드를 골라야 폼이 열린다
+  await page.evaluate(() => document.querySelector('.stage-col-solo-normal > .stage-panel')?.click());
+  await new Promise(r => setTimeout(r, 1100));
   // ⚠️ 반드시 **열려 있는 폼 안에서** 찾아야 한다. 문서 전체에서 텍스트로 찾으면
   // "컴퓨터와 대전 — 지금 바로…"라고 적힌 **모드 선택 패널**이 먼저 걸려, 폼이
   // 닫히고 게임이 시작되지 않는다(실제로 한 번 이 함정에 빠졌다).

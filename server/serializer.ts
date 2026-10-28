@@ -72,6 +72,15 @@ export function serializeState(
     // 이벤트 '한 우물만 파기'만 — 없는 판의 직렬화 모양은 예전과 똑같이 둔다. ⚠️ 빠뜨리면 F5 뒤 잠금이 풀려 보인다.
     ...(state.oneWell ? { oneWell: { ...state.oneWell, allowed: [...state.oneWell.allowed] } } : {}),
     ...(state.scoreRace ? { scoreRace: { ...state.scoreRace } } : {}),
+    // 카드 강화 판만 — 쿨타임은 편마다 새 객체로 복사한다(엔진이 계속 고쳐 쓰는 객체를 그대로 넘기지 않는다).
+    ...(state.enhance
+      ? {
+          enhance: {
+            cooldowns: Object.fromEntries(Object.entries(state.enhance.cooldowns).map(([side, cd]) => [side, { ...cd }])),
+            divisors: { ...state.enhance.divisors },
+          },
+        }
+      : {}),
   };
 }
 

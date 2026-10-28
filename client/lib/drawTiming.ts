@@ -7,3 +7,6 @@ export const SLOT_TOTAL_DUR = SLOT_SPIN_DUR + SLOT_REVEAL_HOLD + SLOT_FLY_DUR;
 
 export const WOOL_BALL_DUR = 500;     // 울 볼이 장소까지 굴러가는 시간
 export const SHEEP_DRAW_STEP = 300;   // 실용신양 연쇄 중 다음 뽑기 시작까지의 간격
+// 카드 강화 — 장소 한 번에 여러 장(1~3 / 3~5)이 나올 때 다음 장이 튀어나오기까지의 간격. 한 장씩 끝까지(1.35초) 기다리면
+// 5장에 7초가 걸려서, 겹쳐서 빠르게 띄운다(서버의 연출 유예는 뽑기 한 장당 300ms로 넉넉히 잡혀 있다 — room.ts settleGraceMs).
+export const PLACE_DRAW_STEP = 220;

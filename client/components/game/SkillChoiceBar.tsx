@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { finishingMove, previewSkill } from '@/lib/skills';
-import { SKILL_TITLE, SKILL_COLOR, describeSkill } from '@/lib/skillInfo';
+import { ENHANCE_MAX_LEVEL, enhanceLevelLabel } from 'shared';
+import { cooldownOf, finishingMove, previewSkill } from '@/lib/skills';
+import { SKILL_TITLE, SKILL_COLOR, describeEnhanceSkill, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
 import { spectatorTeamVars } from '@/lib/teamColors';
 import { emVar } from '@/lib/textFit';
@@ -127,6 +128,63 @@ function HoloCell({
   );
 }
 
+// 카드 강화 판 — 레벨이 오른 순간 그 카드에서 터지는 파티클(globals.css의 .enh-burst). 조각마다 방향·거리·색·지연을 정해 둔다
+// (무작위로 뽑으면 렌더마다 달라진다 — 한 번 정한 모양을 매번 쓴다). 무지개 순서로 돌며 퍼진다.
+const BURST_PIECES = Array.from({ length: 22 }, (_, i) => {
+  const angle = (i / 22) * Math.PI * 2 + (i % 2 ? 0.14 : -0.1);
+  const dist = 38 + ((i * 37) % 5) * 10; // 칸 크기에 대한 %
+  return {
+    dx: Math.cos(angle) * dist,
+    dy: Math.sin(angle) * dist * 0.8,
+    hue: (i * 360) / 22,
+    delay: (i % 4) * 40,
+    size: 6 + (i % 3) * 3,
+  };
+});
+
+/** 레벨이 오른 순간 한 번 — key가 바뀔 때마다 처음부터 다시 터진다. 클릭은 가로채지 않는다. */
+function LevelUpBurst({ level }: { level: number }) {
+  return (
+    <span className="enh-burst" aria-hidden>
+      <span className="enh-burst-ring" />
+      {BURST_PIECES.map((p, i) => (
+        <span
+          key={i}
+          className="enh-burst-piece"
+          style={{
+            ['--dx' as string]: `${p.dx.toFixed(1)}%`,
+            ['--dy' as string]: `${p.dy.toFixed(1)}%`,
+            ['--hue' as string]: String(Math.round(p.hue)),
+            ['--size' as string]: `${p.size}px`,
+            animationDelay: `${p.delay}ms`,
+          }}
+        />
+      ))}
+      <span className="enh-burst-text skill-outline-text">{level >= ENHANCE_MAX_LEVEL ? 'Lv.Max!' : `Lv.${level}!`}</span>
+    </span>
+  );
+}
+
+/**
+ * 카드 강화 판 — 레벨이 오른 카드마다 파티클 번호를 하나씩 올린다(그 번호가 LevelUpBurst의 key).
+ * 보는 편이 바뀌면(관전자 화면의 차례 교대) 비교하지 않고 기준만 새로 잡는다 — 남의 레벨을 "올랐다"고 터뜨리지 않게.
+ * 레벨은 화면상 경험치(withDisplayedExp)로 계산된 값이라, 카드가 내 칸에 도착한 뒤에 터진다.
+ */
+function useLevelUpBursts(enabled: boolean, team: SideId, levels: number[]): number[] {
+  const prev = useRef<{ team: SideId; levels: number[] } | null>(null);
+  const [bursts, setBursts] = useState<number[]>(() => levels.map(() => 0));
+  const key = levels.join(',');
+  useEffect(() => {
+    const before = prev.current;
+    prev.current = { team, levels };
+    if (!enabled || !before || before.team !== team) return;
+    if (levels.every((l, i) => l <= before.levels[i])) return;
+    setBursts(b => b.map((n, i) => (levels[i] > before.levels[i] ? n + 1 : n)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, team, key]);
+  return bursts;
+}
+
 // 줄바꿈은 여기서 정해진 그대로 그려진다(CSS가 `white-space: pre`) — 길면 접히는 게
 // 아니라 글자가 작아진다. 그래서 문구와 함께 상수로 꺼내 두고 폭을 재어 넘긴다.
 const PASS_TEXT = '지금은 할 수 있는게 없네요.\n레벨을 높이고,\n한 번에 몰아치는 방법도 좋답니다.';
@@ -181,6 +239,10 @@ export function SkillChoiceBar({
   onPass: () => void;
 }) {
   const previews = ANIMAL_ORDER.map(animal => previewSkill(gameState, team, animal));
+  // 카드 강화 판(혼자 놀기) — 모든 카드가 Lv.1부터 열려 있고, 레벨이 오를수록 카드가 밝아지고 무지개 홀로가 짙어진다.
+  // 쓴 카드는 쿨타임 동안 잠긴다(서버 eligibleAnimals와 같은 규칙 — lib/skills.ts의 cooldownOf).
+  const enhance = !!gameState.enhance;
+  const bursts = useLevelUpBursts(enhance, team, previews.map(p => p.level));
 
   // 예전엔 이 팀의 첫 행동이 해금된 그 순간에만(평생 1회) 손가락 가이드를 보여줬는데,
   // 그 순간을 놓치면 다시 볼 방법이 없었다. 이제는 행동을 고를 수 있는 턴마다 매번
@@ -219,9 +281,10 @@ export function SkillChoiceBar({
     >
       {ANIMAL_ORDER.map((animal, i) => {
         const preview = previews[i];
-        const eligible = preview.level > 0;
+        const cooling = cooldownOf(gameState, team, animal);
+        const eligible = preview.level > 0 && cooling === 0;
         const clickable = interactive && eligible && open(animal);
-        const desc = describeSkill(animal, preview.level);
+        const desc = enhance ? describeEnhanceSkill(animal, preview.level) : describeSkill(animal, preview.level);
         // 특허랑이처럼 효과가 둘 이상인 행동은 문구가 그냥 이어 붙어 "체력 +4상대 체력 -4"처럼
         // 읽히므로, 각 효과를 조각으로 모아 **쉼표 뒤에서 줄을 바꿔** 한 줄에 하나씩 둔다
         // (요청). 한 줄로 이으면 "내 체력 +1, 상대 체력 -1"이 카드 폭을 넘겨 제멋대로
@@ -231,7 +294,19 @@ export function SkillChoiceBar({
         if (preview.myHpDelta > 0) effectParts.push(`내 체력 ${preview.oppHpIsMax ? '최대 ' : ''}+${preview.myHpDelta}`);
         if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpIsMax ? '최대 ' : ''}${preview.oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${preview.multiplierAfter}`);
-        const effectLabel = !wellOk(animal) ? '🔒 사용 불가' : eligible ? effectParts.join(',\n') : '레벨 부족';
+        // 카드 강화 Lv.6+의 둘째 효과 — 연출 캡션(useAnimationQueue Pass 1.6)과 같은 문구
+        if (preview.oppMultiplierCut) effectParts.push(`상대 배율 -${preview.oppMultiplierCut}`);
+        if (preview.randomExp) effectParts.push(`무작위 경험치 +${preview.randomExp}`);
+        if (preview.oppDivisor && preview.oppDivisor > 1) effectParts.push(`상대 효과 ÷${preview.oppDivisor}`);
+        // 상대 디자인어(Lv.9+)에 걸려 이 카드의 효과가 나뉘어 있다 — 위 숫자는 이미 나눈 값이다
+        if (preview.divisor && preview.divisor > 1) effectParts.push(`(÷${preview.divisor} 적용)`);
+        const effectLabel = !wellOk(animal)
+          ? '🔒 사용 불가'
+          : cooling > 0
+            ? `⏳ 쿨타임\n${cooling}턴 남음`
+            : eligible ? effectParts.join(',\n') : '레벨 부족';
+        // 강화 단계 0~1 — 카드의 밝은 그라데이션과 무지개 홀로가 이 값을 따라 짙어진다(globals.css의 .enh-*)
+        const enhStep = enhance ? (preview.level - 1) / (ENHANCE_MAX_LEVEL - 1) : 0;
 
         // 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
@@ -256,6 +331,8 @@ export function SkillChoiceBar({
               className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
                 clickable ? 'skill-choice-glow' : ''
               }`}
+              data-enh-level={enhance ? preview.level : undefined}
+              style={enhance ? ({ ['--enh' as string]: enhStep.toFixed(3) } as React.CSSProperties) : undefined}
             >
               {/* 컷신 이미지 어둡게 하는 filter는 이 배경 레이어에만 걸어야 한다 — 예전처럼
                   버튼 전체에 filter를 걸면 그 위에 z-index로 얹은 자막(제목·설명·레벨
@@ -269,6 +346,13 @@ export function SkillChoiceBar({
                 className={`skill-choice-bg play-frame-inset absolute ${eligible && open(animal) ? '' : 'skill-choice-bg-disabled'}`}
                 style={{ backgroundImage: `url(/skills/${animal}_skill.png)` }}
               />
+              {/* 카드 강화 — 레벨이 오를수록 밝아지는 빛과, 가만히 있어도 흐르는 무지개 홀로(쿨타임 중엔 옅게) */}
+              {enhance && (
+                <>
+                  <div className={`enh-light play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
+                  <div className={`enh-rainbow play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
+                </>
+              )}
               <div className="skill-choice-dim play-frame-inset absolute" />
               {/* 레벨이 있을 때는(활성) 이 자리에 "레벨 N 소모" 대신 실제 효과(카드 추가
                   뽑기·체력 강탈 등, 노란색)를 보여준다 — 레벨이 없으면(비활성) 흰색
@@ -295,6 +379,7 @@ export function SkillChoiceBar({
                   style={{ color: SKILL_COLOR[animal] }}
                 >
                   [{SKILL_TITLE[animal]}]
+                  {enhance && <span className="enh-title-lv"> Lv.{enhanceLevelLabel(preview.level)}</span>}
                 </h3>
                 {/* ⚠️ `whitespace-pre-line`이 아니라 `pre`다(CSS의 .skill-text-desc) —
                     줄바꿈은 살리되 **그 밖의 줄바꿈은 일어나지 않아야** 한다. 대신 줄이
@@ -316,6 +401,7 @@ export function SkillChoiceBar({
             {showSkillGuide && eligible && open(animal) && (
               <GuideFinger team={spectatorGuideTeam} />
             )}
+            {enhance && bursts[i] > 0 && <LevelUpBurst key={bursts[i]} level={preview.level} />}
           </HoloCell>
         );
       })}

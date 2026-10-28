@@ -1,7 +1,8 @@
-import { ANIMALS, SHEEP_SAFETY_CAP } from 'shared';
+import { ANIMALS, SHEEP_SAFETY_CAP, enhancePlaceDrawCount } from 'shared';
 import type { GameEvent, GameState, Place } from 'shared';
 import { drawCardAt, randomPlace } from './places';
 import type { RNG } from './places';
+import { applyEnhancePairEffect } from './skills';
 
 /**
  * 장소 클릭 처리.
@@ -20,8 +21,15 @@ export function drawCard(
 
   events.push(...consumePendingExtraDraws(state, rng));
   events.push(...consumePendingFestivalDraws(state, rng));
-  events.push(..._drawOne(state, place, rng));
-  events.push(...settleStacks(state));
+  if (state.enhance) {
+    // 카드 강화 — 누른 장소에서 여러 장(1~3 / 3~5, 무작위)이 나온다. 화면이 묶어서 겹쳐 띄우도록 장수를 먼저 알린다.
+    const count = enhancePlaceDrawCount(place, rng);
+    events.push({ type: 'placeDraws', place, count });
+    for (let i = 0; i < count; i++) events.push(..._drawOne(state, place, rng));
+  } else {
+    events.push(..._drawOne(state, place, rng));
+  }
+  events.push(...settleStacks(state, rng));
 
   return events;
 }
@@ -61,6 +69,8 @@ function consumePendingFestivalDraws(state: GameState, rng: RNG): GameEvent[] {
 
 function _drawOne(state: GameState, place: Place, rng: RNG): GameEvent[] {
   const card = drawCardAt(place, rng);
+  // 카드 강화 판은 모든 카드가 1이다 — 짝이 맞으면 모인 장수만큼 경험치가 오른다(shared/enhance.ts).
+  if (state.enhance) card.num = 1;
   state.stacks[card.animal].push(card);
   return [{ type: 'draw', place, card }];
 }
@@ -73,7 +83,7 @@ function _drawOne(state: GameState, place: Place, rng: RNG): GameEvent[] {
  *    하는데, `drawCard`는 뽑기와 정산을 한 번에 끝내 그 사이에 끼어들 틈이 없다.
  *    정산 규칙이 두 벌이 되면 곧 어긋나므로, 복사하지 말고 이 함수를 그대로 쓴다.
  */
-export function settleStacks(state: GameState): GameEvent[] {
+export function settleStacks(state: GameState, rng: RNG = Math.random): GameEvent[] {
   const events: GameEvent[] = [];
   const team = state.activeTeam;
 
@@ -93,6 +103,8 @@ export function settleStacks(state: GameState): GameEvent[] {
       exp,
       cardIds: uncollected.map(c => c.id),
     });
+    // 카드 강화 — 짝이 맞은 그 카드의 기술이 곧바로 발동한다(방금 더한 경험치까지 반영한 레벨). 시연은 강화 판이 아니라 닿지 않는다.
+    if (state.enhance) events.push(applyEnhancePairEffect(state, team, animal, rng));
   }
 
   return events;

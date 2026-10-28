@@ -41,7 +41,7 @@ export const DEFAULT_PAUSE_MAX_MIN = 5;
 
 // 방 생성 화면에서 입력값을 이 범위로 잘라낸다(서버도 방어적으로 다시 clamp한다).
 export const SETTINGS_LIMITS = {
-  targetScore: { min: 1, max: 100 },
+  targetScore: { min: 1, max: 500 }, // 카드 강화 판의 기본 목표가 200이다(shared/enhance.ts) — 그 값이 잘리지 않게 500까지
   // MAX_TURN(20)보다 크게 입력해도 막지 않는다 — 그런 값은 engine/turnManager.ts가
   // 내부적으로 MAX_TURN으로 취급해(암묵적으로 clamp) 마지막 턴에 축제가 열리게 한다.
   festivalTurn: { min: 1, max: 999 },

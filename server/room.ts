@@ -9,6 +9,7 @@ import {
   processForfeit,
   initGame,
   initIndividualGame,
+  initEnhanceGame,
 } from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
 import type { GameEvent, GameSettings, GameState, LobbyChatMessage } from 'shared';
@@ -50,6 +51,11 @@ import {
   timeAttackSettings,
   beatDevSettings,
   opponentsOf,
+  ENHANCE_SETTINGS,
+  enhanceValue,
+  enhanceTigerHeal,
+  enhanceAmount,
+  enhanceDivisorOf,
 } from 'shared';
 import type { EventEndReason, EventInfo, EventKind } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
@@ -171,6 +177,42 @@ function pickScoreRaceComputerSkill(state: GameState, team: SideId): Animal | nu
   if (options.includes('mermaid')) return 'mermaid';
   if (options.includes('sheep')) return 'sheep';
   return null;
+}
+
+/**
+ * 혼자 놀기 '카드 강화'의 컴퓨터 — 판을 끝낼 수 있으면 그것부터(특허랑이로 0 · 상표토끼로 승리선), 아니면 "지금 얻는 값"이
+ * 가장 큰 카드를 고르되 매번 조금씩 흔들어(×0.7~1.3) 사람처럼 실수도 한다. 배율이 걸려 있지 않을 때는 가끔 디자인어로
+ * 다음 수를 키운다. 쓸 것이 없으면 넘긴다(null).
+ */
+function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal | null {
+  const options = eligibleAnimals(state, side);
+  if (options.length === 0) return null;
+  const foe = opponentsOf(state, side)[0];
+  if (foe === undefined) return null;
+  const me = state.teams[side];
+  const foeHp = state.teams[foe]?.hp ?? 0;
+  const mult = me.pendingMultiplier;
+  const winHp = state.settings.targetScore * 2;
+  const div = enhanceDivisorOf(state, side);
+  const value = (a: Animal) => enhanceAmount(enhanceValue(a, levelOf(state, side, a)), mult, div);
+
+  if (options.includes('tiger') && value('tiger') >= foeHp) return 'tiger';
+  if (options.includes('rabbit') && me.hp + value('rabbit') >= winHp) return 'rabbit';
+  if (options.includes('mermaid') && mult === 1 && options.length > 1 && Math.random() < 0.35) return 'mermaid';
+
+  const gain = (a: Animal): number => {
+    if (a === 'tiger') return Math.min(value(a), foeHp) + enhanceAmount(enhanceTigerHeal(levelOf(state, side, a)), mult, div);
+    if (a === 'rabbit') return value(a);
+    if (a === 'sheep') return value(a) * 0.6; // 카드는 곧바로 점수가 아니다
+    return mult === 1 ? 1.5 : 0;              // 디자인어 — 이미 걸려 있으면 굳이 쓰지 않는다
+  };
+  let best: Animal = options[0];
+  let bestScore = -Infinity;
+  for (const a of options) {
+    const score = gain(a) * (0.7 + Math.random() * 0.6);
+    if (score > bestScore) { best = a; bestScore = score; }
+  }
+  return best;
 }
 
 // ─── 이벤트 모드(EVENT_MODE_ROADMAP.md) ─────────────────────────────────────────
@@ -296,6 +338,8 @@ export class Room {
   private turnTotalMs = 0;
   private timerHandle: ReturnType<typeof setTimeout> | null = null;
   private vsComputer = false;
+  // 혼자 놀기 '카드 강화'(shared/enhance.ts) — 혼자 놀기와 같은 팀전 1:1에 강화 규칙을 얹어 시작한다(tryStartGame → initEnhanceGame).
+  private enhance = false;
   /**
    * 시연회 분기 — 혼자 놀기에서 정해진 이름 짝으로 들어왔을 때만 세워진다.
    * null이면 평범한 게임이고, 아래 어느 분기에도 걸리지 않는다.
@@ -587,11 +631,23 @@ export class Room {
    * 도착했는데, 그러면 "방에 새로 들어왔으니 옛 게임 상태를 비운다"는 클라이언트
    * 규칙이 방금 받은 새 게임을 지워버려 혼자 놀기가 로비에서 한 발짝도 못 나간다.
    */
-  addSoloPlayer(ws: WebSocket, playerId: string, nickname: string, teamName?: string, settings?: Partial<GameSettings>): void {
+  addSoloPlayer(
+    ws: WebSocket,
+    playerId: string,
+    nickname: string,
+    teamName?: string,
+    settings?: Partial<GameSettings>,
+    // 혼자 놀기 '카드 강화'(shared/enhance.ts) — 자리·화면은 혼자 놀기 그대로, 규칙만 강화 판
+    enhance = false,
+  ): void {
     this.vsComputer = true;
     // ⚠️ 시연 판정은 **여기 안에서** 한다 — 부르는 쪽(gameServer)이 시연을 알 필요가 없다.
     //    이름은 그대로 쓴다(둘 다 12자 제한 안이라 정규화를 그냥 통과한다).
-    if (isDemoRequest(nickname, teamName)) {
+    // 카드 강화 판은 시연 이름 짝이 들어와도 시연이 아니다(시연 대본은 일반 규칙 위에 짜여 있다) — 그래서 먼저 가른다.
+    if (enhance) {
+      this.enhance = true;
+      this.settings = clampSettings({ ...ENHANCE_SETTINGS, ...settings });
+    } else if (isDemoRequest(nickname, teamName)) {
       this.demo = new DemoDirector();
       // 시연 규칙은 진행자가 로비에 무엇을 넣었든 프리셋으로 덮어쓴다 — 이유 셋(선공·
       // 체력·축제 턴)은 demo/script.ts의 DEMO_SETTINGS 주석에 있다. clampSettings를
@@ -1078,7 +1134,9 @@ export class Room {
 
     const nickA = this.teamPlayerIds.A.map(id => this.players.get(id)?.nickname ?? CPU_NICKNAME);
     const nickB = this.teamPlayerIds.B.map(id => this.players.get(id)?.nickname ?? CPU_NICKNAME);
-    this.state = initGame(nickA, nickB, Math.random, this.settings);
+    this.state = this.enhance
+      ? initEnhanceGame(nickA, nickB, Math.random, this.settings)
+      : initGame(nickA, nickB, Math.random, this.settings);
     // 이벤트 규칙(한 우물만 파기의 잠금 등)은 첫 스냅샷이 나가기 **전에** 얹는다 — 빠뜨리면 첫 화면에서 잠긴 카드가 열려 보인다.
     this.applyEventRules();
     // ⚠️ 시연은 **빈 보드에서** 시작한다 — initGame이 깔아 둔 시작 공유 카드 2장을
@@ -1389,9 +1447,14 @@ export class Room {
 
     let result: { state: GameState; events: ReturnType<typeof processPlayerAction>['events'] };
     if (this.state.pendingChoice === 'B') {
-      // 목표점수 달성하기의 컴퓨터는 도전자의 점수를 깎는 쪽으로만 둔다(상표토끼 없음, 특허랑이 우선).
-      const animal = this.state.scoreRace ? pickScoreRaceComputerSkill(this.state, 'B') : pickComputerSkill(this.state, 'B');
-      result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
+      if (this.state.enhance) {
+        const animal = pickEnhanceComputerSkill(this.state, 'B');
+        result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
+      } else {
+        // 목표점수 달성하기의 컴퓨터는 도전자의 점수를 깎는 쪽으로만 둔다(상표토끼 없음, 특허랑이 우선).
+        const animal = this.state.scoreRace ? pickScoreRaceComputerSkill(this.state, 'B') : pickComputerSkill(this.state, 'B');
+        result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
+      }
     } else if (this.state.activeTeam === 'B' && this.state.pendingChoice === null) {
       // 컴퓨터도 "직전 장소 금지" 규칙을 지켜야 한다 — 안 그러면 거부당한 뒤 다시
       // 무작위로 고르느라 한 텀을 허비한다(화면엔 아무 변화 없이 몇 초가 그냥 지나감).

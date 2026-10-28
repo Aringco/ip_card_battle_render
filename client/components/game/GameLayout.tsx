@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
-import { isSkillOpen, oneWellOpen, previewSkill, withDisplayedExp } from '@/lib/skills';
+import { canUseSkill, oneWellOpen, withDisplayedExp, withDisplayedHp } from '@/lib/skills';
+import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { EventHud } from './EventHud';
 import { EffectLayer } from '@/components/effects/EffectLayer';
@@ -72,6 +73,9 @@ export function GameLayout({
   eventIntro?: boolean;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
+  // 단축키 — 장소 1~4 · 기술 Q·W·E·R · 턴 마치기 스페이스/T(개인전과 같다 — lib/useGameHotkeys.ts).
+  // 시연은 스페이스·1·2·3이 대본 진행 키라 끄고, 목표점수 달성하기의 시작 룰렛 동안에도 끈다.
+  useGameHotkeys(paused || !!gameState.demo || eventIntro);
   const spectating = myTeam === null;
   // N:N(팀에 여러 명)일 때, "우리 팀 차례"인 것과 "지금 나 자신의 차례"인 것은 다르다.
   // 예전엔 팀만 맞으면(=isMyChoiceTurn/isMyDrawTurn이 team만 검사) 같은 팀의 다른
@@ -99,8 +103,8 @@ export function GameLayout({
   const skillPreviewTeam = myTeam ?? gameState.pendingChoice ?? animState.displayedActiveTeam;
   // ⚠️ 한 우물만 파기에서 **잠긴 카드만** 레벨이 있으면 그것도 "고를 게 없음"이다 — 서버는 그때 짧은 시간
   //    (noActionTimeSec)을 거는데, 화면이 레벨만 보고 기다리면 둘이 어긋난다(EVENT_MODE_ROADMAP.md §3-3의 화면 3곳 중 하나).
-  const noEligible = isMyChoiceTurn && ANIMALS.every(a =>
-    previewSkill(gameState, skillPreviewTeam, a).level === 0 || !isSkillOpen(gameState, skillPreviewTeam, a));
+  //    카드 강화 판의 쿨타임도 같은 이유로 함께 본다 — canUseSkill이 레벨·잠금·쿨타임을 한꺼번에 본다(서버 eligibleAnimals와 같은 규칙).
+  const noEligible = isMyChoiceTurn && !ANIMALS.some(a => canUseSkill(gameState, skillPreviewTeam, a));
   // 관전자용 손가락 가이드가 가리킬 팀 — 지금 어느 단계인지에 따라 보드(장소 선택)와
   // 행동 선택 영역 중 한쪽에만 켠다. 정산 연출이 도는 동안에는(플레이어 화면에서도
   // 조작이 잠기는 구간) 꺼둔다.
@@ -153,6 +157,8 @@ export function GameLayout({
       //    무대(--stage-w)는 반대로 **가장 작은** 높이(svh)를 기준으로 잡는다 —
       //    주소창이 나타났다 사라져도 무대 크기가 출렁이지 않게 하기 위해서다.
       className={`h-dvh play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
+      // 혼자 놀기 '카드 강화' — 카드·장소 라벨·짝 합계의 숫자를 감춘다(모든 카드가 1이다 — globals.css의 [data-enhance])
+      data-enhance={gameState.enhance ? '' : undefined}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
     >
       {/* 모서리 잎사귀 장식 — 좌상단은 왼쪽 팀 패널 바로 위라 다른 세 모서리보다 커
@@ -224,7 +230,8 @@ export function GameLayout({
 
           {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3) */}
           <div className="play-cell play-cell-hp-a">
-            <TeamTotalPanel team="A" gameState={gameState} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} />
+            {/* 체력은 화면상 값으로 — 카드 강화의 짝 효과는 그 연출 순간에야 구슬이 움직인다(useAnimationQueue의 displayedHp) */}
+            <TeamTotalPanel team="A" gameState={withDisplayedHp(gameState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} />
           </div>
 
           {/* ── 아랫줄 가운데 다섯 칸 — 기술 카드 4장 + 턴 마치기(요청 4) */}
@@ -245,7 +252,7 @@ export function GameLayout({
           </div>
 
           <div className="play-cell play-cell-hp-b">
-            <TeamTotalPanel team="B" gameState={gameState} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} />
+            <TeamTotalPanel team="B" gameState={withDisplayedHp(gameState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} />
           </div>
           {/* 모래시계·남은 시간·차례 안내 — 해설판(채팅로그)을 걷어냈으므로(요청 5)
               그 안에 얹혀 있던 이 오버레이만 따로 살려 보드 아래쪽에 띄운다.

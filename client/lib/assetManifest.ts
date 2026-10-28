@@ -118,6 +118,8 @@ export const IMAGE_FILES: string[] = [
   "/lobby/panel_join.webp",
   "/lobby/panel_multi.webp",
   "/lobby/panel_solo.webp",
+  "/lobby/single_play_battle.webp",
+  "/lobby/single_play_reinforce.webp",
   "/lobby/table_bg.webp",
   "/ui/back_board.png",
   "/ui/back_board_frame.webp",

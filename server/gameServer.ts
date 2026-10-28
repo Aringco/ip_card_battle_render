@@ -123,7 +123,7 @@ export function createConnectionHandler(roomManager: RoomManager, eventHub: Even
         case 'createSoloRoom': {
           const { roomId, room } = roomManager.createRoom();
           const playerId = randomUUID();
-          room.addSoloPlayer(ws, playerId, msg.nickname, msg.teamName, msg.settings);
+          room.addSoloPlayer(ws, playerId, msg.nickname, msg.teamName, msg.settings, msg.enhance === true);
           detachFromPreviousRoom(roomId);
           currentRoomId = roomId;
           currentPlayerId = playerId;

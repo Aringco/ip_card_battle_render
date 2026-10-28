@@ -146,7 +146,8 @@ export interface UseWebSocketReturn {
   // mode를 생략하면 팀전. 개인전은 team에 'player'를 보낸다(팀 이름은 쓰지 않는다).
   createRoom: (nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode) => void;
   joinRoom: (roomId: string, nickname: string, team: Seat, teamName?: string) => void;
-  createSoloRoom: (nickname: string, teamName?: string, settings?: Partial<GameSettings>) => void;
+  /** enhance — 혼자 놀기 '카드 강화' 판(shared/enhance.ts) */
+  createSoloRoom: (nickname: string, teamName?: string, settings?: Partial<GameSettings>, enhance?: boolean) => void;
   sendReady: (ready?: boolean) => void;
   leaveRoom: () => void;
   // 방장 명령 (movePlayer만 "나 자신"을 대상으로 할 땐 누구나 쓸 수 있다)
@@ -511,9 +512,9 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'joinRoom', roomId: rid, nickname, team, teamName });
   }, [send]);
 
-  const createSoloRoom = useCallback((nickname: string, teamName?: string, settings?: Partial<GameSettings>) => {
+  const createSoloRoom = useCallback((nickname: string, teamName?: string, settings?: Partial<GameSettings>, enhance?: boolean) => {
     setError(null);
-    send({ type: 'createSoloRoom', nickname, teamName, settings });
+    send({ type: 'createSoloRoom', nickname, teamName, settings, ...(enhance ? { enhance: true } : {}) });
   }, [send]);
 
   const sendReady = useCallback((ready = true) => send({ type: 'ready', ready }), [send]);

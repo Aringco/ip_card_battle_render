@@ -124,7 +124,8 @@ export function GameHeader({
         <div className="play-step-bar flex items-center gap-1.5 py-1">
           {/* 턴 — 알약이 아니라 둥근 어두운 칸. 같은 판 안에서 성격이 다름을 보인다 */}
           <span className="play-turn-inner font-bold tabular-nums whitespace-nowrap">
-            {gameState.turn} / {maxTurnOf(gameState)}턴
+            {/* 턴 제한이 없는 판(카드 강화 — maxTurnOf가 Infinity)은 지금 턴만 쓴다 */}
+            {Number.isFinite(maxTurnOf(gameState)) ? `${gameState.turn} / ${maxTurnOf(gameState)}턴` : `${gameState.turn}턴`}
           </span>
           <span className={`play-pill ${teamPillClass} font-bold whitespace-nowrap`} style={spectatorLabelStyle}>
             {relativeLabel}

@@ -69,7 +69,7 @@ function SlotDraw({ item }: { item: DrawSlotItem }) {
       style={{ position: 'fixed', transform: 'translate(-50%, -50%)', zIndex: 58, ...style }}
     >
       <img src={`/emoticon/default/${displayAnimal}_focus.png`} alt={displayAnimal} className="w-16 h-16 object-contain" />
-      <span className="text-2xl font-black text-jungle-900">{displayNum}</span>
+      <span className="draw-slot-num text-2xl font-black text-jungle-900">{displayNum}</span>
     </span>
   );
 }

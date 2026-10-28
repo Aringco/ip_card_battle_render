@@ -41,7 +41,7 @@ async function measure(page, label) {
       return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
     };
     let openForm = null;
-    for (const sel of ['.stage-form-solo', '.stage-form-create', '.stage-form-join', '.stage-form-event']) {
+    for (const sel of ['.stage-form-solo', '.stage-form-enhance', '.stage-form-create', '.stage-form-join', '.stage-form-event']) {
       const el = q(sel);
       if (el && getComputedStyle(el).opacity === '1') openForm = el;
     }
@@ -181,13 +181,25 @@ for (const vp of VIEWPORTS) {
   const shot = n => page.screenshot({ path: path.join(OUT, `${tag}-${n}.png`) });
 
   results.push(await measure(page, `home@${tag}`));               await shot('1-home');
+  // 혼자 놀기도 두 갈래다(2026-10-28) — 고르는 단계(일반 모드 · 강화 모드) → 그 폼
   await page.click('.stage-col-solo > .stage-panel'); await sleep(SETTLE);
+  results.push(await measure(page, `solo-pick@${tag}`));          await shot('2-solo-pick');
+  await page.click('.stage-col-solo-normal > .stage-panel'); await sleep(SETTLE);
   // ⚠️ **접힌 상태를 먼저 잰다.** 규칙을 펼친 뒤에만 재면 스크롤이 "정상"으로 넘어가
   // 접힌 화면의 스크롤바를 놓친다 — 실제로 그렇게 놓쳐, 방 만들기·방 참가하기가
   // 열리자마자 초록 막대가 떠 있는데도 "문제 없음"이 나왔다.
   results.push(await measure(page, `solo@${tag}`));               await shot('2a-solo');
   await openRules(page, '.stage-form-solo');          await sleep(500);
   results.push(await measure(page, `solo+rules@${tag}`));         await shot('2-solo-rules');
+  // 강화 모드 — 닉네임 + 게임 규칙(팀 이름 칸 없음). 폼은 늘 마운트돼 있어 펼친 규칙이 남으므로 일반 모드 규칙을 먼저 접는다
+  await openRules(page, '.stage-form-solo');          await sleep(400);
+  await page.click('.lobby-back');                    await sleep(SETTLE);
+  await page.click('.stage-col-solo-enhance > .stage-panel'); await sleep(SETTLE);
+  results.push(await measure(page, `enhance@${tag}`));            await shot('2c-enhance');
+  await openRules(page, '.stage-form-enhance');       await sleep(500);
+  results.push(await measure(page, `enhance+rules@${tag}`));      await shot('2d-enhance-rules');
+  await openRules(page, '.stage-form-enhance');       await sleep(400);
+  await page.click('.lobby-back');                    await sleep(SETTLE);
   await page.click('.lobby-back');                    await sleep(SETTLE);
   await page.click('.stage-panel-multi');             await sleep(SETTLE);
   results.push(await measure(page, `multi@${tag}`));              await shot('3-multi');

@@ -69,7 +69,7 @@ export function PlaceTile({
             절대배치된 **대체 요소**의 `width: auto`는 네 변(inset)이 아니라 그림의
             **내재 크기**로 풀려, object-contain이 먹지 않고 라벨이 잘린다(실제로 잘렸다). */}
         <div className="play-frame-inset absolute pointer-events-none select-none">
-          <img src={`/places/${place}_text.png`} alt="" className="w-full h-full object-contain" />
+          <img src={`/places/${place}_text.png`} alt="" className="place-text-img w-full h-full object-contain" />
         </div>
 
         {forbidden && (

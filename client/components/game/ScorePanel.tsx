@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { ANIMALS, THRESHOLDS, skillMultiplier } from 'shared';
-import { SKILL_TITLE, describeSkillShort } from '@/lib/skillInfo';
+import { ANIMALS, ENHANCE_MAX_LEVEL, expProgressFor, skillMultiplier } from 'shared';
+import { SKILL_TITLE, describeEnhanceSkillShort, describeSkillShort } from '@/lib/skillInfo';
 
 // ── 동물별 표 — 왼쪽팀은 [얼굴|경험치 현황|레벨], 오른쪽팀은 [레벨|경험치 현황|얼굴]로
 // 좌우 대칭 배치한다. 마우스를 올리면 해당 동물 행동의 한 줄 요약을 미리 보여준다.
@@ -23,13 +23,13 @@ function AnimalTable({
   team: SideId;
 }) {
   const isTeamB = team === 'B';
-  const threshold = THRESHOLDS[animal];
-  const level = Math.floor(exp / threshold);
   // 분자는 "이번 레벨 안에서 쌓은 만큼"만 보여준다 — 누적 총량을 그대로 쓰면 레벨이
   // 오른 뒤에도 분모를 넘는 값(예: 18/10)이 찍혀 레벨이 오히려 먼저 오른 것처럼
   // 헷갈렸다. 레벨업 직후에는 항상 0으로 시작한다.
-  const expInLevel = exp % threshold;
-  const progressPct = (expInLevel / threshold) * 100;
+  // 카드 강화 판은 레벨마다 폭이 다르고(누적 경험치 표) Lv.5에서 끝난다 — 그때는 "MAX"(need === null).
+  const enhance = !!gameState.enhance;
+  const { level, inLevel: expInLevel, need } = expProgressFor(enhance, animal, exp);
+  const progressPct = need === null ? 100 : (expInLevel / need) * 100;
   const multiplier = gameState.teams[team].pendingMultiplier;
   const extraDraws = gameState.teams[team].pendingExtraDraws;
   // 한 우물만 파기 — 도전자의 상표토끼·특허랑이에 걸린 기본 배율(기본 ×2·×3)을 인어 배율과 같은 스티커로 그 줄에 띄운다
@@ -78,7 +78,13 @@ function AnimalTable({
   const levelBadge = (
     <div className="exp-row-lv self-stretch shrink-0 flex flex-col items-center justify-center gap-0 bg-jungle-100 rounded-md">
       <span className="exp-row-lv-cap font-bold text-jungle-500 leading-none">Lv.</span>
-      <span className="exp-row-lv-num font-black text-jungle-700 leading-none tabular-nums">{level}</span>
+      {/* 카드 강화의 마지막 단계는 숫자 대신 "Max" — 칸 폭을 넘지 않게 글자를 줄인다 */}
+      <span
+        className="exp-row-lv-num font-black text-jungle-700 leading-none tabular-nums"
+        style={enhance && level >= ENHANCE_MAX_LEVEL ? { fontSize: '0.55em' } : undefined}
+      >
+        {enhance && level >= ENHANCE_MAX_LEVEL ? 'Max' : level}
+      </span>
     </div>
   );
 
@@ -125,7 +131,7 @@ function AnimalTable({
             className={`exp-row-value font-extrabold text-jungle-900 tabular-nums leading-tight ${isPopping ? 'score-pop' : ''}`}
             style={isFlashing ? { color: '#22c55e' } : undefined}
           >
-            {expInLevel}<span className="text-jungle-400 ml-0.5">/{threshold}</span>
+            {need === null ? 'MAX' : <>{expInLevel}<span className="text-jungle-400 ml-0.5">/{need}</span></>}
           </p>
           <div className="exp-row-bar w-full bg-gray-100 rounded-full overflow-hidden">
             <div
@@ -158,8 +164,10 @@ function AnimalTable({
           }}
         >
           <div className="bg-jungle-950 text-white rounded-lg px-4 py-3 shadow-xl text-center">
-            <p className="font-bold text-lg mb-1.5">{SKILL_TITLE[animal]} (Lv. {level})</p>
-            <p className="leading-relaxed text-base text-jungle-100">{describeSkillShort(animal, level)}</p>
+            <p className="font-bold text-lg mb-1.5">{SKILL_TITLE[animal]} (Lv. {enhance && level >= ENHANCE_MAX_LEVEL ? 'Max' : level})</p>
+            <p className="leading-relaxed text-base text-jungle-100">
+              {enhance ? describeEnhanceSkillShort(animal, level) : describeSkillShort(animal, level)}
+            </p>
           </div>
         </div>
       )}

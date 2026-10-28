@@ -2556,6 +2556,12 @@ body {
 .lobby-panel-join   { --panel-a: #15803d; --panel-b: #031c0d; }
 /* 이벤트 — 축제 그림의 노을 톤(그림이 도착하기 전 한 프레임의 바탕) */
 .lobby-panel-event  { --panel-a: #f59e0b; --panel-b: #7c2d12; }
+/* 혼자 놀기의 두 갈래 — 일반 모드(카드 대결, 밤의 실내)·강화 모드(대장간 불빛) */
+.lobby-panel-battle    { --panel-a: #78350f; --panel-b: #1e1b4b; }
+.lobby-panel-reinforce { --panel-a: #f97316; --panel-b: #431407; }
+/* 일반 모드 그림은 3:2 가로형이라 세로로 긴 패널에서는 가운데만 남는다 — 천장 전등이 가운데에 오도록 그림의 전등 자리(가로 49.5%)에
+   맞춰 깐다(2026-10-28 요청 — 처음에는 오른쪽의 실용신양 쪽으로 당겼었다). 양옆의 로봇·실용신양은 패널 폭만큼 걸친다. */
+.lobby-panel-battle .lobby-panel-bg { background-position: 49.5% center; }
 .lobby-panel-active:hover .lobby-panel-bg,
 .lobby-panel-active:focus-visible .lobby-panel-bg {
   opacity: 0.8;
@@ -2610,6 +2616,21 @@ body {
 .lobby-panel-event  .stage-panel-label {
   justify-content: flex-start;
   padding-top: 1.1rem;
+}
+/* 일반 모드·강화 모드는 문구를 아래로 — 대장간 그림은 실용신양의 얼굴·고글이 가운데~위에 있고 아래쪽은 모루, 카드 대결 그림은 위가 전등이고
+   아래쪽은 탁자라 덮어도 잃을 게 없다. 두 패널의 문구 높이가 같아 나란히 있을 때 줄이 맞는다. */
+.lobby-panel-battle .stage-panel-label,
+.lobby-panel-reinforce .stage-panel-label {
+  justify-content: flex-end;
+  padding-bottom: 1.1rem;
+}
+.lobby-panel-art.lobby-panel-battle .stage-panel-label,
+.lobby-panel-art.lobby-panel-reinforce .stage-panel-label {
+  background: linear-gradient(to top,
+              rgba(3, 18, 10, 0.80) 0%,
+              rgba(3, 18, 10, 0.76) 32%,
+              rgba(3, 18, 10, 0.34) 52%,
+              rgba(3, 18, 10, 0) 74%);
 }
 /* 어둠도 문구를 따라 위로 — 아래쪽 동물들은 그대로 밝게 남는다 */
 .lobby-panel-art.lobby-panel-create .stage-panel-label,
@@ -2781,11 +2802,12 @@ body {
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
-/* **폼이 열리는 단계에서만** 어두워진다 — 혼자 놀기·방 만들기·방 참가하기.
-   "다같이 놀기"는 아직 고르는 중(패널 두 개가 드러나는 단계)이라 그대로 밝게 둔다.
+/* **폼이 열리는 단계에서만** 어두워진다 — 일반 모드·강화 모드·방 만들기·방 참가하기·이벤트.
+   "혼자 놀기"·"다같이 놀기"는 아직 고르는 중(패널이 드러나는 단계)이라 그대로 밝게 둔다.
    여기서 어두워지면 곧바로 방 만들기를 눌러도 더 어두워질 것이 없어, 무엇을 고른
    순간인지 화면이 알려주지 못한다. */
-.lobby-table:has(> .lobby-safe[data-stage="solo"])::after,
+.lobby-table:has(> .lobby-safe[data-stage="soloNormal"])::after,
+.lobby-table:has(> .lobby-safe[data-stage="soloEnhance"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="create"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="join"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="event"])::after,
@@ -2832,7 +2854,8 @@ body {
   max-width: 100%;
   width: auto;
 }
-.lobby-safe[data-stage="solo"] .lobby-hero-slot,
+.lobby-safe[data-stage="soloNormal"] .lobby-hero-slot,
+.lobby-safe[data-stage="soloEnhance"] .lobby-hero-slot,
 .lobby-safe[data-stage="create"] .lobby-hero-slot,
 .lobby-safe[data-stage="join"] .lobby-hero-slot,
 .lobby-safe[data-stage="event"] .lobby-hero-slot,
@@ -2883,7 +2906,9 @@ body {
   /* home으로 돌아올 때는 폼이 먼저 사라진 뒤 열이 되돌아간다 */
   transition-delay: var(--t-form);
 }
-.lobby-stage[data-stage="solo"] {
+.lobby-stage[data-stage="solo"],
+.lobby-stage[data-stage="soloNormal"],
+.lobby-stage[data-stage="soloEnhance"] {
   grid-template-columns: 1fr 0fr;
   gap: 0;
   transition-delay: 0s;
@@ -2913,6 +2938,8 @@ body {
 .stage-col-create { justify-content: flex-end; }   /* 방 참가·이벤트 선택 시 왼쪽으로 슬라이드 아웃 */
 .stage-col-join   { justify-content: flex-start; } /* 방 만들기 선택 시 오른쪽으로 슬라이드 아웃 */
 .stage-col-event  { justify-content: flex-start; } /* 방 만들기·참가 선택 시 오른쪽으로 슬라이드 아웃 */
+.stage-col-solo-normal  { justify-content: flex-end; }   /* 강화 모드 선택 시 왼쪽으로 슬라이드 아웃 */
+.stage-col-solo-enhance { justify-content: flex-start; } /* 일반 모드 선택 시 오른쪽으로 슬라이드 아웃 */
 /* 가운데 열(방 참가하기)만은 고른 쪽에 따라 밀려날 방향이 바뀐다 — 이벤트를 고르면 왼쪽으로.
    ⚠️ 열이 꽉 차 있을 때는 패널이 열을 정확히 채우므로 붙는 쪽이 바뀌어도 눈에 띄지 않는다. 되돌아올 때(이벤트 →
    다같이 놀기)는 이 규칙이 즉시 떨어져 나가 오른쪽에서 들어오지만, 그 순간 열 폭이 0이라 잘 보이지 않는다. */
@@ -2920,6 +2947,10 @@ body {
 
 /* 밀려나가는 열은 함께 옅어진다 */
 .lobby-stage[data-stage="solo"]   .stage-col-multi,
+.lobby-stage[data-stage="soloNormal"]  .stage-col-multi,
+.lobby-stage[data-stage="soloEnhance"] .stage-col-multi,
+.lobby-stage[data-stage="soloNormal"]  .stage-col-solo-enhance,
+.lobby-stage[data-stage="soloEnhance"] .stage-col-solo-normal,
 .lobby-stage[data-stage="multi"]  .stage-col-solo,
 .lobby-stage[data-stage="create"] .stage-col-solo,
 .lobby-stage[data-stage="join"]   .stage-col-solo,
@@ -2980,12 +3011,16 @@ body {
    overflow는 애니메이션 대상이 아니라 hover에 맞춰 즉시 켜지고 꺼진다. */
 .lobby-stage[data-stage="multi"] .stage-col-create,
 .lobby-stage[data-stage="multi"] .stage-col-join,
-.lobby-stage[data-stage="multi"] .stage-col-event {
+.lobby-stage[data-stage="multi"] .stage-col-event,
+.lobby-stage[data-stage="solo"] .stage-col-solo-normal,
+.lobby-stage[data-stage="solo"] .stage-col-solo-enhance {
   overflow: clip;
   overflow-clip-margin: var(--glow-reach);
 }
 .lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:hover),
-.lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:focus-visible) {
+.lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:focus-visible),
+.lobby-stage[data-stage="solo"] .stage-col-solo:has(.stage-panel.lobby-panel-active:hover),
+.lobby-stage[data-stage="solo"] .stage-col-solo:has(.stage-panel.lobby-panel-active:focus-visible) {
   overflow: clip;
   overflow-clip-margin: var(--glow-reach);
 }
@@ -2998,27 +3033,36 @@ body {
 .stage-panel-label {
   transition: opacity var(--t-form) ease;
 }
-.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel,
+.lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel,
+.lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel,
+.lobby-stage[data-stage="solo"]        .stage-panel-solo,
+.lobby-stage[data-stage="soloNormal"]  .stage-panel-solo,
+.lobby-stage[data-stage="soloEnhance"] .stage-panel-solo,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi,
 .lobby-stage[data-stage="create"] .stage-panel-multi,
 .lobby-stage[data-stage="join"]   .stage-panel-multi,
 .lobby-stage[data-stage="event"]  .stage-panel-multi {
   pointer-events: none;
 }
-.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="solo"]        .stage-panel-solo .stage-panel-label,
+.lobby-stage[data-stage="soloNormal"]  .stage-panel-solo .stage-panel-label,
+.lobby-stage[data-stage="soloEnhance"] .stage-panel-solo .stage-panel-label,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="create"] .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="join"]   .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="event"]  .stage-panel-multi .stage-panel-label {
   opacity: 0;
 }
-.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel .lobby-panel-bg {
@@ -3032,7 +3076,8 @@ body {
 
 /* 아트 패널은 폼이 열려도 흐림을 풀지 않는다 — 그림이 선명해지면 그 위에 뜬 폼 카드의
    글자와 경쟁한다. 밝기만 조금 올려 "열려 있다"는 신호를 준다. */
-.lobby-stage[data-stage="solo"]   .stage-col-solo   > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel.lobby-panel-art .lobby-panel-bg {
@@ -3053,6 +3098,9 @@ body {
 
    돌아올 때는 지연이 없다 — 이 규칙이 통째로 떨어져 나가고 .lobby-panel/.lobby-panel-art의
    기본 transition이 맡으므로, 안쪽 열이 접히는 동안 곧바로 제 모습으로 돌아온다. */
+.lobby-stage[data-stage="solo"]        .stage-panel-solo,
+.lobby-stage[data-stage="soloNormal"]  .stage-panel-solo,
+.lobby-stage[data-stage="soloEnhance"] .stage-panel-solo,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi,
 .lobby-stage[data-stage="create"] .stage-panel-multi,
 .lobby-stage[data-stage="join"]   .stage-panel-multi,
@@ -3065,6 +3113,9 @@ body {
     box-shadow   var(--t-reveal) ease var(--t-expand),
     border-color var(--t-reveal) ease var(--t-expand);
 }
+.lobby-stage[data-stage="solo"]        .stage-panel-solo .lobby-panel-bg,
+.lobby-stage[data-stage="soloNormal"]  .stage-panel-solo .lobby-panel-bg,
+.lobby-stage[data-stage="soloEnhance"] .stage-panel-solo .lobby-panel-bg,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-panel-multi .lobby-panel-bg,
 .lobby-stage[data-stage="join"]   .stage-panel-multi .lobby-panel-bg,
@@ -3109,6 +3160,39 @@ body {
 .lobby-stage[data-stage="create"] .multi-inner { grid-template-columns: 1fr 0fr 0fr; }
 .lobby-stage[data-stage="join"]   .multi-inner { grid-template-columns: 0fr 1fr 0fr; }
 .lobby-stage[data-stage="event"]  .multi-inner { grid-template-columns: 0fr 0fr 1fr; }
+
+/* 혼자 놀기 내부 2열(일반 모드 · 강화 모드) — 다같이 놀기의 .multi-inner와 같은 구조·같은 지연이다(값을 바꾸면 둘 다 바꿀 것).
+   다른 점은 드러나는 방향뿐이다 — 혼자 놀기는 왼쪽 열이라 **왼쪽에서 오른쪽으로** 드러난다. 안쪽 패널의 원래 폭은
+   .stage-panel 기본값((100cqw − gap) / 2)이 그대로 맞는다(여기서 100cqw는 이 상자의 폭이다). */
+.solo-inner {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--stage-gap);
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  transition:
+    clip-path var(--t-reveal) ease,
+    opacity   var(--t-reveal) ease,
+    grid-template-columns var(--t-expand) ease,
+    gap var(--t-expand) ease;
+}
+.lobby-stage[data-stage="solo"] .solo-inner {
+  clip-path: inset(calc(-1 * var(--glow-reach)));
+  opacity: 1;
+  transition-delay: var(--t-expand), var(--t-expand), var(--t-form), var(--t-form);
+}
+.lobby-stage[data-stage="soloNormal"]  .solo-inner,
+.lobby-stage[data-stage="soloEnhance"] .solo-inner {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+  gap: 0;
+  transition-delay: 0s;
+}
+.lobby-stage[data-stage="soloNormal"]  .solo-inner { grid-template-columns: 1fr 0fr; }
+.lobby-stage[data-stage="soloEnhance"] .solo-inner { grid-template-columns: 0fr 1fr; }
 
 /* 버튼·제목 앞의 그림 아이콘 — 이모지가 있던 자리를 대신한다.
    em 단위라 글자 크기를 그대로 따라가고(글씨 크기 설정 5단계에도 같이 움직인다),
@@ -3942,7 +4026,8 @@ body {
   pointer-events: none;
   transition: opacity var(--t-form) ease;
 }
-.lobby-stage[data-stage="solo"]   .stage-form-solo,
+.lobby-stage[data-stage="soloNormal"]  .stage-form-solo,
+.lobby-stage[data-stage="soloEnhance"] .stage-form-enhance,
 .lobby-stage[data-stage="create"] .stage-form-create,
 .lobby-stage[data-stage="join"]   .stage-form-join,
 .lobby-stage[data-stage="event"]  .stage-form-event {
@@ -3986,7 +4071,7 @@ body {
   .lobby-panel-art.lobby-panel-active:hover .lobby-panel-bg,
   .lobby-panel-art.lobby-panel-active:focus-visible .lobby-panel-bg { transform: scale(1.05); }
   .lobby-stage, .stage-col, .stage-panel, .stage-panel-label,
-  .multi-inner, .stage-form, .lobby-back { transition: none !important; }
+  .multi-inner, .solo-inner, .stage-form, .lobby-back { transition: none !important; }
 }
 
 /* ── 로비 스테이지 — 모바일: 같은 메커니즘을 세로축으로 ──────────────────── */
@@ -4005,7 +4090,9 @@ body {
     transition: grid-template-rows var(--t-expand) ease, gap var(--t-expand) ease;
     transition-delay: var(--t-form);
   }
-  .lobby-stage[data-stage="solo"] {
+  .lobby-stage[data-stage="solo"],
+  .lobby-stage[data-stage="soloNormal"],
+  .lobby-stage[data-stage="soloEnhance"] {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 0fr;
   }
@@ -4044,6 +4131,21 @@ body {
   .lobby-stage[data-stage="event"] .multi-inner {
     grid-template-columns: 1fr;
     grid-template-rows: 0fr 0fr 1fr;
+  }
+
+  /* 혼자 놀기 안쪽 2열도 세로로 쌓고 위에서 아래로 드러난다 */
+  .solo-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    clip-path: inset(0 0 100% 0);
+  }
+  .lobby-stage[data-stage="soloNormal"] .solo-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 0fr;
+  }
+  .lobby-stage[data-stage="soloEnhance"] .solo-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 0fr 1fr;
   }
 }
 
@@ -6888,4 +6990,199 @@ body {
   font-size: calc(0.9rem * var(--font-scale));
   line-height: 1.6;
   color: #6b5230;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   카드 강화 판(혼자 놀기 — shared/enhance.ts · ENHANCE_MODE.md)
+   IndividualLayout 맨 바깥에 data-enhance가 붙는다. 기술 카드(SkillChoiceBar)는 레벨에 따라
+   --enh(0 = Lv.1 … 1 = Lv.5)를 받아 아래 두 층의 세기를 정한다.
+   ⚠️ 효과는 전부 배경 층·opacity·animation이라 배치를 바꾸지 않는다(팀전에는 이 클래스가 아예 없다).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 이 판의 카드는 모두 1이라 숫자를 감춘다 — 동물 그림만 남기고 조금 키운다 */
+[data-enhance] .stack-card-num,
+[data-enhance] .draw-slot-num { display: none; }
+[data-enhance] .stack-card img { width: 80%; }
+/* 장소 칸의 숫자 범위("(+5 ~ +10)")는 라벨 그림의 셋째 줄에 그려져 있다 — 정사각형 그림이 칸 높이에 맞춰
+   들어가므로(칸이 가로로 넓다) 아래 41%를 잘라 이름·동물 두 줄만 남기고, 남은 두 줄을 칸 가운데로 내린다.
+   짝 옆의 합계 배지도 숫자라 감춘다(모든 카드가 1이라 합계 = 장수다). */
+[data-enhance] .place-text-img { clip-path: inset(0 0 41% 0); transform: translateY(7%); }
+[data-enhance] .stack-total-badge { display: none; }
+
+/* ① 밝은 그라데이션 — 레벨이 오를수록 카드 위쪽에서 따뜻한 빛이 번진다(screen이라 그림을 덮지 않고 밝힌다).
+   네 가장자리는 아래 마스크(.enh-light, .enh-rainbow 공통)로 흐려져 층의 사각형 윤곽이 드러나지 않는다. */
+.enh-light {
+  pointer-events: none;
+  background: radial-gradient(120% 85% at 50% 15%,
+    rgba(255, 248, 220, calc(0.04 + var(--enh, 0) * 0.34)) 0%,
+    rgba(255, 236, 190, calc(var(--enh, 0) * 0.16)) 45%,
+    transparent 78%);
+  mix-blend-mode: screen;
+}
+
+/* ② 무지개 홀로 — **한 줄기 사선 띠**가 카드를 가로질러 지나가고(45도), 잠깐 쉬었다 다시 지나간다. 가리키지 않아도 계속 흐른다.
+   레벨이 오를수록 짙어지고(opacity) 자주 지나간다(Lv.1 6초 → Lv.5 3초). ::after는 띠 한가운데를 따라가는 가는 하얀 반짝임.
+
+   ⚠️ 2차 수정(2026-10-28) — 처음에는 무지개를 층 전체에 깔고(background-repeat 기본값 repeat) 배경 위치만 흘렸는데, 짙어질수록
+      **층의 사각형과 타일 이음매가 보였다**(Lv.5에서 카드 오른쪽에 세로 경계가 섰다). 그래서 ① 반복을 끄고(no-repeat) 띠 앞뒤를
+      투명으로 두어 띠가 지나가지 않는 곳은 아무것도 칠하지 않고, ② 네 가장자리를 마스크로 흐려 층의 윤곽 자체를 없앴다.
+   흐르는 방향: 그림(300%)이 상자보다 커서, 배경 위치를 0% 100% → 100% 0%로 옮기면 띠가 카드의 오른쪽 위에서 왼쪽 아래로
+   45도로 지나간다(가로·세로를 같은 비율로 옮기므로 정확히 사선이다). 두 끝에서는 띠가 상자 밖이라 아무것도 보이지 않는다. */
+.enh-rainbow {
+  pointer-events: none;
+  overflow: hidden;
+  background-image: linear-gradient(
+    45deg,
+    transparent 36%,
+    hsla(0, 100%, 68%, 0.95) 40%,
+    hsla(45, 100%, 62%, 0.95) 43%,
+    hsla(110, 90%, 58%, 0.95) 46.5%,
+    hsla(185, 100%, 62%, 0.95) 50%,
+    hsla(235, 100%, 72%, 0.95) 53.5%,
+    hsla(295, 100%, 70%, 0.95) 57%,
+    hsla(350, 100%, 68%, 0.95) 60%,
+    transparent 64%
+  );
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  /* overlay — 그림의 명암을 살린 채 색만 입힌다(color-dodge는 Lv.5에서 그림이 하얗게 날아갔다) */
+  mix-blend-mode: overlay;
+  opacity: calc(0.12 + var(--enh, 0) * 0.68);
+  animation: enhRainbowSweep calc(6s - var(--enh, 0) * 3s) ease-in-out infinite;
+}
+.enh-rainbow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    45deg,
+    transparent 47%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 53%
+  );
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(var(--enh, 0) * 0.7);
+  /* 무지개와 같은 길이·같은 곡선이라 늘 띠 한가운데에 붙어 간다 */
+  animation: inherit;
+  animation-name: enhRainbowSweep;
+}
+/* 네 가장자리를 흐린다 — 가로·세로 두 띠의 교집합이라 모서리는 더 일찍 사라진다(둥근 카드 모서리에 층이 걸리지 않는다) */
+.enh-light,
+.enh-rainbow {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+@keyframes enhRainbowSweep {
+  0%        { background-position: 0% 100%; }
+  65%, 100% { background-position: 100% 0%; }
+}
+/* 쿨타임 중인 카드 — 홀로는 옅게만 남긴다(그림은 이미 -disabled로 어둡다). 강화 단계는 잃지 않았다는 정도의 신호 */
+.enh-cooling { opacity: 0.18; }
+.enh-rainbow.enh-cooling { opacity: calc((0.12 + var(--enh, 0) * 0.68) * 0.3); }
+.enh-rainbow.enh-cooling::after { animation: none; opacity: 0; }
+
+/* 최고 레벨 — 카드 둘레에 금빛이 은은하게 숨 쉰다 */
+.skill-choice-panel[data-enh-level='5'] {
+  animation: enhMaxGlow 2.4s ease-in-out infinite;
+}
+.skill-choice-panel[data-enh-level='5'].skill-choice-glow {
+  /* 누를 수 있음 깜빡임(.skill-choice-glow)과 겹치면 둘이 서로 덮는다 — 누를 수 있을 때는 그쪽을 쓴다 */
+  animation: skillChoiceGlow 1s ease-in-out infinite;
+}
+@keyframes enhMaxGlow {
+  0%, 100% { box-shadow: inset 0 0 10px 2px rgba(255, 214, 102, 0.55); }
+  50%      { box-shadow: inset 0 0 22px 6px rgba(255, 224, 130, 0.95); }
+}
+
+/* 제목 옆 레벨 — 제목보다 조금 작게, 금색 */
+.enh-title-lv {
+  font-size: 0.82em;
+  color: #fde68a;
+  white-space: nowrap;
+}
+
+/* ③ 레벨이 오른 순간의 파티클 — SkillChoiceBar의 LevelUpBurst. 카드 칸(.holo-cell) 위에 얹혀 카드 밖까지 퍼진다.
+   조각의 방향(--dx/--dy, 칸 크기의 %)·색(--hue)·크기(--size)는 컴포넌트가 정한다. */
+.enh-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+.enh-burst::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius, var(--cell-r, 16px));
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95), rgba(255, 236, 160, 0.5) 45%, transparent 75%);
+  mix-blend-mode: screen;
+  animation: enhFlash 700ms ease-out forwards;
+}
+.enh-burst-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 244, 180, 0.95);
+  box-shadow: 0 0 18px 6px rgba(255, 220, 120, 0.8);
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: enhRing 900ms ease-out forwards;
+}
+.enh-burst-piece {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  border-radius: 50%;
+  background: hsl(var(--hue, 50) 100% 66%);
+  box-shadow: 0 0 8px 2px hsl(var(--hue, 50) 100% 72%);
+  opacity: 0;
+  animation: enhPiece 1100ms cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+.enh-burst-text {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  font-size: clamp(1rem, calc(2.6 * var(--sv, 1vh)), 1.8rem);
+  color: #fde047;
+  white-space: nowrap;
+  animation: enhText 1300ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+@keyframes enhFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes enhRing {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(4.5); }
+}
+@keyframes enhPiece {
+  0%   { opacity: 1; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.3); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; left: calc(50% + var(--dx, 0%)); top: calc(50% + var(--dy, 0%)); transform: translate(-50%, -50%) scale(0.3); }
+}
+@keyframes enhText {
+  0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.4); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  75%  { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .enh-rainbow,
+  .enh-rainbow::after,
+  .skill-choice-panel[data-enh-level='5'] { animation: none; }
+  .enh-burst-piece,
+  .enh-burst-ring { display: none; }
 }

@@ -26,7 +26,7 @@ export type ClientMessage =
   // otherTeamName을 쓰지 않고, team은 'player'(플레이어석) 또는 'spectator'만 의미가 있다.
   | { type: 'createRoom'; nickname: string; team: Seat; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings>; mode?: GameMode }
   | { type: 'joinRoom'; roomId: string; nickname: string; team: Seat; teamName?: string }
-  | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings> } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전
+  | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings>; enhance?: boolean } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전. enhance면 '카드 강화' 판(shared/enhance.ts)
   // ready는 토글이다 — 값을 생략하면 "준비 완료"로 본다(옛 클라이언트 호환).
   | { type: 'ready'; ready?: boolean }
   | { type: 'leaveRoom' } // 대기실에서 스스로 나가기(연결은 유지한 채 방만 벗어난다)

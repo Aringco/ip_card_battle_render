@@ -103,6 +103,11 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 차례가 넘어갈 때마다 "이번 차례에 쓴 기술 수"를 비운다(개인전의 기술 2장 규칙).
   state.skillsUsedThisTurn = 0;
 
+  // 카드 강화 판 — 방금 차례를 마친 편의 쿨타임을 하나씩 줄인다(쓴 순간 "쿨타임 + 1"로 세워 두었다 — shared/enhance.ts).
+  // 차례가 끝나는 길(기술·패스·시간초과·항복)이 모두 여기를 지나므로 이 한 곳이면 된다.
+  const cds = state.enhance?.cooldowns[currentTeam];
+  if (cds) for (const a of Object.keys(cds) as Array<keyof typeof cds>) cds[a] = Math.max(0, cds[a] - 1);
+
   // 한 라운드가 다 돈 시점 — turnOrder에서 다음 편의 위치가 지금 편의 위치보다 앞이면
   // 끝까지 돌아 처음으로 되돌아온 것이다. 팀전([선, 후])에서는 후공 팀이 마친 순간과 정확히 같고
   // (선 플레이어를 바꿔도 turnOrder가 함께 바뀐다), 개인전에서는 순위가 정해진 사람을 건너뛰어도
@@ -287,4 +292,26 @@ export function initIndividualGame(
     skillsUsedThisTurn: 0,
     ranks: {},
   };
+}
+
+/**
+ * 혼자 놀기 '카드 강화' 시작 — 혼자 놀기와 같은 팀전 1:1(A = 사람, B = 컴퓨터)에 강화 규칙(shared/enhance.ts)을 얹는다.
+ *
+ * - 선은 initGame 그대로 settings.firstTeam을 따른다.
+ * - 시작 공유 카드도 숫자 1로 바꾼다(이 판의 카드는 모두 1).
+ * - 쿨타임은 모든 카드 0(처음부터 모두 쓸 수 있다). 턴 제한은 없다(maxTurnOf가 state.enhance를 보고 Infinity).
+ */
+export function initEnhanceGame(
+  teamAMembers: string[],
+  teamBMembers: string[],
+  rng: RNG = Math.random,
+  settings?: Partial<GameSettings>,
+): GameState {
+  const state = initGame(teamAMembers, teamBMembers, rng, settings);
+  for (const animal of Object.keys(state.stacks) as Array<keyof GameState['stacks']>) {
+    for (const card of state.stacks[animal]) card.num = 1;
+  }
+  const zero = () => ({ sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 });
+  state.enhance = { cooldowns: { A: zero(), B: zero() }, divisors: { A: 1, B: 1 } };
+  return state;
 }

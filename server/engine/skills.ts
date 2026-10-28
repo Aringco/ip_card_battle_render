@@ -1,9 +1,27 @@
-import { ANIMALS, THRESHOLDS, opponentsOf, skillMultiplier } from 'shared';
+import {
+  ANIMALS,
+  THRESHOLDS,
+  enhanceCooldown,
+  enhanceCooldownLeft,
+  enhanceMermaidAfter,
+  enhanceAmount,
+  enhanceMermaidCut,
+  enhanceMermaidDivide,
+  enhanceSheepExp,
+  enhanceTigerHeal,
+  enhanceValue,
+  opponentsOf,
+  skillLevelFor,
+  skillMultiplier,
+} from 'shared';
 import type { Animal, GameEvent, GameState, SideId } from 'shared';
 
-/** 레벨 = floor(누적 경험치 / 임계값). 임계값은 동물마다 다르다(양·토끼 10, 인어·호랑이 20). */
+/**
+ * 레벨 = floor(누적 경험치 / 임계값). 임계값은 동물마다 다르다(양·토끼 10, 인어·호랑이 20).
+ * 카드 강화 판은 1 + floor(경험치 / 임계값)이고 Lv.5에서 멈춘다(shared/enhance.ts — 화면도 같은 skillLevelFor를 쓴다).
+ */
 export function levelOf(state: GameState, team: SideId, animal: Animal): number {
-  return Math.floor(state.teams[team].exp[animal] / THRESHOLDS[animal]);
+  return skillLevelFor(!!state.enhance, animal, state.teams[team].exp[animal]);
 }
 
 /**
@@ -25,7 +43,10 @@ export function oneWellOpen(state: GameState, team: SideId): readonly Animal[] |
  */
 export function eligibleAnimals(state: GameState, team: SideId): Animal[] {
   const open = oneWellOpen(state, team);
-  return ANIMALS.filter(a => levelOf(state, team, a) > 0 && (open === null || open.includes(a)));
+  // 카드 강화 판의 쿨타임도 여기서 건다 — 쿨타임 중인 카드는 레벨이 있어도 고를 수 없다.
+  return ANIMALS.filter(
+    a => levelOf(state, team, a) > 0 && (open === null || open.includes(a)) && enhanceCooldownLeft(state, team, a) === 0,
+  );
 }
 
 /**
@@ -52,11 +73,16 @@ export function applySkillChoice(
   // 특허랑이의 대상. 팀전은 상대가 한 팀뿐이라 생략하고, 개인전은 호출하는 쪽(gameEngine)이
   // "순위가 정해지지 않은 다른 편"인지 먼저 검증한 값을 넘긴다.
   target?: SideId,
+  // 카드 강화 판의 무작위(실용신양 Lv.6+의 "무작위 카드 경험치")에만 쓴다 — 일반 판에는 무작위가 없다.
+  rng: () => number = Math.random,
 ): GameEvent {
   const opponent = target ?? opponentsOf(state, team)[0];
   const me = state.teams[team];
   const foe = opponent === undefined ? undefined : state.teams[opponent];
   const level = levelOf(state, team, animal);
+
+  // 카드 강화 판은 효과 공식이 다르고 경험치를 깎지 않는다 — 따로 계산한다.
+  if (state.enhance) return applyEnhanceSkill(state, team, animal, level, opponent, rng);
 
   if (level <= 0) {
     return {
@@ -143,6 +169,152 @@ export function applySkillChoice(
     // 대상은 개인전의 특허랑이에만 싣는다 — 팀전 이벤트의 모양은 예전과 똑같이 둔다.
     ...(state.mode === 'individual' && animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
     ...(oneWellLocked ? { oneWellLocked } : {}),
+  };
+}
+
+/**
+ * 카드 강화 판 — 기술 한 번의 효과(고른 기술 · 짝 효과가 함께 쓴다). shared/enhance.ts의 표를 따른다.
+ * - 실용신양: 다음 내 턴 추가 뽑기 `값 × 배율`(쌓는다). Lv.6부터 내 카드 넷 중 무작위 하나에 경험치 `+N × 배율`.
+ * - 상표토끼: 내 체력 `+값 × 배율`.
+ * - 디자인어: 내 배율을 걸거나 키운다(enhanceMermaidAfter — 배율을 곱하지 않는다). Lv.6부터 상대가 쌓아 둔 배율을 깎는다(×1 아래로는 안 내려간다).
+ * - 특허랑이: 상대 체력 `−값 × 배율`(가진 만큼만 — 빼앗지 않는다). Lv.6부터 내 체력 회복 `+N × 배율`이 따로 붙는다.
+ * - 디자인어 Lv.9부터: 상대의 다음 고른 기술 효과를 ÷2·÷3·÷5(반올림)로 만든다(EnhanceState.divisors).
+ * 수치 효과는 모두 enhanceAmount(기본값 × 배율 ÷ 나눗셈, 반올림)다. 경험치는 깎지 않는다(레벨은 쌓아 올린 강화 단계다).
+ * 배율·나눗셈을 쓰는지·쿨타임을 거는지는 부르는 쪽이 정한다.
+ */
+function applyEnhanceEffect(
+  state: GameState,
+  team: SideId,
+  animal: Animal,
+  level: number,
+  mult: number,
+  divisor: number,
+  opponent: SideId | undefined,
+  rng: () => number,
+): Pick<
+  Extract<GameEvent, { type: 'skillApplied' }>,
+  'myHpDelta' | 'oppHpDelta' | 'extraDrawsQueued' | 'randomExp' | 'oppMultiplierCut' | 'oppDivisor'
+> {
+  const me = state.teams[team];
+  const foe = opponent === undefined ? undefined : state.teams[opponent];
+  let myHpDelta = 0;
+  let oppHpDelta = 0;
+  let extraDrawsQueued = 0;
+  let randomExp: { animal: Animal; amount: number } | undefined;
+  let oppMultiplierCut: number | undefined;
+  let oppDivisor: number | undefined;
+  const amount = (base: number) => enhanceAmount(base, mult, divisor);
+
+  if (animal === 'mermaid') {
+    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level);
+    const cut = enhanceMermaidCut(level);
+    if (cut > 0 && foe) {
+      const before = foe.pendingMultiplier;
+      foe.pendingMultiplier = Math.max(1, before - cut);
+      oppMultiplierCut = before - foe.pendingMultiplier;
+    }
+    const divide = enhanceMermaidDivide(level);
+    if (divide > 1 && opponent !== undefined && state.enhance) {
+      state.enhance.divisors[opponent] = Math.max(state.enhance.divisors[opponent] ?? 1, divide);
+      oppDivisor = state.enhance.divisors[opponent];
+    }
+  } else if (animal === 'sheep') {
+    extraDrawsQueued = amount(enhanceValue('sheep', level));
+    // 쌓는다 — 짝 효과로 이미 예약된 몫을 기술이 지우면 안 된다(일반 판은 덮어쓴다)
+    me.pendingExtraDraws += extraDrawsQueued;
+    const bonus = amount(enhanceSheepExp(level));
+    if (bonus > 0) {
+      const target = ANIMALS[Math.floor(rng() * ANIMALS.length)];
+      me.exp[target] += bonus;
+      randomExp = { animal: target, amount: bonus };
+    }
+  } else if (animal === 'rabbit') {
+    myHpDelta = amount(enhanceValue('rabbit', level));
+  } else {
+    oppHpDelta = -Math.min(amount(enhanceValue('tiger', level)), Math.max(0, foe?.hp ?? 0));
+    myHpDelta = amount(enhanceTigerHeal(level));
+  }
+
+  if (foe) foe.hp = Math.max(0, foe.hp + oppHpDelta);
+  me.hp += myHpDelta;
+  me.skillStats[animal].totalHpGained += myHpDelta;
+  me.skillStats[animal].totalExtraDraws += extraDrawsQueued;
+
+  return {
+    myHpDelta,
+    oppHpDelta,
+    extraDrawsQueued,
+    ...(randomExp ? { randomExp } : {}),
+    ...(oppMultiplierCut !== undefined ? { oppMultiplierCut } : {}),
+    ...(oppDivisor !== undefined ? { oppDivisor } : {}),
+  };
+}
+
+/**
+ * 카드 강화 판의 **고른** 기술. 일반 판과 다른 점:
+ * - **경험치를 깎지 않는다**(expSpent 0) — 레벨은 쌓아 올린 강화 단계라 내려가지 않는다.
+ * - 효과는 applyEnhanceEffect(레벨별 표 × 배율). 디자인어가 아니면 배율을 쓰고 1로 되돌린다.
+ * - 쓴 카드에 쿨타임을 건다 — `쿨타임 + 1`로 세우면 이 차례가 끝나며(advanceTurn) 하나 줄어 쿨타임 그대로 남는다.
+ */
+function applyEnhanceSkill(
+  state: GameState,
+  team: SideId,
+  animal: Animal,
+  level: number,
+  opponent: SideId | undefined,
+  rng: () => number,
+): GameEvent {
+  const me = state.teams[team];
+  const multiplierUsed = animal === 'mermaid' ? 1 : me.pendingMultiplier;
+  // 상대 디자인어(Lv.9+)가 건 나눗셈 — 배율과 같은 때(디자인어가 아닌 기술을 고를 때) 쓰이고 사라진다
+  const divisorUsed = animal === 'mermaid' ? 1 : (state.enhance!.divisors[team] ?? 1);
+  const effect = applyEnhanceEffect(state, team, animal, level, multiplierUsed, divisorUsed, opponent, rng);
+  if (animal !== 'mermaid') {
+    me.pendingMultiplier = 1;
+    state.enhance!.divisors[team] = 1;
+  }
+
+  const cooldowns = state.enhance!.cooldowns[team];
+  if (cooldowns) cooldowns[animal] = enhanceCooldown(animal, level) + 1;
+  me.skillStats[animal].count += 1;
+  me.skillStats[animal].totalLevel += level;
+
+  return {
+    type: 'skillApplied',
+    team,
+    animal,
+    level,
+    expSpent: 0,
+    multiplierUsed,
+    multiplierAfter: me.pendingMultiplier,
+    ...effect,
+    hpAfter: hpSnapshot(state),
+    ...(animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
+    ...(divisorUsed > 1 ? { divisorUsed } : {}),
+  };
+}
+
+/**
+ * 카드 강화 판 — 짝이 맞은 순간 그 카드의 기술이 저절로 발동한다(정산이 경험치를 더한 **뒤의** 레벨). 고른 기술과 다른 점:
+ * - 쌓아 둔 배율(디자인어)을 **쓰지도 소모하지도 않는다** — 기본 효과 그대로다. 디자인어 짝은 그 배율을 키운다(기술과 같은 규칙).
+ * - 쿨타임을 걸지 않는다(덤이라 다음 선택을 막지 않는다). 실용신양 짝은 다음 내 턴의 추가 뽑기에 **더한다**.
+ * - 통계는 효과량만 더하고 사용 횟수는 세지 않는다(결과 화면의 "몇 번 썼나"는 고른 기술만).
+ * 승패는 부르는 쪽(gameEngine.processPlayerAction)이 뽑기를 모두 마친 뒤 한 번 본다.
+ */
+export function applyEnhancePairEffect(state: GameState, team: SideId, animal: Animal, rng: () => number = Math.random): GameEvent {
+  const level = levelOf(state, team, animal);
+  const effect = applyEnhanceEffect(state, team, animal, level, 1, 1, opponentsOf(state, team)[0], rng);
+  return {
+    type: 'skillApplied',
+    team,
+    animal,
+    level,
+    expSpent: 0,
+    multiplierUsed: 1,
+    multiplierAfter: state.teams[team].pendingMultiplier,
+    ...effect,
+    hpAfter: hpSnapshot(state),
+    pair: true,
   };
 }
 

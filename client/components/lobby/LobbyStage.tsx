@@ -5,16 +5,23 @@ import type { GameMode, GameSettings, Seat } from 'shared';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { ModePanel } from './ModePanel';
 import { SoloForm } from './SoloForm';
+import { EnhanceForm } from './EnhanceForm';
 import { CreateRoomForm } from './CreateRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { EventForm } from './EventForm';
 import type { EventFormProps } from './EventForm';
 
-export type Stage = 'home' | 'solo' | 'multi' | 'create' | 'join' | 'event';
+/**
+ * 로비 단계. 혼자 놀기도 다같이 놀기처럼 두 갈래다 — 'solo'는 **고르는 단계**(일반 모드 · 강화 모드 두 패널),
+ * 'soloNormal'·'soloEnhance'가 폼이 열린 단계다(2026-10-28 — 그 전에는 'solo'가 곧 폼이었다).
+ */
+export type Stage = 'home' | 'solo' | 'soloNormal' | 'soloEnhance' | 'multi' | 'create' | 'join' | 'event';
 
-/** 뒤로가기 한 단계 — create/join/event는 multi로, solo/multi는 home으로. */
+/** 뒤로가기 한 단계 — 폼은 고르는 단계(solo · multi)로, 고르는 단계는 home으로. */
 export const BACK_OF: Record<Exclude<Stage, 'home'>, Stage> = {
   solo: 'home',
+  soloNormal: 'solo',
+  soloEnhance: 'solo',
   multi: 'home',
   create: 'multi',
   join: 'multi',
@@ -55,8 +62,12 @@ export interface LobbyStageProps {
   arrivedByInvite: boolean;
   settings: GameSettings;
   onSettings: (next: GameSettings) => void;
+  /** 혼자 놀기 → 강화 모드의 규칙(shared/enhance.ts — 기본값이 일반 모드와 다르다) */
+  enhanceSettings: GameSettings;
+  onEnhanceSettings: (next: GameSettings) => void;
 
   onStartSolo: () => void;
+  onStartEnhance: () => void;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
 
@@ -77,6 +88,9 @@ export function LobbyStage(props: LobbyStageProps) {
   const { stage, blocked, onGo } = props;
 
   const soloFirstRef = useRef<HTMLInputElement>(null);
+  const enhanceFirstRef = useRef<HTMLInputElement>(null);
+  const soloNormalPanelRef = useRef<HTMLButtonElement>(null);
+  const soloEnhancePanelRef = useRef<HTMLButtonElement>(null);
   const createFirstRef = useRef<HTMLInputElement>(null);
   const joinFirstRef = useRef<HTMLInputElement>(null);
   const eventFirstRef = useRef<HTMLInputElement>(null);
@@ -100,7 +114,8 @@ export function LobbyStage(props: LobbyStageProps) {
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const formTarget =
-      stage === 'solo' ? soloFirstRef :
+      stage === 'soloNormal' ? soloFirstRef :
+      stage === 'soloEnhance' ? enhanceFirstRef :
       stage === 'create' ? createFirstRef :
       stage === 'join' ? joinFirstRef :
       stage === 'event' ? eventFirstRef : null;
@@ -112,6 +127,8 @@ export function LobbyStage(props: LobbyStageProps) {
 
     // 뒤로 나온 경우 — 방금 닫힌 폼의 패널로 돌아간다
     const panelTarget =
+      from === 'soloNormal' ? soloNormalPanelRef :
+      from === 'soloEnhance' ? soloEnhancePanelRef :
       from === 'solo' ? soloPanelRef :
       from === 'create' ? createPanelRef :
       from === 'join' ? joinPanelRef :
@@ -125,6 +142,7 @@ export function LobbyStage(props: LobbyStageProps) {
   }, [stage]);
 
   const inMulti = stage === 'multi' || stage === 'create' || stage === 'join' || stage === 'event';
+  const inSolo = stage === 'solo' || stage === 'soloNormal' || stage === 'soloEnhance';
 
   return (
     <div className="lobby-stage" data-stage={stage}>
@@ -132,7 +150,7 @@ export function LobbyStage(props: LobbyStageProps) {
       <section className="stage-col stage-col-solo" inert={inMulti}>
         <ModePanel
           panelRef={soloPanelRef}
-          className="stage-panel"
+          className="stage-panel stage-panel-solo"
           tone="solo"
           artSrc={LOBBY_ASSETS.panelSolo}
           title="혼자 놀기"
@@ -140,24 +158,65 @@ export function LobbyStage(props: LobbyStageProps) {
           disabled={blocked}
           onClick={() => onGo('solo')}
         />
-        <div className="stage-form stage-form-solo" inert={stage !== 'solo'}>
-          <SoloForm
-            firstFieldRef={soloFirstRef}
-            nickname={props.nickname}
-            onNickname={props.onNickname}
-            nicknameHint={props.nicknameHint}
-            teamName={props.teamName}
-            onTeamName={props.onTeamName}
-            settings={props.settings}
-            onSettings={props.onSettings}
-            canSubmit={!blocked && props.canSubmitName}
-            onSubmit={props.onStartSolo}
-          />
+
+        {/* 혼자 놀기 패널 위에 겹쳐 있다가 왼쪽에서 오른쪽으로 드러나는 2열 — 다같이 놀기의 .multi-inner와 같은 구조다 */}
+        <div className="solo-inner" inert={!inSolo}>
+          <section className="stage-col stage-col-solo-normal" inert={stage === 'soloEnhance'}>
+            <ModePanel
+              panelRef={soloNormalPanelRef}
+              className="stage-panel"
+              tone="battle"
+              artSrc={LOBBY_ASSETS.panelSoloBattle}
+              title="일반 모드"
+              subtitle="컴퓨터와 한 판 — 원래 규칙 그대로"
+              disabled={blocked}
+              onClick={() => onGo('soloNormal')}
+            />
+            <div className="stage-form stage-form-solo" inert={stage !== 'soloNormal'}>
+              <SoloForm
+                firstFieldRef={soloFirstRef}
+                nickname={props.nickname}
+                onNickname={props.onNickname}
+                nicknameHint={props.nicknameHint}
+                teamName={props.teamName}
+                onTeamName={props.onTeamName}
+                settings={props.settings}
+                onSettings={props.onSettings}
+                canSubmit={!blocked && props.canSubmitName}
+                onSubmit={props.onStartSolo}
+              />
+            </div>
+          </section>
+
+          <section className="stage-col stage-col-solo-enhance" inert={stage === 'soloNormal'}>
+            <ModePanel
+              panelRef={soloEnhancePanelRef}
+              className="stage-panel"
+              tone="reinforce"
+              artSrc={LOBBY_ASSETS.panelSoloReinforce}
+              title="강화 모드"
+              subtitle="카드를 Lv.5까지 강화하며 겨뤄요"
+              disabled={blocked}
+              onClick={() => onGo('soloEnhance')}
+            />
+            <div className="stage-form stage-form-enhance" inert={stage !== 'soloEnhance'}>
+              <EnhanceForm
+                firstFieldRef={enhanceFirstRef}
+                nickname={props.nickname}
+                onNickname={props.onNickname}
+                nicknameHint={props.nicknameHint}
+                settings={props.enhanceSettings}
+                onSettings={props.onEnhanceSettings}
+                canSubmit={!blocked && props.canSubmitName}
+                onSubmit={props.onStartEnhance}
+              />
+            </div>
+          </section>
         </div>
       </section>
 
       {/* ── 우측 열: 멀티플레이 ─────────────────────────────────────────── */}
-      <section className="stage-col stage-col-multi" inert={stage === 'solo'}>
+      <section className="stage-col stage-col-multi" inert={inSolo}>
         <ModePanel
           panelRef={multiPanelRef}
           className="stage-panel stage-panel-multi"

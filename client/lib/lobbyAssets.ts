@@ -51,6 +51,10 @@ export const LOBBY_ASSETS = {
    * 인물이 양옆에 배치된 구도를 쓴다. 패널이 어떤 비율로 늘어나도 주인공이 살아남는다.
    */
   panelSolo: '/lobby/panel_solo.webp',
+  /** 혼자 놀기 → 일반 모드 — 로봇(CPU)과 실용신양이 카드를 겨루는 그림(원본 3:2 PNG는 client/assets-src/single_play_battle.png) */
+  panelSoloBattle: '/lobby/single_play_battle.webp',
+  /** 혼자 놀기 → 강화 모드 — 대장간에서 실용신양이 망치질하는 그림(원본 1254² PNG는 client/assets-src/single_play_reinforce.png) */
+  panelSoloReinforce: '/lobby/single_play_reinforce.webp',
   panelMulti: '/lobby/panel_multi.webp',
   panelCreate: '/lobby/panel_create.webp',
   panelJoin: '/lobby/panel_join.webp',
@@ -199,7 +203,7 @@ export const LOBBY_ASSETS = {
  *
  * 싱글만 눈에 띄게 밝은 것은 의도다 — 첫 화면의 두 선택지가 같은 초록이면 구분이 안 된다.
  */
-export type PanelTone = 'solo' | 'multi' | 'create' | 'join' | 'event';
+export type PanelTone = 'solo' | 'multi' | 'create' | 'join' | 'event' | 'battle' | 'reinforce';
 
 /**
  * 배경이 아직 임시 스탠드인인지 여부.

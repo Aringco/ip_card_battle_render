@@ -57,9 +57,11 @@ export function TeamTotalPanel({
     return () => clearTimeout(t);
   }, [pulse]);
 
-  // 체력 1점 = 눈금 한 칸 — 목표 체력(winHp = targetScore × 2)만큼 칸을 나눠, 지금
-  // 몇 칸째인지 한눈에 보이도록 반투명한 눈금선을 긋는다(예: 목표 5점 → 10칸).
-  const segmentLines = Array.from({ length: winHp - 1 }, (_, i) => ((i + 1) / winHp) * 100);
+  // 눈금선 — 지금 몇 칸째인지 한눈에 보이도록 반투명한 선을 긋는다. 구슬이 가득 차는 값(winHp)이 작으면 1점마다,
+  // 커지면 선이 빽빽해져 읽히지 않으므로 간격을 넓힌다(2026-10-28 요청 — 모든 판 공통):
+  // 20 이상 5점마다 · 50 이상 10점마다 · 100 이상 20점마다(예: 카드 강화 기본 400이면 20점마다 19줄).
+  const segmentStep = winHp >= 100 ? 20 : winHp >= 50 ? 10 : winHp >= 20 ? 5 : 1;
+  const segmentLines = Array.from({ length: Math.ceil(winHp / segmentStep) - 1 }, (_, i) => (((i + 1) * segmentStep) / winHp) * 100);
 
   return (
     <div

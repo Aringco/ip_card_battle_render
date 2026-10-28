@@ -9,6 +9,8 @@
 | `loading_bg_2.webp` | 2560×1440 / 410KB | **로딩 화면** 배경 2 — 숲길을 걷는 넷. 위 그림과 무작위로 번갈아 깔린다 |
 | `logo.png` | 가로:세로 ≈ 10:3 | 상단 로고 — 투명 배경 "떱카드 T.U.P.D." 엠블럼 |
 | `panel_solo.webp` | 768×768 / 94KB | "혼자 놀기" 패널 아트 — 네 동물 vs 로봇(CPU) |
+| `single_play_battle.webp` | 1152×768 / 101KB | 혼자 놀기 → "일반 모드" 패널 아트 — 로봇과 실용신양의 카드 대결(원본 `client/assets-src/single_play_battle.png`). 3:2 가로형이라 세로로 긴 패널에서는 오른쪽(실용신양)으로 당겨 깐다(`.lobby-panel-battle`) |
+| `single_play_reinforce.webp` | 768×768 / 89KB | 혼자 놀기 → "강화 모드" 패널 아트 — 대장간에서 망치질하는 실용신양(원본 `client/assets-src/single_play_reinforce.png`). 얼굴이 가운데~위라 문구를 **아래**(모루)로 내린다 |
 | `panel_multi.webp` | 768×768 / 80KB | "다같이 놀기" 패널 아트 — 네 동물이 테이블에 둘러앉은 그림 |
 | `panel_create.webp` | 768×768 / 78KB | "방 만들기" 패널 아트 — 실용신양이 오두막을 짓는 그림 |
 | `panel_join.webp` | 768×768 / 75KB | "방 참가하기" 패널 아트 — 셋이 오두막 문을 두드리는 그림 |

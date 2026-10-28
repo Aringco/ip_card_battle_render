@@ -1,5 +1,14 @@
 // 행동 관련 표시용 상수·문구 — SkillChoiceBar와 ScorePanel(호버 툴팁)이 함께 사용한다.
 import type { Animal } from 'shared';
+import {
+  ENHANCE_MERMAID_STACK,
+  enhanceCooldown,
+  enhanceMermaidCut,
+  enhanceMermaidDivide,
+  enhanceSheepExp,
+  enhanceTigerHeal,
+  enhanceValue,
+} from 'shared';
 
 export const SKILL_TITLE: Record<Animal, string> = {
   sheep: '실용신양',
@@ -32,6 +41,74 @@ export function describeSkill(animal: Animal, level: number): SkillDescription {
       return { effect: `인어 레벨(${level})만큼 (중첩가능)\n내 다음 행동이 증폭됩니다.`, catchphrase: '보기 좋은 떡이 먹기도 좋다!' };
     case 'tiger':
       return { effect: `호랑이 레벨(${level})만큼\n상대 체력을 강탈해옵니다.`, catchphrase: '독점적 실시를 통해 상대를 억제한다!' };
+  }
+}
+
+/**
+ * 카드 강화 판의 기술 카드 본문 — 이 레벨의 효과(배율 곱하기 전)와 쿨타임. 3줄째가 쿨타임이다.
+ * 캐치프레이즈는 일반 판과 같다. 줄바꿈은 여기서 정한 그대로 그려진다(SkillChoiceBar — white-space: pre).
+ */
+export function describeEnhanceSkill(animal: Animal, level: number): SkillDescription {
+  const v = enhanceValue(animal, level);
+  const cd = enhanceCooldown(animal, level);
+  const cdLine = cd === 0 ? '쿨타임 없음' : `쿨타임 ${cd}턴`;
+  const base = describeSkill(animal, level);
+  // Lv.6부터 붙는 둘째 효과가 있으면 둘째 줄에 함께 둔다 — 카드 높이에 3줄(효과 2 + 쿨타임 1)까지만 들어간다.
+  switch (animal) {
+    case 'sheep': {
+      const exp = enhanceSheepExp(level);
+      return {
+        ...base,
+        effect: exp > 0
+          ? `다음 턴 카드 +${v}장,\n무작위 카드 경험치 +${exp}\n${cdLine}`
+          : `다음 턴에 카드를\n${v}장 더 뽑습니다.\n${cdLine}`,
+      };
+    }
+    case 'rabbit':
+      return { ...base, effect: `즉시 내 체력이\n${v}만큼 오릅니다.\n${cdLine}` };
+    case 'mermaid': {
+      const cut = enhanceMermaidCut(level);
+      const divide = enhanceMermaidDivide(level);
+      const stack = ENHANCE_MERMAID_STACK[level - 1];
+      return {
+        ...base,
+        effect: cut > 0
+          ? `다음 기술 ×${v} (겹치면 +${stack}),\n상대 배율 −${cut}${divide > 1 ? `, 상대 효과 ÷${divide}` : ''}\n${cdLine}`
+          : `다음 기술의 효과 ×${v}\n(겹쳐 쓰면 +${stack})\n${cdLine}`,
+      };
+    }
+    case 'tiger': {
+      const heal = enhanceTigerHeal(level);
+      return {
+        ...base,
+        effect: heal > 0
+          ? `상대 체력 −${v},\n내 체력 +${heal}\n${cdLine}`
+          : `즉시 상대 체력을\n${v}만큼 깎습니다.\n${cdLine}`,
+      };
+    }
+  }
+}
+
+/** 카드 강화 판의 호버 툴팁 한 줄 */
+export function describeEnhanceSkillShort(animal: Animal, level: number): string {
+  const v = enhanceValue(animal, level);
+  const cd = enhanceCooldown(animal, level);
+  const cdText = cd === 0 ? '' : ` (쿨타임 ${cd}턴)`;
+  switch (animal) {
+    case 'sheep': {
+      const exp = enhanceSheepExp(level);
+      return `다음 턴에 카드를 ${v}장 더 뽑습니다${exp > 0 ? `, 무작위 카드 경험치 +${exp}` : ''}.${cdText}`;
+    }
+    case 'rabbit': return `체력이 ${v}만큼 오릅니다.${cdText}`;
+    case 'mermaid': {
+      const cut = enhanceMermaidCut(level);
+      const divide = enhanceMermaidDivide(level);
+      return `다음 기술의 효과가 ${v}배가 됩니다${cut > 0 ? `, 상대 배율 −${cut}` : ''}${divide > 1 ? `, 상대의 다음 기술 효과 ÷${divide}` : ''}.${cdText}`;
+    }
+    case 'tiger': {
+      const heal = enhanceTigerHeal(level);
+      return heal > 0 ? `상대 체력 −${v}, 내 체력 +${heal}${cdText}` : `상대 체력을 ${v}만큼 깎습니다.${cdText}`;
+    }
   }
 }
 

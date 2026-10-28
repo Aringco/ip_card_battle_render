@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { EventConfig, EventKind, GameMode, GameSettings, Seat } from 'shared';
-import { DEFAULT_SETTINGS, beatDevSettings, isPlayingSeat, randomNickname } from 'shared';
+import { DEFAULT_SETTINGS, ENHANCE_SETTINGS, beatDevSettings, isPlayingSeat, randomNickname } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { EventView } from '@/components/lobby/EventForm';
 import {
@@ -72,6 +72,8 @@ export default function LobbyPage() {
   const [showHowTo, setShowHowTo] = useState(false);
   // 방장(방을 만드는 쪽)만 정하는 게임 규칙 — 방 생성/싱글 모드 시작 화면에서 함께 입력받는다.
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
+  // 혼자 놀기 → 강화 모드의 규칙 — 기본값이 일반 모드와 달라(shared/enhance.ts의 ENHANCE_SETTINGS) 따로 기억한다
+  const [enhanceSettings, setEnhanceSettings] = useState<GameSettings>(ENHANCE_SETTINGS);
 
   // ─ 이벤트 방 참가하기(EVENT_MODE_ROADMAP.md) ─
   const [eventView, setEventView] = useState<EventView>('role');
@@ -298,6 +300,13 @@ export default function LobbyPage() {
     ws.createSoloRoom(effectiveNickname, teamName.trim() || undefined, settings);
   };
 
+  // 혼자 놀기 → 강화 모드 — 자리·화면은 일반 모드 그대로(나 = A팀)이고 규칙만 강화 판이다. 팀 이름 칸은 없다(서버가 무작위로 붙인다).
+  const handleStartEnhance = () => {
+    if (!canSubmitName) return;
+    sessionStorage.setItem('cardBattle_team', 'A');
+    ws.createSoloRoom(effectiveNickname, undefined, enhanceSettings, true);
+  };
+
   // ─ 이벤트 ─
   const handleEventView = (v: EventView) => {
     ws.clearEventError();
@@ -430,7 +439,10 @@ export default function LobbyPage() {
                 arrivedByInvite={arrivedByInvite}
                 settings={settings}
                 onSettings={setSettings}
+                enhanceSettings={enhanceSettings}
+                onEnhanceSettings={setEnhanceSettings}
                 onStartSolo={handleStartSolo}
+                onStartEnhance={handleStartEnhance}
                 onCreateRoom={handleCreateRoom}
                 onJoinRoom={handleJoinRoom}
                 event={{

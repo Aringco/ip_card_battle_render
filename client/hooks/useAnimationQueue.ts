@@ -4,8 +4,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Animal, ClientGameEvent, ClientGameState, FinishReason, Place, StackedCard, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
+import { SKILL_TITLE } from '@/lib/skillInfo';
 import { playRandomSound, playRandomSoundSequence } from '@/lib/sounds';
-import { SLOT_SPIN_DUR, SLOT_TOTAL_DUR, WOOL_BALL_DUR, SHEEP_DRAW_STEP } from '@/lib/drawTiming';
+import { SLOT_SPIN_DUR, SLOT_TOTAL_DUR, WOOL_BALL_DUR, SHEEP_DRAW_STEP, PLACE_DRAW_STEP } from '@/lib/drawTiming';
 
 type DeltaKey = `${SideId}:${Animal}`;
 const deltaKeyOf = (t: SideId, a: Animal): DeltaKey => `${t}:${a}`;
@@ -161,6 +162,7 @@ export interface AnimationState {
   mermaidPopup: { team: SideId } | null;
   scoreFlash: ReadonlyMap<string, number>; // "team:animal" → flash id (for CSS re-trigger)
   displayedExp: Record<SideId, Record<Animal, number>>; // 팀 패널에 실제로 보여주는 경험치 — 페어 카드가 팀으로 날아가 도착한 뒤에야 반영된다
+  displayedHp: Record<SideId, number>; // 체력 구슬에 보여주는 체력 — 카드 강화의 짝 효과는 그 연출 순간에야 반영된다
   hpPulse: ReadonlyMap<SideId, HpPulse>; // 체력 오브가 지금 상승/감소 연출 중인지
   festivalFlash: boolean; // 축제 진입 순간 보드 전체 섬광
   festivalBurst: boolean; // 축제 진입 순간 보드 여기저기 도토리 폭죽(15발)
@@ -283,6 +285,11 @@ export function useAnimationQueue(
   // 쓴다. 다음 액션이 도착하면 무조건 먼저 그 가림을 전부 걷어(=최신 진실 그대로 노출)
   // 시작하므로, 타이머가 취소되어도 절대 실제보다 낮아지거나 음수가 될 수 없다.
   const [pendingExpCredit, setPendingExpCredit] = useState<Record<string, number>>({});
+  // 카드 강화 — 짝 효과(skillApplied.pair)가 바꾼 체력 중 **아직 연출이 재생되지 않은 몫**(편 → 빼서 보여줄 양).
+  // 짝 효과는 뽑기 액션 안에서 일어나 서버 진실(gameState.hp)은 클릭 즉시 바뀌지만, 화면에는 카드가 날아가 정산된 뒤의
+  // "페어 효과!" 연출 순간에 바뀌어야 한다 — 경험치 가림(pendingExpCredit)과 같은 이유·같은 방식(렌더 도중 동기 보정)이다.
+  // 고른 기술(pair가 아닌 skillApplied)은 예전처럼 가리지 않는다.
+  const [pendingHpCredit, setPendingHpCredit] = useState<Record<string, number>>({});
   // "화면에 지금 그려야 하는 카드"를 실제 서버 진실(gameState.stacks)과 분리해서 관리한다.
   // 서버는 액션이 끝나는 즉시 최종 상태(수집으로 카드가 사라진 상태)를 보내오지만,
   // 화면에는 "등장 → (짝 맞으면) 흔들기 → 날아가기" 연출이 끝난 뒤에야 사라지도록,
@@ -353,8 +360,22 @@ export function useAnimationQueue(
         const key = deltaKeyOf(ev.team, ev.animal);
         newCredits[key] = (newCredits[key] ?? 0) + ev.exp;
       }
+      // 카드 강화 — 실용신양 Lv.6+가 무작위 카드에 준 경험치도 그 효과 연출 순간에 드러낸다(Pass 1.6)
+      if (ev.type === 'skillApplied' && ev.randomExp) {
+        const key = deltaKeyOf(ev.team, ev.randomExp.animal);
+        newCredits[key] = (newCredits[key] ?? 0) + ev.randomExp.amount;
+      }
     });
     setPendingExpCredit(newCredits);
+
+    const hpCredits: Record<string, number> = {};
+    lastEvents.forEach(ev => {
+      if (ev.type !== 'skillApplied' || !ev.pair) return;
+      const opp = ev.target ?? Object.keys(ev.hpAfter).find(s => s !== ev.team);
+      hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + ev.myHpDelta;
+      if (opp !== undefined) hpCredits[opp] = (hpCredits[opp] ?? 0) + ev.oppHpDelta;
+    });
+    setPendingHpCredit(hpCredits);
   }
 
   // lastEvents가 비어있는 gameState 갱신(최초 입장 · 재접속 스냅샷)은 재생할 애니메이션이
@@ -384,6 +405,7 @@ export function useAnimationQueue(
     setDisplayedActivePlayerIndex(gameState.activePlayerIndex);
     setIsSettling(false);
     setPendingExpCredit({});
+    setPendingHpCredit({});
     // ⚠️ **좌절 이모티콘(persist)은 여기서도 걷어야 한다.** 그것만 제거 타이머가 없어
     //    저절로 사라지지 않는데, 걷어내는 곳이 아래 레이아웃 이펙트 한 군데뿐이었다 —
     //    그쪽은 이벤트가 있는 갱신에서만 도므로, **이벤트가 비어 있는 갱신**으로 판이
@@ -597,6 +619,8 @@ export function useAnimationQueue(
     let festivalRollTotal = 0;
     let comboCounter = 0;
     let lastDrawEndCursor = 0;
+    // 카드 강화 — 누른 장소에서 한꺼번에 나오는 장수(placeDraws). 그 장들은 겹쳐서, 칸 안의 무작위 자리에서 튀어나온다.
+    let placeRollRemaining = 0;
 
     // ── 카드가 쌓일 때마다(뽑기 종류·롤 여부와 무관하게) 화면을 흔들기 위한 준비 ──
     // 이번 액션에서 각 동물 스택이 몇 장째가 되는지 실시간으로 추적한다. 시작값(baseline)은
@@ -653,6 +677,8 @@ export function useAnimationQueue(
           }, triggerAt);
         }
 
+        const inPlaceRoll = !inRoll && placeRollRemaining > 0;
+        if (inPlaceRoll) placeRollRemaining--;
         const slotAt = inRoll ? triggerAt + WOOL_BALL_DUR : triggerAt;
         const revealAt = slotAt + SLOT_SPIN_DUR;
         const drawEndsAt = slotAt + SLOT_TOTAL_DUR;
@@ -678,6 +704,7 @@ export function useAnimationQueue(
         }
 
         const slotId = ++floatIdCounter;
+        // 여러 장(카드 강화)도 그 장소 칸 가운데에서 나온다 — 무작위는 장수와 동물뿐이다(2026-10-28 요청으로 무작위 자리를 걷었다)
         sched(() => {
           setDrawSlots(prev => [...prev, { id: slotId, place, animal: card.animal, num: card.num }]);
           sched(() => setDrawSlots(prev => prev.filter(s => s.id !== slotId)), SLOT_TOTAL_DUR);
@@ -725,7 +752,16 @@ export function useAnimationQueue(
         }
 
         lastDrawEndCursor = Math.max(lastDrawEndCursor, drawEndsAt);
-        cursor = inRoll ? triggerAt + SHEEP_DRAW_STEP : drawEndsAt + EMPTY_GAP;
+        cursor = inRoll
+          ? triggerAt + SHEEP_DRAW_STEP
+          : inPlaceRoll && placeRollRemaining > 0
+            ? triggerAt + PLACE_DRAW_STEP
+            : drawEndsAt + EMPTY_GAP;
+        continue;
+      }
+
+      if (ev.type === 'placeDraws') {
+        placeRollRemaining = ev.count;
         continue;
       }
 
@@ -896,14 +932,17 @@ export function useAnimationQueue(
       }
     }
 
-    // ── Pass 1.6: 행동 발동(skillApplied) — 정산과는 별개 액션(선택 응답)에서 온다.
+    // ── Pass 1.6: 행동 발동(skillApplied) — 보통은 정산과는 별개 액션(선택 응답)에서 하나만 온다.
+    // 카드 강화 판은 짝이 맞는 순간 그 카드의 효과가 저절로 발동해(pair) 뽑기 액션 안에 여러 개가 실릴 수 있다 — 정산 연출이 끝난 뒤
+    // 차례로 재생한다(캡션 앞에 "페어 효과!").
     // 동물마다 원래 있었던 전용 연출을 그대로 재생한다. "다음 기회를 노리기"(수동 패스,
     // skillPassed)는 더 이상 큰 캡션으로 알리지 않는다 — 스킬을 안 썼을 때는 화면에
     // 아무것도 안 뜨는 편이 낫다는 판단(해설판 로그 줄만 남는다).
     {
-      const skillEv = lastEvents.find((e): e is Extract<ClientGameEvent, { type: 'skillApplied' }> => e.type === 'skillApplied');
+      const skillEvs = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'skillApplied' }> => e.type === 'skillApplied');
 
-      if (skillEv && skillEv.level > 0) {
+      for (const skillEv of skillEvs) {
+        if (skillEv.level <= 0) continue;
         const { team, animal, myHpDelta, oppHpDelta, multiplierAfter, extraDrawsQueued } = skillEv;
         // 특허랑이의 대상은 서버가 알려준 값을 그대로 쓴다(개인전). 팀전 이벤트에는 target이 없으니
         // 이벤트가 알려주는 편 중 나 아닌 쪽이 상대다 — 화면이 "반대편"을 스스로 뒤집어 구하지 않는다.
@@ -919,12 +958,32 @@ export function useAnimationQueue(
         if (myHpDelta > 0) effectParts.push(`내 체력 +${myHpDelta}`);
         if (oppHpDelta < 0) effectParts.push(`상대 체력 ${oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${multiplierAfter}`);
-        addCaption(effectParts.join(', '), 'effect', at, { team });
+        if (skillEv.oppMultiplierCut) effectParts.push(`상대 배율 -${skillEv.oppMultiplierCut}`);
+        if (skillEv.randomExp) effectParts.push(`${SKILL_TITLE[skillEv.randomExp.animal]} 경험치 +${skillEv.randomExp.amount}`);
+        if (skillEv.oppDivisor) effectParts.push(`상대 효과 ÷${skillEv.oppDivisor}`);
+        if (skillEv.divisorUsed) effectParts.push(`(÷${skillEv.divisorUsed} 적용)`);
+        addCaption(`${skillEv.pair ? '페어 효과! ' : ''}${effectParts.join(', ')}`, 'effect', at, { team });
 
         sched(() => {
           const gs = gameStateRef.current;
           if (gs) {
             addEmoticon(team, gs.teams[team].playerIndex, emoticonFile(animal, 'happy'), at);
+          }
+          // 카드 강화 — 무작위 카드 경험치(실용신양 Lv.6+)를 이제야 드러낸다(위 pendingExpCredit)
+          const bonus = skillEv.randomExp;
+          if (bonus) {
+            const key = deltaKeyOf(team, bonus.animal);
+            setPendingExpCredit(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) - bonus.amount) }));
+            addFloat(`${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
+          }
+          // 카드 강화의 짝 효과 — 이 효과의 체력 변화를 이제야 드러낸다(위 pendingHpCredit)
+          if (skillEv.pair) {
+            setPendingHpCredit(prev => {
+              const next = { ...prev };
+              next[team] = (next[team] ?? 0) - myHpDelta;
+              next[opp] = (next[opp] ?? 0) - oppHpDelta;
+              return next;
+            });
           }
 
           if (animal === 'rabbit') {
@@ -967,6 +1026,8 @@ export function useAnimationQueue(
                 if (myHpDelta > 0) pulseHp(team, 'gain');
                 addFloat(`${oppHpDelta}`, opp, 'penalty');
               }
+              // 카드 강화 판의 특허랑이는 빼앗는 게 아니라 깎기 + 따로 붙는 회복이다(Lv.3부터) — 회복분을 내 쪽에 띄운다.
+              if (gameStateRef.current?.enhance && myHpDelta > 0) addFloat(`+${myHpDelta}`, team, 'bonus');
             }, TIGER_RECOIL_DUR);
           } else {
             // 실용신양 — 즉시 체력 변화는 없지만, "메~"를 한 번만 틀면 임팩트가 약해서
@@ -1140,6 +1201,16 @@ export function useAnimationQueue(
     return result;
   }, [gameState, pendingExpCredit]);
 
+  // 화면에 보여줄 체력 — 서버 진실에서 "아직 재생되지 않은 짝 효과"만큼만 뺀다(카드 강화 판만 해당 — 다른 판은 언제나 서버 값 그대로).
+  const displayedHp = useMemo(() => {
+    const result: Record<SideId, number> = {};
+    if (!gameState) return result;
+    Object.keys(gameState.teams).forEach(team => {
+      result[team] = gameState.teams[team].hp - (pendingHpCredit[team] ?? 0);
+    });
+    return result;
+  }, [gameState, pendingHpCredit]);
+
   return {
     screenShakeLevel,
     leafParticleCount,
@@ -1157,6 +1228,7 @@ export function useAnimationQueue(
     mermaidPopup,
     scoreFlash,
     displayedExp,
+    displayedHp,
     hpPulse,
     festivalFlash,
     festivalBurst,
