@@ -275,6 +275,8 @@ export function GameLayout({
               turnTotalMs={gameState.turnTotalMs}
               paused={paused}
               turn={gameState.turn}
+              skillsPerTurn={gameState.skillsPerTurn}
+              skillsUsedThisTurn={gameState.skillsUsedThisTurn}
               startingTeam={gameState.startingTeam}
               startingTeamReason={gameState.startingTeamReason}
               teamNames={gameState.teamNames}

@@ -159,6 +159,7 @@ export function GameBoard({
       <div style={{ gridArea: 'center' }}>
         <AnimalStackArea
           stackCards={stackCards}
+          bundle={!!gameState.enhance}
           collectingIds={collectingCardIds}
           shakingPile={shakingPile}
           newCardId={newCardId}

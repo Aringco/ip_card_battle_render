@@ -64,7 +64,7 @@ npm run build
 
 ### 게임 엔진 3계층 (server/engine/, UI와 완전 분리 — 순수 함수 + 단위 테스트 대상)
 1. **`gameEngine.ts`** — 외부에서 부르는 진입점. `processPlayerAction`(장소 클릭 → 뽑기+정산) → `processSkillChoice`/`processPass`(턴 종료 시 행동 선택) 2단계 흐름. `processTimeout`이 두 대기 상태 모두를 대신 처리(장소 대기 중이면 무작위 장소, 행동 대기 중이면 무작위 유효 행동 또는 자동 패스).
-2. **`drawCard.ts`** — 실용신양으로 예약된 추가 뽑기(`pendingExtraDraws`, `SHEEP_SAFETY_CAP`까지) 소모 → 클릭한 장소에서 1장 뽑기 → 동물별 미획득 스택이 짝수면 한 번에 정산(`settleStacks`). 정산은 경험치만 올리고 체력은 건드리지 않는다.
+2. **`drawCard.ts`** — 실용신양으로 예약된 추가 뽑기(`pendingExtraDraws`, `SHEEP_SAFETY_CAP`까지 — 카드 강화 판만 상한 없음) 소모 → 클릭한 장소에서 1장 뽑기 → 동물별 미획득 스택이 짝수면 한 번에 정산(`settleStacks`). 정산은 경험치만 올리고 체력은 건드리지 않는다.
 3. **`skills.ts`** / **`turnManager.ts`** — `skills.ts`는 레벨(`floor(exp/threshold)`) 기반 4행동 효과 계산과 경험치 소모, `turnManager.ts`는 턴/팀 교대, 축제(`festivalTurn`) 진입, `MAX_TURN` 초과·즉시 승패(체력 knockout) 판정, 그리고 `initGame`.
 
 **시작 공유 카드** — `initGame`은 빈 보드가 아니라 `dealOpeningSharedCards`(`engine/places.ts`)로 뽑은 **서로 다른 동물 2장**(숫자 `OPENING_SHARED_CARD_NUM_MIN~MAX` = 7~13)을 중앙 스택에 깔고 시작한다. 빈 보드에서는 선 플레이어가 무엇을 뽑아도 짝이 되지 않고 그 짝을 바로 다음 차례인 상대가 가져가는 구조적 불리함이 있어서다. **두 장이 반드시 다른 동물이어야 한다**는 게 이 규칙의 핵심 — 같은 동물이면 선 플레이어가 첫 클릭도 하기 전에 그 자리에서 정산되어 취지가 뒤집힌다. 스택을 한 장 단위로 통제해야 하는 테스트는 `effects.test.ts`의 `clearStacks`로 이 두 장을 걷어내고 시작한다.
@@ -144,10 +144,12 @@ npm run build
 - **엔진·방·화면 모두 혼자 놀기 그대로다** — 팀전 1:1(A = 나, B = 컴퓨터, `initEnhanceGame` = `initGame` + `GameState.enhance`)이고 화면도 `GameLayout`이다. 이 판인지는 언제나 `state.enhance`로 가른다. `data-enhance`가 카드·장소 라벨·짝 합계의 숫자를 감춘다.
 - ⚠️ **레벨은 `skillLevelFor`(shared)로만 구한다** — 서버 `levelOf`와 화면(동물 표·기술 카드)이 같은 함수를 써야 한다. `THRESHOLDS`로 직접 나누면 강화 판에서 한 단계 낮게 보인다. 경험치 막대는 `expProgressFor`(Lv.5면 `need: null` = MAX).
 - ⚠️ **쿨타임도 단일 관문** — 서버는 `eligibleAnimals`, 화면은 `lib/skills.ts`의 `canUseSkill`(기술 카드와 "고를 게 없으면 자동 패스"가 함께 쓴다). 쓴 순간 `쿨타임 + 1`로 세우고 그 편의 차례가 끝날 때(`advanceTurn`) 1씩 줄인다.
-- **2차 표**(2026-10-28): 실용신양 Lv.6+ 무작위 카드 경험치 · 디자인어 Lv.6+ 상대 배율 −N · Lv.9+ 상대의 다음 고른 기술 효과 ÷N(`EnhanceState.divisors`) · 특허랑이 Lv.6+ 회복. 수치는 모두 `enhanceAmount`(기본값 × 배율 ÷ 나눗셈, **반올림**) — 서버와 화면 미리보기가 같은 함수를 쓴다. 기본 규칙은 목표 200(그래서 `SETTINGS_LIMITS.targetScore` 상한이 500)이다.
+- **2차 표**(2026-10-28): 실용신양 Lv.6+ 무작위 카드 경험치 · 디자인어 Lv.6+ 상대 배율 −N · Lv.9+ 상대의 다음 고른 기술 효과 ÷N(`EnhanceState.divisors`) · 특허랑이 Lv.6+ 회복. 수치는 모두 `enhanceAmount`(기본값 × 배율 ÷ 나눗셈, **반올림**) — 서버와 화면 미리보기가 같은 함수를 쓴다. 기본 규칙은 목표 200이고, **이 판의 목표 점수 상한은 2500**(일반 판 500) — 방·엔진 모두 `clampEnhanceSettings`(`ENHANCE_SETTINGS_LIMITS`)로 자른다. 일반 `clampSettings`를 거치면 500에서 잘린다(`initEnhanceGame`이 `initGame`에 범위를 넘기는 이유).
 - **짝 효과·여러 장**: 짝이 맞으면 그 카드의 기술이 정산 직후 저절로 발동하고(`applyEnhancePairEffect` — `skillApplied`에 `pair: true`, 배율·쿨타임 무관), 장소 한 번에 1~3장(동물 2종 장소)·3~5장(3종 장소)이 나온다(앞에 `placeDraws`). ⚠️ 짝 효과는 **뽑기 액션 안에서 체력을 바꾼다** — 그래서 승패를 `processPlayerAction`에서도 보고, 화면은 체력을 `pendingHpCredit`(경험치 가림과 같은 렌더 도중 보정)으로 가렸다가 "페어 효과!" 연출 순간에 드러낸다(`withDisplayedHp`). Pass 1.6은 `skillApplied`를 **여러 개** 재생한다.
+- **한 차례 여러 장·한계**(2026-10-29): 15턴마다 한 차례의 기술이 하나씩 늘어 최대 3장(`enhanceSkillsPerTurn` — `advanceTurn`이 턴이 오를 때 `skillsPerTurn`을 다시 정한다, 그래서 타입이 `1 | 2 | 3`). 기술은 `processEnhanceSkill`이 개인전 2장 규칙과 같은 모양으로 받는다(장수가 남으면 `pendingChoice`를 세워 둔 채). 시간초과는 첫 장만 대신 고른다. 예약 뽑기(실용신양·축제)는 `SHEEP_SAFETY_CAP`(40)에서 자르지 않고(`reservedDrawCount`), 화면은 40장을 넘으면 장 간격을 좁힌다(shared의 `rollDrawStep`). 쿨타임은 Lv.Max에서 하나 더 는다. 목표 점수 상한은 2500.
+- ⚠️ **연출 유예(`room.ts`의 `settleGraceMs`)는 화면 타임라인을 따라 센다**(`settleTimelineMs` — `useAnimationQueue`의 Pass 1~1.6 순서·길이를 그대로 옮긴 것). 유예가 연출보다 짧으면 컴퓨터의 다음 수가 연출 도중에 와서 화면이 **뽑기 도중에 판을 초기화**한다(예전 15초 상한에서 실제로 그랬다). 연출 순서·길이를 바꾸면 그 함수도 함께 고칠 것. 한 줄 카드가 10장·100장을 넘으면 묶어 그린다(`AnimalStackArea`의 `bundleCards` — 강화 판만, `bundle` prop). 기술 카드는 Lv.5 ~ Max에서 금빛(`ENHANCE_GOLD_FROM` · `.enh-gold`).
 - ⚠️ **턴 상한은 `maxTurnOf`로만 읽는다** — 강화 판은 `Infinity`다. `MAX_TURN`을 직접 쓰면 이 판이 20턴에 끝난다(화면은 이때 "n턴"만 쓴다).
-- 기술 카드의 레벨 연출(밝은 빛 `.enh-light` · 45도 사선 띠로 카드를 가로질러 늘 흐르는 무지개 `.enh-rainbow` · 레벨업 파티클 `LevelUpBurst`)은 `--enh`(0 = Lv.1 … 1 = Lv.5) 하나로 세기를 정한다. ⚠️ 무지개 층에 `background-repeat`(기본 repeat)를 되살리거나 가장자리 마스크를 걷으면 짙어질수록 **층의 사각형·타일 이음매가 드러난다**(실제로 그랬다). 판 길이 확인은 `server/scripts/enhanceBalance.ts`.
+- 기술 카드의 레벨 연출(밝은 빛 `.enh-light` · 45도 사선 띠로 카드를 가로질러 늘 흐르는 무지개 `.enh-rainbow` · 레벨업 파티클 `LevelUpBurst`)은 `--enh`(0 = Lv.1 … 1 = Lv.Max) 하나로 세기를 정한다. ⚠️ 무지개 층에 `background-repeat`(기본 repeat)를 되살리거나 가장자리 마스크를 걷으면 짙어질수록 **층의 사각형·타일 이음매가 드러난다**(실제로 그랬다). 판 길이 확인은 `server/scripts/enhanceBalance.ts`.
 
 ### 이벤트 모드 — 행사용 도전 세 가지 + 동물의 왕 (`EVENT_MODE_ROADMAP.md`)
 

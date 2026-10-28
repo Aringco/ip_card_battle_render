@@ -55,6 +55,9 @@ export const SETTINGS_LIMITS = {
   pauseMaxMin: { min: 1, max: 30 },
 } as const;
 
+/** 항목별 입력 범위 — 판에 따라 범위를 바꿔 넘길 때 쓴다(카드 강화 판은 목표 점수 상한이 2500이다 — shared/enhance.ts ENHANCE_SETTINGS_LIMITS). */
+export type SettingsLimits = { readonly [K in keyof typeof SETTINGS_LIMITS]: { readonly min: number; readonly max: number } };
+
 export const DEFAULT_SETTINGS: GameSettings = {
   firstTeam: DEFAULT_FIRST_TEAM,
   targetScore: DEFAULT_TARGET_SCORE,
@@ -69,10 +72,13 @@ export const DEFAULT_SETTINGS: GameSettings = {
 };
 
 /** 방장 입력값을 SETTINGS_LIMITS 범위로 잘라내고, 정수가 아니면 반올림한다. */
-export function clampSettings(input: Partial<typeof DEFAULT_SETTINGS> | undefined): typeof DEFAULT_SETTINGS {
+export function clampSettings(
+  input: Partial<typeof DEFAULT_SETTINGS> | undefined,
+  limits: SettingsLimits = SETTINGS_LIMITS,
+): typeof DEFAULT_SETTINGS {
   const merged = { ...DEFAULT_SETTINGS, ...input };
   const clamp = (key: keyof typeof SETTINGS_LIMITS) => {
-    const { min, max } = SETTINGS_LIMITS[key];
+    const { min, max } = limits[key];
     const v = Math.round(Number(merged[key]));
     return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : DEFAULT_SETTINGS[key];
   };
@@ -135,6 +141,24 @@ export function festivalDrawInfoAt(turn: number, settings: GameSettings, maxTurn
 
 // 실용신양 스킬로 예약된 추가 뽑기 1회 소모당 상한 (무한루프/과도한 뽑기 방지)
 export const SHEEP_SAFETY_CAP = 40;
+
+// ─── 뽑기 연출 간격 — 화면(client/lib/drawTiming.ts → useAnimationQueue)과 서버의 연출 유예(room.ts settleGraceMs)가 같은 값을 쓴다 ───
+// ⚠️ 서버가 연출 길이를 짧게 잡으면 컴퓨터의 다음 수가 연출 도중에 도착하고, 화면은 그 갱신을 받는 순간 진행 중이던 연출을
+//    걷어내고 서버 상태로 맞춘다 — 뽑기 도중에 판이 "초기화"되는 것처럼 보인다(2026-10-29, 예약 100장).
+/** 예약 뽑기(실용신양·도토리 축제) 연쇄에서 다음 장이 시작되기까지의 간격 */
+export const ROLL_DRAW_STEP_MS = 300;
+/** 카드 강화 — 장소 한 번에 여러 장이 나올 때 다음 장까지의 간격 */
+export const PLACE_DRAW_STEP_MS = 220;
+// 예약 뽑기가 이보다 많으면(카드 강화 판에서만 — 일반 판은 SHEEP_SAFETY_CAP에서 잘린다) 간격을 좁혀 롤 전체가 이 시간 안에 끝나게 한다.
+// 100장을 0.3초씩 띄우면 30초가 걸린다.
+const ROLL_STEP_FULL_UNTIL = 40;
+const ROLL_TOTAL_MAX_MS = ROLL_STEP_FULL_UNTIL * ROLL_DRAW_STEP_MS;
+const ROLL_STEP_MIN_MS = 30;
+/** 예약 뽑기 롤(총 total장)에서 다음 장까지의 간격 */
+export function rollDrawStep(total: number): number {
+  if (total <= ROLL_STEP_FULL_UNTIL) return ROLL_DRAW_STEP_MS;
+  return Math.max(ROLL_STEP_MIN_MS, Math.floor(ROLL_TOTAL_MAX_MS / total));
+}
 
 // ─── 시작 공유 카드 ───────────────────────────────────────────────────────────
 // 빈 보드에서 시작하면 선 플레이어는 무엇을 뽑아도 짝을 만들 수 없고(스택이 비어 있으니),

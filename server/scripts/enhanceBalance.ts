@@ -95,10 +95,12 @@ function runGame(seed: number): Result {
       if (top >= 3 && firstLv3 === null) firstLv3 = state.turn;
       if (top >= 6 && firstLv6 === null) firstLv6 = state.turn;
     }
-    if (state.phase !== 'playing' || state.pendingChoice === null) continue;
-    const pick = pickSkill(state, state.pendingChoice, rng);
-    if (pick) processSkillChoice(state, pick);
-    else processPass(state);
+    // 한 차례에 기술이 여러 장일 수 있다(16턴부터 2장 · 31턴부터 3장) — 기술 단계가 끝날 때까지 고른다
+    while (state.phase === 'playing' && state.pendingChoice !== null) {
+      const pick = pickSkill(state, state.pendingChoice, rng);
+      if (pick) processSkillChoice(state, pick);
+      else processPass(state);
+    }
   }
   const winHp = state.settings.targetScore * 2;
   return {

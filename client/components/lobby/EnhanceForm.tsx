@@ -1,6 +1,7 @@
 'use client';
 
 import type { GameSettings } from 'shared';
+import { ENHANCE_SETTINGS_LIMITS } from 'shared';
 import { FormCard } from './Field';
 import { PlankButton } from '@/components/ui/PlankButton';
 import { GameRulesFields } from './GameRulesFields';
@@ -33,8 +34,8 @@ export function EnhanceForm({
   return (
     <FormCard
       title="⚒️ 강화 모드"
-      description="모든 카드가 Lv.1부터 열려 있어요. 짝을 맞춰 카드를 Lv.5까지 강화하세요!"
-      side={<GameRulesFields settings={settings} onChange={onSettings} hidePause />}
+      description="모든 카드가 Lv.1부터 열려 있어요. 짝을 맞춰 카드를 Lv.Max까지 강화하세요!"
+      side={<GameRulesFields settings={settings} onChange={onSettings} hidePause limits={ENHANCE_SETTINGS_LIMITS} />}
       footer={
         <PlankButton onClick={onSubmit} disabled={!canSubmit} block>
           강화 대전 시작

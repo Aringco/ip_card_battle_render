@@ -17,6 +17,8 @@ import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
   SHEEP_TIMER_EXTRA_DRAW_CAP,
   PLACES,
+  PLACE_DRAW_STEP_MS,
+  rollDrawStep,
   randomNickname,
   randomTeamName,
   NICKNAME_MAX_LEN,
@@ -51,7 +53,7 @@ import {
   timeAttackSettings,
   beatDevSettings,
   opponentsOf,
-  ENHANCE_SETTINGS,
+  clampEnhanceSettings,
   enhanceValue,
   enhanceTigerHeal,
   enhanceAmount,
@@ -105,11 +107,83 @@ const SETTLE_ROLL_ENTER_MS = 500;   // WOOL_BALL_DUR — 예약 뽑기 롤에 �
 const SETTLE_COLLECT_MS = 1080;     // SHAKE_CHECK_DUR(550) + COLLECT_FLING_DUR(450) + 80
 const SETTLE_SKILL_MS = 1500;       // 행동 효과 연출(가장 긴 특허랑이 기준)
 const SETTLE_FESTIVAL_MS = 700;     // 축제 시작 연출
-// 연출 유예가 한 턴을 통째로 삼키지 않도록 상한을 둔다(대규모 연쇄 뽑기 대비).
-const SETTLE_GRACE_MAX_MS = 15000;
+// 아래 근사식의 상한(대규모 연쇄 뽑기 대비) — 근사식은 연쇄 뽑기를 장당 0.3초로 세어 크게 부풀기 때문이다.
+const SETTLE_ESTIMATE_MAX_MS = 15000;
+// 연출 유예 전체의 상한 — 화면 타임라인을 그대로 따라 센 값(settleTimelineMs)에 거는 안전선. 카드 강화 판의 최악(예약 뽑기 두 롤 ·
+// 짝 넷 · 짝 효과 넷)도 40초 남짓이다(롤 하나는 rollDrawStep이 12초 안팎으로 묶는다).
+const SETTLE_GRACE_MAX_MS = 60000;
 
-/** 방금 브로드캐스트한 이벤트들의 클라이언트 연출이 끝나기까지 걸리는 시간(ms) 추정치. */
-function settleGraceMs(events: GameEvent[]): number {
+/**
+ * 방금 브로드캐스트한 이벤트들의 클라이언트 연출이 끝나기까지 걸리는 시간(ms) 추정치.
+ * 예전 근사식(settleEstimateMs, 15초 상한)과 화면 타임라인 그대로의 계산(settleTimelineMs) 중 **긴 쪽**이다 — 일반 판은 거의 언제나
+ * 근사식이 더 넉넉해 예전과 같고, 카드 강화의 큰 연쇄 뽑기에서만 타임라인이 이긴다.
+ * ⚠️ 이 값이 연출보다 짧으면 컴퓨터의 다음 수가 연출 도중에 도착해 화면이 진행 중이던 연출을 걷어낸다 — 뽑기 도중에 판이
+ *    "초기화"되는 것처럼 보인다(2026-10-29, 예약 100장에서 예전의 15초 상한에 걸렸다).
+ */
+export function settleGraceMs(events: GameEvent[]): number {
+  return Math.min(SETTLE_GRACE_MAX_MS, Math.max(settleEstimateMs(events), settleTimelineMs(events)));
+}
+
+// 화면(useAnimationQueue)의 연출 시각 — 그쪽 상수와 같은 값이다(SLOT_TOTAL_DUR · WOOL_BALL_DUR · EMPTY_GAP · SHAKE_CHECK_DUR ·
+// COLLECT_FLING_DUR · EFFECT_DUR · TIGER_RECOIL_DUR + TIGER_HIT_DUR · RANK_BANNER_DUR). 뽑기 간격은 shared(rollDrawStep · PLACE_DRAW_STEP_MS)를 함께 쓴다.
+const TL_SLOT_MS = 1350;
+const TL_ROLL_ENTER_MS = 500;
+const TL_GAP_MS = 80;
+const TL_COLLECT_MS = 550 + 450 + 80;
+const TL_COLLECT_GROUP_GAP_MS = 150;
+const TL_COLLECT_ORDER: Animal[] = ['sheep', 'rabbit', 'tiger', 'mermaid'];
+const TL_EFFECT_MS = 1200;
+const TL_TIGER_MS = 500 + 900 + 80;
+const TL_RANK_MS = 1700;
+const TL_FESTIVAL_MS = 900;
+
+/** useAnimationQueue의 Pass 1(뽑기) → 1.5(정산) → 1.6(효과) → 순위 → 축제 스케줄을 그대로 따라 센 연출 길이 */
+function settleTimelineMs(events: GameEvent[]): number {
+  let cursor = 0;
+  let lastDrawEnd = 0;
+  let rollRemaining = 0;
+  let rollTotal = 0;
+  let placeRemaining = 0;
+  for (const ev of events) {
+    if (ev.type === 'bonusDraws' || ev.type === 'festivalDraws') {
+      rollRemaining = ev.count;
+      rollTotal = ev.count;
+    } else if (ev.type === 'placeDraws') {
+      placeRemaining = ev.count;
+    } else if (ev.type === 'draw') {
+      const inRoll = rollRemaining > 0;
+      if (inRoll) rollRemaining--;
+      const inPlace = !inRoll && placeRemaining > 0;
+      if (inPlace) placeRemaining--;
+      const triggerAt = cursor;
+      const drawEnd = (inRoll ? triggerAt + TL_ROLL_ENTER_MS : triggerAt) + TL_SLOT_MS;
+      lastDrawEnd = Math.max(lastDrawEnd, drawEnd);
+      cursor = inRoll
+        ? triggerAt + rollDrawStep(rollTotal)
+        : inPlace && placeRemaining > 0
+          ? triggerAt + PLACE_DRAW_STEP_MS
+          : drawEnd + TL_GAP_MS;
+    }
+  }
+  cursor = Math.max(cursor, lastDrawEnd + TL_GAP_MS);
+
+  let groups = 0;
+  for (const animal of TL_COLLECT_ORDER) {
+    const n = events.filter(e => e.type === 'collect' && e.animal === animal).length;
+    if (n === 0) continue;
+    if (groups++ > 0) cursor += TL_COLLECT_GROUP_GAP_MS;
+    cursor += n * TL_COLLECT_MS;
+  }
+  for (const ev of events) {
+    if (ev.type === 'skillApplied' && ev.level > 0) cursor += ev.animal === 'tiger' ? TL_TIGER_MS : TL_EFFECT_MS;
+    else if (ev.type === 'ranked') cursor += TL_RANK_MS;
+  }
+  if (events.some(e => e.type === 'festival')) cursor += TL_FESTIVAL_MS;
+  return cursor;
+}
+
+/** 예전 근사식 — 일반 판의 연출 유예는 이 값으로 정해져 왔다(15초 상한). */
+function settleEstimateMs(events: GameEvent[]): number {
   let draws = 0;
   let rolls = 0;
   let collects = 0;
@@ -131,7 +205,7 @@ function settleGraceMs(events: GameEvent[]): number {
     skills * SETTLE_SKILL_MS +
     festivals * SETTLE_FESTIVAL_MS;
 
-  return Math.min(ms, SETTLE_GRACE_MAX_MS);
+  return Math.min(ms, SETTLE_ESTIMATE_MAX_MS);
 }
 
 // 연출 길이 추정이 조금 모자라도 서버 타임아웃이 클라이언트보다 먼저 터지지 않도록 하는
@@ -646,7 +720,7 @@ export class Room {
     // 카드 강화 판은 시연 이름 짝이 들어와도 시연이 아니다(시연 대본은 일반 규칙 위에 짜여 있다) — 그래서 먼저 가른다.
     if (enhance) {
       this.enhance = true;
-      this.settings = clampSettings({ ...ENHANCE_SETTINGS, ...settings });
+      this.settings = clampEnhanceSettings(settings); // 목표 점수 상한 2500(shared/enhance.ts)
     } else if (isDemoRequest(nickname, teamName)) {
       this.demo = new DemoDirector();
       // 시연 규칙은 진행자가 로비에 무엇을 넣었든 프리셋으로 덮어쓴다 — 이유 셋(선공·

@@ -6,7 +6,6 @@ export const SLOT_FLY_DUR = 380;     // 스택으로 날아가는 시간
 export const SLOT_TOTAL_DUR = SLOT_SPIN_DUR + SLOT_REVEAL_HOLD + SLOT_FLY_DUR;
 
 export const WOOL_BALL_DUR = 500;     // 울 볼이 장소까지 굴러가는 시간
-export const SHEEP_DRAW_STEP = 300;   // 실용신양 연쇄 중 다음 뽑기 시작까지의 간격
-// 카드 강화 — 장소 한 번에 여러 장(1~3 / 3~5)이 나올 때 다음 장이 튀어나오기까지의 간격. 한 장씩 끝까지(1.35초) 기다리면
-// 5장에 7초가 걸려서, 겹쳐서 빠르게 띄운다(서버의 연출 유예는 뽑기 한 장당 300ms로 넉넉히 잡혀 있다 — room.ts settleGraceMs).
-export const PLACE_DRAW_STEP = 220;
+// 예약 뽑기 연쇄의 간격(rollDrawStep — 많으면 좁아진다)과 장소 여러 장의 간격은 서버의 연출 유예 계산도 쓰므로 shared에 있다.
+export { ROLL_DRAW_STEP_MS as SHEEP_DRAW_STEP, PLACE_DRAW_STEP_MS as PLACE_DRAW_STEP, rollDrawStep } from 'shared';
+// (PLACE_DRAW_STEP — 카드 강화의 장소 여러 장은 겹쳐서 220ms 간격으로 띄운다. 한 장씩 끝까지(1.35초) 기다리면 5장에 7초가 걸린다.)

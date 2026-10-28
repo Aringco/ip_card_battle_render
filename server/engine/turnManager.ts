@@ -1,4 +1,6 @@
 import {
+  ENHANCE_SETTINGS_LIMITS,
+  enhanceSkillsPerTurn,
   LOSE_HP,
   INDIVIDUAL_TWO_SKILLS_FROM,
   clampSettings,
@@ -7,7 +9,7 @@ import {
   nextActiveSide,
   opponentsOf,
 } from 'shared';
-import type { GameEvent, GameSettings, GameState, PlayerColorId, SideId, Team, TeamState } from 'shared';
+import type { GameEvent, GameSettings, GameState, PlayerColorId, SettingsLimits, SideId, Team, TeamState } from 'shared';
 import { dealOpeningSharedCards, initStacks } from './places';
 import type { RNG } from './places';
 import { rankByHpAndEnd } from './ranking';
@@ -117,6 +119,8 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 한 라운드가 끝난 경우 → 턴 카운터 증가
   if (roundCompleted) {
     state.turn++;
+    // 카드 강화 판 — 15턴마다 한 차례에 쓰는 기술이 하나씩 는다(최대 3장). 턴이 오르는 이 한 곳에서만 정한다.
+    if (state.enhance) state.skillsPerTurn = enhanceSkillsPerTurn(state.turn);
 
     // settings.festivalTurn 도달 시점부터 축제가 시작된다. festivalTurn이 MAX_TURN보다
     // 크게 설정돼 있으면(입력 자체는 막지 않는다 — SETTINGS_LIMITS 참고) 그 턴엔 아예
@@ -191,8 +195,10 @@ export function initGame(
   teamBMembers: string[],
   rng: RNG = Math.random,
   settings?: Partial<GameSettings>,
+  /** 입력 범위 — 카드 강화 판은 목표 점수 상한이 2500인 범위를 넘긴다(initEnhanceGame) */
+  limits?: SettingsLimits,
 ): GameState {
-  const resolvedSettings = clampSettings(settings);
+  const resolvedSettings = clampSettings(settings, limits);
 
   // settings.firstTeam이 'random'이면 여기서 딱 한 번 추첨해 확정한다 — 이후로는
   // state.startingTeam이 그 결과를 그대로 담고 있으므로, 다시 추첨하거나 매번
@@ -307,7 +313,7 @@ export function initEnhanceGame(
   rng: RNG = Math.random,
   settings?: Partial<GameSettings>,
 ): GameState {
-  const state = initGame(teamAMembers, teamBMembers, rng, settings);
+  const state = initGame(teamAMembers, teamBMembers, rng, settings, ENHANCE_SETTINGS_LIMITS);
   for (const animal of Object.keys(state.stacks) as Array<keyof GameState['stacks']>) {
     for (const card of state.stacks[animal]) card.num = 1;
   }

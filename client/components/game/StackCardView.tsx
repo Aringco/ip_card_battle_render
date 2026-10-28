@@ -13,12 +13,15 @@ const FALLBACK_DXY: Record<'left' | 'right', { dx: string; dy: string }> = {
 
 export function StackCardView({
   card,
+  bundle = null,
   index,
   isNew,
   flingDirection,
   shakeVariant,
 }: {
   card: StackedCard;
+  /** 10장·100장 묶음(AnimalStackArea의 bundleCards) — card는 그 묶음의 첫 장이고, 숫자 대신 "x10"·"x100"을 쓴다 */
+  bundle?: 10 | 100 | null;
   index: number;
   isNew: boolean;
   flingDirection: 'left' | 'right' | null; // 짝이 맞아 팀 쪽으로 날아가는 중 (셔플/흔들기가 끝난 뒤에만 활성화) — 팀(A/B) 기준 폴백 방향
@@ -68,7 +71,7 @@ export function StackCardView({
     <div
       ref={elRef}
       data-stack-card-id={card.id}
-      className={`stack-card card-shadow ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
+      className={`stack-card card-shadow ${bundle ? `stack-card-bundle stack-card-bundle-${bundle}` : ''} ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
       // ⚠️ 겹침 간격(예전 marginLeft: -46)은 이제 CSS(.stack-card + .stack-card)가 맡는다 —
       //    카드 크기가 무대를 따라 줄어들므로 겹침도 같은 비율로 줄어야 한다.
       style={{ zIndex: index, ...flingVars }}
@@ -79,7 +82,11 @@ export function StackCardView({
         className="w-[68%] h-auto object-contain"
       />
       {/* 글자 크기는 `.stack-card-num`(globals.css)이 카드 폭에서 뽑는다 */}
-      <span className="stack-card-num font-black text-jungle-900 tabular-nums">{card.num}</span>
+      {bundle ? (
+        <span className="stack-card-bundle-count font-black tabular-nums">x{bundle}</span>
+      ) : (
+        <span className="stack-card-num font-black text-jungle-900 tabular-nums">{card.num}</span>
+      )}
     </div>
   );
 }

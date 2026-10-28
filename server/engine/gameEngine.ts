@@ -56,12 +56,33 @@ export function processSkillChoice(
   if (!eligibleAnimals(state, state.pendingChoice).includes(animal)) return { state, events: [] };
   if (state.mode === 'individual') return processIndividualSkill(state, animal, target);
 
+  if (state.enhance) return processEnhanceSkill(state, animal);
+
   const team = state.pendingChoice;
   const events: GameEvent[] = [];
   events.push(applySkillChoice(state, team, animal));
   state.pendingChoice = null;
   events.push(...finishTurn(state));
 
+  return { state, events };
+}
+
+/**
+ * 카드 강화 판의 기술 선택 — 한 차례에 기술을 skillsPerTurn장까지(15턴마다 하나씩 늘어 최대 3장 — shared/enhance.ts).
+ * 개인전(processIndividualSkill)과 같은 모양이다: 기술마다 승패를 보고, 남은 장수가 있고 쓸 카드가 남았으면
+ * **pendingChoice를 세워 둔 채** 기다린다. 쓴 카드는 쿨타임이 서므로 같은 카드를 한 차례에 두 번 쓸 수 없다.
+ */
+function processEnhanceSkill(state: GameState, animal: Animal): { state: GameState; events: GameEvent[] } {
+  const team = state.pendingChoice!;
+  const events: GameEvent[] = [applySkillChoice(state, team, animal)];
+  events.push(...checkKnockout(state));
+  if (state.phase !== 'playing') return { state, events };
+
+  state.skillsUsedThisTurn += 1;
+  if (state.skillsUsedThisTurn >= state.skillsPerTurn || eligibleAnimals(state, team).length === 0) {
+    state.pendingChoice = null;
+    events.push(...advanceTurn(state));
+  }
   return { state, events };
 }
 
@@ -159,7 +180,9 @@ export function processTimeout(
       return { state: result.state, events: [{ type: 'timeoutChoice', animal: null }, ...result.events] };
     }
     const team = state.pendingChoice;
-    const animal = randomEligibleSkill(state, team, rng);
+    // 카드 강화 판에서 이미 기술을 쓴 뒤라면(한 차례 2·3장) 대신 더 고르지 않고 차례만 끝낸다 — 첫 장은 지금처럼
+    // 서버가 대신 고르지만, 나머지까지 고르면 자리를 비운 사람의 차례가 시간초과 몇 번에 걸쳐 기술 셋을 다 쓴다.
+    const animal = state.enhance && state.skillsUsedThisTurn > 0 ? null : randomEligibleSkill(state, team, rng);
     const result = animal === null ? processPass(state, true) : processSkillChoice(state, animal);
     return { state: result.state, events: [{ type: 'timeoutChoice', animal }, ...result.events] };
   }

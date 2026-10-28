@@ -18,15 +18,48 @@ const CARD_WIDTH_PX = 88;
 const DEFAULT_OVERLAP_PX = 46;
 const OVERLAP_RATIO = DEFAULT_OVERLAP_PX / CARD_WIDTH_PX;
 const MIN_STACK_SCALE = 0.35;
+// 묶음 카드 뒤의 카드는 조금만 겹친다 — 반쯤 덮으면 "x100"이 "x1"로 잘린다. globals.css의 .stack-card-bundle + .stack-card와 같은 비율이다.
+const BUNDLE_OVERLAP_RATIO = 8 / 88;
+
+/** 화면의 카드 한 장 — 낱장(size 1)이거나 10장·100장 묶음 */
+interface StackItem {
+  cards: StackedCard[];
+  size: 1 | 10 | 100;
+}
+
+/**
+ * 카드가 많으면 **오래된 카드부터** 묶는다(2026-10-29 — 예약 뽑기 수십·수백 장이 줄을 넘쳤다). **카드 강화 판에서만** 묶는다(같은 날 요청 —
+ * 일반 판은 카드마다 숫자가 달라 묶으면 숫자가 가려진다. 부르는 쪽이 `bundle`로 정한다).
+ * 100장을 넘으면 100장씩(금색 x100), 남은 것이 10장을 넘으면 10장씩(은색 x10), 나머지는 낱장 — 11장이면 x10 + 1장, 100장이면 x10 아홉 + 10장,
+ * 101장이면 x100 + 1장. 새로 들어온 카드는 언제나 맨 뒤의 낱장이라 등장 연출·짝 캡션(마지막 카드 위)이 그대로 맞는다.
+ * 합계 배지는 묶음과 무관하게 모든 카드의 합이다.
+ */
+function bundleCards(cards: StackedCard[]): StackItem[] {
+  const items: StackItem[] = [];
+  let i = 0;
+  let rest = cards.length;
+  const take = (size: 10 | 100) => {
+    items.push({ cards: cards.slice(i, i + size), size });
+    i += size;
+    rest -= size;
+  };
+  while (rest > 100) take(100);
+  while (rest > 10) take(10);
+  for (; i < cards.length; i++) items.push({ cards: [cards[i]], size: 1 });
+  return items;
+}
 
 export function AnimalStackArea({
   stackCards,
+  bundle = false,
   collectingIds,
   shakingPile,
   newCardId,
   isMyTurn,
 }: {
   stackCards: Record<Animal, StackedCard[]>;
+  /** 10장·100장 묶음으로 그릴지 — 카드 강화 판만(bundleCards) */
+  bundle?: boolean;
   collectingIds: ReadonlySet<number>;
   shakingPile: ShakingPile | null;
   newCardId: number | null;
@@ -41,6 +74,7 @@ export function AnimalStackArea({
           key={animal}
           animal={animal}
           cards={stackCards[animal]}
+          bundle={bundle}
           collectingIds={collectingIds}
           isShaking={shakingPile?.animal === animal}
           newCardId={newCardId}
@@ -54,6 +88,7 @@ export function AnimalStackArea({
 function AnimalStackRow({
   animal,
   cards,
+  bundle,
   collectingIds,
   isShaking,
   newCardId,
@@ -61,6 +96,7 @@ function AnimalStackRow({
 }: {
   animal: Animal;
   cards: StackedCard[];
+  bundle: boolean;
   collectingIds: ReadonlySet<number>;
   isShaking: boolean;
   newCardId: number | null;
@@ -77,6 +113,7 @@ function AnimalStackRow({
   // collectedBy는 카드가 아직 스택으로 날아오는 중에 이미 확정돼 있어서, 색이 도착 연출보다
   // 앞서 바뀌며 오히려 어긋나 보인다. 색은 항상 기본색 하나로 둔다.
   const total = cards.reduce((s, c) => s + c.num, 0);
+  const items: StackItem[] = bundle ? bundleCards(cards) : cards.map(c => ({ cards: [c], size: 1 }));
 
   // 카드가 너무 많이 쌓여 실제 컨테이너 너비를 넘어서면(예: 실용신양/도토리 축제로
   // 한 번에 여러 장이 쌓였을 때), 넘치는 대신 전체를 좁혀서 영역 안에 다 겹쳐 보이게
@@ -104,8 +141,11 @@ function AnimalStackRow({
     return () => ro.disconnect();
   }, [cards.length]);
 
-  const naturalWidth =
-    cards.length > 0 ? cardWidth * (1 + (cards.length - 1) * (1 - OVERLAP_RATIO)) : 0;
+  // 폭은 화면에 그리는 장수(묶음은 한 장)로 잰다 — 묶음 다음 카드는 조금만 겹치므로 그만큼 더 넓다
+  const naturalWidth = items.reduce(
+    (w, item, i) => w + (i === 0 ? cardWidth : cardWidth * (1 - (items[i - 1].size > 1 ? BUNDLE_OVERLAP_RATIO : OVERLAP_RATIO))),
+    0,
+  );
   const stackScale =
     containerWidth > 0 && naturalWidth > containerWidth
       ? Math.max(MIN_STACK_SCALE, containerWidth / naturalWidth)
@@ -137,18 +177,23 @@ function AnimalStackRow({
             className="flex items-center"
             style={stackScale < 1 ? { transform: `scale(${stackScale})`, transformOrigin: 'left center' } : undefined}
           >
-            {cards.map((c, i) => (
-              <StackCardView
-                key={c.id}
-                card={c}
-                index={i}
-                isNew={c.id === newCardId}
-                flingDirection={
-                  collectingIds.has(c.id) ? (c.collectedBy === 'A' ? 'left' : 'right') : null
-                }
-                shakeVariant={isShaking ? (i % 2 === 0 ? 'a' : 'b') : null}
-              />
-            ))}
+            {/* 묶음의 key는 첫 카드 id — 낱장이 묶음의 머리가 될 때 같은 자리의 카드가 모양만 바꾼다 */}
+            {items.map((item, i) => {
+              const c = item.cards[0];
+              return (
+                <StackCardView
+                  key={c.id}
+                  card={c}
+                  bundle={item.size === 1 ? null : item.size}
+                  index={i}
+                  isNew={item.size === 1 && c.id === newCardId}
+                  flingDirection={
+                    item.cards.some(x => collectingIds.has(x.id)) ? (c.collectedBy === 'A' ? 'left' : 'right') : null
+                  }
+                  shakeVariant={isShaking ? (i % 2 === 0 ? 'a' : 'b') : null}
+                />
+              );
+            })}
           </div>
         )}
       </div>

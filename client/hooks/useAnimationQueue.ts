@@ -6,7 +6,7 @@ import { ANIMALS } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { SKILL_TITLE } from '@/lib/skillInfo';
 import { playRandomSound, playRandomSoundSequence } from '@/lib/sounds';
-import { SLOT_SPIN_DUR, SLOT_TOTAL_DUR, WOOL_BALL_DUR, SHEEP_DRAW_STEP, PLACE_DRAW_STEP } from '@/lib/drawTiming';
+import { SLOT_SPIN_DUR, SLOT_TOTAL_DUR, WOOL_BALL_DUR, PLACE_DRAW_STEP, rollDrawStep } from '@/lib/drawTiming';
 
 type DeltaKey = `${SideId}:${Animal}`;
 const deltaKeyOf = (t: SideId, a: Animal): DeltaKey => `${t}:${a}`;
@@ -753,7 +753,7 @@ export function useAnimationQueue(
 
         lastDrawEndCursor = Math.max(lastDrawEndCursor, drawEndsAt);
         cursor = inRoll
-          ? triggerAt + SHEEP_DRAW_STEP
+          ? triggerAt + rollDrawStep(inFestivalRoll ? festivalRollTotal : bonusRollTotal)
           : inPlaceRoll && placeRollRemaining > 0
             ? triggerAt + PLACE_DRAW_STEP
             : drawEndsAt + EMPTY_GAP;

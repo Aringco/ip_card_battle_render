@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { GameMode, GameSettings, Team } from 'shared';
+import type { GameMode, GameSettings, SettingsLimits, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
@@ -60,8 +60,8 @@ const RULE_FIELDS: {
 const PAUSE_KEYS: (keyof Omit<GameSettings, 'firstTeam'>)[] = ['pauseMaxCount', 'pauseMaxMin'];
 
 /** 입력값을 SETTINGS_LIMITS 범위로 자르는 공통 처리 — 두 입력 폼이 같은 규칙을 쓴다. */
-function clampField(key: keyof Omit<GameSettings, 'firstTeam'>, raw: string): number {
-  const { min, max } = SETTINGS_LIMITS[key];
+function clampField(key: keyof Omit<GameSettings, 'firstTeam'>, raw: string, limits: SettingsLimits = SETTINGS_LIMITS): number {
+  const { min, max } = limits[key];
   return Math.min(max, Math.max(min, Math.round(Number(raw) || DEFAULT_SETTINGS[key])));
 }
 
@@ -75,6 +75,7 @@ export function GameRulesFields({
   hideTargetScore = false,
   heading = '게임 규칙 (방장이 정해요)',
   extra,
+  limits = SETTINGS_LIMITS,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
@@ -90,6 +91,8 @@ export function GameRulesFields({
   heading?: string;
   /** 펼친 몸통 맨 위에 끼우는 줄 — 이벤트 '목표점수 달성하기'의 목표 범위(최소~최대)처럼 이 목록에 없는 항목 */
   extra?: React.ReactNode;
+  /** 입력 범위 — 카드 강화 판은 목표 점수 상한이 2500이다(ENHANCE_SETTINGS_LIMITS). 서버도 같은 범위로 다시 자른다. */
+  limits?: SettingsLimits;
 }) {
   const fields = RULE_FIELDS.filter(
     f => !(hidePause && PAUSE_KEYS.includes(f.key)) && !(hideTargetScore && f.key === 'targetScore'),
@@ -157,7 +160,7 @@ export function GameRulesFields({
             좁은 세로에 억지로 맞출 이유가 없다. 라벨도 잘리지 않는다. */}
         <div className="grid grid-cols-1 gap-y-1.5">
           {fields.map(({ key, label, title, suffix, hint }) => {
-            const { min, max } = SETTINGS_LIMITS[key];
+            const { min, max } = limits[key];
             return (
               <div key={key} className="flex flex-col text-xs" title={title}>
                 <div className="flex items-center justify-between gap-1">
@@ -172,7 +175,7 @@ export function GameRulesFields({
                         const v = Number(e.target.value);
                         onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
                       }}
-                      onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value) })}
+                      onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
                       className="input-base input-compact input-rule-num"
                     />
                     <span className="text-gray-400 w-3">{suffix}</span>

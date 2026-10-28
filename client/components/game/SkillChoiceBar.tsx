@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { ENHANCE_MAX_LEVEL, enhanceLevelLabel } from 'shared';
+import { ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL, enhanceLevelLabel } from 'shared';
 import { cooldownOf, finishingMove, previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeEnhanceSkill, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
@@ -332,7 +332,15 @@ export function SkillChoiceBar({
                 clickable ? 'skill-choice-glow' : ''
               }`}
               data-enh-level={enhance ? preview.level : undefined}
-              style={enhance ? ({ ['--enh' as string]: enhStep.toFixed(3) } as React.CSSProperties) : undefined}
+              data-enh-gold={enhance && preview.level >= ENHANCE_GOLD_FROM ? '' : undefined}
+              style={
+                enhance
+                  ? ({
+                      ['--enh' as string]: enhStep.toFixed(3),
+                      ['--gold' as string]: Math.max(0, (preview.level - ENHANCE_GOLD_FROM) / (ENHANCE_MAX_LEVEL - ENHANCE_GOLD_FROM)).toFixed(3),
+                    } as React.CSSProperties)
+                  : undefined
+              }
             >
               {/* 컷신 이미지 어둡게 하는 filter는 이 배경 레이어에만 걸어야 한다 — 예전처럼
                   버튼 전체에 filter를 걸면 그 위에 z-index로 얹은 자막(제목·설명·레벨
@@ -351,6 +359,10 @@ export function SkillChoiceBar({
                 <>
                   <div className={`enh-light play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
                   <div className={`enh-rainbow play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
+                  {/* Lv.5 ~ Max — 금빛 광채(globals.css .enh-gold) */}
+                  {preview.level >= ENHANCE_GOLD_FROM && (
+                    <div className={`enh-gold play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
+                  )}
                 </>
               )}
               <div className="skill-choice-dim play-frame-inset absolute" />

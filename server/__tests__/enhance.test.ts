@@ -3,7 +3,12 @@ import {
   ANIMALS,
   ENHANCE_PLACE_DRAWS,
   ENHANCE_SETTINGS,
+  ENHANCE_TARGET_SCORE_MAX,
+  SHEEP_SAFETY_CAP,
+  SETTINGS_LIMITS,
+  clampEnhanceSettings,
   enhancePlaceDrawCount,
+  enhanceSkillsPerTurn,
   THRESHOLDS,
   enhanceCooldown,
   enhanceLevel,
@@ -12,9 +17,9 @@ import {
   maxTurnOf,
 } from 'shared';
 import { initEnhanceGame } from '../engine/turnManager';
-import { processPass, processPlayerAction, processSkillChoice } from '../engine/gameEngine';
+import { processPass, processPlayerAction, processSkillChoice, processTimeout } from '../engine/gameEngine';
 import { applySkillChoice, eligibleAnimals, levelOf } from '../engine/skills';
-import { Room } from '../room';
+import { Room, settleGraceMs } from '../room';
 
 /**
  * 혼자 놀기 '카드 강화'(shared/enhance.ts · ENHANCE_MODE.md) — 엔진 규칙과 방의 시작·컴퓨터.
@@ -71,7 +76,9 @@ describe('강화 규칙 표', () => {
     expect([1, 2, 3, 4, 5].map(l => enhanceCooldown('rabbit', l))).toEqual([0, 0, 1, 1, 2]);
     expect([1, 2, 3, 4, 5].map(l => enhanceCooldown('mermaid', l))).toEqual([1, 1, 2, 2, 3]);
     expect([1, 2, 3, 4, 5].map(l => enhanceCooldown('tiger', l))).toEqual([1, 1, 2, 2, 3]);
-    expect([6, 11].map(l => enhanceCooldown('tiger', l))).toEqual([3, 3]); // Lv.6 이후로는 더 늘지 않는다
+    expect([6, 10].map(l => enhanceCooldown('tiger', l))).toEqual([3, 3]); // Lv.6~10은 더 늘지 않는다
+    // Lv.Max(11)에서 또 +1 — 실용신양·상표토끼 3 · 디자인어·특허랑이 4
+    expect(ANIMALS.map(a => enhanceCooldown(a, 11))).toEqual([3, 3, 4, 4]);
   });
 
   it('디자인어 배율 — 처음엔 그 레벨의 배율, 걸려 있으면 증가량만큼 더하되 새로 거는 값보다 작아지지 않는다', () => {
@@ -342,6 +349,126 @@ describe('강화 판 기술', () => {
   });
 });
 
+describe('강화 판 한계', () => {
+  it(`예약 뽑기를 SHEEP_SAFETY_CAP(${SHEEP_SAFETY_CAP})에서 자르지 않는다 — 실용신양 100회는 100장`, () => {
+    const s = newGame();
+    s.teams.A.pendingExtraDraws = 100;
+    s.teams.A.pendingFestivalDraws = 70;
+    const { events } = processPlayerAction(s, 'house', rng0);
+    expect(events.find(e => e.type === 'bonusDraws')).toMatchObject({ count: 100 });
+    expect(events.find(e => e.type === 'festivalDraws')).toMatchObject({ count: 70 });
+    expect(s.teams.A.pendingExtraDraws).toBe(0);
+  });
+
+  it('목표 점수 상한은 일반 판(500)과 달리 2500 — 방과 엔진이 같은 범위로 자른다', () => {
+    expect(SETTINGS_LIMITS.targetScore.max).toBe(500);
+    expect(ENHANCE_TARGET_SCORE_MAX).toBe(2500);
+    expect(clampEnhanceSettings({ targetScore: 2000 }).targetScore).toBe(2000);
+    expect(clampEnhanceSettings({ targetScore: 1e12 }).targetScore).toBe(2500);
+    const s = initEnhanceGame(['나'], ['CPU'], rng0, { ...ENHANCE_SETTINGS, targetScore: 9999 });
+    expect(s.settings.targetScore).toBe(2500);
+    expect(s.teams.A.hp).toBe(2500);
+  });
+});
+
+describe('연출 유예 — 컴퓨터의 다음 수가 큰 연쇄 뽑기 연출 도중에 오지 않게', () => {
+  it('예약 100장 + 축제 60장의 뽑기는 예전 상한(15초)을 넘어 화면 타임라인만큼 기다린다', () => {
+    const s = newGame();
+    s.teams.A.pendingExtraDraws = 100;
+    s.teams.A.pendingFestivalDraws = 60;
+    const { events } = processPlayerAction(s, 'house', rng0);
+    // 화면: 롤 둘(각각 마지막 장 시작 + 울 볼 0.5초 + 슬롯 1.35초) — 100장은 120ms 간격, 60장은 200ms 간격
+    const rolls = (99 * 120 + 500 + 1350) + (59 * 200 + 500 + 1350);
+    expect(settleGraceMs(events)).toBeGreaterThan(rolls);
+    expect(settleGraceMs(events)).toBeLessThanOrEqual(60_000);
+  });
+
+  it('보통의 뽑기(일반 판 크기)는 예전 근사식 그대로다', () => {
+    const s = newGame();
+    s.teams.A.pendingExtraDraws = 3;
+    const { events } = processPlayerAction(s, 'house', rng0);
+    expect(settleGraceMs(events)).toBeLessThanOrEqual(15_000);
+  });
+});
+
+describe('강화 판 한 차례 여러 장', () => {
+  it('15턴마다 한 장씩 늘어 최대 3장 — 1~15턴 1장 · 16~30턴 2장 · 31턴부터 3장', () => {
+    expect([1, 15, 16, 30, 31, 45, 46, 200].map(enhanceSkillsPerTurn)).toEqual([1, 1, 2, 2, 3, 3, 3, 3]);
+  });
+
+  it('턴이 16이 되는 순간 판의 skillsPerTurn이 2가 된다', () => {
+    const s = newGame();
+    expect(s.skillsPerTurn).toBe(1);
+    while (s.turn < 16) { toChoice(s); processPass(s); }
+    expect(s.skillsPerTurn).toBe(2);
+    while (s.turn < 31) { toChoice(s); processPass(s); }
+    expect(s.skillsPerTurn).toBe(3);
+  });
+
+  it('2장 차례 — 첫 기술 뒤에도 기술 단계가 남고, 쓴 카드는 다시 못 쓰며, 두 번째 기술로 차례가 넘어간다', () => {
+    const s = newGame();
+    s.skillsPerTurn = 2;
+    toChoice(s);
+    processSkillChoice(s, 'rabbit');
+    expect(s.pendingChoice).toBe('A');
+    expect(s.activeTeam).toBe('A');
+    expect(s.skillsUsedThisTurn).toBe(1);
+    expect(eligibleAnimals(s, 'A')).not.toContain('rabbit'); // 쿨타임 0 카드도 그 차례 안에서는 잠긴다
+    expect(processSkillChoice(s, 'rabbit').events).toEqual([]);
+    processSkillChoice(s, 'sheep');
+    expect(s.pendingChoice).toBeNull();
+    expect(s.activeTeam).toBe('B');
+    expect(s.skillsUsedThisTurn).toBe(0);
+    // 쿨타임 0이던 두 카드는 내 차례가 끝나며 다시 열린다
+    expect(s.enhance!.cooldowns.A.rabbit).toBe(0);
+    expect(s.enhance!.cooldowns.A.sheep).toBe(0);
+  });
+
+  it('디자인어를 먼저 쓰면 같은 차례의 다음 기술에 배율이 걸린다', () => {
+    const s = newGame();
+    s.skillsPerTurn = 2;
+    const hp = s.teams.A.hp;
+    toChoice(s);
+    processSkillChoice(s, 'mermaid'); // Lv.1 ×2
+    processSkillChoice(s, 'rabbit');  // Lv.1 +2 ×2
+    expect(s.teams.A.hp).toBe(hp + 4);
+    expect(s.activeTeam).toBe('B');
+  });
+
+  it('남은 장수가 있어도 쓸 카드가 없으면 차례가 넘어간다', () => {
+    const s = newGame();
+    s.skillsPerTurn = 3;
+    s.enhance!.cooldowns.A = { sheep: 0, rabbit: 2, mermaid: 2, tiger: 2 };
+    toChoice(s);
+    processSkillChoice(s, 'sheep');
+    expect(s.activeTeam).toBe('B');
+  });
+
+  it('첫 기술로 이기면 거기서 끝난다', () => {
+    const s = newGame();
+    s.skillsPerTurn = 2;
+    setLevel(s, 'A', 'tiger', 5);
+    s.teams.B.hp = 5;
+    toChoice(s);
+    processSkillChoice(s, 'tiger');
+    expect(s.phase).toBe('ended');
+    expect(s.winner).toBe('A');
+  });
+
+  it('시간초과 — 첫 장은 서버가 대신 고르고, 이미 쓴 뒤라면 더 고르지 않고 차례만 끝낸다', () => {
+    const s = newGame();
+    s.skillsPerTurn = 3;
+    toChoice(s);
+    const first = processTimeout(s, rng0);
+    expect(first.events[0]).toMatchObject({ type: 'timeoutChoice' });
+    expect((first.events[0] as { animal: Animal | null }).animal).not.toBeNull();
+    expect(s.pendingChoice).toBe('A');
+    const second = processTimeout(s, rng0);
+    expect(second.events[0]).toEqual({ type: 'timeoutChoice', animal: null });
+    expect(s.activeTeam).toBe('B');
+  });
+});
+
 describe('강화 판 끝', () => {
   it('턴 제한이 없다 — 20턴이 지나도 체력이 승부를 가르기 전까지 계속된다', () => {
     const s = newGame();
@@ -424,6 +551,24 @@ describe('방 — 카드 강화 혼자 놀기', () => {
     const s = lastState(ws);
     expect(s.activeTeam).toBe('A');
     expect(s.pendingChoice).toBeNull();
+    expect(ws.sent.some(m => m.type === 'error')).toBe(false);
+  });
+
+  it('한 차례 2장 — 컴퓨터도 기술을 연달아 두 번 쓴다(쓸 카드가 남아 있으면)', () => {
+    const ws = fakeSocket();
+    const room = new Room('ENH3', () => {});
+    room.addSoloPlayer(ws as never, 'me', '나', undefined, { ...ENHANCE_SETTINGS }, true);
+    room.startSoloGame();
+    const st = (room as unknown as { state: GameState }).state;
+    st.skillsPerTurn = 2;
+    st.enhance!.cooldowns.B = { sheep: 0, rabbit: 0, mermaid: 2, tiger: 2 }; // 양·토끼 둘만 열어 둔다
+    room.handleDrawCard('me', 'house');
+    room.handlePassSkill('me');
+    jest.advanceTimersByTime(20_000);
+    const bSkills = ws.sent.flatMap(m => (m.type === 'actionResult' ? m.events : []))
+      .filter(e => e.type === 'skillApplied' && e.team === 'B' && !e.pair); // 짝 효과(pair)는 고른 기술이 아니다
+    expect(bSkills.length).toBe(2);
+    expect(lastState(ws).activeTeam).toBe('A');
     expect(ws.sent.some(m => m.type === 'error')).toBe(false);
   });
 });

@@ -136,8 +136,9 @@ export interface GameState {
   // 판 도중에는 바뀌지 않는다. 순위가 정해진 편도 목록에 남고 차례만 건너뛴다.
   turnOrder: SideId[];
   // 한 차례에 쓸 수 있는 기술 수. 개인전은 시작 인원이 5명 이상이면 2, 아니면 1이고 판 도중
-  // 탈락으로 인원이 줄어도 바뀌지 않는다. 팀전은 언제나 1.
-  skillsPerTurn: 1 | 2;
+  // 탈락으로 인원이 줄어도 바뀌지 않는다. 팀전은 언제나 1 — **카드 강화 판만 예외**로 15턴마다 하나씩
+  // 늘어 3까지 간다(shared/enhance.ts의 enhanceSkillsPerTurn, advanceTurn이 턴이 오를 때 다시 정한다).
+  skillsPerTurn: 1 | 2 | 3;
   skillsUsedThisTurn: number; // 이번 차례에 지금까지 쓴 기술 수 — 차례가 넘어갈 때 0으로
   ranks: Record<SideId, number>; // 개인전 — 정해진 순위만. 팀전은 {}
 

@@ -1,6 +1,7 @@
 import type { Animal, GameSettings, Place, SideId } from './types';
 import { PLACE_ANIMALS } from './types';
-import { THRESHOLDS } from './constants';
+import { SETTINGS_LIMITS, THRESHOLDS, clampSettings } from './constants';
+import type { SettingsLimits } from './constants';
 
 // ─── 카드 강화 모드 — '혼자 놀기'의 두 번째 판 ─────────────────────────────────────
 // 설계 전문은 저장소 루트의 ENHANCE_MODE.md.
@@ -20,6 +21,8 @@ import { THRESHOLDS } from './constants';
 
 /** 최고 레벨 — Lv.1 ~ Lv.10 다음의 Lv.Max(11) */
 export const ENHANCE_MAX_LEVEL = 11;
+/** 기술 카드가 홀로에 더해 금빛으로 빛나기 시작하는 레벨(Lv.5 ~ Max — 화면 SkillChoiceBar의 .enh-gold) */
+export const ENHANCE_GOLD_FROM = 5;
 
 /**
  * 장소를 한 번 눌렀을 때 나오는 장수(최소~최대, 무작위) — 그 장소가 다루는 동물 수로 가른다(일반 판의 숫자 범위 5~10 / 10~15와 같은 기준).
@@ -55,12 +58,25 @@ export const ENHANCE_TIGER_HEAL: readonly number[] = [0, 0, 0, 0, 0, 4, 6, 6, 8,
 /** 실용신양 Lv.6부터 — 내 카드 넷 중 무작위 하나에 더하는 경험치 */
 export const ENHANCE_SHEEP_EXP: readonly number[] = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 10];
 
-/** 기본 쿨타임(내 차례 수) — Lv.3부터 +1, Lv.5에서 또 +1(요청 원문 그대로 — Lv.6 이후로는 더 늘지 않는다) */
+/**
+ * 기본 쿨타임(내 차례 수) — Lv.3부터 +1, Lv.5에서 또 +1, **Lv.Max에서 또 +1**(2026-10-29 요청 — Lv.5~10의 2·3턴이 Max에서 3·4턴).
+ * Lv.6~10 사이에서는 늘지 않는다.
+ */
 const ENHANCE_COOLDOWN_BASE: Record<Animal, number> = { sheep: 0, rabbit: 0, mermaid: 1, tiger: 1 };
 
 /** 이 레벨의 카드를 쓴 뒤 못 쓰는 내 차례 수 */
 export function enhanceCooldown(animal: Animal, level: number): number {
-  return ENHANCE_COOLDOWN_BASE[animal] + (level >= 3 ? 1 : 0) + (level >= 5 ? 1 : 0);
+  return ENHANCE_COOLDOWN_BASE[animal] + (level >= 3 ? 1 : 0) + (level >= 5 ? 1 : 0) + (level >= ENHANCE_MAX_LEVEL ? 1 : 0);
+}
+
+/**
+ * 한 차례에 쓸 수 있는 기술 수 — 15턴마다 하나씩 늘어 최대 3장(2026-10-29 요청). 1~15턴 1장 · 16~30턴 2장 · 31턴부터 3장.
+ * 같은 카드는 한 차례에 두 번 못 쓴다 — 쓰는 순간 쿨타임이 1 이상으로 서고, 차례가 끝나야 줄어든다(advanceTurn).
+ */
+export const ENHANCE_SKILLS_STEP_TURNS = 15;
+export const ENHANCE_SKILLS_MAX = 3;
+export function enhanceSkillsPerTurn(turn: number): 1 | 2 | 3 {
+  return Math.min(ENHANCE_SKILLS_MAX, 1 + Math.floor((Math.max(1, turn) - 1) / ENHANCE_SKILLS_STEP_TURNS)) as 1 | 2 | 3;
 }
 
 /**
@@ -131,8 +147,8 @@ export interface EnhanceState {
 
 /**
  * 카드 강화 모드의 기본 규칙(요청 원문, 2026-10-28 2차) — 목표 점수 200(시작 체력 200 · 400이면 승리 · 0이면 패배, 턴 제한 없음) ·
- * 축제 6턴부터 1회 · 4턴마다 증가 · 뽑기 15초 · 행동 10초 · 고를 게 없을 때 3초. 혼자 놀기 폼의 게임 규칙에서 바꿀 수 있다(clampSettings를 거친다 —
- * 그래서 목표 점수 상한(SETTINGS_LIMITS)을 100에서 500으로 올렸다).
+ * 축제 6턴부터 1회 · 4턴마다 증가 · 뽑기 15초 · 행동 10초 · 고를 게 없을 때 3초. 혼자 놀기 폼의 게임 규칙에서 바꿀 수 있다
+ * (clampEnhanceSettings를 거친다 — 목표 점수 상한은 2500).
  */
 export const ENHANCE_SETTINGS: GameSettings = {
   firstTeam: 'A',
@@ -146,6 +162,20 @@ export const ENHANCE_SETTINGS: GameSettings = {
   pauseMaxCount: 3,
   pauseMaxMin: 5,
 };
+
+/**
+ * 카드 강화 판의 목표 점수(= 시작 체력) 상한 — 2500(승리선 5000). 일반 판은 그대로 SETTINGS_LIMITS(1~500)다.
+ * 같은 날 두 번 바뀌었다(2026-10-29): 500 → "한계치 제거"(10억) → 2500. 상한이 없을 때 일곱 자리 체력이 구슬 칸을 넘쳤다.
+ */
+export const ENHANCE_TARGET_SCORE_MAX = 2500;
+export const ENHANCE_SETTINGS_LIMITS: SettingsLimits = {
+  ...SETTINGS_LIMITS,
+  targetScore: { min: SETTINGS_LIMITS.targetScore.min, max: ENHANCE_TARGET_SCORE_MAX },
+};
+/** 카드 강화 판의 규칙 정리 — 방(Room.addSoloPlayer)과 엔진(initEnhanceGame)이 같은 범위로 자른다. */
+export function clampEnhanceSettings(input: Partial<GameSettings> | undefined): GameSettings {
+  return clampSettings({ ...ENHANCE_SETTINGS, ...input }, ENHANCE_SETTINGS_LIMITS);
+}
 
 // ─── 두 판(일반 · 강화)이 함께 쓰는 레벨 계산 ───────────────────────────────────────
 // 서버 엔진(skills.ts의 levelOf)과 화면(동물 표·상대 목록·기술 카드)이 **같은 함수**로 레벨을 구해야 한다 —

@@ -671,6 +671,74 @@ body {
   z-index: 3;
 }
 
+/* 흰 홀로그램(2026-10-29, 양 팀 공통) — 세 겹이다.
+   · 본체: 기술 카드의 무지개 홀로(.enh-rainbow)와 같은 방식의 **흰** 사선 띠가 구슬을 가로질러 지나가고 잠깐 쉬었다 다시 지나간다.
+   · ::after: 그 띠 한가운데를 따라가는 더 밝은 가는 줄.
+   · ::before: 늘 깔린 옅은 흰 사선 광택이 천천히 오간다 — 띠만 두었더니 몇 초에 한 순간만 보여 홀로그램이 아니라 번쩍임이었다.
+   숫자(z 2)·광택(z 3) 아래, 액체·눈금 위.
+   ⚠️ 반복 없이(no-repeat) 띠 앞뒤를 투명으로 둔다 — 층 전체를 칠하고 위치만 흘리면 타일 이음매가 선다(.enh-rainbow 2차 수정과 같은 이유). */
+.hp-orb-holo {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: linear-gradient(
+    45deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.18) 43%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0.18) 57%,
+    transparent 62%
+  );
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  mix-blend-mode: screen;
+  animation: hpOrbHoloSweep 3s ease-in-out infinite;
+}
+.hp-orb-holo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    120deg,
+    transparent 10%,
+    rgba(255, 255, 255, 0.2) 22%,
+    transparent 34%,
+    rgba(255, 255, 255, 0.14) 52%,
+    transparent 66%,
+    rgba(255, 255, 255, 0.2) 80%,
+    transparent 92%
+  );
+  background-size: 200% 200%;
+  background-repeat: no-repeat;
+  animation: hpOrbHoloDrift 6s ease-in-out infinite alternate;
+}
+@keyframes hpOrbHoloDrift {
+  from { background-position: 0% 50%; }
+  to   { background-position: 100% 50%; }
+}
+.hp-orb-holo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(45deg, transparent 48.5%, rgba(255, 255, 255, 0.9) 50%, transparent 51.5%);
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  animation: hpOrbHoloSweep 3s ease-in-out infinite;
+}
+@keyframes hpOrbHoloSweep {
+  0%        { background-position: 0% 100%; }
+  60%, 100% { background-position: 100% 0%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* 움직임을 줄이면 흐르는 띠는 감추고 옅은 광택만 멈춘 채 남긴다 */
+  .hp-orb-holo { animation: none; background-image: none; }
+  .hp-orb-holo::after { display: none; }
+  .hp-orb-holo::before { animation: none; }
+}
+
 /* 체력 상승 — 연두색 기운이 샤라락 아래에서 위로 훑고 지나간다 */
 @keyframes hpSurge {
   0%   { opacity: 0; transform: translateY(35%); }
@@ -2172,21 +2240,12 @@ body {
   filter: brightness(0.18) grayscale(70%);
 }
 
-/* 다른 스킬 패널처럼 배경에 "턴 넘기기" 그림을 깔아준다 — 별도 이미지 파일 없이
-   인라인 SVG로 살짝 기울어진 두꺼운 화살표(+ 잔상 속도선)를 그려 익살스럽게
-   "다음으로 휙~" 넘어가는 느낌을 짙은 초록 그라데이션 위에 얹는다. 사진이 아니라
-   그린 그림이라 기본 dim(0.55)이 과하게 어두워 보여 더 밝은 시작값을 쓴다. */
+/* [턴 마치기] 카드 그림 — 숲길 팻말을 든 로봇(2026-10-29, 원본 assets-src/pass_skill.png → 900px webp). 다른 기술 카드처럼
+   .skill-choice-bg(cover · 밝기 0.78 · hover 밝게 · 잠기면 어둡게)를 그대로 따른다 — 그래서 여기서 filter를 다시 정하지 않는다
+   (예전 SVG 화살표 시절의 brightness 덮어쓰기는 잠긴 칸의 어둡게까지 덮었다). 세로로 긴 칸이라 가운데보다 조금 왼쪽(로봇 얼굴 · 팻말)을 남긴다. */
 .pass-panel-bg {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg stroke='%23a3e635' stroke-width='6' stroke-linecap='round' opacity='0.5'%3E%3Cpath d='M8 78 Q20 78 30 78'/%3E%3Cpath d='M4 100 Q18 100 28 100'/%3E%3Cpath d='M8 122 Q20 122 30 122'/%3E%3C/g%3E%3Cg transform='rotate(-6 100 100)'%3E%3Cpolygon points='35,80 112,80 112,52 178,100 112,148 112,120 35,120' fill='%23fde68a' stroke='%23365314' stroke-width='7' stroke-linejoin='round' opacity='0.85'/%3E%3C/g%3E%3C/svg%3E"),
-    linear-gradient(165deg, #1f7a45 0%, #0f3d24 100%);
-  background-repeat: no-repeat;
-  background-position: center 35%, center;
-  background-size: 55% auto, cover;
-  filter: brightness(0.85);
-}
-.skill-choice-panel:hover .pass-panel-bg,
-.skill-choice-panel:focus-visible .pass-panel-bg {
-  filter: brightness(1.08);
+  background-image: url('/skills/pass_skill.webp');
+  background-position: 42% center;
 }
 /* 컷신 이미지는 거의 안 보일 만큼 어둡게, 그 위 자막(하얀 글자 + 검정 테두리)만
    또렷하게 읽히도록 전체적으로 진하게 깐다. */
@@ -2249,6 +2308,19 @@ body {
 .stack-card + .stack-card { margin-left: calc(var(--stack-card-w) * -46 / 88); }
 /* 카드 안의 숫자 — 예전 text-2xl(1.5rem) 고정. 카드가 절반이 되면 숫자가 카드를 넘는다. */
 .stack-card-num { font-size: calc(var(--stack-card-w) * 0.273 * var(--font-scale)); }
+/* 10장·100장 묶음(AnimalStackArea의 bundleCards, 2026-10-29) — 은색(x10)·금색(x100) 3px 테두리에 장수를 쓴다.
+   카드 강화 판은 낱장 숫자를 감추지만(data-enhance) 묶음의 장수는 감추지 않는다(.stack-card-num과 클래스가 다르다). */
+.stack-card-bundle { border-width: 3px; }
+/* 묶음 다음 카드는 조금만 겹친다 — 낱장처럼 반쯤 덮으면 장수 글자가 잘린다(AnimalStackArea.tsx의 BUNDLE_OVERLAP_RATIO와 같은 비율) */
+.stack-card-bundle + .stack-card { margin-left: calc(var(--stack-card-w) * -8 / 88); }
+.stack-card-bundle-10 { border-color: #b4bac4; background: linear-gradient(160deg, #ffffff 0%, #eef0f4 100%); }
+.stack-card-bundle-100 { border-color: #d4a017; background: linear-gradient(160deg, #fffdf4 0%, #fdf1c8 100%); }
+.stack-card-bundle-count {
+  font-size: calc(var(--stack-card-w) * 0.24 * var(--font-scale));
+  line-height: 1;
+}
+.stack-card-bundle-10 .stack-card-bundle-count { color: #4b5563; }
+.stack-card-bundle-100 .stack-card-bundle-count { color: #92400e; }
 @keyframes stackCardPop {
   0%   { transform: scale(0.4) translateY(-10px); opacity: 0; }
   60%  { transform: scale(1.12) translateY(0); opacity: 1; }
@@ -7003,11 +7075,11 @@ body {
 [data-enhance] .stack-card-num,
 [data-enhance] .draw-slot-num { display: none; }
 [data-enhance] .stack-card img { width: 80%; }
+[data-enhance] .stack-card-bundle img { width: 64%; } /* 묶음은 장수 글자가 들어갈 자리를 남긴다 */
 /* 장소 칸의 숫자 범위("(+5 ~ +10)")는 라벨 그림의 셋째 줄에 그려져 있다 — 정사각형 그림이 칸 높이에 맞춰
    들어가므로(칸이 가로로 넓다) 아래 41%를 잘라 이름·동물 두 줄만 남기고, 남은 두 줄을 칸 가운데로 내린다.
-   짝 옆의 합계 배지도 숫자라 감춘다(모든 카드가 1이라 합계 = 장수다). */
+   짝 옆의 합계 배지는 **남긴다** — 모든 카드가 1이라 합계가 곧 그 줄에 쌓인 장수다(2026-10-29 요청, 한때 감췄다). */
 [data-enhance] .place-text-img { clip-path: inset(0 0 41% 0); transform: translateY(7%); }
-[data-enhance] .stack-total-badge { display: none; }
 
 /* ① 밝은 그라데이션 — 레벨이 오를수록 카드 위쪽에서 따뜻한 빛이 번진다(screen이라 그림을 덮지 않고 밝힌다).
    네 가장자리는 아래 마스크(.enh-light, .enh-rainbow 공통)로 흐려져 층의 사각형 윤곽이 드러나지 않는다. */
@@ -7091,11 +7163,13 @@ body {
 .enh-rainbow.enh-cooling { opacity: calc((0.12 + var(--enh, 0) * 0.68) * 0.3); }
 .enh-rainbow.enh-cooling::after { animation: none; opacity: 0; }
 
-/* 최고 레벨 — 카드 둘레에 금빛이 은은하게 숨 쉰다 */
-.skill-choice-panel[data-enh-level='5'] {
+/* Lv.5 ~ Max — 홀로 위에 **금빛**이 더해진다(2026-10-29 요청). 두 겹이다:
+   ① 카드 둘레가 금빛으로 숨 쉰다(data-enh-gold — 예전에는 data-enh-level='5'에만 걸려 Lv.Max가 11로 바뀐 뒤 Lv.5 한 단계에서만 빛났다).
+   ② 카드 위에 금빛 사선 광채(.enh-gold)가 흐른다 — 레벨이 오를수록(--gold 0 = Lv.5 … 1 = Max) 짙고 빠르다. */
+.skill-choice-panel[data-enh-gold] {
   animation: enhMaxGlow 2.4s ease-in-out infinite;
 }
-.skill-choice-panel[data-enh-level='5'].skill-choice-glow {
+.skill-choice-panel[data-enh-gold].skill-choice-glow {
   /* 누를 수 있음 깜빡임(.skill-choice-glow)과 겹치면 둘이 서로 덮는다 — 누를 수 있을 때는 그쪽을 쓴다 */
   animation: skillChoiceGlow 1s ease-in-out infinite;
 }
@@ -7103,6 +7177,39 @@ body {
   0%, 100% { box-shadow: inset 0 0 10px 2px rgba(255, 214, 102, 0.55); }
   50%      { box-shadow: inset 0 0 22px 6px rgba(255, 224, 130, 0.95); }
 }
+.enh-gold {
+  pointer-events: none;
+  background-image:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 215, 120, calc(0.18 + var(--gold, 0) * 0.22)) 0%, transparent 70%),
+    linear-gradient(
+      -45deg,
+      transparent 38%,
+      rgba(255, 196, 64, 0.55) 45%,
+      rgba(255, 244, 200, 0.95) 50%,
+      rgba(255, 196, 64, 0.55) 55%,
+      transparent 62%
+    );
+  background-size: 100% 100%, 300% 300%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, 100% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.45 + var(--gold, 0) * 0.45);
+  animation: enhGoldSweep calc(4.2s - var(--gold, 0) * 1.6s) ease-in-out infinite;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+/* 무지개(오른쪽 위 → 왼쪽 아래)와 엇갈리게 오른쪽 아래 → 왼쪽 위로 지나간다 */
+@keyframes enhGoldSweep {
+  0%        { background-position: center, 100% 100%; }
+  60%, 100% { background-position: center, 0% 0%; }
+}
+.enh-gold.enh-cooling { opacity: 0.15; animation: none; }
 
 /* 제목 옆 레벨 — 제목보다 조금 작게, 금색 */
 .enh-title-lv {
@@ -7182,7 +7289,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .enh-rainbow,
   .enh-rainbow::after,
-  .skill-choice-panel[data-enh-level='5'] { animation: none; }
+  .skill-choice-panel[data-enh-gold],
+  .enh-gold { animation: none; }
   .enh-burst-piece,
   .enh-burst-ring { display: none; }
 }

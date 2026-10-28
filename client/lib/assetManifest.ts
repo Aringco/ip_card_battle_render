@@ -59,6 +59,7 @@ export const IMAGE_FILES: string[] = [
   "/places/river_road.png",
   "/places/river_road_text.png",
   "/skills/mermaid_skill.png",
+  "/skills/pass_skill.webp",
   "/skills/rabbit_skill.png",
   "/skills/sheep_skill.png",
   "/skills/tiger_skill.png",

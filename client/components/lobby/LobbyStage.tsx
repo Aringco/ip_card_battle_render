@@ -195,7 +195,7 @@ export function LobbyStage(props: LobbyStageProps) {
               tone="reinforce"
               artSrc={LOBBY_ASSETS.panelSoloReinforce}
               title="강화 모드"
-              subtitle="카드를 Lv.5까지 강화하며 겨뤄요"
+              subtitle="점점 효과가 강해지는 기술카드로 겨뤄요"
               disabled={blocked}
               onClick={() => onGo('soloEnhance')}
             />

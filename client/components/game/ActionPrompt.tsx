@@ -29,6 +29,8 @@ export function ActionPrompt({
   startingTeam,
   startingTeamReason,
   teamNames,
+  skillsPerTurn = 1,
+  skillsUsedThisTurn = 0,
 }: {
   myTeam: SideId | null;
   playerId: string | null;
@@ -47,6 +49,9 @@ export function ActionPrompt({
   startingTeam: SideId;
   startingTeamReason: 'setting' | 'random';
   teamNames: Record<SideId, string>;
+  /** 한 차례에 쓰는 기술 수 — 카드 강화 판은 15턴마다 늘어난다(2·3장이면 지금 몇 장째인지 문구에 얹는다 — IndividualPrompt와 같다) */
+  skillsPerTurn?: number;
+  skillsUsedThisTurn?: number;
 }) {
   const spectating = myTeam === null;
   const isMyTeamTurn = myTeam !== null && displayedActiveTeam === myTeam;
@@ -67,7 +72,12 @@ export function ActionPrompt({
   } else if (!isMyPlayerTurn) {
     text = '내 차례가 아니에요.';
   } else if (interactive) {
-    text = noEligible ? '아쉽게도 IP 에너지가 부족해요. 턴을 종료해주세요.' : '이번 턴의 행동을 선택하세요!';
+    // 한 차례 2·3장(카드 강화 판)이면 몇 장째인지 얹는다 — 타이머 창의 한 줄이라 원래 문구와 같은 길이로 줄여 쓴다
+    //   ("이번 턴의 행동을 선택하세요! (기술 1/2장째)"는 막대 뒤로 넘쳤다).
+    const choose = skillsPerTurn > 1
+      ? `행동을 고르세요! (기술 ${Math.min(skillsUsedThisTurn + 1, skillsPerTurn)}/${skillsPerTurn})`
+      : '이번 턴의 행동을 선택하세요!';
+    text = noEligible ? '아쉽게도 IP 에너지가 부족해요. 턴을 종료해주세요.' : choose;
     showTimer = true;
     urgent = noEligible;
   } else if (isMyDrawTurn) {

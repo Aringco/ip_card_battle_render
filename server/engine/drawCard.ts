@@ -37,7 +37,7 @@ export function drawCard(
 function consumePendingExtraDraws(state: GameState, rng: RNG): GameEvent[] {
   const team = state.activeTeam;
   const teamState = state.teams[team];
-  const count = Math.min(teamState.pendingExtraDraws, SHEEP_SAFETY_CAP);
+  const count = reservedDrawCount(state, teamState.pendingExtraDraws);
   teamState.pendingExtraDraws = 0;
   if (count <= 0) return [];
 
@@ -56,7 +56,7 @@ function consumePendingExtraDraws(state: GameState, rng: RNG): GameEvent[] {
 function consumePendingFestivalDraws(state: GameState, rng: RNG): GameEvent[] {
   const team = state.activeTeam;
   const teamState = state.teams[team];
-  const count = Math.min(teamState.pendingFestivalDraws, SHEEP_SAFETY_CAP);
+  const count = reservedDrawCount(state, teamState.pendingFestivalDraws);
   teamState.pendingFestivalDraws = 0;
   if (count <= 0) return [];
 
@@ -65,6 +65,15 @@ function consumePendingFestivalDraws(state: GameState, rng: RNG): GameEvent[] {
     events.push(..._drawOne(state, randomPlace(rng), rng));
   }
   return events;
+}
+
+/**
+ * 예약 뽑기(실용신양·도토리 축제) 한 번에 실제로 뽑는 수. 일반 판은 SHEEP_SAFETY_CAP(40)에서 자르고 나머지는 버린다.
+ * **카드 강화 판은 자르지 않는다**(2026-10-29 요청 — 디자인어 ×5 뒤 실용신양 100회가 40회만 뽑혔다). 배율이 쌓이는 판이라
+ * 수백 장도 규칙 안의 값이고, 기술을 써야만 오르므로 무한히 커지지 않는다. 화면은 많을수록 간격을 좁혀 재생한다(drawTiming.ts rollDrawStep).
+ */
+function reservedDrawCount(state: GameState, pending: number): number {
+  return state.enhance ? pending : Math.min(pending, SHEEP_SAFETY_CAP);
 }
 
 function _drawOne(state: GameState, place: Place, rng: RNG): GameEvent[] {
