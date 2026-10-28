@@ -6529,6 +6529,50 @@ body {
   transition: transform 100ms ease-out, border-color 100ms;
 }
 .emote-cell img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+/* 칸 = 그림 버튼 + 왼쪽 위 즐겨찾기 별(따로 된 버튼) + 즐겨찾기면 오른쪽 아래 단축키 글자(A·S·D·F) */
+.emote-cell-wrap { position: relative; }
+.emote-cell-wrap > .emote-cell { display: block; width: 100%; }
+.emote-star {
+  position: absolute;
+  top: -3px;
+  left: -2px;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 17px;
+  line-height: 20px;
+  color: #b49a78;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  cursor: pointer;
+}
+.emote-star:hover:not(:disabled) { color: #8d5c2e; }
+.emote-star[data-on] { color: #f5c400; text-shadow: 0 0 1px #6f4521, 0 0 1px #6f4521, 0 0 3px #fff; }
+.emote-star:disabled { opacity: 0.35; cursor: default; }
+.emote-star:focus-visible { outline: 2px solid #8d5c2e; border-radius: 4px; }
+.emote-key {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: #6f4521;
+  color: #fff7e6;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+.emote-hint {
+  margin: 6px 2px 0;
+  font-size: 11px;
+  color: #7d6a55;
+  text-align: center;
+}
 .emote-cell:hover:not(:disabled) { transform: scale(1.08); border-color: #c79a5e; }
 .emote-cell:focus-visible { outline: 3px solid #8d5c2e; outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) {

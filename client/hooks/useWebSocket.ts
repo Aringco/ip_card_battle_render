@@ -119,7 +119,8 @@ export interface UseWebSocketReturn {
   clearRoomNotice: () => void;
   // 대기실 채팅 기록 — 사람이 친 말과 방에서 일어난 일(시스템 안내)이 시간순으로 섞여 있다.
   chatLog: LobbyChatMessage[];
-  // 개인전 감정표현 — 지금 떠 있어야 하는 것들(받은 순서). 각자 EMOTE_SHOW_MS 뒤 저절로 빠진다.
+  // 개인전 감정표현 — 지금 떠 있어야 하는 것들. **한 사람에 하나씩만** 있고, 그동안 온 것은 그 사람의 줄에서
+  // 기다렸다가 앞의 것이 EMOTE_SHOW_MS를 다 채우면 이어서 뜬다.
   emotes: ReceivedEmote[];
   gameState: ClientGameState | null;
   // 턴 제한시간이 끝나는 시각 — 내 브라우저 시계(Date.now()) 기준이다. 서버는 절대
@@ -227,6 +228,21 @@ export function useWebSocket(): UseWebSocketReturn {
   const [chatLog, setChatLog] = useState<LobbyChatMessage[]>([]);
   const [emotes, setEmotes] = useState<ReceivedEmote[]>([]);
   const emoteSeqRef = useRef(0);
+  // 사람(편)별 기다리는 줄과 지금 떠 있는 사람 — 화면 상태가 아니라 순서만 들고 있으므로 ref다.
+  const emoteQueueRef = useRef(new Map<SideId, ReceivedEmote[]>());
+  const emoteShowingRef = useRef(new Set<SideId>());
+  // 하나를 띄우고, 다 보여 준 뒤 그 사람의 줄에 다음 것이 있으면 **같은 갱신 안에서** 갈아 끼운다(빈 틈 없이 다음 풍선이
+  // 처음부터 다시 나타난다 — id가 달라 새 요소가 된다). 줄이 비었으면 내린다. ref와 setState만 써서 한 번 만들어 계속 쓴다.
+  const showEmote = useCallback(function show(e: ReceivedEmote) {
+    emoteShowingRef.current.add(e.side);
+    setEmotes(prev => [...prev.filter(x => x.side !== e.side), e]);
+    setTimeout(() => {
+      const next = emoteQueueRef.current.get(e.side)?.shift();
+      if (next) { show(next); return; }
+      emoteShowingRef.current.delete(e.side);
+      setEmotes(prev => prev.filter(x => x.id !== e.id));
+    }, EMOTE_SHOW_MS);
+  }, []);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [turnDeadline, setTurnDeadline] = useState(0);
   const [lastEvents, setLastEvents] = useState<ClientGameEvent[]>([]);
@@ -405,15 +421,14 @@ export function useWebSocket(): UseWebSocketReturn {
           break;
 
         case 'emote': {
-          const id = ++emoteSeqRef.current;
-          // 한 사람당 EMOTE_QUEUE_MAX개까지 — 넘치면 그 사람의 가장 오래된 것을 밀어낸다(남은 것은 풍선 줄에서 한 칸씩 올라온다).
-          // 밀려난 것의 제거 타이머는 그대로 두어도 된다(이미 없는 id를 거른다).
-          setEmotes(prev => {
-            const mine = prev.filter(e => e.side === msg.side);
-            const drop = new Set(mine.slice(0, Math.max(0, mine.length - (EMOTE_QUEUE_MAX - 1))).map(e => e.id));
-            return [...prev.filter(e => !drop.has(e.id)), { id, side: msg.side, emoteId: msg.emoteId }];
-          });
-          setTimeout(() => setEmotes(prev => prev.filter(e => e.id !== id)), EMOTE_SHOW_MS);
+          const e: ReceivedEmote = { id: ++emoteSeqRef.current, side: msg.side, emoteId: msg.emoteId };
+          if (!emoteShowingRef.current.has(e.side)) { showEmote(e); break; }
+          // 그 사람의 풍선이 떠 있다 — 줄에 세운다. 줄은 떠 있는 것까지 EMOTE_QUEUE_MAX개 — 넘치면 가장 오래 기다린 것을 버린다
+          // (마구 누르면 끝없이 밀리지 않게).
+          const q = emoteQueueRef.current.get(e.side) ?? [];
+          q.push(e);
+          if (q.length > EMOTE_QUEUE_MAX - 1) q.shift();
+          emoteQueueRef.current.set(e.side, q);
           break;
         }
 

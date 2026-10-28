@@ -89,10 +89,13 @@ export function emoteById(id: string): EmoteItem | undefined {
 
 /**
  * 한 사람이 감정표현을 연달아 보낼 수 있는 최소 간격 — 서버가 지키고, 화면은 그동안 버튼을 잠근다.
- * 떠 있는 시간(EMOTE_SHOW_MS)보다 훨씬 짧아야 한 사람이 여러 개를 한꺼번에 띄울 수 있다(EMOTE_QUEUE_MAX). 여기서는 연타 방지만 한다.
+ * 떠 있는 시간(EMOTE_SHOW_MS)보다 짧아 여러 개를 줄에 세울 수 있다(EMOTE_QUEUE_MAX). 여기서는 연타 방지만 한다.
  */
 export const EMOTE_MIN_INTERVAL_MS = 500;
-/** 한 사람에게 한꺼번에 떠 있을 수 있는 감정표현 수 — 넘치면 가장 오래된 것이 밀려나고 나머지가 한 칸씩 올라온다. */
+/**
+ * 한 사람의 감정표현 줄 길이(떠 있는 1개 + 기다리는 것). 풍선은 한 사람에 하나씩만 뜨고, 그동안 보낸 것은 줄에서 기다렸다가
+ * 차례로 뜬다. 줄이 차면 가장 오래 기다린 것을 버린다(마구 누르면 끝없이 밀리지 않게).
+ */
 export const EMOTE_QUEUE_MAX = 4;
 /** 풍선이 떠 있는 시간(globals.css의 .emoticon-bubble.is-emote 애니메이션 길이와 같아야 한다). */
 export const EMOTE_SHOW_MS = 3000;

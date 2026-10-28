@@ -5,6 +5,7 @@ import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
 import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { finishingMove, previewSkill, withDisplayedExp } from '@/lib/skills';
 import { isFinished, opponentOrder, sideColor, sideName } from '@/lib/individual';
+import { ignoreHotkey } from '@/lib/hotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
@@ -27,6 +28,13 @@ import { SheepProgressBar } from './SheepProgressBar';
 import { FestivalProgressBar } from './FestivalProgressBar';
 import { SkillChoiceBar } from './SkillChoiceBar';
 import { TeamTotalPanel } from './TeamTotalPanel';
+
+// 단축키(자판 위치 e.code) → 순번. 장소는 화면에서 왼쪽→오른쪽, 위→아래 순, 기술은 카드 띠의 왼쪽부터.
+const PLACE_KEYS: Record<string, number> = {
+  Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3,
+};
+const SKILL_KEYS: Record<string, number> = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
+const PASS_INDEX = 4; // 기술 카드 띠의 다섯 번째 칸 = [턴 마치기]
 
 // 화면 흔들림 레벨 → 진폭(GameLayout.shakeScale과 같은 식).
 function shakeScale(level: number): number {
@@ -121,6 +129,47 @@ export function IndividualLayout({
   useEffect(() => {
     if (!isMyChoiceTurn) setPicking(false);
   }, [isMyChoiceTurn]);
+  // ─ 단축키 — 장소 1~4 · 기술 Q·W·E·R · 턴 마치기 스페이스(감정표현 I·A·S·D·F는 EmotePicker) ─
+  // 마우스가 누르는 **그 버튼을 그대로 누른다** — 지금 누를 수 있는지(내 차례·레벨·한 우물·연출 중)를 화면과 따로 판정하면
+  // 언젠가 어긋난다. 누를 수 없는 버튼은 disabled라 click()이 먹지 않는다.
+  // 멈춤·멈춤 메뉴·특허랑이 대상 고르기 중에는 받지 않는다(메뉴 뒤에서 판이 움직인다 / 대상 화면은 숫자 키를 따로 쓴다).
+  useEffect(() => {
+    const blocked = () => paused || picking || !!document.querySelector('.pause-dim');
+    const onKey = (e: KeyboardEvent) => {
+      if (ignoreHotkey(e) || blocked()) return;
+      if (e.code in PLACE_KEYS) {
+        const tiles = [...document.querySelectorAll<HTMLButtonElement>('.ind-cell-board button[data-place-key]')]
+          .map(b => ({ b, r: b.getBoundingClientRect() }))
+          // 위→아래(같은 줄로 볼 만큼 가까우면 같은 줄), 그 안에서 왼쪽→오른쪽
+          .sort((p, q) => (Math.abs(p.r.top - q.r.top) > 8 ? p.r.top - q.r.top : p.r.left - q.r.left));
+        tiles[PLACE_KEYS[e.code]]?.b.click();
+        e.preventDefault();
+        return;
+      }
+      const cards = document.querySelectorAll<HTMLButtonElement>('.ind-cards button.skill-choice-panel');
+      if (e.code in SKILL_KEYS) {
+        cards[SKILL_KEYS[e.code]]?.click();
+        e.preventDefault();
+        return;
+      }
+      if (e.code === 'Space') {
+        // 스페이스는 늘 막는다 — 안 막으면 화면이 스크롤되거나, 방금 누른 버튼(예: 감정표현)에 포커스가 남아 그 버튼이 또 눌린다.
+        e.preventDefault();
+        cards[PASS_INDEX]?.click();
+      }
+    };
+    // 버튼의 스페이스 클릭은 keyup에서 일어난다 — 그쪽도 막아야 포커스가 남은 버튼이 눌리지 않는다.
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !ignoreHotkey(e) && !blocked()) e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [paused, picking]);
+
   const handleChoose = useCallback(
     (animal: Animal) => {
       if (animal === 'tiger') {

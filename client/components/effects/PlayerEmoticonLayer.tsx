@@ -113,33 +113,49 @@ function EmoticonBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) 
 }
 
 /**
+ * 개인전 풍선의 크기. 상대 칸(.ind-opp-card)은 인원이 많아지면 상한(max-height)보다 줄어드는데, 풍선도 **그 비율만큼** 줄인다
+ * (2026-10-28 요청 — 상대 7명의 풍선이 한꺼번에 떠도 모두 보이게). 한 사람에 풍선이 하나씩이므로, 이웃한 칸의 풍선끼리
+ * 겹치지 않도록 칸 간격(칸 높이 + 사이 틈)도 넘지 않게 한다. 칸이 상한 그대로인(인원이 적은) 판과 내 정보창은 원래 크기다.
+ */
+function bubbleSizeFor(boxEl: Element, boxH: number): number {
+  if (!boxEl.classList.contains('ind-opp-card')) return SIZE;
+  const maxH = parseFloat(getComputedStyle(boxEl).maxHeight);
+  if (!(maxH > 0) || boxH >= maxH - 0.5) return SIZE;
+  const gap = boxEl.parentElement ? parseFloat(getComputedStyle(boxEl.parentElement).rowGap) || 0 : 0;
+  return Math.round(Math.min(SIZE * (boxH / maxH), boxH + gap));
+}
+
+/**
  * 개인전의 이모티콘 — 플레이어 칸(`data-rabbit-target`이 달린 패널·상대 칸)의 왼쪽에 꼬리 달린 풍선으로 띄운다.
  * 칸 전체를 기준으로 삼는 이유: 닉네임(앵커) 바로 옆에 두면 180px 풍선이 그 사람의 칸을 덮어 체력·경험치가 가려진다.
  */
 function SideBubble({ item, slot, count }: { item: PlayerEmoticon; slot: number; count: number }) {
-  const [anchor, setAnchor] = useState<{ ay: number; boxLeft: number; boxRight: number } | null>(null);
+  const [anchor, setAnchor] = useState<{ ay: number; boxLeft: number; boxRight: number; size: number } | null>(null);
 
   useLayoutEffect(() => {
     const el = document.querySelector(`[data-player-anchor="${item.team}:${item.playerIndex}"]`);
     if (!el) return;
-    const box = (el.closest('[data-rabbit-target]') ?? el).getBoundingClientRect();
+    const boxEl = el.closest('[data-rabbit-target]') ?? el;
+    const box = boxEl.getBoundingClientRect();
     const r = el.getBoundingClientRect();
-    setAnchor({ ay: r.top + r.height / 2, boxLeft: box.left, boxRight: box.right });
+    setAnchor({ ay: r.top + r.height / 2, boxLeft: box.left, boxRight: box.right, size: bubbleSizeFor(boxEl, box.height) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id]);
 
   if (!anchor) return null;
+  const size = anchor.size;
+  const step = size + 8;
 
   // 왼쪽에 다 들어가면 왼쪽, 아니면(화면 밖으로 나가면) 오른쪽. 어느 쪽이든 꼬리는 플레이어 쪽을 향한다.
-  const side: 'left' | 'right' = anchor.boxLeft - BUBBLE_GAP - SIZE >= VIEW_MARGIN ? 'left' : 'right';
+  const side: 'left' | 'right' = anchor.boxLeft - BUBBLE_GAP - size >= VIEW_MARGIN ? 'left' : 'right';
   const x = side === 'left' ? anchor.boxLeft - BUBBLE_GAP : anchor.boxRight + BUBBLE_GAP;
   // 큐 자리만큼 아래로 내린다. 줄 전체(count칸)가 화면 아래로 넘치면 **줄의 첫 칸부터 끌어올린다** — 칸마다 따로
-  // 화면 끝에 붙이면 아래쪽 풍선들이 한자리에 겹친다(감정표현은 한 사람에게 4개까지 쌓인다). 꼬리는 그래도 플레이어 높이를 가리킨다.
-  const half = SIZE / 2;
+  // 화면 끝에 붙이면 아래쪽 풍선들이 한자리에 겹친다. 꼬리는 그래도 플레이어 높이를 가리킨다.
+  const half = size / 2;
   const minY = VIEW_MARGIN + half;
   const maxY = (typeof window === 'undefined' ? 1080 : window.innerHeight) - VIEW_MARGIN - half;
-  const firstY = Math.max(minY, Math.min(anchor.ay, maxY - (count - 1) * STACK_STEP));
-  const y = Math.min(Math.max(firstY + slot * STACK_STEP, minY), maxY);
+  const firstY = Math.max(minY, Math.min(anchor.ay, maxY - (count - 1) * step));
+  const y = Math.min(Math.max(firstY + slot * step, minY), maxY);
   const tailY = Math.min(Math.max(anchor.ay - y, -(half - TAIL_EDGE)), half - TAIL_EDGE);
 
   return (
@@ -159,11 +175,11 @@ function SideBubble({ item, slot, count }: { item: PlayerEmoticon; slot: number;
           감정표현은 풍선(흰 상자 + 꼬리)이 제자리에 가만히 있고 **안의 그림만** 흔들린다 — 상자와 그림을 나눠 그린다. */}
       <span className={`emoticon-bubble${item.persist ? ' is-staying' : ''}${item.emote ? ' is-emote' : ''}`}>
         {item.emote ? (
-          <span className="player-emoticon emote-box" style={{ width: SIZE, height: SIZE }}>
+          <span className="player-emoticon emote-box" style={{ width: size, height: size, padding: Math.round(size * 0.09) }}>
             <img src={item.src} alt="" className="emote-img" />
           </span>
         ) : (
-          <img src={item.src} alt="" className="player-emoticon" style={{ width: SIZE, height: SIZE }} />
+          <img src={item.src} alt="" className="player-emoticon" style={{ width: size, height: size }} />
         )}
         <span
           aria-hidden
