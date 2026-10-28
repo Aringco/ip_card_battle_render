@@ -42,7 +42,7 @@ interface Column {
 function AnimalIcon({ animal }: { animal: Animal }) {
   const name = ANIMAL_INFO[animal].name;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={`/emoticon/${animal}_icon.webp`} alt={name} title={name} className="event-rank-animal" />;
+  return <img src={`/emoticon/default/${animal}_icon.webp`} alt={name} title={name} className="event-rank-animal" />;
 }
 
 /** 기술 효과를 짧게 — 카드마다 뜻이 달라 표기로 가른다(머리의 title이 풀어 말한다). 0·없음은 "-"(안 썼다). */

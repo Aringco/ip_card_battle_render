@@ -23,6 +23,8 @@ import {
   CHAT_MAX_LEN,
   CHAT_HISTORY_MAX,
   CHAT_MIN_INTERVAL_MS,
+  EMOTE_MIN_INTERVAL_MS,
+  emoteById,
   DEFAULT_SETTINGS,
   SPECTATOR,
   PLAYER_SEAT,
@@ -259,6 +261,8 @@ interface PlayerConnection {
   connected: boolean;
   // 마지막으로 채팅을 보낸 시각 — 과속 전송을 걸러내는 데만 쓴다.
   lastChatAt: number;
+  // 마지막으로 감정표현을 보낸 시각(개인전 게임 중) — 채팅과 같은 과속 방어. 처음 만들 때는 비워 둔다(0으로 본다).
+  lastEmoteAt?: number;
   // 개인전 플레이어석에 앉은 사람이 고른 색 — 방 안에서 겹치지 않는다. 팀전·관전석은 없다.
   color?: PlayerColorId;
 }
@@ -431,8 +435,27 @@ export class Room {
       // 보낸 그 순간의 방장 여부를 박아둔다 — 나중에 방장이 바뀌어도 지난 대화의
       // 왕관은 말했던 사람에게 그대로 남는다.
       wasHost: this.isHost(playerId),
+      // 개인전 플레이어석이면 그 순간의 색 — 화면은 지금 색을 먼저 쓰고, 나간 사람이면 이 값으로 칠한다.
+      ...(p.color !== undefined ? { color: p.color } : {}),
       text: trimmed.slice(0, CHAT_MAX_LEN),
     });
+  }
+
+  /**
+   * 개인전 게임 중 감정표현 — 보낸 사람의 편과 함께 방 전체에 그대로 전한다(게임 상태는 바꾸지 않는다).
+   * 목록에 없는 그림·관전자·팀전·너무 잦은 전송은 **에러 없이 버린다**(채팅과 같은 이유 — 화면이 먼저 막는다).
+   * 순위가 정해져 판에서 빠진 사람도 보낼 수 있다(아직 그 판을 보고 있다).
+   */
+  handleEmote(playerId: string, emoteId: string): void {
+    if (this.mode !== 'individual' || !this.state || this.state.phase !== 'playing') return;
+    const p = this.players.get(playerId);
+    if (!p || !emoteById(emoteId)) return;
+    const side = this.sideOf(p);
+    if (!side) return;
+    const now = Date.now();
+    if (now - (p.lastEmoteAt ?? 0) < EMOTE_MIN_INTERVAL_MS) return;
+    p.lastEmoteAt = now;
+    this.broadcast({ type: 'emote', side, emoteId });
   }
 
   /** 팀 이름을 확정한다. 이미 정해져 있으면 무시하고, 요청한 이름이 상대 팀과 겹치면 무작위로 대체한다. */

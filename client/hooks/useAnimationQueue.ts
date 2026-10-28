@@ -81,10 +81,11 @@ export interface PlayerEmoticon {
   id: number;
   team: SideId;
   playerIndex: number; // 팀 내 이 플레이어의 인덱스 (프로필 목록 앵커용)
-  file: string;         // /emoticon/{file}.png
+  src: string;          // 그림 경로 — 연출 표정은 /emoticon/default/…, 감정표현은 shared/emotes.ts의 src
   // 화면상의 자리(몇 칸 아래인지)는 여기 담지 않는다 — 같은 앵커에 뜬 것들이 큐처럼
   // 위로 당겨져야 해서, PlayerEmoticonLayer가 매 렌더마다 목록 순서로 다시 센다.
   persist?: boolean;    // 게임 종료 좌절 연출 — 저절로 사라지지 않고 종료 화면으로 넘어갈 때까지 그대로 남는다
+  emote?: boolean;      // 플레이어가 고른 감정표현(개인전) — 더 오래 떠 있고 그림이 좌우로 흔들린다
 }
 
 export interface PlaceFocusItem {
@@ -132,9 +133,9 @@ export interface HpPulse {
   direction: 'gain' | 'loss';
 }
 
-// client/public/emoticon/{animal}_{mood}.png — burn/cry/focus/happy/stone 다섯 종이 있다.
+// client/public/emoticon/default/{animal}_{mood}.png — burn/cry/focus/happy/stone 다섯 종이 있다.
 function emoticonFile(animal: Animal, mood: 'happy' | 'cry' | 'stone'): string {
-  return `${animal}_${mood}`;
+  return `/emoticon/default/${animal}_${mood}.png`;
 }
 
 // 결정타를 맞은 팀이 짓는 표정 — 네 동물 각각 이 둘 중 하나를 무작위로 고른다.
@@ -443,14 +444,14 @@ export function useAnimationQueue(
   const addEmoticon = (
     team: SideId,
     playerIndex: number,
-    file: string,
+    src: string,
     atMs: number,
     opts?: { persist?: boolean },
   ) => {
     const id = ++floatIdCounter;
     const persist = opts?.persist ?? false;
     sched(() => {
-      setEmoticons(prev => [...prev, { id, team, playerIndex, file, persist }]);
+      setEmoticons(prev => [...prev, { id, team, playerIndex, src, persist }]);
       if (!persist) {
         schedPersistent(() => setEmoticons(prev => prev.filter(e => e.id !== id)), EMOTICON_DUR);
       }

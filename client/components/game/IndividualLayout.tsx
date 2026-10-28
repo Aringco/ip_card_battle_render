@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
-import { ANIMALS } from 'shared';
-import type { AnimationState } from '@/hooks/useAnimationQueue';
+import { ANIMALS, emoteById } from 'shared';
+import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
+import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { finishingMove, previewSkill, withDisplayedExp } from '@/lib/skills';
 import { isFinished, opponentOrder, sideColor, sideName } from '@/lib/individual';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
@@ -20,6 +21,7 @@ import { IndividualPrompt } from './IndividualPrompt';
 import { SelfPanel } from './SelfPanel';
 import { OpponentList } from './OpponentList';
 import { TargetPicker } from './TargetPicker';
+import { EmotePicker } from './EmotePicker';
 import { GameBoard } from './GameBoard';
 import { SheepProgressBar } from './SheepProgressBar';
 import { FestivalProgressBar } from './FestivalProgressBar';
@@ -59,6 +61,8 @@ export function IndividualLayout({
   error,
   animState,
   paused,
+  emotes,
+  onEmote,
 }: {
   gameState: ClientGameState;
   turnDeadline: number;
@@ -71,6 +75,9 @@ export function IndividualLayout({
   error: string | null;
   animState: AnimationState;
   paused: boolean;
+  /** 지금 떠 있어야 하는 감정표현(서버가 방 전체에 전한 것 — 내 것 포함) */
+  emotes: ReceivedEmote[];
+  onEmote: (emoteId: string) => void;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
   const finished = isFinished(gameState, mySide);
@@ -151,6 +158,18 @@ export function IndividualLayout({
   const glowOn = gameState.phase === 'playing' && !isFinished(gameState, activeSide) && activeSide !== mySide;
   const opponents = opponentOrder(gameState, mySide, mySide);
 
+  // 감정표현은 연출 표정과 같은 풍선 줄에 세운다 — 같은 사람에게 둘이 겹치면 큐처럼 아래로 붙는다.
+  // id는 음수로 둬 연출 쪽 순번(양수)과 겹치지 않게 한다(React key).
+  const bubbleItems = useMemo<PlayerEmoticon[]>(() => {
+    const fromPlayers = emotes.flatMap(e => {
+      const item = emoteById(e.emoteId);
+      return item ? [{ id: -e.id, team: e.side, playerIndex: 0, src: item.src, emote: true }] : [];
+    });
+    return fromPlayers.length ? [...animState.emoticons, ...fromPlayers] : animState.emoticons;
+  }, [emotes, animState.emoticons]);
+  // 감정표현은 판에 앉은 사람만(순위가 정해져 빠진 사람도 — 아직 판을 보고 있다). 처음부터 관전자는 못 쓴다.
+  const canEmote = mySide !== null && gameState.phase === 'playing';
+
   return (
     <div
       className={`h-screen play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
@@ -180,6 +199,7 @@ export function IndividualLayout({
         <div className="play-frame-css">
           <div className="ind-cell ind-cell-me">
             <SelfPanel side={focusSide} mySide={mySide} gameState={gameState} animState={animState} />
+            {canEmote && <EmotePicker onSend={onEmote} />}
           </div>
 
           <div className="ind-cell ind-cell-board">
@@ -263,7 +283,7 @@ export function IndividualLayout({
       <FestivalStartBanner info={animState.festivalStartInfo} />
       <SheepComboLayer combos={animState.sheepCombos} />
       <MainComboBanner combo={animState.mainCombo} />
-      <PlayerEmoticonLayer items={animState.emoticons} placement="left" />
+      <PlayerEmoticonLayer items={bubbleItems} placement="left" />
       <SheepProgressBar
         progress={animState.sheepProgress}
         label={animState.sheepProgress ? sideName(gameState, animState.sheepProgress.team) : undefined}

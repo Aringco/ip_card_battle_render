@@ -25,7 +25,7 @@ import type {
   SideId,
   Team,
 } from 'shared';
-import { DEFAULT_SETTINGS, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
+import { DEFAULT_SETTINGS, EMOTE_QUEUE_MAX, EMOTE_SHOW_MS, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
 
 type LobbyTeamNames = Record<Team, string | null>;
 
@@ -93,6 +93,13 @@ const sessionStore = {
   remove: (key: string) => window.sessionStorage.removeItem(key),
 };
 
+/** 받은 감정표현 한 건 — id는 이 화면에서만 쓰는 순번(React key·제거 타이머 기준) */
+export interface ReceivedEmote {
+  id: number;
+  side: SideId;
+  emoteId: string;
+}
+
 export interface UseWebSocketReturn {
   connected: boolean;
   roomId: string | null;
@@ -112,6 +119,8 @@ export interface UseWebSocketReturn {
   clearRoomNotice: () => void;
   // 대기실 채팅 기록 — 사람이 친 말과 방에서 일어난 일(시스템 안내)이 시간순으로 섞여 있다.
   chatLog: LobbyChatMessage[];
+  // 개인전 감정표현 — 지금 떠 있어야 하는 것들(받은 순서). 각자 EMOTE_SHOW_MS 뒤 저절로 빠진다.
+  emotes: ReceivedEmote[];
   gameState: ClientGameState | null;
   // 턴 제한시간이 끝나는 시각 — 내 브라우저 시계(Date.now()) 기준이다. 서버는 절대
   // 시각이 아니라 "직렬화 순간부터 남은 ms"(state.turnRemainingMs)를 보내오고, 그 값을
@@ -149,6 +158,8 @@ export interface UseWebSocketReturn {
   updateSettings: (settings: Partial<GameSettings>) => void;
   startGame: () => void;
   sendChat: (text: string) => void;
+  /** 개인전 게임 중 감정표현 — emoteId는 shared/emotes.ts 목록의 id */
+  sendEmote: (emoteId: string) => void;
   drawCard: (place: Place) => void;
   /** target은 개인전 특허랑이의 대상(편 id) — 다른 기술·팀전에서는 서버가 무시한다 */
   chooseSkill: (animal: Animal, target?: SideId) => void;
@@ -214,6 +225,8 @@ export function useWebSocket(): UseWebSocketReturn {
   const [hostMemberId, setHostMemberId] = useState<string | null>(null);
   const [roomNotice, setRoomNotice] = useState<string | null>(null);
   const [chatLog, setChatLog] = useState<LobbyChatMessage[]>([]);
+  const [emotes, setEmotes] = useState<ReceivedEmote[]>([]);
+  const emoteSeqRef = useRef(0);
   const [gameState, setGameState] = useState<ClientGameState | null>(null);
   const [turnDeadline, setTurnDeadline] = useState(0);
   const [lastEvents, setLastEvents] = useState<ClientGameEvent[]>([]);
@@ -391,6 +404,19 @@ export function useWebSocket(): UseWebSocketReturn {
           applyState(msg.state);
           break;
 
+        case 'emote': {
+          const id = ++emoteSeqRef.current;
+          // 한 사람당 EMOTE_QUEUE_MAX개까지 — 넘치면 그 사람의 가장 오래된 것을 밀어낸다(남은 것은 풍선 줄에서 한 칸씩 올라온다).
+          // 밀려난 것의 제거 타이머는 그대로 두어도 된다(이미 없는 id를 거른다).
+          setEmotes(prev => {
+            const mine = prev.filter(e => e.side === msg.side);
+            const drop = new Set(mine.slice(0, Math.max(0, mine.length - (EMOTE_QUEUE_MAX - 1))).map(e => e.id));
+            return [...prev.filter(e => !drop.has(e.id)), { id, side: msg.side, emoteId: msg.emoteId }];
+          });
+          setTimeout(() => setEmotes(prev => prev.filter(e => e.id !== id)), EMOTE_SHOW_MS);
+          break;
+        }
+
         case 'pauseState':
           applyState(msg.state);
           // ⚠️ **답을 기다리는 중이면 아무 창도 닫지 않는다.** 서버는 묻는 20초 동안에도
@@ -514,6 +540,10 @@ export function useWebSocket(): UseWebSocketReturn {
     send({ type: 'chat', text });
   }, [send]);
 
+  const sendEmote = useCallback((emoteId: string) => {
+    send({ type: 'emote', emoteId });
+  }, [send]);
+
   const clearRoomNotice = useCallback(() => setRoomNotice(null), []);
 
   const drawCard = useCallback((place: Place) => {
@@ -592,11 +622,11 @@ export function useWebSocket(): UseWebSocketReturn {
     connected, roomId, playerId, memberId,
     lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, hostMemberId,
     isHost: memberId !== null && memberId === hostMemberId,
-    roomNotice, clearRoomNotice, chatLog,
+    roomNotice, clearRoomNotice, chatLog, emotes,
     gameState, turnDeadline, lastEvents, error,
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
-    movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat,
+    movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat, sendEmote,
     drawCard, chooseSkill, passSkill, demoContinue, demoScene,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
     eventDevStatus, eventQueue, eventMatched, eventRegistered, eventError, clearEventError,

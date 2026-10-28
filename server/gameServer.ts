@@ -216,6 +216,11 @@ export function createConnectionHandler(roomManager: RoomManager, eventHub: Even
           roomManager.getRoom(currentRoomId)?.handleChat(currentPlayerId, msg.text);
           break;
         }
+        case 'emote': {
+          if (!currentRoomId || !currentPlayerId || typeof msg.emoteId !== 'string') return;
+          roomManager.getRoom(currentRoomId)?.handleEmote(currentPlayerId, msg.emoteId);
+          break;
+        }
 
         case 'drawCard': {
           if (!currentRoomId || !currentPlayerId) return;

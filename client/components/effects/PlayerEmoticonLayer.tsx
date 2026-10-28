@@ -24,6 +24,9 @@ const BUBBLE_GAP = 22;
 const VIEW_MARGIN = 8;
 // 꼬리가 풍선의 둥근 모서리에 걸리지 않도록 위아래 끝에서 이만큼은 비운다
 const TAIL_EDGE = 26;
+// 플레이어가 고른 감정표현의 층 — 장소 타일의 안내 손(.place-guide-hand, 95)과 멈춤 화면(95~98)보다 위.
+// 연출 표정(80)은 예전 그대로 둔다.
+const EMOTE_Z = 99;
 
 export function PlayerEmoticonLayer({
   items,
@@ -39,10 +42,11 @@ export function PlayerEmoticonLayer({
   placement?: 'center' | 'left';
 }) {
   // 앵커(팀:플레이어)별로 따로 줄을 세운다 — 서로 다른 사람의 이모티콘은 각자 0번부터.
+  const keyOf = (it: PlayerEmoticon) => `${it.team}:${it.playerIndex}`;
   const slotOf = new Map<number, number>();
   const filled = new Map<string, number>();
   for (const it of items) {
-    const key = `${it.team}:${it.playerIndex}`;
+    const key = keyOf(it);
     const slot = filled.get(key) ?? 0;
     slotOf.set(it.id, slot);
     filled.set(key, slot + 1);
@@ -52,7 +56,7 @@ export function PlayerEmoticonLayer({
     <>
       {items.map(item => (
         placement === 'left'
-          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
+          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} count={filled.get(keyOf(item)) ?? 1} />
           : <EmoticonBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
       ))}
     </>
@@ -97,7 +101,7 @@ function EmoticonBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) 
       }}
     >
       <img
-        src={`/emoticon/${item.file}.png`}
+        src={item.src}
         alt=""
         // persist는 등장까지만 재생하고 그대로 멈춘다(페이드아웃 없음) — 제거 타이머도
         // 없어서, 화면이 종료 화면으로 넘어갈 때까지 그 표정 그대로 남는다.
@@ -112,7 +116,7 @@ function EmoticonBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) 
  * 개인전의 이모티콘 — 플레이어 칸(`data-rabbit-target`이 달린 패널·상대 칸)의 왼쪽에 꼬리 달린 풍선으로 띄운다.
  * 칸 전체를 기준으로 삼는 이유: 닉네임(앵커) 바로 옆에 두면 180px 풍선이 그 사람의 칸을 덮어 체력·경험치가 가려진다.
  */
-function SideBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) {
+function SideBubble({ item, slot, count }: { item: PlayerEmoticon; slot: number; count: number }) {
   const [anchor, setAnchor] = useState<{ ay: number; boxLeft: number; boxRight: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -129,10 +133,13 @@ function SideBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) {
   // 왼쪽에 다 들어가면 왼쪽, 아니면(화면 밖으로 나가면) 오른쪽. 어느 쪽이든 꼬리는 플레이어 쪽을 향한다.
   const side: 'left' | 'right' = anchor.boxLeft - BUBBLE_GAP - SIZE >= VIEW_MARGIN ? 'left' : 'right';
   const x = side === 'left' ? anchor.boxLeft - BUBBLE_GAP : anchor.boxRight + BUBBLE_GAP;
-  // 큐 자리만큼 아래로 내리되 화면 밖으로 나가면 끌어올린다 — 그래도 꼬리는 플레이어 높이를 가리킨다.
+  // 큐 자리만큼 아래로 내린다. 줄 전체(count칸)가 화면 아래로 넘치면 **줄의 첫 칸부터 끌어올린다** — 칸마다 따로
+  // 화면 끝에 붙이면 아래쪽 풍선들이 한자리에 겹친다(감정표현은 한 사람에게 4개까지 쌓인다). 꼬리는 그래도 플레이어 높이를 가리킨다.
   const half = SIZE / 2;
+  const minY = VIEW_MARGIN + half;
   const maxY = (typeof window === 'undefined' ? 1080 : window.innerHeight) - VIEW_MARGIN - half;
-  const y = Math.min(Math.max(anchor.ay + slot * STACK_STEP, VIEW_MARGIN + half), maxY);
+  const firstY = Math.max(minY, Math.min(anchor.ay, maxY - (count - 1) * STACK_STEP));
+  const y = Math.min(Math.max(firstY + slot * STACK_STEP, minY), maxY);
   const tailY = Math.min(Math.max(anchor.ay - y, -(half - TAIL_EDGE)), half - TAIL_EDGE);
 
   return (
@@ -144,13 +151,20 @@ function SideBubble({ item, slot }: { item: PlayerEmoticon; slot: number }) {
         transform: `translate(${side === 'left' ? '-100%' : '0'}, -50%)`,
         // 앞엣것이 사라지면 남은 것들이 스르륵 올라온다(자리는 top으로 잡으므로 top에 transition)
         transition: `top ${REFLOW_MS}ms ease-out`,
-        zIndex: 80 + slot,
+        zIndex: (item.emote ? EMOTE_Z : 80) + slot,
         pointerEvents: 'none',
       }}
     >
-      {/* 등장·퇴장 연출은 풍선 전체(그림 + 꼬리)에 건다 — 그림에만 걸면 꼬리만 덩그러니 남는다. */}
-      <span className={`emoticon-bubble${item.persist ? ' is-staying' : ''}`}>
-        <img src={`/emoticon/${item.file}.png`} alt="" className="player-emoticon" style={{ width: SIZE, height: SIZE }} />
+      {/* 등장·퇴장 연출은 풍선 전체(그림 + 꼬리)에 건다 — 그림에만 걸면 꼬리만 덩그러니 남는다.
+          감정표현은 풍선(흰 상자 + 꼬리)이 제자리에 가만히 있고 **안의 그림만** 흔들린다 — 상자와 그림을 나눠 그린다. */}
+      <span className={`emoticon-bubble${item.persist ? ' is-staying' : ''}${item.emote ? ' is-emote' : ''}`}>
+        {item.emote ? (
+          <span className="player-emoticon emote-box" style={{ width: SIZE, height: SIZE }}>
+            <img src={item.src} alt="" className="emote-img" />
+          </span>
+        ) : (
+          <img src={item.src} alt="" className="player-emoticon" style={{ width: SIZE, height: SIZE }} />
+        )}
         <span
           aria-hidden
           className={`emoticon-tail emoticon-tail-${side === 'left' ? 'right' : 'left'}`}

@@ -119,7 +119,7 @@ function AnimalStackRow({
       <div
         className="absolute inset-0 bg-no-repeat bg-center opacity-15 pointer-events-none"
         style={{
-          backgroundImage: `url(/emoticon/${animal}_${isMyTurn ? 'happy' : 'focus'}.png)`,
+          backgroundImage: `url(/emoticon/default/${animal}_${isMyTurn ? 'happy' : 'focus'}.png)`,
           backgroundSize: '33%',
         }}
       />

@@ -130,7 +130,7 @@ function AnimalMini({
       {animal === 'mermaid' && multiplier > 1 && <span className="ind-animal-badge">×{multiplier}</span>}
       {animal === 'sheep' && extraDraws > 0 && <span className="ind-animal-badge">+{extraDraws}</span>}
       <img
-        src={`/emoticon/${animal}_${level > 0 ? 'happy' : 'focus'}.png`}
+        src={`/emoticon/default/${animal}_${level > 0 ? 'happy' : 'focus'}.png`}
         alt={animal}
         className="ind-animal-face"
         draggable={false}

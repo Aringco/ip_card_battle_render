@@ -40,6 +40,8 @@ export type ClientMessage =
   | { type: 'updateSettings'; settings: Partial<GameSettings> }
   | { type: 'startGame' } // 방장이 직접 시작(모두 준비 완료 + 양 팀에 한 명 이상일 때만)
   | { type: 'chat'; text: string } // 대기실 채팅 — 게임이 시작된 뒤에는 서버가 무시한다
+  // 개인전 게임 중 감정표현 — emoteId는 shared/emotes.ts 목록의 id. 목록에 없거나 너무 잦으면(EMOTE_MIN_INTERVAL_MS) 서버가 조용히 버린다
+  | { type: 'emote'; emoteId: string }
   | { type: 'drawCard'; place: Place }
   // 턴 종료 시 4가지 스킬 중 하나 선택. target은 개인전의 특허랑이가 노릴 상대(편 id) — 다른 기술이나
   // 팀전에서는 서버가 무시한다.
@@ -115,6 +117,8 @@ export type ServerMessage =
   | { type: 'gameStart'; state: ClientGameState }
   | { type: 'gameSnapshot'; state: ClientGameState }   // 재접속용
   | { type: 'actionResult'; events: ClientGameEvent[]; state: ClientGameState }
+  // 개인전 감정표현 — 방 전체(보낸 사람 포함)에 간다. 게임 상태가 아니라 지나가는 알림이라 스냅샷에 남지 않는다.
+  | { type: 'emote'; side: SideId; emoteId: string }
   // 일시정지 상태가 바뀌었다(멈춤/재개). 멈춤 여부 자체는 state 안에 들어 있어
   // (ClientGameState.paused) 재접속 스냅샷으로도 그대로 복원된다 — 이 메시지는 "지금
   // 바뀌었다"는 알림이자 최신 상태 전달이다.
@@ -160,6 +164,8 @@ export interface LobbyChatMessage {
   memberId: string | null; // system이면 null
   nickname: string;        // system이면 ''
   team: Seat | null;       // 닉네임을 자리 색으로 칠하는 용도, system이면 null
+  // 개인전 플레이어석에서 말했다면 그때 고른 색 — 화면은 **지금** 색(대기실 목록)을 먼저 쓰고, 나간 사람이면 이 값을 쓴다
+  color?: PlayerColorId;
   // 이 말을 할 때 방장이었는지 — 닉네임 앞 👑 표시에 쓴다. "지금" 방장인지를 화면에서
   // 다시 계산하지 않고 서버가 그 순간의 값을 박아 보내므로, 나중에 방장이 바뀌어도
   // 지난 대화의 왕관은 말했던 그 사람에게 그대로 남는다.

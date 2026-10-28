@@ -4,3 +4,4 @@ export * from './protocol';
 export * from './names';
 export * from './sides';
 export * from './events';
+export * from './emotes';

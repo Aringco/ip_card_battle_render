@@ -28,6 +28,7 @@ export default function GamePage() {
     error, connected, playerId,
     pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
     requestPause, respondPause, resumeGame, surrender, leaveGame, eventIntroUntil,
+    emotes, sendEmote,
   } = useWebSocket();
   const [myTeam, setMyTeam] = useState<SideId | null>(null);
 
@@ -174,6 +175,8 @@ export default function GamePage() {
           error={error}
           animState={animState}
           paused={gameState.paused}
+          emotes={emotes}
+          onEmote={sendEmote}
         />
       ) : (
       <GameLayout

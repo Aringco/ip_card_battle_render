@@ -20,7 +20,9 @@ const SFX_PREFIXES = ['sheep', 'mermaid', 'tiger', 'rabbit', 'card', 'bomb'];
 // lobby는 로비 화면(배경 일러스트·로고)이 쓴다 — 첫 화면에 바로 보이므로
 // 프리로드 대상에 넣지 않으면 로딩 화면이 끝난 뒤에야 받아와 배경이 늦게 뜬다.
 // (모드 선택 패널 배경은 이미지가 아니라 CSS 그라디언트라 받을 것이 없다.)
-const IMAGE_DIRS = ['places', 'skills', 'emoticon', 'howto', 'lobby', 'ui', 'play'];
+// emoticon은 묶음별 하위 폴더다(listDir가 한 단계만 훑으므로 하나씩 적는다) — default는 연출 표정, spticon·hands는
+// 개인전 감정표현(shared/emotes.ts). 감정표현 그림은 작은 webp라 미리 받아 둬도 부담이 없다.
+const IMAGE_DIRS = ['places', 'skills', 'emoticon/default', 'emoticon/spticon', 'emoticon/hands', 'howto', 'lobby', 'ui', 'play'];
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg']);
 
 function listDir(dir) {

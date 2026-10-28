@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { LobbyChatMessage } from 'shared';
-import { CHAT_MAX_LEN, CHAT_MIN_INTERVAL_MS, SPECTATOR } from 'shared';
+import type { LobbyChatMessage, PlayerColorId } from 'shared';
+import { CHAT_MAX_LEN, CHAT_MIN_INTERVAL_MS, SPECTATOR, playerColorHex } from 'shared';
 
 // 목록 맨 아래에서 이만큼(px) 안쪽이면 "지금 최신 대화를 보고 있다"고 본다.
 const STICK_TO_BOTTOM_PX = 40;
@@ -12,9 +12,11 @@ export interface ChatPanelProps {
   myMemberId: string | null;
   connected: boolean;
   onSend: (text: string) => void;
+  /** 개인전 — 지금 대기실에서 그 사람이 고른 색(memberId → 색). 팀전이면 비워 둔다 */
+  colorOf?: (memberId: string) => PlayerColorId | undefined;
 }
 
-export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanelProps) {
+export function ChatPanel({ messages, myMemberId, connected, onSend, colorOf }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   // 방금 보냈는지 — 서버가 과속 메시지를 조용히 버리므로, 화면에서 먼저 막아
   // "쳤는데 아무것도 안 뜬다"는 상황이 생기지 않게 한다.
@@ -67,7 +69,14 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
         {messages.length === 0 ? (
           <p className="text-base text-board-muted m-auto">아직 대화가 없어요. 먼저 인사해 보세요!</p>
         ) : (
-          messages.map(m => <ChatLine key={m.id} message={m} isMine={m.memberId === myMemberId} />)
+          messages.map(m => (
+            <ChatLine
+              key={m.id}
+              message={m}
+              isMine={m.memberId === myMemberId}
+              color={(m.memberId ? colorOf?.(m.memberId) : undefined) ?? m.color}
+            />
+          ))
         )}
       </div>
 
@@ -102,18 +111,24 @@ export function ChatPanel({ messages, myMemberId, connected, onSend }: ChatPanel
   );
 }
 
-function ChatLine({ message, isMine }: { message: LobbyChatMessage; isMine: boolean }) {
+function ChatLine({ message, isMine, color }: { message: LobbyChatMessage; isMine: boolean; color?: PlayerColorId }) {
   if (message.kind === 'system') {
     return <p className="text-sm text-board-muted text-center py-0.5">{message.text}</p>;
   }
 
   // 관전자(팀이 A도 B도 아닌 사람)는 두 팀 색 어느 쪽도 아니어야 헷갈리지 않는다.
-  const nameColor =
-    message.team === 'A' ? 'text-green-700' : message.team === 'B' ? 'text-blue-600' : 'text-purple-500';
+  // 개인전 플레이어는 자기가 고른 색(지금 색 → 없으면 말할 때의 색). 노랑·연두처럼 밝은 색도 크림 바탕에서
+  // 읽히도록 얇은 어두운 테두리를 두른다.
+  const nameColor = color
+    ? ''
+    : message.team === 'A' ? 'text-green-700' : message.team === 'B' ? 'text-blue-600' : 'text-purple-500';
 
   return (
     <p className="text-base leading-relaxed break-words">
-      <span className={`mr-2 ${nameColor} ${isMine ? 'font-bold' : 'font-semibold'}`}>
+      <span
+        className={`mr-2 ${nameColor} ${isMine ? 'font-bold' : 'font-semibold'}`}
+        style={color ? { color: playerColorHex(color), textShadow: '0 0 1px rgba(0, 0, 0, 0.6)' } : undefined}
+      >
         {message.wasHost && '👑 '}
         {message.team === SPECTATOR && '👀 '}
         {message.nickname}

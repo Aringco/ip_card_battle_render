@@ -66,7 +66,7 @@ function AnimalTable({
     // 크기는 칸 폭에서 뽑는다(.exp-row-face) — 고정 px면 좁은 칸에서 숫자를 덮는다
     <div className="exp-row-face shrink-0 flex items-center justify-center">
       <img
-        src={`/emoticon/${animal}_${level > 0 ? 'happy' : 'focus'}.png`}
+        src={`/emoticon/default/${animal}_${level > 0 ? 'happy' : 'focus'}.png`}
         alt={animal}
         className="w-full h-full object-contain"
       />

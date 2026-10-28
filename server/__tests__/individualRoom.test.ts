@@ -1,5 +1,5 @@
 import type { ClientGameState, ServerMessage } from 'shared';
-import { INDIVIDUAL_MAX_PLAYERS, PLAYER_COLORS, SPECTATOR } from 'shared';
+import { EMOTE_MIN_INTERVAL_MS, INDIVIDUAL_MAX_PLAYERS, PLAYER_COLORS, SPECTATOR } from 'shared';
 import { Room } from '../room';
 
 /**
@@ -432,5 +432,61 @@ describe('팀전 방은 그대로 (R10)', () => {
     room.selectColor('p-h', 'red');
     expect(lastOf(host, 'error')).toBeUndefined();
     expect(lastOf(host, 'lobbyState')!.players[0].color).toBeUndefined();
+  });
+});
+
+describe('대기실 채팅의 닉네임 색', () => {
+  it('개인전 플레이어석의 말에는 그 순간 고른 색이 실린다', () => {
+    const { room, seats } = setupRoom(2);
+    room.selectColor(seats[1].id, 'pink');
+    room.handleChat(seats[1].id, '안녕');
+    const line = lastOf(seats[0].ws, 'chatMessage')!.message;
+    expect(line.kind).toBe('chat');
+    expect(line.color).toBe('pink');
+  });
+
+  it('관전자의 말에는 색이 없다', () => {
+    const { room, seats } = setupRoom(2);
+    const spec = { id: 'p-s', ws: fakeSocket() };
+    room.addPlayer(spec.ws as never, spec.id, '구경꾼', SPECTATOR);
+    room.handleChat(spec.id, '구경 중');
+    expect(lastOf(seats[0].ws, 'chatMessage')!.message.color).toBeUndefined();
+  });
+});
+
+describe('감정표현', () => {
+  it('판에 앉은 사람이 보내면 보낸 사람의 편과 함께 방 전체에 간다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    const state = gameState(seats[0]);
+    const sender = seats[1];
+    const side = Object.keys(state.memberIds).find(s => state.memberIds[s].includes(sender.id))!;
+    room.handleEmote(sender.id, 'hands/wave');
+    for (const s of seats) expect(lastOf(s.ws, 'emote')).toEqual({ type: 'emote', side, emoteId: 'hands/wave' });
+  });
+
+  it('목록에 없는 그림·너무 잦은 전송은 조용히 버린다', () => {
+    const { room, seats } = setupRoom(2);
+    startGame(room, seats);
+    room.handleEmote(seats[0].id, 'nope/../../etc');
+    expect(allOf(seats[1].ws, 'emote')).toHaveLength(0);
+    expect(lastOf(seats[0].ws, 'error')).toBeUndefined();
+
+    room.handleEmote(seats[0].id, 'sp/thumbs_up');
+    room.handleEmote(seats[0].id, 'sp/thumbs_down'); // 곧바로 또
+    expect(allOf(seats[1].ws, 'emote')).toHaveLength(1);
+    jest.advanceTimersByTime(EMOTE_MIN_INTERVAL_MS);
+    room.handleEmote(seats[0].id, 'default/tiger_happy');
+    expect(allOf(seats[1].ws, 'emote')).toHaveLength(2);
+  });
+
+  it('관전자·게임 시작 전에는 보낼 수 없다', () => {
+    const { room, seats } = setupRoom(2);
+    room.handleEmote(seats[0].id, 'hands/wave'); // 대기실
+    const spec = { id: 'p-s', ws: fakeSocket() };
+    room.addPlayer(spec.ws as never, spec.id, '구경꾼', SPECTATOR);
+    startGame(room, seats);
+    room.handleEmote(spec.id, 'hands/wave');
+    expect(allOf(seats[0].ws, 'emote')).toHaveLength(0);
   });
 });

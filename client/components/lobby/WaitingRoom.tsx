@@ -188,6 +188,7 @@ export function WaitingRoom({
         myMemberId={myMemberId}
         connected={connected}
         onSend={onSendChat}
+        colorOf={individual ? (id => players.find(p => p.memberId === id)?.color) : undefined}
       />
 
       {/* 준비/시작 버튼이 규칙 패널보다 먼저 온다 — 대화창이 생기면서 화면이 길어진 뒤로,

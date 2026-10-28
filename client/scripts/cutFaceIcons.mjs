@@ -1,4 +1,4 @@
-// 동물 얼굴 아이콘 — 감정표현 그림(/emoticon/*_happy.png)에서 **흰 바탕만 걷어낸** 작은 투명 그림을 만든다.
+// 동물 얼굴 아이콘 — 감정표현 그림(/emoticon/default/*_happy.png)에서 **흰 바탕만 걷어낸** 작은 투명 그림을 만든다.
 //
 // 왜: 감정표현 그림은 투명도 없이 흰 바탕(600×600 PNG)이라, 순위표처럼 양피지 위에 얹으면 흰 네모가 뜬다(2026-10-27 제보).
 // CSS(mix-blend-mode: multiply)로 지우려 했지만 조상 중 쌓임 맥락을 만드는 요소가 있어 바탕과 섞이지 않았다 — 그림을 고친다.
@@ -6,15 +6,15 @@
 // 방법: 가장자리에서 시작해 **이어진 흰색만** 투명하게 지운다(flood fill). 얼굴 안의 흰색(눈 반사광·이빨)은 가장자리와
 // 이어져 있지 않아 남는다. 경계는 흰 정도에 따라 반투명으로 풀어 계단이 지지 않게 한다.
 //
-// 실행: cd client && node scripts/cutFaceIcons.mjs   → public/emoticon/{sheep,rabbit,mermaid,tiger}_icon.webp
-// (public/emoticon은 generateAssetManifest의 IMAGE_DIRS에 있어 로딩 화면이 미리 받는다.)
+// 실행: cd client && node scripts/cutFaceIcons.mjs   → public/emoticon/default/{sheep,rabbit,mermaid,tiger}_icon.webp
+// (public/emoticon/default는 generateAssetManifest의 IMAGE_DIRS에 있어 로딩 화면이 미리 받는다.)
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dir = path.join(__dirname, '..', 'public', 'emoticon');
+const dir = path.join(__dirname, '..', 'public', 'emoticon', 'default');
 const ANIMALS = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 const SIZE = 128;          // 순위표 아이콘은 1.5em(20~30px) — 고해상도 화면을 위해 넉넉히
 const HARD = 238;          // 이보다 밝으면(세 채널 모두) 바탕으로 보고 이어서 칠한다

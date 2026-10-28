@@ -74,7 +74,7 @@ export function StackCardView({
       style={{ zIndex: index, ...flingVars }}
     >
       <img
-        src={`/emoticon/${card.animal}_focus.png`}
+        src={`/emoticon/default/${card.animal}_focus.png`}
         alt={card.animal}
         className="w-[68%] h-auto object-contain"
       />
