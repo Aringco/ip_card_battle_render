@@ -82,14 +82,14 @@ export function TeamTotalPanel({
       <LeafDecoration position="br" size={30} swaying={activePulse !== null} />
       <div className="hp-orb-liquid" style={{ height: `${fillPct}%` }}>
         <div className="hp-orb-wave" />
+        {/* 액체 색의 밝은 기운이 천천히 피어오른다(globals.css .hp-orb-rise — 채워진 만큼만 보인다) */}
+        <div className="hp-orb-rise" aria-hidden />
       </div>
       <div className="hp-orb-segments" aria-hidden>
         {segmentLines.map(pct => (
           <span key={pct} className="hp-orb-segment-line" style={{ bottom: `${pct}%` }} />
         ))}
       </div>
-      {/* 흰 홀로그램 — 사선 빛 띠가 구슬을 가로질러 흐른다(2026-10-29, 양 팀 공통 — globals.css .hp-orb-holo) */}
-      <div className="hp-orb-holo" aria-hidden />
       <div className="hp-orb-sheen" />
       {activePulse?.direction === 'gain' && <div className="hp-orb-surge" />}
       {activePulse?.direction === 'loss' && (

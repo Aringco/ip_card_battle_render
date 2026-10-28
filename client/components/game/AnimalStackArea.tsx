@@ -18,8 +18,6 @@ const CARD_WIDTH_PX = 88;
 const DEFAULT_OVERLAP_PX = 46;
 const OVERLAP_RATIO = DEFAULT_OVERLAP_PX / CARD_WIDTH_PX;
 const MIN_STACK_SCALE = 0.35;
-// 묶음 카드 뒤의 카드는 조금만 겹친다 — 반쯤 덮으면 "x100"이 "x1"로 잘린다. globals.css의 .stack-card-bundle + .stack-card와 같은 비율이다.
-const BUNDLE_OVERLAP_RATIO = 8 / 88;
 
 /** 화면의 카드 한 장 — 낱장(size 1)이거나 10장·100장 묶음 */
 interface StackItem {
@@ -141,11 +139,9 @@ function AnimalStackRow({
     return () => ro.disconnect();
   }, [cards.length]);
 
-  // 폭은 화면에 그리는 장수(묶음은 한 장)로 잰다 — 묶음 다음 카드는 조금만 겹치므로 그만큼 더 넓다
-  const naturalWidth = items.reduce(
-    (w, item, i) => w + (i === 0 ? cardWidth : cardWidth * (1 - (items[i - 1].size > 1 ? BUNDLE_OVERLAP_RATIO : OVERLAP_RATIO))),
-    0,
-  );
+  // 폭은 화면에 그리는 장수(묶음은 한 장 — 낱장과 똑같이 겹친다)로 잰다
+  const naturalWidth =
+    items.length > 0 ? cardWidth * (1 + (items.length - 1) * (1 - OVERLAP_RATIO)) : 0;
   const stackScale =
     containerWidth > 0 && naturalWidth > containerWidth
       ? Math.max(MIN_STACK_SCALE, containerWidth / naturalWidth)

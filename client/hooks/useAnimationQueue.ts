@@ -145,6 +145,12 @@ function randomDespairMood(): (typeof DESPAIR_MOODS)[number] {
   return DESPAIR_MOODS[Math.floor(Math.random() * DESPAIR_MOODS.length)];
 }
 
+/** 편 하나의 화면상 "다음 행동 배율 · 다음 턴 추가 뽑기"(useAnimationQueue의 displayedTeamPatch) */
+export interface DisplayedTeamPatch {
+  pendingMultiplier: number;
+  pendingExtraDraws: number;
+}
+
 export interface AnimationState {
   screenShakeLevel: number; // 0 = none
   leafParticleCount: number;
@@ -163,6 +169,10 @@ export interface AnimationState {
   scoreFlash: ReadonlyMap<string, number>; // "team:animal" → flash id (for CSS re-trigger)
   displayedExp: Record<SideId, Record<Animal, number>>; // 팀 패널에 실제로 보여주는 경험치 — 페어 카드가 팀으로 날아가 도착한 뒤에야 반영된다
   displayedHp: Record<SideId, number>; // 체력 구슬에 보여주는 체력 — 카드 강화의 짝 효과는 그 연출 순간에야 반영된다
+  // 기술 효과가 바꾼 "다음 행동 배율 · 다음 턴 추가 뽑기 · (강화) 나눗셈" 중 아직 연출이 재생되지 않은 몫을 되돌린 값 — 가릴 것이 없는 편은 빠진다.
+  // 화면은 lib/skills.ts의 withDisplayedTeams로 끼워 넣는다(팀 패널 스티커 · 기술 카드 미리보기).
+  displayedTeamPatch: Readonly<Record<SideId, DisplayedTeamPatch>>;
+  displayedDivisors: Readonly<Record<SideId, number>> | null;
   hpPulse: ReadonlyMap<SideId, HpPulse>; // 체력 오브가 지금 상승/감소 연출 중인지
   festivalFlash: boolean; // 축제 진입 순간 보드 전체 섬광
   festivalBurst: boolean; // 축제 진입 순간 보드 여기저기 도토리 폭죽(15발)
@@ -290,6 +300,11 @@ export function useAnimationQueue(
   // "페어 효과!" 연출 순간에 바뀌어야 한다 — 경험치 가림(pendingExpCredit)과 같은 이유·같은 방식(렌더 도중 동기 보정)이다.
   // 고른 기술(pair가 아닌 skillApplied)은 예전처럼 가리지 않는다.
   const [pendingHpCredit, setPendingHpCredit] = useState<Record<string, number>>({});
+  // 기술 효과(짝 효과 · 고른 기술)가 바꾼 배율·추가 뽑기·나눗셈의 **연출 전 값**(2026-10-29 — "카드 조합 선반영 방지").
+  // 서버 진실은 클릭 즉시 바뀌어, 뽑기 연출이 끝나기도 전에 팀 패널의 "×3"·"+8회" 스티커와 기술 카드의 미리보기 숫자가 먼저 바뀌었다.
+  // 체력·경험치 가림과 같은 방식(렌더 도중 동기 보정)으로 걸고, Pass 1.6이 효과를 재생하는 순간 하나씩 풀어 마지막 효과에서 걷어낸다.
+  const [teamPatch, setTeamPatch] = useState<Record<SideId, DisplayedTeamPatch>>({});
+  const [divisorsPatch, setDivisorsPatch] = useState<Record<SideId, number> | null>(null);
   // "화면에 지금 그려야 하는 카드"를 실제 서버 진실(gameState.stacks)과 분리해서 관리한다.
   // 서버는 액션이 끝나는 즉시 최종 상태(수집으로 카드가 사라진 상태)를 보내오지만,
   // 화면에는 "등장 → (짝 맞으면) 흔들기 → 날아가기" 연출이 끝난 뒤에야 사라지도록,
@@ -338,6 +353,7 @@ export function useAnimationQueue(
   // (개발 원칙: 애니메이션과 실제 로직의 순서가 항상 일치해야 한다 — 카드 뽑기 → 동물
   // 영역으로 도착 → 경험치 반영 → 정산해서 레벨업. CLAUDE.md 참고.)
   const lastEventsForCreditRef = useRef<ClientGameEvent[] | null>(null);
+  const prevGameStateRef = useRef<ClientGameState | null>(gameState);
   if (lastEvents !== lastEventsForCreditRef.current) {
     lastEventsForCreditRef.current = lastEvents;
 
@@ -376,7 +392,36 @@ export function useAnimationQueue(
       if (opp !== undefined) hpCredits[opp] = (hpCredits[opp] ?? 0) + ev.oppHpDelta;
     });
     setPendingHpCredit(hpCredits);
+
+    // 배율·추가 뽑기 — 이번 액션의 기술 효과가 바꾸기 **전** 값을 편마다 되돌려 둔다.
+    // · 배율은 이번 액션에서 기술 효과로만 바뀌므로 직전 서버 상태의 값이 곧 "연출 전" 값이다.
+    // · 추가 뽑기는 뽑기 액션이 예약분을 먼저 소모(0)한 뒤 실용신양 효과가 더하므로, 직전 값이 아니라 지금 값에서 이번 효과의 몫만 뺀다.
+    const prevState = prevGameStateRef.current;
+    const effects = lastEvents.filter(
+      (e): e is Extract<ClientGameEvent, { type: 'skillApplied' }> => e.type === 'skillApplied' && e.level > 0,
+    );
+    if (gameState && effects.length > 0) {
+      const patch: Record<SideId, DisplayedTeamPatch> = {};
+      for (const side of Object.keys(gameState.teams)) {
+        const now = gameState.teams[side];
+        const queued = effects.filter(e => e.team === side).reduce((n, e) => n + e.extraDrawsQueued, 0);
+        const mult = prevState?.teams[side]?.pendingMultiplier ?? now.pendingMultiplier;
+        const extra = Math.max(0, now.pendingExtraDraws - queued);
+        if (mult !== now.pendingMultiplier || extra !== now.pendingExtraDraws) {
+          patch[side] = { pendingMultiplier: mult, pendingExtraDraws: extra };
+        }
+      }
+      setTeamPatch(patch);
+      const prevDiv = prevState?.enhance?.divisors;
+      const nowDiv = gameState.enhance?.divisors;
+      setDivisorsPatch(prevDiv && nowDiv && Object.keys(nowDiv).some(s => nowDiv[s] !== prevDiv[s]) ? { ...prevDiv } : null);
+    } else {
+      setTeamPatch({});
+      setDivisorsPatch(null);
+    }
   }
+  // ⚠️ 위 블록이 "직전 서버 상태"로 읽으므로 블록 **뒤에서** 갱신한다.
+  prevGameStateRef.current = gameState;
 
   // lastEvents가 비어있는 gameState 갱신(최초 입장 · 재접속 스냅샷)은 재생할 애니메이션이
   // 없으므로, 이미 존재하는 카드들을 슬롯머신 연출 없이 즉시 스택에 그대로 노출시킨다.
@@ -406,6 +451,8 @@ export function useAnimationQueue(
     setIsSettling(false);
     setPendingExpCredit({});
     setPendingHpCredit({});
+    setTeamPatch({});
+    setDivisorsPatch(null);
     // ⚠️ **좌절 이모티콘(persist)은 여기서도 걷어야 한다.** 그것만 제거 타이머가 없어
     //    저절로 사라지지 않는데, 걷어내는 곳이 아래 레이아웃 이펙트 한 군데뿐이었다 —
     //    그쪽은 이벤트가 있는 갱신에서만 도므로, **이벤트가 비어 있는 갱신**으로 판이
@@ -940,6 +987,7 @@ export function useAnimationQueue(
     // 아무것도 안 뜨는 편이 낫다는 판단(해설판 로그 줄만 남는다).
     {
       const skillEvs = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'skillApplied' }> => e.type === 'skillApplied');
+      const lastEffect = skillEvs.filter(e => e.level > 0).at(-1);
 
       for (const skillEv of skillEvs) {
         if (skillEv.level <= 0) continue;
@@ -965,6 +1013,26 @@ export function useAnimationQueue(
         addCaption(`${skillEv.pair ? '페어 효과! ' : ''}${effectParts.join(', ')}`, 'effect', at, { team });
 
         sched(() => {
+          // 배율·추가 뽑기 가림을 이 효과만큼 푼다 — 마지막 효과면 통째로 걷어 서버 진실로 맞춘다(위 teamPatch)
+          if (skillEv === lastEffect) {
+            setTeamPatch({});
+            setDivisorsPatch(null);
+          } else {
+            setTeamPatch(prev => {
+              const next = { ...prev };
+              const mine = next[team];
+              if (mine) {
+                next[team] = {
+                  // 디자인어는 배율을 키우고, 그 밖의 **고른** 기술은 배율을 소모한다(짝 효과는 건드리지 않는다)
+                  pendingMultiplier: animal === 'mermaid' ? multiplierAfter : skillEv.pair ? mine.pendingMultiplier : 1,
+                  pendingExtraDraws: mine.pendingExtraDraws + extraDrawsQueued,
+                };
+              }
+              const cut = skillEv.oppMultiplierCut;
+              if (cut && next[opp]) next[opp] = { ...next[opp], pendingMultiplier: Math.max(1, next[opp].pendingMultiplier - cut) };
+              return next;
+            });
+          }
           const gs = gameStateRef.current;
           if (gs) {
             addEmoticon(team, gs.teams[team].playerIndex, emoticonFile(animal, 'happy'), at);
@@ -1229,6 +1297,8 @@ export function useAnimationQueue(
     scoreFlash,
     displayedExp,
     displayedHp,
+    displayedTeamPatch: teamPatch,
+    displayedDivisors: divisorsPatch,
     hpPulse,
     festivalFlash,
     festivalBurst,

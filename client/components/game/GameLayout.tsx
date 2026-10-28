@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
-import { canUseSkill, oneWellOpen, withDisplayedExp, withDisplayedHp } from '@/lib/skills';
+import { canUseSkill, oneWellOpen, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { EventHud } from './EventHud';
@@ -129,7 +129,9 @@ export function GameLayout({
   // 스킬 선택 패널에는 서버가 이미 반영한 진짜 경험치가 아니라, 카드가 팀 영역에 도착하는
   // 연출이 끝나야 비로소 보여주는 "화면상" 경험치를 기준으로 레벨/기댓값을 계산해 넘긴다 —
   // 그래야 "카드 도착 → 경험치 반영 → 레벨업"이라는 순서가 화면에서도 지켜진다.
-  const skillPreviewGameState = withDisplayedExp(gameState, skillPreviewTeam, animState.displayedExp[skillPreviewTeam]);
+  // 배율·추가 뽑기는 연출 전 값으로(기술 효과가 재생되는 순간에 바뀐다 — useAnimationQueue의 displayedTeamPatch)
+  const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedDivisors);
+  const skillPreviewGameState = withDisplayedExp(viewState, skillPreviewTeam, animState.displayedExp[skillPreviewTeam]);
 
   // 게임 템포가 늘어지지 않도록, 고를 수 있는 행동이 하나도 없으면 방에서 정한
   // noActionTimeSec 뒤에 "아무것도 하지 않음"이 자동으로 눌린 것처럼 처리한다(서버
@@ -195,7 +197,7 @@ export function GameLayout({
         <div className="play-frame">
           {/* ── 윗줄 왼쪽 · 오른쪽 — 팀별 동물 경험치 현황(요청 1) */}
           <div className="play-cell play-cell-exp-a">
-            <TeamPanel team="A" myTeam={myTeam} gameState={gameState} animState={animState} />
+            <TeamPanel team="A" myTeam={myTeam} gameState={viewState} animState={animState} />
           </div>
 
           {/* ── 윗줄 가운데 — 장소 선택과 카드(요청 2) */}
@@ -225,7 +227,7 @@ export function GameLayout({
           </div>
 
           <div className="play-cell play-cell-exp-b">
-            <TeamPanel team="B" myTeam={myTeam} gameState={gameState} animState={animState} />
+            <TeamPanel team="B" myTeam={myTeam} gameState={viewState} animState={animState} />
           </div>
 
           {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3) */}

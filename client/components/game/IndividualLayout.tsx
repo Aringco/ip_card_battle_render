@@ -3,7 +3,7 @@ import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS, emoteById } from 'shared';
 import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
 import type { ReceivedEmote } from '@/hooks/useWebSocket';
-import { finishingMove, previewSkill, withDisplayedExp } from '@/lib/skills';
+import { finishingMove, previewSkill, withDisplayedExp, withDisplayedTeams } from '@/lib/skills';
 import { isFinished, opponentOrder, sideColor, sideName } from '@/lib/individual';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
@@ -101,8 +101,10 @@ export function IndividualLayout({
   const focusSide: SideId = mySide ?? activeSide;
   // 기술 카드는 내 것을, 관전자는 지금 고르고 있는(없으면 지금 차례인) 사람의 것을 보여준다.
   const skillPreviewTeam = mySide ?? gameState.pendingChoice ?? activeSide;
+  // 배율·추가 뽑기는 연출 전 값으로(팀전 GameLayout과 같다 — useAnimationQueue의 displayedTeamPatch)
+  const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedDivisors);
   const skillPreviewGameState = withDisplayedExp(
-    gameState,
+    viewState,
     skillPreviewTeam,
     animState.displayedExp[skillPreviewTeam],
   );
@@ -204,7 +206,7 @@ export function IndividualLayout({
             칸의 자리는 CSS grid가 정한다. */}
         <div className="play-frame-css">
           <div className="ind-cell ind-cell-me">
-            <SelfPanel side={focusSide} mySide={mySide} gameState={gameState} animState={animState} />
+            <SelfPanel side={focusSide} mySide={mySide} gameState={viewState} animState={animState} />
             {canEmote && <EmotePicker onSend={onEmote} />}
           </div>
 
@@ -240,7 +242,7 @@ export function IndividualLayout({
           </div>
 
           <div className="ind-cell ind-cell-opp">
-            <OpponentList gameState={gameState} animState={animState} sides={opponents} />
+            <OpponentList gameState={viewState} animState={animState} sides={opponents} />
           </div>
 
           <div className="ind-cell ind-cell-hp">

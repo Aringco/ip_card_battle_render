@@ -49,6 +49,24 @@ export function withDisplayedHp(gameState: ClientGameState, displayedHp: Record<
   return { ...gameState, teams };
 }
 
+/**
+ * 배율·추가 뽑기·나눗셈도 화면상 값(useAnimationQueue의 displayedTeamPatch · displayedDivisors — 기술 효과 연출 전)으로 바꿔 끼운다.
+ * 팀 패널의 "×N"·"+N회" 스티커와 기술 카드 미리보기가 뽑기 연출이 끝나기 전에 바뀌지 않게 한다(2026-10-29).
+ * 가릴 것이 없으면 원래 객체를 그대로 돌려준다.
+ */
+export function withDisplayedTeams(
+  gameState: ClientGameState,
+  patch: Readonly<Record<SideId, { pendingMultiplier: number; pendingExtraDraws: number }>>,
+  divisors: Readonly<Record<SideId, number>> | null,
+): ClientGameState {
+  const sides = Object.keys(patch).filter(s => gameState.teams[s]);
+  if (sides.length === 0 && !divisors) return gameState;
+  const teams = { ...gameState.teams };
+  for (const side of sides) teams[side] = { ...teams[side], ...patch[side] };
+  const enhance = divisors && gameState.enhance ? { ...gameState.enhance, divisors: { ...divisors } } : gameState.enhance;
+  return { ...gameState, teams, enhance };
+}
+
 export function levelOf(gameState: ClientGameState, team: SideId, animal: Animal): number {
   return skillLevelFor(!!gameState.enhance, animal, gameState.teams[team].exp[animal]);
 }
