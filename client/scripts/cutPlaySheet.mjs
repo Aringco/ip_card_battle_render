@@ -177,19 +177,8 @@ const SHEETS = [
       { name: 'icon_hourglass', at: [800, 285, 960, 1316], resizeH: 256 },
     ],
   },
-  {
-    // 플레이 화면 **통짜 액자** — 칸막이가 그려져 있어 칸 10개가 한 그림 안에 있다.
-    //
-    // ⚠️ **9분할로 늘릴 수 없다.** 안쪽 칸막이가 늘어나는 가운데 영역에 들어 있어,
-    //    늘리면 칸막이 간격이 따로 논다. 상단 바와 같은 방식으로 **통째로 확대**하고
-    //    내용은 그림 좌표의 비율로 절대배치한다(globals.css의 `.play-frame` 절).
-    //    그래서 여기서 나오는 크기 1965×1000은 **CSS의 aspect-ratio와 짝**이다.
-    //    흰 배경 JPEG로 받아 칸 10개가 흰 판으로 채워져 있다 — holes로 전부 뚫는다.
-    src: 'play_frame.png',
-    pieces: [
-      { name: 'play_frame', at: [23, 32, 1965, 1000], holes: true },
-    ],
-  },
+  // 플레이 화면 **통짜 액자**(play_frame.webp)는 2026-10-30부터 여기서 만들지 않는다 — 새 그림(assets-src/play_frame_v2.png)을
+  // 예전 칸 자리에 맞춰 늘이는 `scripts/fitPlayFrame.mjs`가 만든다. 예전 원본(play_frame.png)을 여기서 다시 자르면 새 액자를 덮어쓴다.
 ];
 
 const isChecker = (r, g, b) => {
