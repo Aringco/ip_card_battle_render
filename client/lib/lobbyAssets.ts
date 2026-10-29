@@ -57,9 +57,9 @@ export const LOBBY_ASSETS = {
   panelSoloReinforce: '/lobby/single_play_reinforce.webp',
   panelMulti: '/lobby/panel_multi.webp',
   panelCreate: '/lobby/panel_create.webp',
-  /** 방 만들기 → 팀전 — 네모 탁자에 둘러앉은 네 동물(원본 1254² PNG는 client/assets-src/multi_team.png, 2026-10-30 team.png) */
+  /** 방 만들기 → 팀전 — 둥근 탁자에 둘씩 짝지어 앉은 네 동물(원본 1254² PNG는 client/assets-src/multi_team.png) */
   panelCreateTeam: '/lobby/multi_team.webp',
-  /** 방 만들기 → 개인전 — 둥근 탁자에 나란히 앉아 저마다 카드를 든 네 동물(원본은 client/assets-src/multi_individual.png, 2026-10-30 individuals.png) */
+  /** 방 만들기 → 개인전 — 네모 탁자의 네 변에 하나씩 앉아 저마다 카드를 든 네 동물(원본은 client/assets-src/multi_individual.png) */
   panelCreateIndividual: '/lobby/multi_individual.webp',
   panelJoin: '/lobby/panel_join.webp',
   /** 이벤트 방 참가하기 — 노을 진 호숫가 축제에서 네 동물이 춤추는 그림(원본 1254² PNG는 client/assets-src/panel_event.png) */

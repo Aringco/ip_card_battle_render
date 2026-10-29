@@ -33,10 +33,13 @@ function HoloCell({
   enabled,
   className,
   children,
+  shine = true,
 }: {
   enabled: boolean;
   className: string;
   children: React.ReactNode;
+  /** 사선 반사 띠(광택)를 그릴지 — [턴 마치기]는 기울기(입체 움직임)만 쓴다(2026-10-30 요청) */
+  shine?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
@@ -124,7 +127,7 @@ function HoloCell({
         <>
           {/* 카드 옆면(두께) — 카드 뒤에 깔린다 */}
           <span className="holo-edge" aria-hidden />
-          <span className="holo-shine" aria-hidden />
+          {shine && <span className="holo-shine" aria-hidden />}
         </>
       )}
     </div>
@@ -449,29 +452,19 @@ export function SkillChoiceBar({
       {/* 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
           다듬으려고) overflow-hidden이라 그 안에 두면 잘려 보인다 — 그래서 가이드는
           이 바깥의, 잘리지 않는 래퍼에 그린다(장소 타일에서 겪었던 것과 같은 문제). */}
-      {/* 턴 마치기도 기술 카드처럼 가리키면 기울고 광택이 지나간다(2026-10-30 요청) — 기술 카드가 "레벨이 있어 활성인가"로 켜듯,
-          이 칸은 언제나 활성이라 상대 차례에도 켠다(시연은 내내 잠겨 있어 끈다). 카드 강화 판에서는 다른 카드의 **Lv.Max와
-          같은** 빛(밝은 빛 · 무지개 · 금빛)을 입는다. */}
-      <HoloCell enabled={demoAllowed === null} className="relative">
+      {/* 턴 마치기도 기술 카드처럼 가리키면 기운다(2026-10-30 요청) — 기술 카드가 "레벨이 있어 활성인가"로 켜듯, 이 칸은 언제나
+          활성이라 상대 차례에도 켠다(시연은 내내 잠겨 있어 끈다). **입체 움직임만** 준다 — 광택 띠와 강화 판의 Lv.Max 빛(무지개 · 금빛)을
+          한 번 입혀 봤다가 같은 날 요청으로 걷었다(shine={false}). */}
+      <HoloCell enabled={demoAllowed === null} shine={false} className="relative">
         <button
           onClick={() => passable && onPass()}
           disabled={!passable}
           className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
             passable ? 'skill-choice-glow' : ''
           }`}
-          data-enh-level={enhance ? ENHANCE_MAX_LEVEL : undefined}
-          data-enh-gold={enhance ? '' : undefined}
-          style={enhance ? ({ ['--enh' as string]: '1', ['--gold' as string]: '1' } as React.CSSProperties) : undefined}
         >
           {/* 시연에서는 이 칸이 내내 잠겨 있으므로 함께 어둡게 둔다(위 주석과 같은 이유). */}
           <div className={`skill-choice-bg pass-panel-bg play-frame-inset absolute ${demoAllowed === null ? '' : 'skill-choice-bg-disabled'}`} />
-          {enhance && (
-            <>
-              <div className="enh-light play-frame-inset absolute" aria-hidden />
-              <div className="enh-rainbow play-frame-inset absolute" aria-hidden />
-              <div className="enh-gold play-frame-inset absolute" aria-hidden />
-            </>
-          )}
           <div className="skill-choice-dim play-frame-inset absolute" />
           <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
             <h3 className="skill-text-title skill-outline-text font-extrabold text-jungle-200">[턴 마치기]</h3>
