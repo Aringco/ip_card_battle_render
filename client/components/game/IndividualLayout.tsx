@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
-import { ANIMALS, emoteById } from 'shared';
+import { ANIMALS, emoteById, needsTarget } from 'shared';
 import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
 import type { ReceivedEmote } from '@/hooks/useWebSocket';
-import { finishingMove, previewSkill, withDisplayedExp, withDisplayedTeams } from '@/lib/skills';
+import { canUseSkill, finishingMove, levelOf, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { isFinished, opponentOrder, sideColor, sideName } from '@/lib/individual';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
@@ -22,6 +22,7 @@ import { IndividualPrompt } from './IndividualPrompt';
 import { SelfPanel } from './SelfPanel';
 import { OpponentList } from './OpponentList';
 import { TargetPicker } from './TargetPicker';
+import type { TargetSkill } from './TargetPicker';
 import { EmotePicker } from './EmotePicker';
 import { GameBoard } from './GameBoard';
 import { SheepProgressBar } from './SheepProgressBar';
@@ -108,48 +109,52 @@ export function IndividualLayout({
     skillPreviewTeam,
     animState.displayedExp[skillPreviewTeam],
   );
-  const noEligible = isMyChoiceTurn && ANIMALS.every(a => previewSkill(skillPreviewGameState, skillPreviewTeam, a).level === 0);
+  // 강화 방은 쿨타임까지 본다 — canUseSkill이 레벨 · 쿨타임을 함께 본다(서버 eligibleAnimals와 같은 규칙, 팀전 GameLayout과 같다)
+  const noEligible = isMyChoiceTurn && !ANIMALS.some(a => canUseSkill(skillPreviewGameState, skillPreviewTeam, a));
+  // 체력도 연출 전 값으로 — 기술 효과 · 짝 효과 · 출혈/지속 회복이 재생되는 순간에 움직인다(useAnimationQueue의 displayedHp)
+  const hpViewState = withDisplayedHp(viewState, animState.displayedHp);
 
   // 화면에 행동 선택 단계가 실제로 떠 있는 순간(서버는 뽑기 직후 pendingChoice를 세우지만 화면은 정산이 끝나야 뜬다).
   const choiceStageVisible = gameState.pendingChoice !== null && !animState.isSettling;
   const boardTurnGlow = isMyPlayerTurn && !choiceStageVisible;
   const myTeamChoosing = !observer && choiceStageVisible && gameState.pendingChoice === mySide;
 
-  // ─ 특허랑이 상대 선택 ─
-  const [picking, setPicking] = useState(false);
+  // ─ 상대 선택 — 특허랑이, 그리고 강화 방의 Lv.6+ 디자인어(shared의 needsTarget) ─
+  const [picking, setPicking] = useState<TargetSkill | null>(null);
   const targets = useMemo(
     () => opponentOrder(gameState, mySide, mySide).filter(s => !isFinished(gameState, s)),
     [gameState, mySide],
   );
   // 차례가 끝났거나(시간초과 등) 내 선택 차례가 아니게 되면 열어 둘 이유가 없다.
   useEffect(() => {
-    if (!isMyChoiceTurn) setPicking(false);
+    if (!isMyChoiceTurn) setPicking(null);
   }, [isMyChoiceTurn]);
   // ─ 단축키 — 장소 1~4 · 기술 Q·W·E·R · 턴 마치기 스페이스/T(모든 판 공통 — lib/useGameHotkeys.ts). 감정표현 I·A·S·D·F는 EmotePicker.
   // 특허랑이 대상 고르기 중에는 받지 않는다(그 화면은 숫자 키를 따로 쓴다).
-  useGameHotkeys(paused || picking);
+  useGameHotkeys(paused || picking !== null);
 
   const handleChoose = useCallback(
     (animal: Animal) => {
-      if (animal === 'tiger') {
+      const level = mySide ? levelOf(skillPreviewGameState, mySide, animal) : 0;
+      if ((animal === 'tiger' || animal === 'mermaid') && needsTarget(gameState, animal, level)) {
         // 1:1 판(시작 인원 2명)은 상대가 하나뿐이라 고를 것이 없다 — 화면을 띄우지 않고 그 사람을 바로 지목한다.
         if (gameState.turnOrder.length === 2 && targets.length === 1) {
-          onChooseSkill('tiger', targets[0]);
+          onChooseSkill(animal, targets[0]);
           return;
         }
-        if (targets.length > 0) setPicking(true);
+        if (targets.length > 0) setPicking(animal);
         return;
       }
       onChooseSkill(animal);
     },
-    [targets, gameState.turnOrder.length, onChooseSkill],
+    [targets, gameState, mySide, skillPreviewGameState, onChooseSkill],
   );
   const handlePick = useCallback(
     (target: SideId) => {
-      setPicking(false);
-      onChooseSkill('tiger', target);
+      if (picking) onChooseSkill(picking, target);
+      setPicking(null);
     },
-    [onChooseSkill],
+    [picking, onChooseSkill],
   );
 
   // 고를 수 있는 기술이 하나도 없으면 방의 noActionTimeSec 뒤에 "아무것도 하지 않음"이 자동으로 눌린 것처럼
@@ -181,6 +186,8 @@ export function IndividualLayout({
   return (
     <div
       className={`h-screen play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
+      // 개인전 '강화' 방 — 카드·장소 라벨·짝 합계의 숫자를 감춘다(모든 카드가 1이다 — globals.css의 [data-enhance], 팀전 GameLayout과 같다)
+      data-enhance={gameState.enhance ? '' : undefined}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
     >
       <LeafDecoration position="tl" size={64} offsetY={12} />
@@ -242,15 +249,16 @@ export function IndividualLayout({
           </div>
 
           <div className="ind-cell ind-cell-opp">
-            <OpponentList gameState={viewState} animState={animState} sides={opponents} />
+            <OpponentList gameState={hpViewState} animState={animState} sides={opponents} />
           </div>
 
           <div className="ind-cell ind-cell-hp">
             <TeamTotalPanel
               team={focusSide}
-              gameState={gameState}
+              gameState={hpViewState}
               myTeam={mySide ?? focusSide}
               pulse={animState.hpPulse.get(focusSide) ?? null}
+              dotPulse={animState.dotPulse.get(focusSide) ?? null}
             />
           </div>
 
@@ -262,7 +270,7 @@ export function IndividualLayout({
               spectatorGuideTeam={null}
               myTeamChoosing={myTeamChoosing}
               demoAllowed={null}
-              hideGuide={picking}
+              hideGuide={picking !== null}
               onChoose={handleChoose}
               onPass={onPassSkill}
             />
@@ -309,13 +317,14 @@ export function IndividualLayout({
 
       {picking && isMyChoiceTurn && (
         <TargetPicker
-          gameState={gameState}
+          gameState={hpViewState}
+          animal={picking}
           targets={targets}
-          lethalTargets={mySide ? finishingMove(skillPreviewGameState, mySide, 'tiger').targets : []}
+          lethalTargets={mySide && picking === 'tiger' ? finishingMove(skillPreviewGameState, mySide, 'tiger').targets : []}
           turnDeadline={turnDeadline}
           paused={paused}
           onPick={handlePick}
-          onCancel={() => setPicking(false)}
+          onCancel={() => setPicking(null)}
         />
       )}
     </div>

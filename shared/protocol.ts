@@ -24,7 +24,8 @@ export type ClientMessage =
   //
   // mode는 방의 종류다 — 생략하면 팀전('team', 옛 클라이언트 호환). 개인전('individual')에서는 teamName/
   // otherTeamName을 쓰지 않고, team은 'player'(플레이어석) 또는 'spectator'만 의미가 있다.
-  | { type: 'createRoom'; nickname: string; team: Seat; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings>; mode?: GameMode }
+  // enhance는 개인전 방에서만 쓴다 — '강화' 방(혼자 놀기 카드 강화의 규칙을 개인전에 얹는다, 2026-10-30). 팀전 방에서는 무시한다.
+  | { type: 'createRoom'; nickname: string; team: Seat; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings>; mode?: GameMode; enhance?: boolean }
   | { type: 'joinRoom'; roomId: string; nickname: string; team: Seat; teamName?: string }
   | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings>; enhance?: boolean } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전. enhance면 '카드 강화' 판(shared/enhance.ts)
   // ready는 토글이다 — 값을 생략하면 "준비 완료"로 본다(옛 클라이언트 호환).
@@ -107,6 +108,7 @@ export type ServerMessage =
       settings: GameSettings;
       hostMemberId: string | null;
       mode: GameMode; // 방이 살아 있는 동안 바뀌지 않는다
+      enhance: boolean; // 개인전 '강화' 방인지(규칙 입력 범위 · 대기실 표시) — 이것도 바뀌지 않는다
     }
   | { type: 'kicked'; message: string }   // 방장에게 추방당해 방에서 나갔음
   | { type: 'leftRoom' }                  // 스스로 나가기(leaveRoom) 완료

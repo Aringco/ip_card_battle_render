@@ -203,11 +203,14 @@ export function GameRulesInputs({
   settings,
   onChange,
   mode = 'team',
+  limits = SETTINGS_LIMITS,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
   /** 개인전이면 선 플레이어 줄이 없다(차례 순서는 시작할 때 섞어서 정한다). */
   mode?: GameMode;
+  /** 입력 범위 — 개인전 강화 방은 ENHANCE_SETTINGS_LIMITS(목표 점수 상한 2500). 서버도 같은 범위로 다시 자른다. */
+  limits?: SettingsLimits;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -237,7 +240,7 @@ export function GameRulesInputs({
       )}
       <div className="flex flex-col gap-3">
         {RULE_FIELDS.map(({ key, title, suffix, hint }) => {
-          const { min, max } = SETTINGS_LIMITS[key];
+          const { min, max } = limits[key];
           return (
             <div key={key} className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2 text-lg">
@@ -253,7 +256,7 @@ export function GameRulesInputs({
                     const v = Number(e.target.value);
                     onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
                   }}
-                  onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value) })}
+                  onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
                   className="input-base input-rule"
                 />
                 <span className="text-board-muted w-8 shrink-0">{suffix}</span>
@@ -272,10 +275,13 @@ export function RuleSummary({
   settings,
   teamNames,
   mode = 'team',
+  enhance = false,
 }: {
   settings: GameSettings;
   teamNames: Record<Team, string | null>;
   mode?: GameMode;
+  /** 개인전 '강화' 방 — 규칙이 다르다는 것을 맨 앞에 알린다(턴 제한도 없다) */
+  enhance?: boolean;
 }) {
   const individual = mode === 'individual';
   const firstTeamLabel =
@@ -289,6 +295,11 @@ export function RuleSummary({
   // 화면 폭에 따라 마지막 한 항목만 다음 줄로 넘어가 어정쩡하게 보인다.
   return (
     <div className="board-panel p-4 text-base text-board-muted flex flex-col gap-1.5">
+      {enhance && (
+        <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center font-semibold text-board-ink">
+          <span>⚒️ 카드 강화 — 모든 카드가 Lv.1부터 · 턴 제한 없음</span>
+        </div>
+      )}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">
         {individual ? (
           // 개인전은 선·후공이 없다 — 차례 순서는 시작할 때 한 번 섞어서 정한다.

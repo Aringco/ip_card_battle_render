@@ -13,7 +13,22 @@ import {
 import type { GameEvent, GameSettings, GameState, PlayerColorId, SettingsLimits, SideId, Team, TeamState } from 'shared';
 import { dealOpeningSharedCards, initStacks } from './places';
 import type { RNG } from './places';
-import { rankByHpAndEnd } from './ranking';
+import { rankByHpAndEnd, resolveRanks } from './ranking';
+
+/** 체력이 움직인 뒤의 승패 판정 — 팀전은 즉시 승패(checkKnockout), 개인전은 순위(resolveRanks). */
+export function judgeHp(state: GameState): GameEvent[] {
+  return state.mode === 'individual' ? resolveRanks(state) : checkKnockout(state);
+}
+
+/**
+ * 카드 강화 판의 한 차례 기술 장수 — 15턴마다 하나씩 늘어 최대 3장(enhanceSkillsPerTurn). 개인전은 시작 인원 5명 이상이면
+ * 처음부터 2장이므로 둘 중 큰 쪽이다(더하면 3장 상한에 너무 일찍 닿는다).
+ */
+export function enhanceSkillsOf(state: GameState): 1 | 2 | 3 {
+  const byTurn = enhanceSkillsPerTurn(state.turn);
+  const base = state.mode === 'individual' && state.turnOrder.length >= INDIVIDUAL_TWO_SKILLS_FROM ? 2 : 1;
+  return Math.max(byTurn, base) as 1 | 2 | 3;
+}
 
 /**
  * 시작 체력 = 목표 점수 그 자체다 — 목표 점수만큼 "더 벌거나 잃어야" 끝나는 게임이므로,
@@ -103,6 +118,15 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 판을 끝내므로 정상 경로에서는 오지 않지만, 방어적으로 아무것도 하지 않는다.
   if (nextTeam === null) return events;
 
+  // 카드 강화 — 방금 차례를 마친 편의 지속 효과(출혈 → 회복). **기술을 모두 쓴 뒤**, 차례가 넘어가기 전이다(2026-10-30 요청 —
+  // 그 전에는 다음 차례가 **시작될 때** 들어, 상대가 기술을 쓰고 넘긴 순간 내 출혈이 내 차례를 열기도 전에 나를 0으로 만들었다).
+  // 체력이 움직이므로 그 자리에서 승패를 보고, 끝났으면 차례를 넘기지 않는다. 순위가 정해진 사람(개인전 항복)은 건너뛴다.
+  if (state.enhance && !state.teams[currentTeam].finish) {
+    events.push(...tickEnhanceStatus(state, currentTeam));
+    events.push(...judgeHp(state));
+    if (state.phase !== 'playing') return events;
+  }
+
   // 차례가 넘어갈 때마다 "이번 차례에 쓴 기술 수"를 비운다(개인전의 기술 2장 규칙).
   state.skillsUsedThisTurn = 0;
 
@@ -127,7 +151,7 @@ export function advanceTurn(state: GameState): GameEvent[] {
   if (roundCompleted) {
     state.turn++;
     // 카드 강화 판 — 15턴마다 한 차례에 쓰는 기술이 하나씩 는다(최대 3장). 턴이 오르는 이 한 곳에서만 정한다.
-    if (state.enhance) state.skillsPerTurn = enhanceSkillsPerTurn(state.turn);
+    if (state.enhance) state.skillsPerTurn = enhanceSkillsOf(state);
 
     // settings.festivalTurn 도달 시점부터 축제가 시작된다. festivalTurn이 MAX_TURN보다
     // 크게 설정돼 있으면(입력 자체는 막지 않는다 — SETTINGS_LIMITS 참고) 그 턴엔 아예
@@ -174,18 +198,12 @@ export function advanceTurn(state: GameState): GameEvent[] {
   state.activeTeam = nextTeam;
   state.activePlayerIndex = state.teams[nextTeam].playerIndex;
 
-  // 카드 강화 — 차례가 시작된 편의 지속 효과(출혈 → 회복). 체력이 움직이므로 그 자리에서 승패를 본다.
-  if (state.enhance) {
-    events.push(...tickEnhanceStatus(state, nextTeam));
-    events.push(...checkKnockout(state));
-  }
-
   return events;
 }
 
 /**
- * 카드 강화 — 차례가 시작된 편의 출혈(상대 특허랑이 Lv.9+)과 지속 회복(내 상표토끼 Lv.9+)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
- * **출혈이 먼저다**(요청 원문 "출혈 > 회복 순") — 출혈로 체력이 0이 되면 회복은 들지 않고 그대로 진다(advanceTurn의 checkKnockout).
+ * 카드 강화 — 차례를 마친 편의 출혈(상대 특허랑이 Lv.9+)과 지속 회복(내 상표토끼 Lv.9+)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
+ * **출혈이 먼저다**(요청 원문 "출혈 > 회복 순") — 출혈로 체력이 0이 되면 회복은 들지 않고 그대로 진다(advanceTurn의 judgeHp).
  * 양은 걸 때 정해 둔 한 턴의 양 그대로다(배율 무관).
  */
 function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
@@ -303,8 +321,10 @@ export function initIndividualGame(
   players: Array<{ side: SideId; nickname: string; color: PlayerColorId }>,
   rng: RNG = Math.random,
   settings?: Partial<GameSettings>,
+  /** 개인전 '강화' 방(2026-10-30) — 혼자 놀기 카드 강화의 규칙을 그대로 얹는다(attachEnhance). 목표 점수 상한도 그 판의 것(2500)이다. */
+  enhance = false,
 ): GameState {
-  const resolvedSettings = clampSettings(settings);
+  const resolvedSettings = clampSettings(settings, enhance ? ENHANCE_SETTINGS_LIMITS : undefined);
 
   const turnOrder = players.map(p => p.side);
   for (let i = turnOrder.length - 1; i > 0; i--) { // Fisher–Yates
@@ -323,7 +343,7 @@ export function initIndividualGame(
   }
 
   const startingTeam = turnOrder[0];
-  return {
+  const state: GameState = {
     phase: 'playing',
     turn: 1,
     activeTeam: startingTeam,
@@ -343,6 +363,11 @@ export function initIndividualGame(
     skillsUsedThisTurn: 0,
     ranks: {},
   };
+  if (enhance) {
+    attachEnhance(state);
+    state.skillsPerTurn = enhanceSkillsOf(state);
+  }
+  return state;
 }
 
 /**
@@ -359,17 +384,25 @@ export function initEnhanceGame(
   settings?: Partial<GameSettings>,
 ): GameState {
   const state = initGame(teamAMembers, teamBMembers, rng, settings, ENHANCE_SETTINGS_LIMITS);
+  attachEnhance(state);
+  return state;
+}
+
+/**
+ * 강화 규칙을 이미 만든 판에 얹는다 — 혼자 놀기(팀전 1:1)와 개인전 강화 방이 함께 쓴다.
+ * 시작 공유 카드를 숫자 1로 바꾸고(이 판의 카드는 모두 1), 편마다 쿨타임 0 · 나눗셈 1 · 지속 효과 없음으로 시작한다.
+ */
+function attachEnhance(state: GameState): void {
   for (const animal of Object.keys(state.stacks) as Array<keyof GameState['stacks']>) {
     for (const card of state.stacks[animal]) card.num = 1;
   }
-  const zero = () => ({ sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 });
-  const dot = () => ({ turns: 0, amount: 0 });
+  const sides = Object.keys(state.teams);
+  const each = <T>(make: () => T): Record<SideId, T> => Object.fromEntries(sides.map(s => [s, make()]));
   state.enhance = {
-    cooldowns: { A: zero(), B: zero() },
-    divisors: { A: 1, B: 1 },
-    divisorTurns: { A: 0, B: 0 },
-    bleed: { A: dot(), B: dot() },
-    regen: { A: dot(), B: dot() },
+    cooldowns: each(() => ({ sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 })),
+    divisors: each(() => 1),
+    divisorTurns: each(() => 0),
+    bleed: each(() => ({ turns: 0, amount: 0 })),
+    regen: each(() => ({ turns: 0, amount: 0 })),
   };
-  return state;
 }

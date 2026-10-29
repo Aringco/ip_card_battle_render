@@ -41,7 +41,7 @@ async function measure(page, label) {
       return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
     };
     let openForm = null;
-    for (const sel of ['.stage-form-solo', '.stage-form-enhance', '.stage-form-create', '.stage-form-join', '.stage-form-event']) {
+    for (const sel of ['.stage-form-solo', '.stage-form-enhance', '.stage-form-create', '.stage-form-individual', '.stage-form-join', '.stage-form-event']) {
       const el = q(sel);
       if (el && getComputedStyle(el).opacity === '1') openForm = el;
     }
@@ -125,11 +125,11 @@ async function pickSpectatorSeat(page, formSel) {
     formSel);
 }
 
-/** 방 만들기 폼의 [개인전] 토글을 누른다. 눌렸는지(aria-pressed)까지 확인한다. */
-async function pickIndividualMode(page) {
-  for (const b of await page.$$('.stage-form-create .mode-toggle-button')) {
+/** 개인전 방 만들기 폼의 [일반]/[강화] 토글을 누른다(2026-10-30 — 그 전에는 방 만들기 폼의 [팀전]/[개인전]). 눌렸는지(aria-pressed)까지 확인한다. */
+async function pickIndividualKind(page, label) {
+  for (const b of await page.$$('.stage-form-individual .mode-toggle-button')) {
     const t = await page.evaluate(el => el.textContent, b);
-    if (t && t.includes('개인전')) {
+    if (t && t.includes(label)) {
       await b.click();
       return page.evaluate(el => el.getAttribute('aria-pressed') === 'true', b);
     }
@@ -204,6 +204,8 @@ for (const vp of VIEWPORTS) {
   await page.click('.stage-panel-multi');             await sleep(SETTLE);
   results.push(await measure(page, `multi@${tag}`));              await shot('3-multi');
   await page.click('.stage-col-create > .stage-panel'); await sleep(SETTLE);
+  results.push(await measure(page, `create-pick@${tag}`));        await shot('4a0-create-pick');
+  await page.click('.stage-col-create-team > .stage-panel'); await sleep(SETTLE);
   results.push(await measure(page, `create@${tag}`));             await shot('4a-create');
   await openRules(page, '.stage-form-create');        await sleep(500);
   results.push(await measure(page, `create+rules@${tag}`));       await shot('4-create-rules');
@@ -229,11 +231,14 @@ for (const vp of VIEWPORTS) {
   await sleep(1000);
   await page.click('.stage-panel-multi');             await sleep(SETTLE);
   await page.click('.stage-col-create > .stage-panel'); await sleep(SETTLE);
-  const individualPicked = await pickIndividualMode(page); await sleep(400);
+  await page.click('.stage-col-create-individual > .stage-panel'); await sleep(SETTLE);
   const ind = await measure(page, `individual@${tag}`);
-  ind.note = individualPicked ? '' : '*** 개인전 토글 못 찾음';
   results.push(ind);                                              await shot('6b-create-individual');
-  await openRules(page, '.stage-form-create');        await sleep(500);
+  const enhancePicked = await pickIndividualKind(page, '강화'); await sleep(400);
+  const indEnh = await measure(page, `individual-enhance@${tag}`);
+  indEnh.note = enhancePicked ? '' : '*** 강화 토글 못 찾음';
+  results.push(indEnh);                                           await shot('6b2-create-individual-enhance');
+  await openRules(page, '.stage-form-individual');    await sleep(500);
   results.push(await measure(page, `individual+rules@${tag}`));    await shot('6c-create-individual-rules');
 
   // 초대 링크 **없이** 연 참가 폼 — 평소에 보게 되는 화면이다

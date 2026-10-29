@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { GameMode, GameSettings, Seat } from 'shared';
+import type { GameSettings, Seat } from 'shared';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { ModePanel } from './ModePanel';
 import { SoloForm } from './SoloForm';
 import { EnhanceForm } from './EnhanceForm';
 import { CreateRoomForm } from './CreateRoomForm';
+import { IndividualRoomForm } from './IndividualRoomForm';
+import type { IndividualKind } from './IndividualRoomForm';
 import { JoinRoomForm } from './JoinRoomForm';
 import { EventForm } from './EventForm';
 import type { EventFormProps } from './EventForm';
@@ -14,8 +16,12 @@ import type { EventFormProps } from './EventForm';
 /**
  * 로비 단계. 혼자 놀기도 다같이 놀기처럼 두 갈래다 — 'solo'는 **고르는 단계**(일반 모드 · 강화 모드 두 패널),
  * 'soloNormal'·'soloEnhance'가 폼이 열린 단계다(2026-10-28 — 그 전에는 'solo'가 곧 폼이었다).
+ * 방 만들기도 같다 — 'create'는 **고르는 단계**(팀전 · 개인전 두 패널), 'createTeam'·'createIndividual'이 폼이다(2026-10-30 —
+ * 그 전에는 'create'가 곧 폼이었고 방 종류는 폼 제목 줄의 토글로 골랐다).
  */
-export type Stage = 'home' | 'solo' | 'soloNormal' | 'soloEnhance' | 'multi' | 'create' | 'join' | 'event';
+export type Stage =
+  | 'home' | 'solo' | 'soloNormal' | 'soloEnhance'
+  | 'multi' | 'create' | 'createTeam' | 'createIndividual' | 'join' | 'event';
 
 /** 뒤로가기 한 단계 — 폼은 고르는 단계(solo · multi)로, 고르는 단계는 home으로. */
 export const BACK_OF: Record<Exclude<Stage, 'home'>, Stage> = {
@@ -24,6 +30,8 @@ export const BACK_OF: Record<Exclude<Stage, 'home'>, Stage> = {
   soloEnhance: 'solo',
   multi: 'home',
   create: 'multi',
+  createTeam: 'create',
+  createIndividual: 'create',
   join: 'multi',
   event: 'multi',
 };
@@ -36,9 +44,9 @@ export interface LobbyStageProps {
   blocked: boolean;
   onGo: (stage: Stage) => void;
 
-  /** 방 만들기의 방 종류(팀전/개인전) */
-  roomMode: GameMode;
-  onRoomMode: (m: GameMode) => void;
+  /** 개인전 방의 규칙 — 일반 / 강화(혼자 놀기 카드 강화의 규칙) */
+  individualKind: IndividualKind;
+  onIndividualKind: (k: IndividualKind) => void;
   nickname: string;
   onNickname: (v: string) => void;
   /** 닉네임을 비워둔 채 시작하는 사람에게 그대로 쓰이는 무작위 이름(placeholder에도 보인다) */
@@ -62,13 +70,14 @@ export interface LobbyStageProps {
   arrivedByInvite: boolean;
   settings: GameSettings;
   onSettings: (next: GameSettings) => void;
-  /** 혼자 놀기 → 강화 모드의 규칙(shared/enhance.ts — 기본값이 일반 모드와 다르다) */
+  /** 강화 규칙(shared/enhance.ts — 기본값이 일반 모드와 다르다) — 혼자 놀기 → 강화 모드와 개인전 강화 방이 함께 쓴다 */
   enhanceSettings: GameSettings;
   onEnhanceSettings: (next: GameSettings) => void;
 
   onStartSolo: () => void;
   onStartEnhance: () => void;
-  onCreateRoom: () => void;
+  onCreateTeamRoom: () => void;
+  onCreateIndividualRoom: () => void;
   onJoinRoom: () => void;
 
   /** 이벤트 방 참가하기 폼에 넘길 값 — page.tsx가 모아 준다(EVENT_MODE_ROADMAP.md) */
@@ -92,6 +101,9 @@ export function LobbyStage(props: LobbyStageProps) {
   const soloNormalPanelRef = useRef<HTMLButtonElement>(null);
   const soloEnhancePanelRef = useRef<HTMLButtonElement>(null);
   const createFirstRef = useRef<HTMLInputElement>(null);
+  const individualFirstRef = useRef<HTMLInputElement>(null);
+  const createTeamPanelRef = useRef<HTMLButtonElement>(null);
+  const createIndividualPanelRef = useRef<HTMLButtonElement>(null);
   const joinFirstRef = useRef<HTMLInputElement>(null);
   const eventFirstRef = useRef<HTMLInputElement>(null);
   const soloPanelRef = useRef<HTMLButtonElement>(null);
@@ -116,7 +128,8 @@ export function LobbyStage(props: LobbyStageProps) {
     const formTarget =
       stage === 'soloNormal' ? soloFirstRef :
       stage === 'soloEnhance' ? enhanceFirstRef :
-      stage === 'create' ? createFirstRef :
+      stage === 'createTeam' ? createFirstRef :
+      stage === 'createIndividual' ? individualFirstRef :
       stage === 'join' ? joinFirstRef :
       stage === 'event' ? eventFirstRef : null;
 
@@ -130,6 +143,8 @@ export function LobbyStage(props: LobbyStageProps) {
       from === 'soloNormal' ? soloNormalPanelRef :
       from === 'soloEnhance' ? soloEnhancePanelRef :
       from === 'solo' ? soloPanelRef :
+      from === 'createTeam' ? createTeamPanelRef :
+      from === 'createIndividual' ? createIndividualPanelRef :
       from === 'create' ? createPanelRef :
       from === 'join' ? joinPanelRef :
       from === 'event' ? eventPanelRef :
@@ -141,7 +156,8 @@ export function LobbyStage(props: LobbyStageProps) {
     }
   }, [stage]);
 
-  const inMulti = stage === 'multi' || stage === 'create' || stage === 'join' || stage === 'event';
+  const inCreate = stage === 'create' || stage === 'createTeam' || stage === 'createIndividual';
+  const inMulti = stage === 'multi' || inCreate || stage === 'join' || stage === 'event';
   const inSolo = stage === 'solo' || stage === 'soloNormal' || stage === 'soloEnhance';
 
   return (
@@ -233,7 +249,7 @@ export function LobbyStage(props: LobbyStageProps) {
           <section className="stage-col stage-col-create" inert={stage === 'join' || stage === 'event'}>
             <ModePanel
               panelRef={createPanelRef}
-              className="stage-panel"
+              className="stage-panel stage-panel-create"
               tone="create"
               artSrc={LOBBY_ASSETS.panelCreate}
               title="방 만들기"
@@ -241,31 +257,74 @@ export function LobbyStage(props: LobbyStageProps) {
               disabled={blocked}
               onClick={() => onGo('create')}
             />
-            <div className="stage-form stage-form-create" inert={stage !== 'create'}>
-              <CreateRoomForm
-                firstFieldRef={createFirstRef}
-                mode={props.roomMode}
-                onMode={props.onRoomMode}
-                nickname={props.nickname}
-                onNickname={props.onNickname}
-                nicknameHint={props.nicknameHint}
-                team={props.team}
-                onTeam={props.onTeam}
-                spectatorSeat={props.spectatorSeat}
-                teamName={props.teamName}
-                onTeamName={props.onTeamName}
-                otherTeamName={props.otherTeamName}
-                onOtherTeamName={props.onOtherTeamName}
-                teamNamesClash={props.teamNamesClash}
-                settings={props.settings}
-                onSettings={props.onSettings}
-                canSubmit={!blocked && props.canSubmitName && !props.teamNamesClash}
-                onSubmit={props.onCreateRoom}
-              />
+
+            {/* 방 만들기 패널 위에 겹쳐 있다가 드러나는 2열(팀전 · 개인전) — 혼자 놀기의 .solo-inner와 같은 구조다 */}
+            <div className="create-inner" inert={!inCreate}>
+              <section className="stage-col stage-col-create-team" inert={stage === 'createIndividual'}>
+                <ModePanel
+                  panelRef={createTeamPanelRef}
+                  className="stage-panel"
+                  tone="team"
+                  artSrc={LOBBY_ASSETS.panelCreateTeam}
+                  title="팀전"
+                  subtitle="두 팀으로 나뉘어 함께 겨뤄요"
+                  disabled={blocked}
+                  onClick={() => onGo('createTeam')}
+                />
+                <div className="stage-form stage-form-create" inert={stage !== 'createTeam'}>
+                  <CreateRoomForm
+                    firstFieldRef={createFirstRef}
+                    nickname={props.nickname}
+                    onNickname={props.onNickname}
+                    nicknameHint={props.nicknameHint}
+                    team={props.team}
+                    onTeam={props.onTeam}
+                    spectatorSeat={props.spectatorSeat}
+                    teamName={props.teamName}
+                    onTeamName={props.onTeamName}
+                    otherTeamName={props.otherTeamName}
+                    onOtherTeamName={props.onOtherTeamName}
+                    teamNamesClash={props.teamNamesClash}
+                    settings={props.settings}
+                    onSettings={props.onSettings}
+                    canSubmit={!blocked && props.canSubmitName && !props.teamNamesClash}
+                    onSubmit={props.onCreateTeamRoom}
+                  />
+                </div>
+              </section>
+
+              <section className="stage-col stage-col-create-individual" inert={stage === 'createTeam'}>
+                <ModePanel
+                  panelRef={createIndividualPanelRef}
+                  className="stage-panel"
+                  tone="individual"
+                  artSrc={LOBBY_ASSETS.panelCreateIndividual}
+                  title="개인전"
+                  subtitle="최대 8명이 각자 겨뤄 순위를 매겨요"
+                  disabled={blocked}
+                  onClick={() => onGo('createIndividual')}
+                />
+                <div className="stage-form stage-form-individual" inert={stage !== 'createIndividual'}>
+                  <IndividualRoomForm
+                    firstFieldRef={individualFirstRef}
+                    kind={props.individualKind}
+                    onKind={props.onIndividualKind}
+                    nickname={props.nickname}
+                    onNickname={props.onNickname}
+                    nicknameHint={props.nicknameHint}
+                    settings={props.settings}
+                    onSettings={props.onSettings}
+                    enhanceSettings={props.enhanceSettings}
+                    onEnhanceSettings={props.onEnhanceSettings}
+                    canSubmit={!blocked && props.canSubmitName}
+                    onSubmit={props.onCreateIndividualRoom}
+                  />
+                </div>
+              </section>
             </div>
           </section>
 
-          <section className="stage-col stage-col-join" inert={stage === 'create' || stage === 'event'}>
+          <section className="stage-col stage-col-join" inert={inCreate || stage === 'event'}>
             <ModePanel
               panelRef={joinPanelRef}
               className="stage-panel"
@@ -295,7 +354,7 @@ export function LobbyStage(props: LobbyStageProps) {
           </section>
 
           {/* 세 번째 열 — 이벤트 방 참가하기(EVENT_MODE_ROADMAP.md §2.1). 오른쪽 끝이라 다른 열을 고르면 오른쪽으로 밀려난다. */}
-          <section className="stage-col stage-col-event" inert={stage === 'create' || stage === 'join'}>
+          <section className="stage-col stage-col-event" inert={inCreate || stage === 'join'}>
             <ModePanel
               panelRef={eventPanelRef}
               className="stage-panel"

@@ -117,6 +117,8 @@ export const IMAGE_FILES: string[] = [
   "/lobby/loading_bg_2.webp",
   "/lobby/loading_bg_3.webp",
   "/lobby/logo.png",
+  "/lobby/multi_individual.webp",
+  "/lobby/multi_team.webp",
   "/lobby/panel_create.webp",
   "/lobby/panel_event.webp",
   "/lobby/panel_join.webp",

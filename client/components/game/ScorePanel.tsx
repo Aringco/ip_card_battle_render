@@ -78,14 +78,16 @@ function AnimalTable({
   // 옅게 다른 색으로 채워, 얼굴/경험치와 시각적으로 확실히 구분되는 하나의 구역처럼 보이게 한다.
   const levelBadge = (
     <div className="exp-row-lv self-stretch shrink-0 flex flex-col items-center justify-center gap-0 bg-jungle-100 rounded-md">
-      {/* 카드 강화의 마지막 단계는 숫자 대신 "Max" — 칸 폭을 넘지 않게 글자를 줄인다. 별도 배수가 붙으면 "Max / ×N" */}
-      <span className="exp-row-lv-cap font-bold text-jungle-500 leading-none">{isMax && over > 1 ? 'Max' : 'Lv.'}</span>
-      <span
-        className={`exp-row-lv-num font-black leading-none tabular-nums ${isMax && over > 1 ? 'text-orange-500' : 'text-jungle-700'}`}
-        style={isMax ? { fontSize: '0.55em' } : undefined}
-      >
-        {isMax ? (over > 1 ? `×${over}` : 'Max') : level}
+      {/* 카드 강화의 마지막 단계는 숫자 대신 "Max" — 숫자와 거의 같은 크기로 쓴다(2026-10-30 요청 — 예전에는 칸 폭이 걱정돼
+          0.55em으로 줄였더니 너무 작았다). 별도 배수(×N)는 그 **아래** 한 줄에 따로 쓴다 — 예전에는 "Max"를 작은 머리글로 밀어내고
+          ×N이 숫자 자리를 차지했다. */}
+      <span className="exp-row-lv-cap font-bold text-jungle-500 leading-none">Lv.</span>
+      <span className={`exp-row-lv-num font-black leading-none tabular-nums text-jungle-700 ${isMax ? 'exp-row-lv-max' : ''}`}>
+        {isMax ? 'Max' : level}
       </span>
+      {isMax && over > 1 && (
+        <span className="exp-row-lv-over font-black leading-none tabular-nums text-orange-500">×{over}</span>
+      )}
     </div>
   );
 

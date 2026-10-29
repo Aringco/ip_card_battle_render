@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { GameMode, GameSettings, LobbyChatMessage, LobbyPlayer, PlayerColorId, Seat, Team } from 'shared';
 import {
+  ENHANCE_SETTINGS_LIMITS,
   INDIVIDUAL_MAX_PLAYERS,
   INDIVIDUAL_MIN_PLAYERS,
   INDIVIDUAL_SEATS,
@@ -63,6 +64,8 @@ export interface WaitingRoomProps {
   roomId: string;
   /** 방의 종류 — 개인전이면 두 팀 열 대신 한 블록에 플레이어 전원이 나온다 */
   mode: GameMode;
+  /** 개인전 '강화' 방 — 규칙 요약에 알리고, 방장의 규칙 입력은 강화 범위(목표 상한 2500)를 쓴다 */
+  enhance?: boolean;
   players: LobbyPlayer[];
   teamNames: Record<Team, string | null>;
   settings: GameSettings;
@@ -88,7 +91,7 @@ export interface WaitingRoomProps {
 const PLANK_MAX_PX = 420;
 
 export function WaitingRoom({
-  roomId, mode, players, teamNames, settings,
+  roomId, mode, enhance = false, players, teamNames, settings,
   myMemberId, hostMemberId, isHost, chatLog, connected, onSendChat,
   onReady, onStart, onLeave, onMove, onKick, onTransferHost, onRenameTeam, onSelectColor, onUpdateSettings,
 }: WaitingRoomProps) {
@@ -234,9 +237,9 @@ export function WaitingRoom({
       )}
 
       {isHost ? (
-        <HostRulesPanel mode={mode} settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
+        <HostRulesPanel mode={mode} enhance={enhance} settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
       ) : (
-        <RuleSummary mode={mode} settings={settings} teamNames={teamNames} />
+        <RuleSummary mode={mode} enhance={enhance} settings={settings} teamNames={teamNames} />
       )}
 
       <button onClick={onLeave} className="text-lg text-board-muted hover:text-board-ink">
@@ -688,9 +691,10 @@ function PlayerRow({
 // ─── 방장용 규칙 편집 ────────────────────────────────────────────────────────
 
 function HostRulesPanel({
-  mode, settings, teamNames, onApply,
+  mode, enhance, settings, teamNames, onApply,
 }: {
   mode: GameMode;
+  enhance: boolean;
   settings: GameSettings;
   teamNames: Record<Team, string | null>;
   onApply: (next: GameSettings) => void;
@@ -719,7 +723,7 @@ function HostRulesPanel({
 
       {open ? (
         <div className="px-4 pb-4 border-t border-board-line/60 pt-3 flex flex-col gap-3">
-          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} />
+          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} limits={enhance ? ENHANCE_SETTINGS_LIMITS : undefined} />
           <div className="flex gap-2">
             <PlankButton
               onClick={() => onApply(draft)}
@@ -742,7 +746,7 @@ function HostRulesPanel({
         </div>
       ) : (
         <div className="px-2 pb-3">
-          <RuleSummary mode={mode} settings={settings} teamNames={teamNames} />
+          <RuleSummary mode={mode} enhance={enhance} settings={settings} teamNames={teamNames} />
         </div>
       )}
     </div>

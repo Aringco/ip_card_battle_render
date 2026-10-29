@@ -108,7 +108,7 @@ export function createConnectionHandler(roomManager: RoomManager, eventHub: Even
         case 'createRoom': {
           const { roomId, room } = roomManager.createRoom();
           const playerId = randomUUID();
-          const result = room.addPlayer(ws, playerId, msg.nickname, msg.team, msg.teamName, msg.settings, msg.otherTeamName, msg.mode);
+          const result = room.addPlayer(ws, playerId, msg.nickname, msg.team, msg.teamName, msg.settings, msg.otherTeamName, msg.mode, msg.enhance === true);
           if (result !== 'ok') {
             ws.send(JSON.stringify({ type: 'error', code: 'ROOM_FULL', message: '방을 만들 수 없습니다.' }));
             return;

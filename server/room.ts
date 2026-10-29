@@ -416,7 +416,8 @@ export class Room {
   private turnTotalMs = 0;
   private timerHandle: ReturnType<typeof setTimeout> | null = null;
   private vsComputer = false;
-  // 혼자 놀기 '카드 강화'(shared/enhance.ts) — 혼자 놀기와 같은 팀전 1:1에 강화 규칙을 얹어 시작한다(tryStartGame → initEnhanceGame).
+  // 카드 강화(shared/enhance.ts) — 혼자 놀기는 팀전 1:1에 강화 규칙을 얹어(tryStartGame → initEnhanceGame), 개인전 '강화' 방은
+  // 개인전에 얹어(startIndividualGame → initIndividualGame의 enhance) 시작한다.
   private enhance = false;
   /**
    * 시연회 분기 — 혼자 놀기에서 정해진 이름 짝으로 들어왔을 때만 세워진다.
@@ -603,6 +604,8 @@ export class Room {
     otherTeamName?: string,
     // 방을 처음 만드는 사람만 넘겨준다 — 생략하면 팀전(옛 클라이언트 호환).
     mode?: GameMode,
+    // 방을 처음 만드는 사람만 — 개인전 '강화' 방(팀전 방에서는 무시한다)
+    enhance = false,
   ): 'ok' | 'game_started' | 'nickname_taken' {
     if (this.state !== null) return 'game_started';
 
@@ -614,8 +617,11 @@ export class Room {
     // 방을 처음 만드는 쪽(=이 방에 아직 아무도 없을 때)만 규칙을 정할 수 있다.
     const isRoomCreator = this.players.size === 0;
     if (isRoomCreator) {
-      if (settings) this.settings = clampSettings(settings);
       this.mode = mode === 'individual' ? 'individual' : 'team';
+      // 개인전 '강화' 방 — 규칙은 혼자 놀기 카드 강화의 것(기본값 ENHANCE_SETTINGS · 목표 점수 상한 2500)이다
+      this.enhance = this.mode === 'individual' && enhance;
+      if (this.enhance) this.settings = clampEnhanceSettings(settings);
+      else if (settings) this.settings = clampSettings(settings);
     }
 
     // 자리를 방의 종류에 맞춘다. ⚠️ 참가 화면(JoinRoomForm)은 방이 어떤 종류인지 모른 채 'A'/'B'/
@@ -1109,7 +1115,9 @@ export class Room {
   /** 게임 규칙 변경 — 로비에서만 가능하고, 게임이 시작되면 state.settings로 굳는다. */
   updateSettings(playerId: string, settings: Partial<GameSettings>): void {
     if (!this.requireHost(playerId)) return;
-    this.settings = clampSettings({ ...this.settings, ...settings });
+    const next = { ...this.settings, ...settings };
+    // 강화 방은 그 판의 범위로 자른다 — 일반 범위로 자르면 목표 점수가 500에서 잘린다
+    this.settings = this.enhance ? clampEnhanceSettings(next) : clampSettings(next);
     this.pushSystem('방장이 게임 규칙을 바꿨어요');
     this.broadcastLobbyState();
   }
@@ -1244,7 +1252,7 @@ export class Room {
       nickname: p.nickname,
       color: p.color ?? this.firstFreeColor(),
     }));
-    this.state = initIndividualGame(sides, Math.random, this.settings);
+    this.state = initIndividualGame(sides, Math.random, this.settings, this.enhance);
     this.sidePlayerIds = {};
     this.playerSide.clear();
     this.pauseUsed = {};
@@ -2050,6 +2058,7 @@ export class Room {
       settings: this.settings,
       hostMemberId: this.hostPlayerId ? this.memberIdOf(this.hostPlayerId) : null,
       mode: this.mode,
+      enhance: this.enhance,
     });
   }
 

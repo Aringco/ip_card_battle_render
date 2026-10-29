@@ -57,6 +57,10 @@ export const LOBBY_ASSETS = {
   panelSoloReinforce: '/lobby/single_play_reinforce.webp',
   panelMulti: '/lobby/panel_multi.webp',
   panelCreate: '/lobby/panel_create.webp',
+  /** 방 만들기 → 팀전 — 네모 탁자에 둘러앉은 네 동물(원본 1254² PNG는 client/assets-src/multi_team.png, 2026-10-30 team.png) */
+  panelCreateTeam: '/lobby/multi_team.webp',
+  /** 방 만들기 → 개인전 — 둥근 탁자에 나란히 앉아 저마다 카드를 든 네 동물(원본은 client/assets-src/multi_individual.png, 2026-10-30 individuals.png) */
+  panelCreateIndividual: '/lobby/multi_individual.webp',
   panelJoin: '/lobby/panel_join.webp',
   /** 이벤트 방 참가하기 — 노을 진 호숫가 축제에서 네 동물이 춤추는 그림(원본 1254² PNG는 client/assets-src/panel_event.png) */
   panelEvent: '/lobby/panel_event.webp',
@@ -203,7 +207,7 @@ export const LOBBY_ASSETS = {
  *
  * 싱글만 눈에 띄게 밝은 것은 의도다 — 첫 화면의 두 선택지가 같은 초록이면 구분이 안 된다.
  */
-export type PanelTone = 'solo' | 'multi' | 'create' | 'join' | 'event' | 'battle' | 'reinforce';
+export type PanelTone = 'solo' | 'multi' | 'create' | 'join' | 'event' | 'battle' | 'reinforce' | 'team' | 'individual';
 
 /**
  * 배경이 아직 임시 스탠드인인지 여부.

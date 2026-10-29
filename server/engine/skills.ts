@@ -90,7 +90,7 @@ export function applySkillChoice(
   const level = levelOf(state, team, animal);
 
   // 카드 강화 판은 효과 공식이 다르고 경험치를 깎지 않는다 — 따로 계산한다.
-  if (state.enhance) return applyEnhanceSkill(state, team, animal, level, opponent, rng);
+  if (state.enhance) return applyEnhanceSkill(state, team, animal, level, opponent, rng, target);
 
   if (level <= 0) {
     return {
@@ -352,6 +352,8 @@ function applyEnhanceSkill(
   level: number,
   opponent: SideId | undefined,
   rng: () => number,
+  /** 부르는 쪽이 고른 대상(개인전) — 없으면 팀전의 하나뿐인 상대가 opponent로 온다 */
+  target?: SideId,
 ): GameEvent {
   const me = state.teams[team];
   const enh = state.enhance!;
@@ -381,7 +383,8 @@ function applyEnhanceSkill(
     multiplierAfter: me.pendingMultiplier,
     ...effect,
     hpAfter: hpSnapshot(state),
-    ...(animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
+    // 대상 — 특허랑이, 그리고 개인전에서는 상대를 고른 디자인어(Lv.6+ — 화면이 상대 배율을 깎는 자리를 이 값으로 찾는다)
+    ...((animal === 'tiger' || (animal === 'mermaid' && target !== undefined)) && opponent !== undefined ? { target: opponent } : {}),
     ...(divisorUsed > 1 ? { divisorUsed } : {}),
     status: cloneEnhanceStatus(enh),
   };
@@ -397,7 +400,10 @@ function applyEnhanceSkill(
  */
 export function applyEnhancePairEffect(state: GameState, team: SideId, animal: Animal, rng: () => number = Math.random): GameEvent {
   const level = levelOf(state, team, animal);
-  const effect = applyEnhanceEffect(state, team, animal, level, 1, 1, opponentsOf(state, team)[0], rng);
+  // 상대 — 팀전은 하나뿐이고, 개인전 강화 방은 고를 틈이 없는 덤이라 아직 판에 있는 사람 중 무작위 한 명이다.
+  const foes = opponentsOf(state, team);
+  const opponent = foes.length > 1 ? foes[Math.floor(rng() * foes.length)] : foes[0];
+  const effect = applyEnhanceEffect(state, team, animal, level, 1, 1, opponent, rng);
   return {
     type: 'skillApplied',
     team,
@@ -408,6 +414,8 @@ export function applyEnhancePairEffect(state: GameState, team: SideId, animal: A
     multiplierAfter: state.teams[team].pendingMultiplier,
     ...effect,
     hpAfter: hpSnapshot(state),
+    // 개인전은 상대가 여럿이라 화면이 반대편을 스스로 찾을 수 없다 — 누구에게 갔는지 싣는다
+    ...(state.mode === 'individual' && opponent !== undefined && (animal === 'tiger' || animal === 'mermaid') ? { target: opponent } : {}),
     pair: true,
     status: cloneEnhanceStatus(state.enhance!),
   };

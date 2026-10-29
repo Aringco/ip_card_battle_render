@@ -220,8 +220,8 @@ describe('강화 판 기술', () => {
     setLevel(s, 'A', 'tiger', level);
     toChoice(s);
     processSkillChoice(s, 'tiger');
-    // Lv.9부터는 출혈이 붙어, 차례가 넘어가 상대 차례가 시작되는 순간 공격력만큼 한 번 더 깎인다
-    expect(s.teams.B.hp).toBe(100 - dmg - (level >= 9 ? dmg : 0));
+    // Lv.9부터 붙는 출혈은 상대의 차례가 **끝날 때** 든다 — 내 기술로 차례가 넘어간 지금은 아직 즉시 피해뿐이다
+    expect(s.teams.B.hp).toBe(100 - dmg);
     expect(s.teams.A.hp).toBe(100 + heal);
   });
 
@@ -354,32 +354,35 @@ describe('강화 판 기술', () => {
 });
 
 describe('강화 판 3차 표 — 지속 효과 · 정화 · 쿨타임 감소 · Max 별도 배수', () => {
-  it('특허랑이 Lv.9+ — 출혈이 상대 차례가 시작될 때마다 공격력만큼 깎고(배율 무관), 다시 걸면 턴이 쌓인다', () => {
+  it('특허랑이 Lv.9+ — 출혈은 상대가 기술을 모두 쓰고 차례가 끝날 때마다 공격력만큼 깎는다(배율 무관)', () => {
     const s = newGame({ targetScore: 200 });
     setLevel(s, 'A', 'tiger', 11);
     s.teams.A.pendingMultiplier = 3; // 즉시 피해에만 곱해지고 출혈에는 안 곱해진다
     toChoice(s);
     const { events } = processSkillChoice(s, 'tiger');
     expect(events[0]).toMatchObject({ oppHpDelta: -60, bleedAdded: { turns: 4, amount: 20 } });
-    const tick = events.find(e => e.type === 'enhanceTick');
-    expect(tick).toMatchObject({ team: 'B', kind: 'bleed', amount: 20, turnsLeft: 3 });
-    expect(s.teams.B.hp).toBe(200 - 60 - 20);
-    expect(s.enhance!.bleed.B).toEqual({ turns: 3, amount: 20 });
-    // 컴퓨터가 차례를 넘겨도 출혈은 B의 차례에만 든다(A의 차례 시작에는 들지 않는다)
+    // 내 차례가 끝나 상대 차례가 시작될 때는 들지 않는다(2026-10-30 — 예전에는 여기서 들었다)
+    expect(events.find(e => e.type === 'enhanceTick')).toBeUndefined();
+    expect(s.teams.B.hp).toBe(200 - 60);
+    expect(s.enhance!.bleed.B).toEqual({ turns: 4, amount: 20 });
+    // B가 자기 차례를 마치는 순간 든다
+    toChoice(s);
+    const end = processPass(s).events;
+    expect(end.find(e => e.type === 'enhanceTick')).toMatchObject({ team: 'B', kind: 'bleed', amount: 20, turnsLeft: 3 });
+    expect(s.teams.B.hp).toBe(120);
+    // 내 차례가 끝날 때는 B의 출혈이 들지 않는다
     toChoice(s);
     processPass(s);
     expect(s.teams.B.hp).toBe(120);
   });
 
-  it('상표토끼 Lv.9+ — 지속 회복이 내 차례가 시작될 때 기본 회복량만큼 오른다', () => {
+  it('상표토끼 Lv.9+ — 지속 회복은 내 차례가 끝날 때(기술을 모두 쓴 뒤) 기본 회복량만큼 오른다', () => {
     const s = newGame({ targetScore: 200 });
     setLevel(s, 'A', 'rabbit', 9);
     toChoice(s);
-    const ev = processSkillChoice(s, 'rabbit').events[0];
-    expect(ev).toMatchObject({ myHpDelta: 32, regenAdded: { turns: 1, amount: 32 } });
-    expect(s.teams.A.hp).toBe(232);
-    toChoice(s);
-    const { events } = processPass(s); // B가 넘기면 A의 차례가 시작된다
+    const { events } = processSkillChoice(s, 'rabbit');
+    expect(events[0]).toMatchObject({ myHpDelta: 32, regenAdded: { turns: 1, amount: 32 } });
+    // 상표토끼로 차례가 끝나는 그 순간 한 번 든다 — 효과 다음, 차례가 넘어가기 전
     expect(events.find(e => e.type === 'enhanceTick')).toMatchObject({ team: 'A', kind: 'regen', amount: 32, turnsLeft: 0 });
     expect(s.teams.A.hp).toBe(264);
     expect(s.enhance!.regen.A).toEqual({ turns: 0, amount: 0 });
@@ -394,9 +397,9 @@ describe('강화 판 3차 표 — 지속 효과 · 정화 · 쿨타임 감소 ·
     toChoice(s);
     s.teams.A.pendingMultiplier = 1;
     const tiger = processSkillChoice(s, 'tiger').events[0];
-    // 8 + 4 → 10에서 잘린다(더해진 것은 2턴). 그 뒤 B의 차례가 시작되며 한 번 들어 9
+    // 8 + 4 → 10에서 잘린다(더해진 것은 2턴). B의 차례가 끝나야 든다
     expect(tiger).toMatchObject({ bleedAdded: { turns: 2, amount: 20 } });
-    expect(s.enhance!.bleed.B.turns).toBe(9);
+    expect(s.enhance!.bleed.B.turns).toBe(10);
     // 지속 회복도 같다 — 이미 10이면 아예 더하지 않는다(regenAdded 없음). 컴퓨터가 넘겨 내 차례로 돌아온 뒤
     toChoice(s);
     processPass(s);
@@ -405,14 +408,15 @@ describe('강화 판 3차 표 — 지속 효과 · 정화 · 쿨타임 감소 ·
     toChoice(s);
     const rabbit = processSkillChoice(s, 'rabbit').events[0];
     expect(rabbit).not.toHaveProperty('regenAdded');
-    expect(s.enhance!.regen.A.turns).toBe(10);
+    // 더해지지 않았고, 내 차례가 끝나며 한 번 들어 9가 남는다
+    expect(s.enhance!.regen.A.turns).toBe(9);
   });
 
   it('출혈과 지속 회복이 함께 있으면 출혈이 먼저 — 출혈로 0이 되면 회복 없이 진다', () => {
     const s = newGame({ targetScore: 200 });
     s.enhance!.bleed.A = { turns: 2, amount: 20 };
     s.enhance!.regen.A = { turns: 2, amount: 30 };
-    s.activeTeam = 'B';
+    s.activeTeam = 'A';
     toChoice(s);
     const { events } = processPass(s);
     const ticks = events.filter(e => e.type === 'enhanceTick');
@@ -423,7 +427,7 @@ describe('강화 판 3차 표 — 지속 효과 · 정화 · 쿨타임 감소 ·
     t.teams.A.hp = 15;
     t.enhance!.bleed.A = { turns: 2, amount: 20 };
     t.enhance!.regen.A = { turns: 2, amount: 30 };
-    t.activeTeam = 'B';
+    t.activeTeam = 'A';
     toChoice(t);
     const end = processPass(t).events;
     expect(end.filter(e => e.type === 'enhanceTick')).toHaveLength(1);
@@ -438,7 +442,8 @@ describe('강화 판 3차 표 — 지속 효과 · 정화 · 쿨타임 감소 ·
     toChoice(s);
     const ev = processSkillChoice(s, 'rabbit').events[0];
     expect(ev).toMatchObject({ cleanse: { kind: 'bleed', before: 4, after: 2 } });
-    expect(s.enhance!.bleed.A.turns).toBe(2);
+    // 정화로 2가 되고, 내 차례가 끝나며 한 번 들어 1이 남는다
+    expect(s.enhance!.bleed.A.turns).toBe(1);
 
     const t = newGame({ targetScore: 200 });
     t.enhance!.bleed.A = { turns: 4, amount: 20 };

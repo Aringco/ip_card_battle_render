@@ -75,7 +75,8 @@ export function IndividualHeader({
       <div className="play-hdr-group absolute -translate-x-1/2 -translate-y-1/2 flex items-center">
         <div className="play-step-bar flex items-center gap-1.5 py-1">
           <span className="play-turn-inner font-bold tabular-nums whitespace-nowrap">
-            {gameState.turn} / {maxTurnOf(gameState)}턴
+            {/* 턴 제한이 없는 판(개인전 강화 방 — maxTurnOf가 Infinity)은 지금 턴만 쓴다(팀전 GameHeader와 같다) */}
+            {Number.isFinite(maxTurnOf(gameState)) ? `${gameState.turn} / ${maxTurnOf(gameState)}턴` : `${gameState.turn}턴`}
           </span>
           <span className={`play-pill ${isMyTurn ? 'play-pill-green' : 'play-pill-red'} font-bold whitespace-nowrap`}>
             {isMyTurn ? '내 차례' : mySide === null ? '관전 중' : '다른 사람 차례'}

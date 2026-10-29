@@ -78,11 +78,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-cafe24);
+  --font-sans: "Divide Sign", var(--font-cafe24);
   /* 이 프로젝트에는 **글꼴이 하나뿐이다.** 예전에는 방 코드·타이머 숫자에
      Geist Mono를 썼는데, 화면에서 그 부분만 다른 글꼴로 튀어 보였다(2026-09-09).
      `font-mono` 유틸리티가 남아 있어도 같은 글꼴이 나오도록 여기서도 Cafe24를 가리킨다. */
-  --font-mono: var(--font-cafe24);
+  --font-mono: "Divide Sign", var(--font-cafe24);
 
   /* 정글 팔레트 */
   --color-jungle-50:  #f0fdf4;
@@ -163,10 +163,17 @@ html {
 
    ⚠️ 여기 한 줄이 게임 전체의 글꼴이다 — 예전에는 '맑은 고딕'이었다.
    ⚠️ 글꼴을 바꾸면 글자 폭·높이가 달라져 로비 폼이 움직인다. measureLobby로 다시 잴 것. */
+/* 나눗셈 기호(÷) 하나만 시스템 글꼴로 그린다(2026-10-30) — Cafe24 Ssurround의 ÷는 위아래 점이 너무 작아 "+"로 읽혔다
+   (기술 카드의 "상대 효과 ÷2"가 "+2"로 보였다). unicode-range로 그 한 글자만 이 글꼴이 맡고 나머지는 그대로 Cafe24다. */
+@font-face {
+  font-family: "Divide Sign";
+  src: local("Segoe UI"), local("Malgun Gothic"), local("Apple SD Gothic Neo"), local("Arial"), local("Roboto");
+  unicode-range: U+00F7;
+}
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
+  font-family: "Divide Sign", var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
 }
 
 /* ── 스크롤바 ───────────────────────────────────────────────────────────
@@ -2088,6 +2095,8 @@ body {
 .place-guide-hand-card {
   --hand-shift: -100%;
   top: var(--label-top);
+  /* 효과 문구를 위로 올리며(2026-10-30, --label-top) 손도 따라 올라간다 — 안내 띠를 더 덮지 않게 0.8배로 줄인다 */
+  width: calc(min(3.4rem, calc(54.4 * var(--sp))) * 0.8);
 }
 .place-guide-hand img {
   display: block;
@@ -2229,10 +2238,12 @@ body {
 
 /* [턴 마치기] 카드 그림 — 숲길 팻말을 든 로봇(2026-10-29, 원본 assets-src/pass_skill.png → 900px webp). 다른 기술 카드처럼
    .skill-choice-bg(cover · 밝기 0.78 · hover 밝게 · 잠기면 어둡게)를 그대로 따른다 — 그래서 여기서 filter를 다시 정하지 않는다
-   (예전 SVG 화살표 시절의 brightness 덮어쓰기는 잠긴 칸의 어둡게까지 덮었다). 세로로 긴 칸이라 가운데보다 조금 왼쪽(로봇 얼굴 · 팻말)을 남긴다. */
+   (예전 SVG 화살표 시절의 brightness 덮어쓰기는 잠긴 칸의 어둡게까지 덮었다). 세로로 긴 칸이라 그림의 왼쪽(로봇)을 남긴다 — 로봇은 그림 폭의
+   11~58%에 있다. 42%로 두었더니 로봇 머리 왼쪽이 잘려(2026-10-30 요청) 15%로 옮겼다 — 칸이 가장 좁을 때(가로:세로 0.5, 그림의 절반이 보임)도
+   보이는 구간이 7.5~57.5%라 로봇이 통째로 들어온다. 팻말 화살표 끝은 잘려도 된다. */
 .pass-panel-bg {
   background-image: url('/skills/pass_skill.webp');
-  background-position: 42% center;
+  background-position: 15% center;
 }
 /* 컷신 이미지는 거의 안 보일 만큼 어둡게, 그 위 자막(하얀 글자 + 검정 테두리)만
    또렷하게 읽히도록 전체적으로 진하게 깐다. */
@@ -2573,7 +2584,8 @@ body {
   text-align: center;
 }
 /* 강화 모드는 목표 점수가 네 자리(최대 2500)라 칸을 넓힌다 — 4.5rem은 숫자 칸의 위아래 단추에 밀려 세 자리 남짓만 보였다 */
-.stage-form-enhance .input-rule-num { width: 6.25rem; }
+.stage-form-enhance .input-rule-num,
+.stage-form-individual .input-rule-num { width: 6.25rem; }
 
 /* 대기실의 규칙 입력(GameRulesInputs) — 라벨과 점선으로 이어진 오른쪽 끝 숫자칸.
    로비 폼과 달리 폭이 넉넉해 고정 너비를 주고 flex 늘어남을 끈다.
@@ -2625,6 +2637,9 @@ body {
 /* 혼자 놀기의 두 갈래 — 일반 모드(카드 대결, 밤의 실내)·강화 모드(대장간 불빛) */
 .lobby-panel-battle    { --panel-a: #78350f; --panel-b: #1e1b4b; }
 .lobby-panel-reinforce { --panel-a: #f97316; --panel-b: #431407; }
+/* 방 만들기의 두 갈래 — 팀전(통나무집의 네모 탁자)·개인전(둥근 탁자의 등불) */
+.lobby-panel-team       { --panel-a: #b45309; --panel-b: #422006; }
+.lobby-panel-individual { --panel-a: #92400e; --panel-b: #1c1917; }
 /* 일반 모드 그림은 3:2 가로형이라 세로로 긴 패널에서는 가운데만 남는다 — 천장 전등이 가운데에 오도록 그림의 전등 자리(가로 49.5%)에
    맞춰 깐다(2026-10-28 요청 — 처음에는 오른쪽의 실용신양 쪽으로 당겼었다). 양옆의 로봇·실용신양은 패널 폭만큼 걸친다. */
 .lobby-panel-battle .lobby-panel-bg { background-position: 49.5% center; }
@@ -2874,7 +2889,8 @@ body {
    순간인지 화면이 알려주지 못한다. */
 .lobby-table:has(> .lobby-safe[data-stage="soloNormal"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="soloEnhance"])::after,
-.lobby-table:has(> .lobby-safe[data-stage="create"])::after,
+.lobby-table:has(> .lobby-safe[data-stage="createTeam"])::after,
+.lobby-table:has(> .lobby-safe[data-stage="createIndividual"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="join"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="event"])::after,
 .lobby-table:has(> .lobby-safe[data-stage="waiting"])::after {
@@ -2922,7 +2938,8 @@ body {
 }
 .lobby-safe[data-stage="soloNormal"] .lobby-hero-slot,
 .lobby-safe[data-stage="soloEnhance"] .lobby-hero-slot,
-.lobby-safe[data-stage="create"] .lobby-hero-slot,
+.lobby-safe[data-stage="createTeam"] .lobby-hero-slot,
+.lobby-safe[data-stage="createIndividual"] .lobby-hero-slot,
 .lobby-safe[data-stage="join"] .lobby-hero-slot,
 .lobby-safe[data-stage="event"] .lobby-hero-slot,
 .lobby-safe[data-stage="waiting"] .lobby-hero-slot {
@@ -2981,6 +2998,8 @@ body {
 }
 .lobby-stage[data-stage="multi"],
 .lobby-stage[data-stage="create"],
+.lobby-stage[data-stage="createTeam"],
+.lobby-stage[data-stage="createIndividual"],
 .lobby-stage[data-stage="join"],
 .lobby-stage[data-stage="event"] {
   grid-template-columns: 0fr 1fr;
@@ -3005,6 +3024,8 @@ body {
 .stage-col-join   { justify-content: flex-start; } /* 방 만들기 선택 시 오른쪽으로 슬라이드 아웃 */
 .stage-col-event  { justify-content: flex-start; } /* 방 만들기·참가 선택 시 오른쪽으로 슬라이드 아웃 */
 .stage-col-solo-normal  { justify-content: flex-end; }   /* 강화 모드 선택 시 왼쪽으로 슬라이드 아웃 */
+.stage-col-create-team       { justify-content: flex-end; }   /* 개인전 선택 시 왼쪽으로 슬라이드 아웃 */
+.stage-col-create-individual { justify-content: flex-start; } /* 팀전 선택 시 오른쪽으로 슬라이드 아웃 */
 .stage-col-solo-enhance { justify-content: flex-start; } /* 일반 모드 선택 시 오른쪽으로 슬라이드 아웃 */
 /* 가운데 열(방 참가하기)만은 고른 쪽에 따라 밀려날 방향이 바뀐다 — 이벤트를 고르면 왼쪽으로.
    ⚠️ 열이 꽉 차 있을 때는 패널이 열을 정확히 채우므로 붙는 쪽이 바뀌어도 눈에 띄지 않는다. 되돌아올 때(이벤트 →
@@ -3019,10 +3040,18 @@ body {
 .lobby-stage[data-stage="soloEnhance"] .stage-col-solo-normal,
 .lobby-stage[data-stage="multi"]  .stage-col-solo,
 .lobby-stage[data-stage="create"] .stage-col-solo,
+.lobby-stage[data-stage="createTeam"] .stage-col-solo,
+.lobby-stage[data-stage="createIndividual"] .stage-col-solo,
 .lobby-stage[data-stage="join"]   .stage-col-solo,
 .lobby-stage[data-stage="event"]  .stage-col-solo,
 .lobby-stage[data-stage="create"] .stage-col-join,
+.lobby-stage[data-stage="createTeam"] .stage-col-join,
+.lobby-stage[data-stage="createIndividual"] .stage-col-join,
 .lobby-stage[data-stage="create"] .stage-col-event,
+.lobby-stage[data-stage="createTeam"] .stage-col-event,
+.lobby-stage[data-stage="createIndividual"] .stage-col-event,
+.lobby-stage[data-stage="createTeam"]       .stage-col-create-individual,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create-team,
 .lobby-stage[data-stage="join"]   .stage-col-create,
 .lobby-stage[data-stage="join"]   .stage-col-event,
 .lobby-stage[data-stage="event"]  .stage-col-create,
@@ -3043,6 +3072,10 @@ body {
    슬라이드가 아니라 찌그러짐처럼 보인다. */
 .multi-inner .stage-panel {
   min-width: calc((100cqw - 2 * var(--stage-gap)) / 3);
+}
+/* 방 만들기 안쪽 두 열(팀전 · 개인전)은 다시 **두 열**이다 — 여기서 100cqw는 .create-inner의 폭이다(위 규칙이 후손까지 잡으므로 덮는다) */
+.multi-inner .create-inner .stage-panel {
+  min-width: calc((100cqw - var(--stage-gap)) / 2);
 }
 /* 세 열이라 패널이 좁다(1366×768에서 약 200px) — "이벤트 방 참가하기"가 두 줄로 접혀 "기" 한 글자만 내려앉았다.
    넓은 화면에서는 제목을 한 줄로 두고 패널 폭(100cqw = .multi-inner 폭의 약 3분의 1)에 맞춰 줄인다.
@@ -3079,9 +3112,23 @@ body {
 .lobby-stage[data-stage="multi"] .stage-col-join,
 .lobby-stage[data-stage="multi"] .stage-col-event,
 .lobby-stage[data-stage="solo"] .stage-col-solo-normal,
-.lobby-stage[data-stage="solo"] .stage-col-solo-enhance {
+.lobby-stage[data-stage="solo"] .stage-col-solo-enhance,
+.lobby-stage[data-stage="create"] .stage-col-create-team,
+.lobby-stage[data-stage="create"] .stage-col-create-individual {
   overflow: clip;
   overflow-clip-margin: var(--glow-reach);
+}
+/* 방 만들기의 두 패널은 자르개가 두 겹 더 있다(방 만들기 열 · .multi-inner) — 가리키는 동안만 글로우 폭만큼 연다 */
+.lobby-stage[data-stage="create"] .stage-col-multi:has(.create-inner .stage-panel.lobby-panel-active:hover),
+.lobby-stage[data-stage="create"] .stage-col-multi:has(.create-inner .stage-panel.lobby-panel-active:focus-visible),
+.lobby-stage[data-stage="create"] .stage-col-create:has(.create-inner .stage-panel.lobby-panel-active:hover),
+.lobby-stage[data-stage="create"] .stage-col-create:has(.create-inner .stage-panel.lobby-panel-active:focus-visible) {
+  overflow: clip;
+  overflow-clip-margin: var(--glow-reach);
+}
+.lobby-stage[data-stage="create"] .multi-inner:has(.create-inner .stage-panel.lobby-panel-active:hover),
+.lobby-stage[data-stage="create"] .multi-inner:has(.create-inner .stage-panel.lobby-panel-active:focus-visible) {
+  clip-path: inset(calc(-1 * var(--glow-reach)));
 }
 .lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:hover),
 .lobby-stage[data-stage="multi"] .stage-col-multi:has(.stage-panel.lobby-panel-active:focus-visible),
@@ -3102,6 +3149,10 @@ body {
 .lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel,
 .lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel,
+.lobby-stage[data-stage="createTeam"] .stage-col-create > .stage-panel,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create > .stage-panel,
+.lobby-stage[data-stage="createTeam"]       .stage-col-create-team       > .stage-panel,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create-individual > .stage-panel,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel,
 .lobby-stage[data-stage="solo"]        .stage-panel-solo,
@@ -3109,6 +3160,8 @@ body {
 .lobby-stage[data-stage="soloEnhance"] .stage-panel-solo,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi,
 .lobby-stage[data-stage="create"] .stage-panel-multi,
+.lobby-stage[data-stage="createTeam"] .stage-panel-multi,
+.lobby-stage[data-stage="createIndividual"] .stage-panel-multi,
 .lobby-stage[data-stage="join"]   .stage-panel-multi,
 .lobby-stage[data-stage="event"]  .stage-panel-multi {
   pointer-events: none;
@@ -3116,6 +3169,10 @@ body {
 .lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="createTeam"] .stage-col-create > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="createTeam"]       .stage-col-create-team       > .stage-panel .stage-panel-label,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create-individual > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel .stage-panel-label,
 .lobby-stage[data-stage="solo"]        .stage-panel-solo .stage-panel-label,
@@ -3123,13 +3180,16 @@ body {
 .lobby-stage[data-stage="soloEnhance"] .stage-panel-solo .stage-panel-label,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="create"] .stage-panel-multi .stage-panel-label,
+.lobby-stage[data-stage="createTeam"] .stage-panel-multi .stage-panel-label,
+.lobby-stage[data-stage="createIndividual"] .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="join"]   .stage-panel-multi .stage-panel-label,
 .lobby-stage[data-stage="event"]  .stage-panel-multi .stage-panel-label {
   opacity: 0;
 }
 .lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel .lobby-panel-bg,
-.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="createTeam"]       .stage-col-create-team       > .stage-panel .lobby-panel-bg,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create-individual > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel .lobby-panel-bg,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel .lobby-panel-bg {
   filter: brightness(0.8);
@@ -3144,7 +3204,8 @@ body {
    글자와 경쟁한다. 밝기만 조금 올려 "열려 있다"는 신호를 준다. */
 .lobby-stage[data-stage="soloNormal"]  .stage-col-solo-normal  > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="soloEnhance"] .stage-col-solo-enhance > .stage-panel.lobby-panel-art .lobby-panel-bg,
-.lobby-stage[data-stage="create"] .stage-col-create > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="createTeam"]       .stage-col-create-team       > .stage-panel.lobby-panel-art .lobby-panel-bg,
+.lobby-stage[data-stage="createIndividual"] .stage-col-create-individual > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="join"]   .stage-col-join   > .stage-panel.lobby-panel-art .lobby-panel-bg,
 .lobby-stage[data-stage="event"]  .stage-col-event  > .stage-panel.lobby-panel-art .lobby-panel-bg {
   filter: brightness(0.62) saturate(0.85) blur(4px);
@@ -3169,6 +3230,11 @@ body {
 .lobby-stage[data-stage="soloEnhance"] .stage-panel-solo,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi,
 .lobby-stage[data-stage="create"] .stage-panel-multi,
+.lobby-stage[data-stage="createTeam"] .stage-panel-multi,
+.lobby-stage[data-stage="createIndividual"] .stage-panel-multi,
+.lobby-stage[data-stage="create"] .stage-panel-create,
+.lobby-stage[data-stage="createTeam"] .stage-panel-create,
+.lobby-stage[data-stage="createIndividual"] .stage-panel-create,
 .lobby-stage[data-stage="join"]   .stage-panel-multi,
 .lobby-stage[data-stage="event"]  .stage-panel-multi {
   box-shadow: none;
@@ -3184,6 +3250,11 @@ body {
 .lobby-stage[data-stage="soloEnhance"] .stage-panel-solo .lobby-panel-bg,
 .lobby-stage[data-stage="multi"]  .stage-panel-multi .lobby-panel-bg,
 .lobby-stage[data-stage="create"] .stage-panel-multi .lobby-panel-bg,
+.lobby-stage[data-stage="createTeam"] .stage-panel-multi .lobby-panel-bg,
+.lobby-stage[data-stage="createIndividual"] .stage-panel-multi .lobby-panel-bg,
+.lobby-stage[data-stage="create"] .stage-panel-create .lobby-panel-bg,
+.lobby-stage[data-stage="createTeam"] .stage-panel-create .lobby-panel-bg,
+.lobby-stage[data-stage="createIndividual"] .stage-panel-create .lobby-panel-bg,
 .lobby-stage[data-stage="join"]   .stage-panel-multi .lobby-panel-bg,
 .lobby-stage[data-stage="event"]  .stage-panel-multi .lobby-panel-bg {
   opacity: 0;
@@ -3216,6 +3287,8 @@ body {
   transition-delay: var(--t-expand), var(--t-expand), var(--t-form), var(--t-form);
 }
 .lobby-stage[data-stage="create"] .multi-inner,
+.lobby-stage[data-stage="createTeam"] .multi-inner,
+.lobby-stage[data-stage="createIndividual"] .multi-inner,
 .lobby-stage[data-stage="join"]   .multi-inner,
 .lobby-stage[data-stage="event"]  .multi-inner {
   clip-path: inset(0 0 0 0);
@@ -3223,7 +3296,9 @@ body {
   gap: 0;
   transition-delay: 0s;
 }
-.lobby-stage[data-stage="create"] .multi-inner { grid-template-columns: 1fr 0fr 0fr; }
+.lobby-stage[data-stage="create"] .multi-inner,
+.lobby-stage[data-stage="createTeam"] .multi-inner,
+.lobby-stage[data-stage="createIndividual"] .multi-inner { grid-template-columns: 1fr 0fr 0fr; }
 .lobby-stage[data-stage="join"]   .multi-inner { grid-template-columns: 0fr 1fr 0fr; }
 .lobby-stage[data-stage="event"]  .multi-inner { grid-template-columns: 0fr 0fr 1fr; }
 
@@ -3259,6 +3334,39 @@ body {
 }
 .lobby-stage[data-stage="soloNormal"]  .solo-inner { grid-template-columns: 1fr 0fr; }
 .lobby-stage[data-stage="soloEnhance"] .solo-inner { grid-template-columns: 0fr 1fr; }
+
+/* 방 만들기 내부 2열(팀전 · 개인전, 2026-10-30) — .solo-inner와 같은 구조·같은 지연이다(값을 바꾸면 셋 다 바꿀 것).
+   방 만들기 열은 다같이 놀기의 왼쪽 열이라 혼자 놀기처럼 **왼쪽에서 오른쪽으로** 드러난다. 안쪽 패널의 원래 폭은 위
+   .multi-inner .create-inner .stage-panel이 이 상자 폭의 절반으로 되돌린다. */
+.create-inner {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--stage-gap);
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  transition:
+    clip-path var(--t-reveal) ease,
+    opacity   var(--t-reveal) ease,
+    grid-template-columns var(--t-expand) ease,
+    gap var(--t-expand) ease;
+}
+.lobby-stage[data-stage="create"] .create-inner {
+  clip-path: inset(calc(-1 * var(--glow-reach)));
+  opacity: 1;
+  transition-delay: var(--t-expand), var(--t-expand), var(--t-form), var(--t-form);
+}
+.lobby-stage[data-stage="createTeam"]       .create-inner,
+.lobby-stage[data-stage="createIndividual"] .create-inner {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+  gap: 0;
+  transition-delay: 0s;
+}
+.lobby-stage[data-stage="createTeam"]       .create-inner { grid-template-columns: 1fr 0fr; }
+.lobby-stage[data-stage="createIndividual"] .create-inner { grid-template-columns: 0fr 1fr; }
 
 /* 버튼·제목 앞의 그림 아이콘 — 이모지가 있던 자리를 대신한다.
    em 단위라 글자 크기를 그대로 따라가고(글씨 크기 설정 5단계에도 같이 움직인다),
@@ -3747,7 +3855,7 @@ body {
    ⚠️ 폼 항목을 더하면 이 상한도 함께 내려가야 한다. measureLobby.mjs가 이제
    .lobby-form-scroll까지 재므로, 고치고 나서 반드시 다시 돌릴 것. */
 @media (min-width: 768px) and (max-height: 999px) {
-  .lobby-safe[data-stage="create"] .lobby-form-board { --form-zoom: 1.15; }
+  .lobby-safe[data-stage="createTeam"] .lobby-form-board { --form-zoom: 1.15; }
   /* 이벤트 도전 폼은 닉네임 · PIN · 도전 세 줄로 방 만들기만큼 길다 — 같은 값에서 시작해 measureLobby.mjs로 잰다. */
   .lobby-safe[data-stage="event"]  .lobby-form-board { --form-zoom: 1.15; }
   /* 참가하기는 평소엔 1.35로도 들어가지만, **초대 링크로 들어오면** 안내 배너가 한
@@ -3758,7 +3866,7 @@ body {
   .lobby-form-board { --form-zoom: 1.2; }
   /* 1.15면 평소 참가 폼은 들어가지만 초대 링크 배너가 붙으면 14px 넘친다 */
   .lobby-safe[data-stage="join"]   .lobby-form-board { --form-zoom: 1; }
-  .lobby-safe[data-stage="create"] .lobby-form-board { --form-zoom: 0.95; }
+  .lobby-safe[data-stage="createTeam"] .lobby-form-board { --form-zoom: 0.95; }
   .lobby-safe[data-stage="event"]  .lobby-form-board { --form-zoom: 0.95; }
 }
 
@@ -3775,7 +3883,7 @@ body {
   /* 방 만들기만 한 칸 낮다 — 팀 이름 두 칸을 세로로 쌓고 라벨까지 입력창 위로 올리면서(2026-09-21)
      두 줄이 늘어, 1.6으로는 1920×1080에서 넘쳤다. 이 파일이 말하는 그대로 "항목을 더하면 상한도
      함께 내린다"를 따른 값이고, measureLobby.mjs로 다시 재서 고른 것이다. */
-  .lobby-safe[data-stage="create"] .lobby-form-board { --form-zoom: 1.4; }
+  .lobby-safe[data-stage="createTeam"] .lobby-form-board { --form-zoom: 1.4; }
   .lobby-safe[data-stage="event"]  .lobby-form-board { --form-zoom: 1.4; }
 }
 
@@ -4094,7 +4202,8 @@ body {
 }
 .lobby-stage[data-stage="soloNormal"]  .stage-form-solo,
 .lobby-stage[data-stage="soloEnhance"] .stage-form-enhance,
-.lobby-stage[data-stage="create"] .stage-form-create,
+.lobby-stage[data-stage="createTeam"]       .stage-form-create,
+.lobby-stage[data-stage="createIndividual"] .stage-form-individual,
 .lobby-stage[data-stage="join"]   .stage-form-join,
 .lobby-stage[data-stage="event"]  .stage-form-event {
   opacity: 1;
@@ -4137,7 +4246,7 @@ body {
   .lobby-panel-art.lobby-panel-active:hover .lobby-panel-bg,
   .lobby-panel-art.lobby-panel-active:focus-visible .lobby-panel-bg { transform: scale(1.05); }
   .lobby-stage, .stage-col, .stage-panel, .stage-panel-label,
-  .multi-inner, .solo-inner, .stage-form, .lobby-back { transition: none !important; }
+  .multi-inner, .solo-inner, .create-inner, .stage-form, .lobby-back { transition: none !important; }
 }
 
 /* ── 로비 스테이지 — 모바일: 같은 메커니즘을 세로축으로 ──────────────────── */
@@ -4164,6 +4273,8 @@ body {
   }
   .lobby-stage[data-stage="multi"],
   .lobby-stage[data-stage="create"],
+  .lobby-stage[data-stage="createTeam"],
+  .lobby-stage[data-stage="createIndividual"],
   .lobby-stage[data-stage="join"],
   .lobby-stage[data-stage="event"] {
     grid-template-columns: 1fr;
@@ -4186,7 +4297,9 @@ body {
     grid-template-rows: 1fr 1fr 1fr;
     clip-path: inset(100% 0 0 0);
   }
-  .lobby-stage[data-stage="create"] .multi-inner {
+  .lobby-stage[data-stage="create"] .multi-inner,
+  .lobby-stage[data-stage="createTeam"] .multi-inner,
+  .lobby-stage[data-stage="createIndividual"] .multi-inner {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr 0fr 0fr;
   }
@@ -4210,6 +4323,25 @@ body {
     grid-template-rows: 1fr 0fr;
   }
   .lobby-stage[data-stage="soloEnhance"] .solo-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 0fr 1fr;
+  }
+
+  /* 방 만들기 안쪽 2열도 세로로 쌓는다 */
+  .multi-inner .create-inner .stage-panel {
+    min-width: 0;
+    min-height: calc((100cqh - var(--stage-gap)) / 2);
+  }
+  .create-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    clip-path: inset(0 0 100% 0);
+  }
+  .lobby-stage[data-stage="createTeam"] .create-inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 0fr;
+  }
+  .lobby-stage[data-stage="createIndividual"] .create-inner {
     grid-template-columns: 1fr;
     grid-template-rows: 0fr 1fr;
   }
@@ -4790,8 +4922,8 @@ body {
 .skill-effect-label { --fit-w: calc(100cqw - var(--card-pad) * 2); }
 
 /* 우상단 효과 문구 — 금색 테두리에 닿지 않을 만큼만 띄운다.
-   ⚠️ `white-space: pre` — 줄바꿈은 **쉼표 뒤에서만** 일어난다(SkillChoiceBar가
-   효과 조각을 `,\n`으로 잇는다). 한 줄로 이어 두면 "내 체력 +1, 상대 체력 -1"이
+   ⚠️ `white-space: pre` — 줄바꿈은 **효과 조각 사이에서만** 일어난다(SkillChoiceBar가
+   효과 조각을 줄바꿈으로 잇는다 — 줄 끝 쉼표는 2026-10-30에 뺐다). 한 줄로 이어 두면 "내 체력 +1, 상대 체력 -1"이
    카드 폭에 걸려 제멋대로 접혔고, 어디서 접힐지는 숫자 길이에 달려 매번 달랐다. */
 .skill-effect-label {
   /* ⚠️ 손끝(--label-top)보다 **아래**여야 한다 — 손가락 가이드가 이 문구를 덮고 있었다.
@@ -4990,6 +5122,14 @@ body {
    분모가 옆 칸(얼굴)에 닿아 잘려 보였다. */
 .exp-row-lv-cap { font-size: calc(var(--exp-w) * 0.0496 * var(--font-scale)); }
 .exp-row-lv-num { font-size: calc(var(--exp-w) * 0.128 * var(--font-scale)); }
+/* 카드 강화의 Lv.Max — 숫자에 가까운 크기, 그 아래 줄에 별도 배수 ×N(2026-10-30).
+   ⚠️ 칸 폭이 빠듯하다(1600×900에서 줄 204px = 얼굴 56 + 레벨 칸 + 경험치 숫자). "Max"는 이 글꼴에서 2.5em이나 돼서 숫자 크기 그대로 두면
+   레벨 칸이 두 자리 레벨("10")보다 22px 넓어져 옆의 "10/20"이 잘렸다 — 그래서 자간을 좁히고 이 칸만 안여백을 줄여 두 자리 레벨 칸과
+   거의 같은 폭에 담고, 경험치 숫자도 이 줄에서만 조금 줄인다. */
+.exp-row-lv-max  { font-size: calc(var(--exp-w) * 0.096 * var(--font-scale)); letter-spacing: -0.06em; }
+.exp-row-lv:has(> .exp-row-lv-max) { padding-inline: calc(var(--exp-w) * 0.012); }
+.exp-row:has(.exp-row-lv-max) .exp-row-value { font-size: calc(var(--exp-w) * 0.084 * var(--font-scale)); }
+.exp-row-lv-over { font-size: calc(var(--exp-w) * 0.074 * var(--font-scale)); margin-top: calc(var(--exp-w) * 0.012); }
 .exp-row-value  { font-size: calc(var(--exp-w) * 0.096 * var(--font-scale)); }
 .exp-row-bar    { height: calc(var(--exp-w) * 0.07); }
 
@@ -5113,7 +5253,10 @@ body {
      1.3배는 손이 위쪽 안내 띠를 **예전보다 덜 침범하도록** 잡은 값이다(1920에서 19→14px,
      1366에서 28→28px). 값을 줄이면 손이 올라가 안내 문구를 덮고, 키우면 효과 문구가
      카드 아래로 내려온다 — 그 사이의 자리다. 사정은 아래 `.place-guide-hand-card` 주석에. */
-  --label-top: calc(var(--deco) * 1.3);
+  /* 2026-10-30 — 1.3 → 0.5(요청 "효과 문구를 위쪽에 가깝게"). 모서리 장식을 걷어내 문구를 위로 올려도 덮을 것이 없다. 손도 같은 값을
+     따라 함께 올라가는데, 그만큼 위쪽 안내 띠를 더 덮지 않도록 카드용 손을 0.8배로 줄였다(.place-guide-hand-card) — 1600×900에서
+     손 윗끝이 카드 위 27px → 34px, 안내 띠 침범은 7px 늘어난 데 그친다. */
+  --label-top: calc(var(--deco) * 0.5);
   display: grid;
   grid-template-columns: 242fr 244fr 244fr 245fr 243fr;
   gap: 0.986%;            /* 칸 사이 네 곳(12·12·13·13px)의 평균 12.5px ÷ 띠 1268px */
@@ -6257,6 +6400,26 @@ body {
   font-size: calc(var(--pf-w) * 0.0076 * var(--font-scale));
   font-weight: 800;
 }
+/* 개인전 강화 방 — 그 사람에게 걸린 지속 효과의 남은 턴(출혈 · 지속 회복 · 효과 감소). 이름 줄 오른쪽 끝에 작게 붙는다(OpponentList의 StatusMarks) */
+.ind-opp-status {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  gap: 0.25em;
+  font-size: calc(var(--pf-w) * 0.0072 * var(--font-scale));
+  font-weight: 800;
+  line-height: 1.2;
+}
+.ind-opp-status-mark {
+  padding: 0 0.35em;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: #fff4d6;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+.ind-opp-status-mark.is-bleed  { color: #b91c1c; }
+.ind-opp-status-mark.is-regen  { color: #15803d; }
+.ind-opp-status-mark.is-divide { color: #7e22ce; }
 .ind-opp-animals {
   flex: 1;
   min-height: 0;
@@ -6917,6 +7080,8 @@ body {
      ("Lv." 머리글을 지우는 것은 위 T1 블록이 이미 했다). */
   .exp-row-value  { font-size: max(10px, calc(var(--exp-w) * 0.096 * var(--font-scale))); }
   .exp-row-lv-num { font-size: max(11px, calc(var(--exp-w) * 0.128 * var(--font-scale))); }
+  .exp-row-lv-max  { font-size: max(10px, calc(var(--exp-w) * 0.096 * var(--font-scale))); }
+  .exp-row-lv-over { font-size: max(9px, calc(var(--exp-w) * 0.074 * var(--font-scale))); }
 
   /* ③ 팀 패널 머리 — 팀 이름은 한 줄로 자른다(줄바꿈하면 경험치 네 줄을 밀어낸다).
      "내 팀" 배지는 지운다 — 지금 차례는 들보와 화면 테두리 빛이 이미 알린다. */
@@ -7480,6 +7645,18 @@ body {
   font-weight: 900;
   white-space: nowrap;
 }
+/* Lv.Max에 별도 배수가 붙으면 "Lv.Max" 아래에 "×N"을 겹쳐 쓴다(2026-10-30) — 한 줄로 이어 쓰면 좁은 카드(1366)에서 제목이 접혔다.
+   두 줄을 합친 높이가 제목 한 줄과 비슷하도록 둘 다 줄이고, 줄 간격을 없앤다. */
+.enh-title-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  vertical-align: baseline; /* 인라인 flex의 기준선은 첫 줄(Lv.Max) — 제목과 줄이 맞고 ×N은 그 아래로 내려온다 */
+  margin-left: 0.3em;
+  line-height: 1;
+}
+.enh-title-stack .enh-title-lv   { font-size: 0.92em; }
+.enh-title-stack .enh-title-over { font-size: 0.95em; }
 
 /* ── 카드 강화 — 기술 카드를 고르는 순간의 흙먼지(SkillQuake.tsx) ─────────────────────────────────────
    body로 portal한 층이라 화면 좌표(fixed)다 — 기술 카드 띠·판의 칸은 overflow를 잘라 카드 밖으로 퍼지는 먼지가 안 보인다.

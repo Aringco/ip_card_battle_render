@@ -403,14 +403,17 @@ export function useAnimationQueue(
     });
     setPendingExpCredit(newCredits);
 
+    // 체력 — 기술 효과(짝 효과든 고른 기술이든)의 체력 변화는 그 효과가 재생되는 순간(Pass 1.6, 특허랑이는 발톱이 닿는 순간)에 드러낸다.
+    // ⚠️ 예전에는 짝 효과만 가렸다 — 고른 기술의 체력은 클릭 즉시 구슬에 반영돼, 상대가 판을 끝내는 기술(특허랑이로 0 · 상표토끼로 승리선)을
+    //    고르면 연출이 시작되기도 전에 구슬이 먼저 0·만점이 되어 "상대의 승리가 선반영"됐다(2026-10-30 요청).
     const hpCredits: Record<string, number> = {};
     lastEvents.forEach(ev => {
-      if (ev.type !== 'skillApplied' || !ev.pair) return;
+      if (ev.type !== 'skillApplied' || ev.level <= 0) return;
       const opp = ev.target ?? Object.keys(ev.hpAfter).find(s => s !== ev.team);
       hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + ev.myHpDelta;
       if (opp !== undefined) hpCredits[opp] = (hpCredits[opp] ?? 0) + ev.oppHpDelta;
     });
-    // 카드 강화 — 차례가 시작될 때 든 출혈·지속 회복도 그 연출 순간에 드러낸다(효과 재생 뒤의 지속 효과 단계)
+    // 카드 강화 — 차례를 마칠 때 든 출혈·지속 회복도 그 연출 순간에 드러낸다(효과 재생 뒤의 지속 효과 단계)
     lastEvents.forEach(ev => {
       if (ev.type !== 'enhanceTick') return;
       hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + (ev.kind === 'bleed' ? -ev.amount : ev.amount);
@@ -1083,15 +1086,15 @@ export function useAnimationQueue(
             setPendingExpCredit(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) - bonus.amount) }));
             addFloat(`${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
           }
-          // 카드 강화의 짝 효과 — 이 효과의 체력 변화를 이제야 드러낸다(위 pendingHpCredit)
-          if (skillEv.pair) {
+          // 이 효과의 체력 변화를 이제야 드러낸다(위 pendingHpCredit) — 특허랑이는 발톱이 닿는 순간(아래)
+          const revealHp = () =>
             setPendingHpCredit(prev => {
               const next = { ...prev };
               next[team] = (next[team] ?? 0) - myHpDelta;
               next[opp] = (next[opp] ?? 0) - oppHpDelta;
               return next;
             });
-          }
+          if (animal !== 'tiger') revealHp();
 
           if (animal === 'rabbit') {
             // 상표토끼 — 보드 여기저기서 토끼떼가 우르르 체력 구슬로 달려가는 연출
@@ -1123,6 +1126,7 @@ export function useAnimationQueue(
             sched(() => {
               setTigerSlash({ onTeam: opp });
               setTigerImpact(true);
+              revealHp();
               setScreenShakeLevel(2); // 발톱자국이 슉 그어지는 순간 화면이 짧게 흔들린다
               playRandomSound('tiger');
               sched(() => setTigerSlash(null), TIGER_HIT_DUR);

@@ -154,13 +154,13 @@ export function TeamTotalPanel({
       {(bleeding || healing || divisor > 1) && (
         <div className="hp-orb-status">
           {bleeding && (
-            <span className="hp-status hp-status-bleed" title={`출혈 — 차례가 시작될 때마다 체력 −${bleed!.amount} (${bleed!.turns}턴 남음)`}>
+            <span className="hp-status hp-status-bleed" title={`출혈 — 차례를 마칠 때마다 체력 −${bleed!.amount} (${bleed!.turns}턴 남음)`}>
               <span className="hp-status-icon" aria-hidden />
               <b className="tabular-nums">{bleed!.turns}</b>
             </span>
           )}
           {healing && (
-            <span className="hp-status hp-status-regen" title={`지속 회복 — 차례가 시작될 때마다 체력 +${regen!.amount} (${regen!.turns}턴 남음)`}>
+            <span className="hp-status hp-status-regen" title={`지속 회복 — 차례를 마칠 때마다 체력 +${regen!.amount} (${regen!.turns}턴 남음)`}>
               <span className="hp-status-icon" aria-hidden />
               <b className="tabular-nums">{regen!.turns}</b>
             </span>

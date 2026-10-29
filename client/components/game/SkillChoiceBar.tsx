@@ -291,8 +291,8 @@ export function SkillChoiceBar({
         const clickable = interactive && eligible && open(animal);
         const desc = enhance ? describeEnhanceSkill(animal, preview.level) : describeSkill(animal, preview.level);
         // 특허랑이처럼 효과가 둘 이상인 행동은 문구가 그냥 이어 붙어 "체력 +4상대 체력 -4"처럼
-        // 읽히므로, 각 효과를 조각으로 모아 **쉼표 뒤에서 줄을 바꿔** 한 줄에 하나씩 둔다
-        // (요청). 한 줄로 이으면 "내 체력 +1, 상대 체력 -1"이 카드 폭을 넘겨 제멋대로
+        // 읽히므로, 각 효과를 조각으로 모아 **줄을 바꿔** 한 줄에 하나씩 둔다(요청 — 줄 끝의 쉼표는
+        // 2026-10-30 요청으로 뺐다). 한 줄로 이으면 "내 체력 +1, 상대 체력 -1"이 카드 폭을 넘겨 제멋대로
         // 접혔다 — 어디서 접힐지는 글자 수에 달려 있어 그때그때 달랐다.
         const effectParts: string[] = [];
         if (preview.extraDraws > 0) effectParts.push(`다음 턴 카드 +${preview.extraDraws}회`);
@@ -314,7 +314,7 @@ export function SkillChoiceBar({
           ? '🔒 사용 불가'
           : cooling > 0
             ? `⏳ 쿨타임\n${cooling}턴 남음`
-            : eligible ? effectParts.join(',\n') : '레벨 부족';
+            : eligible ? effectParts.join('\n') : '레벨 부족';
         // 강화 단계 0~1 — 카드의 밝은 그라데이션과 무지개 홀로가 이 값을 따라 짙어진다(globals.css의 .enh-*)
         const enhStep = enhance ? (preview.level - 1) / (ENHANCE_MAX_LEVEL - 1) : 0;
 
@@ -410,9 +410,16 @@ export function SkillChoiceBar({
                   style={{ color: SKILL_COLOR[animal] }}
                 >
                   [{SKILL_TITLE[animal]}]
-                  {enhance && <span className="enh-title-lv"> Lv.{enhanceLevelLabel(preview.level)}</span>}
-                  {/* Lv.Max의 별도 배수(경험치를 더 채울수록 ×2 · ×3 …) — 위 효과 숫자에는 이미 곱해져 있다 */}
-                  {enhance && (preview.over ?? 1) > 1 && <span className="enh-title-over"> ×{preview.over}</span>}
+                  {/* Lv.Max의 별도 배수(경험치를 더 채울수록 ×2 · ×3 …) — 위 효과 숫자에는 이미 곱해져 있다.
+                      "Lv.Max" **아래**에 겹쳐 쓴다(2026-10-30 요청 — 예전에는 뒤에 이어 써서 좁은 카드에서 제목이 두 줄로 접혔다) */}
+                  {enhance && ((preview.over ?? 1) > 1 ? (
+                    <span className="enh-title-stack">
+                      <span className="enh-title-lv">Lv.{enhanceLevelLabel(preview.level)}</span>
+                      <span className="enh-title-over">×{preview.over}</span>
+                    </span>
+                  ) : (
+                    <span className="enh-title-lv"> Lv.{enhanceLevelLabel(preview.level)}</span>
+                  ))}
                 </h3>
                 {/* ⚠️ `whitespace-pre-line`이 아니라 `pre`다(CSS의 .skill-text-desc) —
                     줄바꿈은 살리되 **그 밖의 줄바꿈은 일어나지 않아야** 한다. 대신 줄이
@@ -442,16 +449,29 @@ export function SkillChoiceBar({
       {/* 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
           다듬으려고) overflow-hidden이라 그 안에 두면 잘려 보인다 — 그래서 가이드는
           이 바깥의, 잘리지 않는 래퍼에 그린다(장소 타일에서 겪었던 것과 같은 문제). */}
-      <HoloCell enabled={passable} className="relative">
+      {/* 턴 마치기도 기술 카드처럼 가리키면 기울고 광택이 지나간다(2026-10-30 요청) — 기술 카드가 "레벨이 있어 활성인가"로 켜듯,
+          이 칸은 언제나 활성이라 상대 차례에도 켠다(시연은 내내 잠겨 있어 끈다). 카드 강화 판에서는 다른 카드의 **Lv.Max와
+          같은** 빛(밝은 빛 · 무지개 · 금빛)을 입는다. */}
+      <HoloCell enabled={demoAllowed === null} className="relative">
         <button
           onClick={() => passable && onPass()}
           disabled={!passable}
           className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
             passable ? 'skill-choice-glow' : ''
           }`}
+          data-enh-level={enhance ? ENHANCE_MAX_LEVEL : undefined}
+          data-enh-gold={enhance ? '' : undefined}
+          style={enhance ? ({ ['--enh' as string]: '1', ['--gold' as string]: '1' } as React.CSSProperties) : undefined}
         >
           {/* 시연에서는 이 칸이 내내 잠겨 있으므로 함께 어둡게 둔다(위 주석과 같은 이유). */}
           <div className={`skill-choice-bg pass-panel-bg play-frame-inset absolute ${demoAllowed === null ? '' : 'skill-choice-bg-disabled'}`} />
+          {enhance && (
+            <>
+              <div className="enh-light play-frame-inset absolute" aria-hidden />
+              <div className="enh-rainbow play-frame-inset absolute" aria-hidden />
+              <div className="enh-gold play-frame-inset absolute" aria-hidden />
+            </>
+          )}
           <div className="skill-choice-dim play-frame-inset absolute" />
           <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
             <h3 className="skill-text-title skill-outline-text font-extrabold text-jungle-200">[턴 마치기]</h3>

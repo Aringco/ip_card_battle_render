@@ -240,7 +240,10 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
       cleanse: animal === 'rabbit' ? enhanceRabbitCleanse(level) : 0,
       // 출혈·지속 회복은 최대 10턴(ENHANCE_DOT_MAX_TURNS) — 서버처럼 이미 걸린 턴을 빼고 더해질 만큼만(꽉 찼으면 0이라 문구가 빠진다)
       regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level), gameState.enhance.regen?.[team]?.turns) : 0,
-      bleedTurns: animal === 'tiger' ? dotRoom(enhanceTigerBleedTurns(level), opponent !== undefined ? gameState.enhance.bleed?.[opponent]?.turns : 0) : 0,
+      // 상대가 여럿이면(개인전 강화 방) 대상이 정해지기 전이라 이미 걸린 턴을 뺄 수 없다 — 표의 값 그대로 보인다
+      bleedTurns: animal === 'tiger'
+        ? dotRoom(enhanceTigerBleedTurns(level), opponentsOf(gameState, team).length === 1 && opponent !== undefined ? gameState.enhance.bleed?.[opponent]?.turns : 0)
+        : 0,
       over,
     };
   }

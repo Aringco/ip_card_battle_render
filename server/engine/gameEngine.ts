@@ -1,9 +1,9 @@
-import { opponentsOf } from 'shared';
+import { needsTarget, opponentsOf } from 'shared';
 import type { Animal, GameEvent, GameState, Place, SideId } from 'shared';
 import { drawCard } from './drawCard';
-import { advanceTurn, checkKnockout, finishTurn, initGame } from './turnManager';
+import { advanceTurn, checkKnockout, finishTurn, initGame, judgeHp } from './turnManager';
 import { forfeitRank, resolveRanks } from './ranking';
-import { applySkillChoice, applyPass, eligibleAnimals, randomEligibleSkill } from './skills';
+import { applySkillChoice, applyPass, eligibleAnimals, levelOf, randomEligibleSkill } from './skills';
 import { randomPlace } from './places';
 import type { RNG } from './places';
 
@@ -31,10 +31,12 @@ export function processPlayerAction(
   events.push(...drawCard(state, place, rng));
   state.lastPlace = place;
   // 카드 강화 — 짝 효과(체력 변화)가 뽑기 안에서 일어나므로 여기서 승패를 본다. 끝났으면 기술 단계로 가지 않는다.
-  if (state.enhance) events.push(...checkKnockout(state));
+  // 개인전 강화 방은 순위 판정(judgeHp → resolveRanks)이고, 짝 효과로 내 순위가 정해졌으면(상표토끼로 승리선) 기술 없이 차례를 넘긴다.
+  if (state.enhance) events.push(...judgeHp(state));
 
   if (state.phase === 'playing') {
-    state.pendingChoice = state.activeTeam;
+    if (state.teams[state.activeTeam].finish) events.push(...advanceTurn(state));
+    else state.pendingChoice = state.activeTeam;
   }
 
   return { state, events };
@@ -102,9 +104,9 @@ function processIndividualSkill(
 ): { state: GameState; events: GameEvent[] } {
   const team = state.pendingChoice!;
 
-  // 특허랑이는 대상이 필요하다 — 순위가 정해지지 않은 다른 사람이어야 한다. 아니면 무시(이벤트 없음).
+  // 특허랑이(강화 방은 Lv.6+ 디자인어도 — needsTarget)는 대상이 필요하다 — 순위가 정해지지 않은 다른 사람이어야 한다. 아니면 무시(이벤트 없음).
   let victim: SideId | undefined;
-  if (animal === 'tiger') {
+  if (needsTarget(state, animal, levelOf(state, team, animal))) {
     if (target === undefined || !opponentsOf(state, team).includes(target)) return { state, events: [] };
     victim = target;
   }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { EventConfig, EventKind, GameMode, GameSettings, Seat } from 'shared';
+import type { EventConfig, EventKind, GameSettings, Seat } from 'shared';
 import { DEFAULT_SETTINGS, ENHANCE_SETTINGS, beatDevSettings, isPlayingSeat, randomNickname } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { EventView } from '@/components/lobby/EventForm';
@@ -20,6 +20,7 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { LOBBY_ASSETS, TABLE_IS_STANDIN } from '@/lib/lobbyAssets';
 import { LobbyHero } from '@/components/lobby/LobbyHero';
 import { LobbyStage, BACK_OF, type Stage } from '@/components/lobby/LobbyStage';
+import type { IndividualKind } from '@/components/lobby/IndividualRoomForm';
 import { BackButton } from '@/components/lobby/BackButton';
 import { WaitingRoom } from '@/components/lobby/WaitingRoom';
 
@@ -59,8 +60,8 @@ export default function LobbyPage() {
   // 아무것도 조작할 수 없고 양 팀의 진행만 지켜본다.
   const [team, setTeam] = useState<Seat>('A');
   const spectatorSeat = !isPlayingSeat(team);
-  // 방 만들기의 방 종류 — 개인전이면 팀이 없으므로 자리·팀 이름을 쓰지 않는다.
-  const [roomMode, setRoomMode] = useState<GameMode>('team');
+  // 개인전 방의 규칙 — 일반 / 강화(방 종류 팀전·개인전은 방 만들기의 두 패널이 정한다 — LobbyStage)
+  const [individualKind, setIndividualKind] = useState<IndividualKind>('normal');
   const [teamName, setTeamName] = useState('');
   // 방을 만드는 쪽만 입력할 수 있다 — 아직 아무도 들어오지 않은 반대편 팀의 이름까지
   // 미리 정해둔다(비워두면 기존처럼 실제 참가자가 자기 팀 이름을 직접 고른다).
@@ -268,16 +269,19 @@ export default function LobbyPage() {
   // 두 팀 이름이 같으면 게임 화면에서 어느 쪽이 우리 팀인지 구분할 방법이 사라진다
   // (서버도 startBlockReason에서 같은 조건을 막는다).
   const teamNamesClash =
-    roomMode === 'team' && teamName.trim().length > 0 && teamName.trim() === otherTeamName.trim();
+    teamName.trim().length > 0 && teamName.trim() === otherTeamName.trim();
 
-  const handleCreateRoom = () => {
+  // 개인전의 방장은 플레이어석에 앉는다(관전은 대기실에서 옮기면 된다). 팀 이름은 보내지 않는다.
+  // 강화 방은 혼자 놀기 → 강화 모드와 같은 규칙 묶음(enhanceSettings)을 보낸다 — 서버가 강화 범위로 다시 자른다.
+  const handleCreateIndividualRoom = () => {
+    if (!canSubmitName) return;
+    sessionStorage.setItem('cardBattle_team', 'player');
+    const enhance = individualKind === 'enhance';
+    ws.createRoom(effectiveNickname, 'player', undefined, enhance ? enhanceSettings : settings, undefined, 'individual', enhance);
+  };
+
+  const handleCreateTeamRoom = () => {
     if (!canSubmitName || teamNamesClash) return;
-    if (roomMode === 'individual') {
-      // 개인전의 방장은 플레이어석에 앉는다(관전은 대기실에서 옮기면 된다). 팀 이름은 보내지 않는다.
-      sessionStorage.setItem('cardBattle_team', 'player');
-      ws.createRoom(effectiveNickname, 'player', undefined, settings, undefined, 'individual');
-      return;
-    }
     sessionStorage.setItem('cardBattle_team', team);
     ws.createRoom(
       effectiveNickname,
@@ -394,6 +398,7 @@ export default function LobbyPage() {
               <WaitingRoom
                 roomId={ws.roomId}
                 mode={ws.lobbyMode}
+                enhance={ws.lobbyEnhance}
                 players={ws.lobbyPlayers}
                 teamNames={ws.lobbyTeamNames}
                 settings={ws.lobbySettings}
@@ -420,8 +425,8 @@ export default function LobbyPage() {
                 stage={stage}
                 blocked={blocked}
                 onGo={setStage}
-                roomMode={roomMode}
-                onRoomMode={setRoomMode}
+                individualKind={individualKind}
+                onIndividualKind={setIndividualKind}
                 nickname={nickname}
                 onNickname={setNickname}
                 nicknameHint={nicknameHint}
@@ -443,7 +448,8 @@ export default function LobbyPage() {
                 onEnhanceSettings={setEnhanceSettings}
                 onStartSolo={handleStartSolo}
                 onStartEnhance={handleStartEnhance}
-                onCreateRoom={handleCreateRoom}
+                onCreateTeamRoom={handleCreateTeamRoom}
+                onCreateIndividualRoom={handleCreateIndividualRoom}
                 onJoinRoom={handleJoinRoom}
                 event={{
                   view: eventView,

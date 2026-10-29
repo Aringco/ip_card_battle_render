@@ -112,6 +112,8 @@ export interface UseWebSocketReturn {
   lobbySettings: GameSettings;
   // 방의 종류 — 팀전이면 두 팀 열, 개인전이면 한 블록. 방이 살아 있는 동안 바뀌지 않는다.
   lobbyMode: GameMode;
+  /** 개인전 '강화' 방인지 — 대기실의 규칙 요약 · 규칙 입력 범위가 달라진다 */
+  lobbyEnhance: boolean;
   hostMemberId: string | null;
   isHost: boolean;
   // 추방당했거나 스스로 나가서 방을 벗어났을 때의 안내문(없으면 null)
@@ -144,7 +146,8 @@ export interface UseWebSocketReturn {
   clearPauseNotice: () => void;
   // team에는 관전석('spectator')도 올 수 있다 — 로비에서 고르는 "자리"이기 때문.
   // mode를 생략하면 팀전. 개인전은 team에 'player'를 보낸다(팀 이름은 쓰지 않는다).
-  createRoom: (nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode) => void;
+  /** enhance — 개인전 '강화' 방(팀전 방에서는 서버가 무시한다) */
+  createRoom: (nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode, enhance?: boolean) => void;
   joinRoom: (roomId: string, nickname: string, team: Seat, teamName?: string) => void;
   /** enhance — 혼자 놀기 '카드 강화' 판(shared/enhance.ts) */
   createSoloRoom: (nickname: string, teamName?: string, settings?: Partial<GameSettings>, enhance?: boolean) => void;
@@ -224,6 +227,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [lobbyTeamNames, setLobbyTeamNames] = useState<LobbyTeamNames>({ A: null, B: null });
   const [lobbySettings, setLobbySettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [lobbyMode, setLobbyMode] = useState<GameMode>('team');
+  const [lobbyEnhance, setLobbyEnhance] = useState(false);
   const [hostMemberId, setHostMemberId] = useState<string | null>(null);
   const [roomNotice, setRoomNotice] = useState<string | null>(null);
   const [chatLog, setChatLog] = useState<LobbyChatMessage[]>([]);
@@ -337,6 +341,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setLobbyTeamNames(msg.teamNames);
           setLobbySettings(msg.settings);
           setLobbyMode(msg.mode ?? 'team');
+          setLobbyEnhance(msg.enhance === true);
           setHostMemberId(msg.hostMemberId);
           break;
 
@@ -365,6 +370,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setLobbyPlayers([]);
           setLobbyTeamNames({ A: null, B: null });
           setLobbyMode('team');
+          setLobbyEnhance(false);
           setHostMemberId(null);
           setChatLog([]);
           setRoomNotice(msg.type === 'kicked' ? msg.message : null);
@@ -502,9 +508,9 @@ export function useWebSocket(): UseWebSocketReturn {
     return () => ws.close();
   }, [applyState]);
 
-  const createRoom = useCallback((nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode) => {
+  const createRoom = useCallback((nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode, enhance?: boolean) => {
     setError(null);
-    send({ type: 'createRoom', nickname, team, teamName, settings, otherTeamName, mode });
+    send({ type: 'createRoom', nickname, team, teamName, settings, otherTeamName, mode, ...(enhance ? { enhance: true } : {}) });
   }, [send]);
 
   const joinRoom = useCallback((rid: string, nickname: string, team: Seat, teamName?: string) => {
@@ -636,7 +642,7 @@ export function useWebSocket(): UseWebSocketReturn {
 
   return {
     connected, roomId, playerId, memberId,
-    lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, hostMemberId,
+    lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, lobbyEnhance, hostMemberId,
     isHost: memberId !== null && memberId === hostMemberId,
     roomNotice, clearRoomNotice, chatLog, emotes,
     gameState, turnDeadline, lastEvents, error,

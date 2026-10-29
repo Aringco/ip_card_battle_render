@@ -1,5 +1,6 @@
-import type { GameState, SideId } from './types';
+import type { Animal, GameState, SideId } from './types';
 import { MAX_TURN } from './constants';
+import { enhanceMermaidCut } from './enhance';
 
 /**
  * 이 판의 턴 상한 — 평소에는 MAX_TURN(20), 이벤트 '목표점수 달성하기'(scoreRace)에서는 그 판의 maxTurn(10)이다.
@@ -38,4 +39,15 @@ export function nextActiveSide(state: GameState, from: SideId): SideId | null {
     if (!state.teams[candidate]?.finish) return candidate;
   }
   return null;
+}
+
+/**
+ * 개인전에서 이 기술을 쓰려면 상대를 골라야 하는가 — 특허랑이는 언제나, 디자인어는 **강화 방에서 Lv.6부터**(상대 배율 −N ·
+ * Lv.9부터 상대 효과 ÷N이 붙는다 — 2026-10-30, 개인전 강화). 팀전은 상대가 하나뿐이라 언제나 false다.
+ * 서버(gameEngine.processIndividualSkill — 대상 없으면 무시)와 화면(상대 고르기 창)이 같은 판정을 써야 한다.
+ */
+export function needsTarget(state: Pick<GameState, 'mode' | 'enhance'>, animal: Animal, level: number): boolean {
+  if (state.mode !== 'individual') return false;
+  if (animal === 'tiger') return true;
+  return animal === 'mermaid' && !!state.enhance && enhanceMermaidCut(level) > 0;
 }

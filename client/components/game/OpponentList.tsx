@@ -1,5 +1,5 @@
 import type { ClientGameState, SideId } from 'shared';
-import { ANIMALS, THRESHOLDS } from 'shared';
+import { ANIMALS, ENHANCE_MAX_LEVEL, expProgressFor } from 'shared';
 import type { Animal } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { finishLabel, sideColor, sideName } from '@/lib/individual';
@@ -90,6 +90,7 @@ function OpponentCard({
             {sideName(gameState, side)}
           </span>
           {finished && <span className="ind-opp-finish">{finished}</span>}
+          {!finished && <StatusMarks gameState={gameState} side={side} />}
         </div>
 
         <div className="ind-opp-animals">
@@ -98,6 +99,7 @@ function OpponentCard({
               key={animal}
               side={side}
               animal={animal}
+              enhance={!!gameState.enhance}
               exp={animState.displayedExp[side]?.[animal] ?? team.exp[animal]}
               multiplier={team.pendingMultiplier}
               extraDraws={team.pendingExtraDraws}
@@ -109,22 +111,49 @@ function OpponentCard({
   );
 }
 
+/**
+ * 개인전 강화 방 — 그 사람에게 걸린 지속 효과(출혈 · 지속 회복 · 효과 감소 ÷N)의 남은 턴. 내 체력 구슬(TeamTotalPanel)의 아이콘과 같은 뜻을
+ * 칸이 좁아 글자 배지로 줄였다. 연출 전 값(withDisplayedTeams의 displayedStatus)을 받아 효과보다 먼저 뜨지 않는다.
+ */
+function StatusMarks({ gameState, side }: { gameState: ClientGameState; side: SideId }) {
+  const enh = gameState.enhance;
+  if (!enh) return null;
+  const bleed = enh.bleed?.[side];
+  const regen = enh.regen?.[side];
+  const divisor = enh.divisors?.[side] ?? 1;
+  const marks: Array<{ key: string; text: string; title: string }> = [];
+  if (bleed && bleed.turns > 0) marks.push({ key: 'bleed', text: `🩸${bleed.turns}`, title: `출혈 — 차례를 마칠 때마다 체력 −${bleed.amount} (${bleed.turns}턴 남음)` });
+  if (regen && regen.turns > 0) marks.push({ key: 'regen', text: `✚${regen.turns}`, title: `지속 회복 — 차례를 마칠 때마다 체력 +${regen.amount} (${regen.turns}턴 남음)` });
+  if (divisor > 1) marks.push({ key: 'divide', text: `÷${divisor}`, title: `효과 감소 — 다음 고른 기술 ÷${divisor}` });
+  if (marks.length === 0) return null;
+  return (
+    <span className="ind-opp-status">
+      {marks.map(m => (
+        <span key={m.key} className={`ind-opp-status-mark is-${m.key}`} title={m.title}>{m.text}</span>
+      ))}
+    </span>
+  );
+}
+
 function AnimalMini({
   side,
   animal,
+  enhance,
   exp,
   multiplier,
   extraDraws,
 }: {
   side: SideId;
   animal: Animal;
+  /** 카드 강화 판 — 레벨이 1부터 Lv.Max(11)까지이고 Max에서도 막대가 다음 별도 배수까지 찬다(expProgressFor) */
+  enhance: boolean;
   exp: number;
   multiplier: number;
   extraDraws: number;
 }) {
-  const threshold = THRESHOLDS[animal];
-  const level = Math.floor(exp / threshold);
-  const inLevel = exp % threshold;
+  const { level, inLevel, need, over } = expProgressFor(enhance, animal, exp);
+  const threshold = need ?? 1;
+  const isMax = enhance && level >= ENHANCE_MAX_LEVEL;
   return (
     <div data-team-score-row={`${side}:${animal}`} className="ind-animal">
       {animal === 'mermaid' && multiplier > 1 && <span className="ind-animal-badge">×{multiplier}</span>}
@@ -135,7 +164,7 @@ function AnimalMini({
         className="ind-animal-face"
         draggable={false}
       />
-      <span className="ind-animal-lv tabular-nums">Lv.{level}</span>
+      <span className="ind-animal-lv tabular-nums">{isMax ? `Max${over > 1 ? ` ×${over}` : ''}` : `Lv.${level}`}</span>
       <span className="ind-animal-exp tabular-nums">{inLevel}/{threshold}</span>
       <div className="ind-animal-bar">
         <div style={{ width: `${(inLevel / threshold) * 100}%` }} />
