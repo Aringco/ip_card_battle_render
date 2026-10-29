@@ -10,6 +10,16 @@ import { spectatorTeamVars } from '@/lib/teamColors';
  * 20 이상 5점 · 50 이상 10점 · 100 이상 20점(2026-10-28) · 1000 이상 100점 · **5000 이상 500점**(2026-10-29) ·
  * 10000부터는 자릿수가 하나 늘 때마다 간격도 한 자리(1000점 …). 카드 강화 기본 400은 20점마다 19줄, 목표 상한 2500(승리선 5000)은 500점마다 9줄.
  */
+// 카드 강화의 지속 효과 파티클 — 조각마다 자리·지연·길이를 정해 둔다(렌더마다 무작위면 매번 다른 모양으로 튄다).
+// 출혈은 위에서 아래로 흘러내리는 핏방울, 지속 회복은 아래에서 위로 떠오르는 초록 십자가.
+const BLEED_DROPS = [12, 31, 48, 66, 84].map((left, i) => ({ left, delay: i * 0.55 + (i % 2) * 0.3, dur: 2.1 + (i % 3) * 0.45 }));
+const HEAL_CROSSES = [16, 36, 55, 74, 88].map((left, i) => ({ left, delay: i * 0.5 + (i % 2) * 0.25, dur: 2.3 + (i % 3) * 0.4 }));
+// 한 번 든 순간(dotPulse)의 크게 터지는 조각 — 가운데에서 퍼진다(출혈은 아래로, 회복은 위로 치우친다)
+const DOT_BURST = Array.from({ length: 10 }, (_, i) => {
+  const angle = (i / 10) * Math.PI * 2;
+  return { dx: Math.cos(angle) * 42, dy: Math.sin(angle) * 34, delay: (i % 3) * 50 };
+});
+
 function segmentStepOf(winHp: number): number {
   if (winHp >= 10000) return 10 ** (String(Math.floor(winHp)).length - 2);
   if (winHp >= 5000) return 500;
@@ -25,6 +35,7 @@ export function TeamTotalPanel({
   gameState,
   myTeam,
   pulse,
+  dotPulse = null,
 }: {
   team: SideId;
   gameState: ClientGameState;
@@ -32,6 +43,8 @@ export function TeamTotalPanel({
   // 각 팀 색(client/lib/teamColors.ts의 팔레트)으로 칠한다.
   myTeam: SideId | null;
   pulse?: { id: number; direction: 'gain' | 'loss' } | null;
+  // 카드 강화 — 출혈·지속 회복이 방금 한 번 들었다(useAnimationQueue의 dotPulse)
+  dotPulse?: { id: number; kind: 'bleed' | 'regen' } | null;
 }) {
   const hp = gameState.teams[team].hp;
   // 구슬이 가득 차는 점수 — 평소엔 승리선(targetScore × 2), 목표점수 달성하기는 그 판의 목표 점수(가득 차면 달성).
@@ -39,6 +52,14 @@ export function TeamTotalPanel({
   const spectating = myTeam === null;
   const toneClass = spectating ? 'hp-orb-spectator' : myTeam === team ? 'hp-orb-mine' : 'hp-orb-enemy';
   const fillPct = Math.max(0, Math.min(100, (hp / winHp) * 100));
+  // 카드 강화의 지속 효과 — gameState는 화면상 값(withDisplayedTeams)이라 연출 순간에 나타나고 줄어든다
+  const enh = gameState.enhance;
+  const bleed = enh?.bleed?.[team];
+  const regen = enh?.regen?.[team];
+  const bleeding = (bleed?.turns ?? 0) > 0;
+  const healing = (regen?.turns ?? 0) > 0;
+  const divisor = enh?.divisors?.[team] ?? 1;
+  const divisorTurns = enh?.divisorTurns?.[team] ?? 0;
 
   const [activePulse, setActivePulse] = useState<{ id: number; direction: 'gain' | 'loss' } | null>(null);
   const [shards, setShards] = useState<{ dx: number; dy: number }[]>([]);
@@ -75,7 +96,7 @@ export function TeamTotalPanel({
 
   return (
     <div
-      className={`hp-orb w-full shrink-0 h-full ${toneClass}`}
+      className={`hp-orb w-full shrink-0 h-full ${toneClass} ${bleeding ? 'hp-orb-bleeding' : ''} ${healing ? 'hp-orb-healing' : ''}`}
       style={spectating ? spectatorTeamVars(team) : undefined}
     >
       <LeafDecoration position="tl" size={30} swaying={activePulse !== null} />
@@ -100,7 +121,58 @@ export function TeamTotalPanel({
           ))}
         </>
       )}
+      {/* 지속 효과의 빨간·초록 그림자(globals.css .hp-orb-dot-glow) */}
+      {(bleeding || healing) && <div className="hp-orb-dot-glow" aria-hidden />}
+      {/* 출혈 — 핏방울이 위에서 흘러내린다 · 지속 회복 — 초록 십자가가 떠오른다(globals.css .hp-orb-bleed / .hp-orb-heal) */}
+      {bleeding && (
+        <div className="hp-orb-bleed" aria-hidden>
+          {BLEED_DROPS.map((d, i) => (
+            <span key={i} className="hp-orb-drop" style={{ left: `${d.left}%`, animationDelay: `${d.delay}s`, animationDuration: `${d.dur}s` }} />
+          ))}
+        </div>
+      )}
+      {healing && (
+        <div className="hp-orb-heal" aria-hidden>
+          {HEAL_CROSSES.map((c, i) => (
+            <span key={i} className="hp-orb-cross" style={{ left: `${c.left}%`, animationDelay: `${c.delay}s`, animationDuration: `${c.dur}s` }} />
+          ))}
+        </div>
+      )}
+      {dotPulse && (
+        <div key={dotPulse.id} className={`hp-orb-dot-burst is-${dotPulse.kind}`} aria-hidden>
+          {DOT_BURST.map((p, i) => (
+            <span
+              key={i}
+              className={dotPulse.kind === 'bleed' ? 'hp-orb-drop' : 'hp-orb-cross'}
+              style={{ '--bx': `${p.dx}px`, '--by': `${p.dy}px`, animationDelay: `${p.delay}ms` } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      )}
       <p className="hp-orb-value tabular-nums">{hp}</p>
+      {/* 남은 턴 — 핏방울(출혈) · 초록 십자가(지속 회복) 아이콘 안에 숫자. 상대 디자인어의 효과 감소(÷N)도 함께 둔다 */}
+      {(bleeding || healing || divisor > 1) && (
+        <div className="hp-orb-status">
+          {bleeding && (
+            <span className="hp-status hp-status-bleed" title={`출혈 — 차례가 시작될 때마다 체력 −${bleed!.amount} (${bleed!.turns}턴 남음)`}>
+              <span className="hp-status-icon" aria-hidden />
+              <b className="tabular-nums">{bleed!.turns}</b>
+            </span>
+          )}
+          {healing && (
+            <span className="hp-status hp-status-regen" title={`지속 회복 — 차례가 시작될 때마다 체력 +${regen!.amount} (${regen!.turns}턴 남음)`}>
+              <span className="hp-status-icon" aria-hidden />
+              <b className="tabular-nums">{regen!.turns}</b>
+            </span>
+          )}
+          {divisor > 1 && (
+            <span className="hp-status hp-status-divide" title={`효과 감소 — 다음 고른 기술 ÷${divisor}${divisorTurns > 0 ? ` (${divisorTurns}턴 남음)` : ''}`}>
+              <span className="hp-status-icon" aria-hidden>÷{divisor}</span>
+              {divisorTurns > 0 && <b className="tabular-nums">{divisorTurns}</b>}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

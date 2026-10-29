@@ -9,6 +9,7 @@ import { useGuideEnabled } from '@/lib/guideSettings';
 import { spectatorTeamVars } from '@/lib/teamColors';
 import { emVar } from '@/lib/textFit';
 import { GuideFinger } from './GuideFinger';
+import { quakeStageOf, useSkillQuake } from './SkillQuake';
 
 const ANIMAL_ORDER: Animal[] = ['sheep', 'rabbit', 'mermaid', 'tiger'];
 
@@ -67,7 +68,9 @@ function HoloCell({
   // ⚠️ "가리키고 있다"는 CSS :hover가 아니라 여기서 다는 data-hover로 판단한다(globals.css .holo-cell 절).
   // 미디어 쿼리((any-)hover)는 브라우저의 기기 판정에 달려 있어, 터치스크린 노트북처럼 판정이 어긋나는 PC에서는
   // 마우스로 가리켜도 효과가 꺼졌다. 포인터의 실제 종류를 보면 그 판정과 무관하고, 터치는 켜지지 않는다.
-  const canHover = (e: React.PointerEvent) => e.pointerType === 'mouse' || e.pointerType === 'pen';
+  // 카드 강화의 내려찍기(SkillQuake — data-slam) 동안에는 다시 떠오르지 않는다 — 커서가 그대로 카드 위에 있어도.
+  const canHover = (e: React.PointerEvent) =>
+    (e.pointerType === 'mouse' || e.pointerType === 'pen') && !ref.current?.hasAttribute('data-slam');
   const onPointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
     if (enabled && canHover(e)) ref.current?.setAttribute('data-hover', '');
   };
@@ -243,6 +246,8 @@ export function SkillChoiceBar({
   // 쓴 카드는 쿨타임 동안 잠긴다(서버 eligibleAnimals와 같은 규칙 — lib/skills.ts의 cooldownOf).
   const enhance = !!gameState.enhance;
   const bursts = useLevelUpBursts(enhance, team, previews.map(p => p.level));
+  // 고르는 순간의 무게 — 배율이 높을수록 무겁게 내리꽂히고 판이 흔들린다(SkillQuake.tsx)
+  const quake = useSkillQuake();
 
   // 예전엔 이 팀의 첫 행동이 해금된 그 순간에만(평생 1회) 손가락 가이드를 보여줬는데,
   // 그 순간을 놓치면 다시 볼 방법이 없었다. 이제는 행동을 고를 수 있는 턴마다 매번
@@ -297,7 +302,12 @@ export function SkillChoiceBar({
         // 카드 강화 Lv.6+의 둘째 효과 — 연출 캡션(useAnimationQueue Pass 1.6)과 같은 문구
         if (preview.oppMultiplierCut) effectParts.push(`상대 배율 -${preview.oppMultiplierCut}`);
         if (preview.randomExp) effectParts.push(`무작위 경험치 +${preview.randomExp}`);
-        if (preview.oppDivisor && preview.oppDivisor > 1) effectParts.push(`상대 효과 ÷${preview.oppDivisor}`);
+        if (preview.oppDivisor && preview.oppDivisor > 1) effectParts.push(`상대 효과 ÷${preview.oppDivisor}(${preview.oppDivisorTurns}턴)`);
+        // 3차 표(배율 무관) — 연출 캡션과 같은 문구
+        if (preview.cooldownCut) effectParts.push(Number.isFinite(preview.cooldownCut) ? `쿨타임 -${preview.cooldownCut}턴` : '쿨타임 초기화');
+        if (preview.cleanse) effectParts.push(Number.isFinite(preview.cleanse) ? `부정 효과 -${preview.cleanse}턴` : '부정 효과 정화');
+        if (preview.regenTurns) effectParts.push(`지속 회복 +${preview.regenTurns}턴`);
+        if (preview.bleedTurns) effectParts.push(`출혈 +${preview.bleedTurns}턴`);
         // 상대 디자인어(Lv.9+)에 걸려 이 카드의 효과가 나뉘어 있다 — 위 숫자는 이미 나눈 값이다
         if (preview.divisor && preview.divisor > 1) effectParts.push(`(÷${preview.divisor} 적용)`);
         const effectLabel = !wellOk(animal)
@@ -322,7 +332,16 @@ export function SkillChoiceBar({
             className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
-              onClick={() => clickable && onChoose(animal)}
+              onClick={e => {
+                if (!clickable) return;
+                if (enhance) {
+                  const cell = e.currentTarget.closest('.holo-cell');
+                  // 그 카드가 실제로 받는 배율 — 디자인어 배율 × Lv.Max 별도 배수
+                  const mult = gameState.teams[team].pendingMultiplier * (preview.over ?? 1);
+                  if (cell instanceof HTMLElement) quake.trigger(cell, quakeStageOf(mult));
+                }
+                onChoose(animal);
+              }}
               disabled={!clickable}
               // play-card-frame이 ::after로 금색 액자를, ::before로 네 모서리 장식과
               // 잎 데칼을 얹는다 — 컷신 이미지 위에 덧그릴 뿐 그림은 그대로다.
@@ -392,6 +411,8 @@ export function SkillChoiceBar({
                 >
                   [{SKILL_TITLE[animal]}]
                   {enhance && <span className="enh-title-lv"> Lv.{enhanceLevelLabel(preview.level)}</span>}
+                  {/* Lv.Max의 별도 배수(경험치를 더 채울수록 ×2 · ×3 …) — 위 효과 숫자에는 이미 곱해져 있다 */}
+                  {enhance && (preview.over ?? 1) > 1 && <span className="enh-title-over"> ×{preview.over}</span>}
                 </h3>
                 {/* ⚠️ `whitespace-pre-line`이 아니라 `pre`다(CSS의 .skill-text-desc) —
                     줄바꿈은 살리되 **그 밖의 줄바꿈은 일어나지 않아야** 한다. 대신 줄이
@@ -444,6 +465,7 @@ export function SkillChoiceBar({
             (시연에서는 잠겨 있으므로 짚지 않는다 — 누를 수 없는 곳을 가리키면 안 된다). */}
         {showSkillGuide && demoAllowed === null && <GuideFinger team={spectatorGuideTeam} />}
       </HoloCell>
+      {quake.layer}
     </div>
   );
 }

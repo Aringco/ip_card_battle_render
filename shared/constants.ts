@@ -149,15 +149,18 @@ export const SHEEP_SAFETY_CAP = 40;
 export const ROLL_DRAW_STEP_MS = 300;
 /** 카드 강화 — 장소 한 번에 여러 장이 나올 때 다음 장까지의 간격 */
 export const PLACE_DRAW_STEP_MS = 220;
-// 예약 뽑기가 이보다 많으면(카드 강화 판에서만 — 일반 판은 SHEEP_SAFETY_CAP에서 잘린다) 간격을 좁혀 롤 전체가 이 시간 안에 끝나게 한다.
-// 100장을 0.3초씩 띄우면 30초가 걸린다.
-const ROLL_STEP_FULL_UNTIL = 40;
-const ROLL_TOTAL_MAX_MS = ROLL_STEP_FULL_UNTIL * ROLL_DRAW_STEP_MS;
-const ROLL_STEP_MIN_MS = 30;
+// 예약 뽑기 롤 하나(실용신양·도토리 축제)는 **마지막 장이 자리에 앉기까지 5초 안에** 끝난다(2026-10-30 요청 — 전에는 장 간격만 12초로
+// 묶어 마지막 장의 연출까지 14초 가까이 걸렸다). 장이 적으면 0.3초 간격 그대로이고, 많을수록 간격을 좁혀 한꺼번에 쏟아낸다.
+// 마지막 장의 꼬리(울 볼 0.5초 + 슬롯 1.35초 — 화면 drawTiming의 WOOL_BALL_DUR · SLOT_TOTAL_DUR)를 빼고 남은 시간에 간격을 나눠 담는다.
+const ROLL_TOTAL_MAX_MS = 5000;
+const ROLL_LAST_CARD_MS = 500 + 1350;
+// 이보다 좁히지 않는다(약 390장까지 5초 안) — 더 좁히면 한 프레임(16ms)에 여러 장이 겹쳐 나와 화면이 따라가지 못한다
+const ROLL_STEP_MIN_MS = 8;
 /** 예약 뽑기 롤(총 total장)에서 다음 장까지의 간격 */
 export function rollDrawStep(total: number): number {
-  if (total <= ROLL_STEP_FULL_UNTIL) return ROLL_DRAW_STEP_MS;
-  return Math.max(ROLL_STEP_MIN_MS, Math.floor(ROLL_TOTAL_MAX_MS / total));
+  if (total <= 1) return ROLL_DRAW_STEP_MS;
+  const fit = Math.floor((ROLL_TOTAL_MAX_MS - ROLL_LAST_CARD_MS) / (total - 1));
+  return Math.max(ROLL_STEP_MIN_MS, Math.min(ROLL_DRAW_STEP_MS, fit));
 }
 
 // ─── 시작 공유 카드 ───────────────────────────────────────────────────────────

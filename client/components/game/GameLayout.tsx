@@ -130,7 +130,7 @@ export function GameLayout({
   // 연출이 끝나야 비로소 보여주는 "화면상" 경험치를 기준으로 레벨/기댓값을 계산해 넘긴다 —
   // 그래야 "카드 도착 → 경험치 반영 → 레벨업"이라는 순서가 화면에서도 지켜진다.
   // 배율·추가 뽑기는 연출 전 값으로(기술 효과가 재생되는 순간에 바뀐다 — useAnimationQueue의 displayedTeamPatch)
-  const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedDivisors);
+  const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedStatus);
   const skillPreviewGameState = withDisplayedExp(viewState, skillPreviewTeam, animState.displayedExp[skillPreviewTeam]);
 
   // 게임 템포가 늘어지지 않도록, 고를 수 있는 행동이 하나도 없으면 방에서 정한
@@ -233,7 +233,7 @@ export function GameLayout({
           {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3) */}
           <div className="play-cell play-cell-hp-a">
             {/* 체력은 화면상 값으로 — 카드 강화의 짝 효과는 그 연출 순간에야 구슬이 움직인다(useAnimationQueue의 displayedHp) */}
-            <TeamTotalPanel team="A" gameState={withDisplayedHp(gameState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} />
+            <TeamTotalPanel team="A" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} dotPulse={animState.dotPulse.get('A') ?? null} />
           </div>
 
           {/* ── 아랫줄 가운데 다섯 칸 — 기술 카드 4장 + 턴 마치기(요청 4) */}
@@ -254,7 +254,7 @@ export function GameLayout({
           </div>
 
           <div className="play-cell play-cell-hp-b">
-            <TeamTotalPanel team="B" gameState={withDisplayedHp(gameState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} />
+            <TeamTotalPanel team="B" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} dotPulse={animState.dotPulse.get('B') ?? null} />
           </div>
           {/* 모래시계·남은 시간·차례 안내 — 해설판(채팅로그)을 걷어냈으므로(요청 5)
               그 안에 얹혀 있던 이 오버레이만 따로 살려 보드 아래쪽에 띄운다.

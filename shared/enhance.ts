@@ -58,6 +58,22 @@ export const ENHANCE_TIGER_HEAL: readonly number[] = [0, 0, 0, 0, 0, 4, 6, 6, 8,
 /** 실용신양 Lv.6부터 — 내 카드 넷 중 무작위 하나에 더하는 경험치 */
 export const ENHANCE_SHEEP_EXP: readonly number[] = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 10];
 
+// ─── 3차 표(2026-10-29) — 지속 효과와 그것을 줄이는 효과. **모두 배율(디자인어 · Max 별도 배수)과 무관하다** ───────────
+// 표의 Infinity는 "완전 초기화·정화"다(남은 턴을 통째로 지운다).
+
+/** 실용신양 Lv.9부터 — 내 다른 카드 중 쿨타임이 걸린 무작위 한 장의 쿨타임을 이만큼 줄인다(Max는 초기화) */
+export const ENHANCE_SHEEP_COOLDOWN_CUT: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, Infinity];
+/** 상표토끼 Lv.6부터 — 나에게 걸린 부정한 효과(효과 감소 ÷N · 출혈) 중 무작위 하나의 남은 턴을 이만큼 줄인다(Max는 정화) */
+export const ENHANCE_RABBIT_CLEANSE: readonly number[] = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, Infinity];
+/** 상표토끼 Lv.9부터 — 지속 회복에 더하는 턴 수. 한 턴에 회복하는 양은 그 레벨의 기본 회복량(ENHANCE_VALUES.rabbit) */
+export const ENHANCE_RABBIT_REGEN_TURNS: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 4];
+/** 디자인어 Lv.9부터 — 상대에게 건 효과 감소(÷N)가 이어지는 상대 차례 수. 그 사이 상대가 기술을 고르면 그때 사라진다 */
+export const ENHANCE_MERMAID_DIVIDE_TURNS: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 10];
+/** 특허랑이 Lv.9부터 — 상대에게 쌓는 출혈 턴 수. 한 턴에 깎는 양은 그 레벨의 기본 공격력(ENHANCE_VALUES.tiger — Max 20) */
+export const ENHANCE_TIGER_BLEED_TURNS: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 4];
+/** 출혈 · 지속 회복이 쌓일 수 있는 최대 턴 수(2026-10-30 요청) — 넘는 몫은 버린다 */
+export const ENHANCE_DOT_MAX_TURNS = 10;
+
 /**
  * 기본 쿨타임(내 차례 수) — Lv.3부터 +1, Lv.5에서 또 +1, **Lv.Max에서 또 +1**(2026-10-29 요청 — Lv.5~10의 2·3턴이 Max에서 3·4턴).
  * Lv.6~10 사이에서는 늘지 않는다.
@@ -108,6 +124,34 @@ export function enhanceMermaidCut(level: number): number {
 export function enhanceMermaidDivide(level: number): number {
   return ENHANCE_MERMAID_DIVIDE[clampLevel(level) - 1];
 }
+export function enhanceMermaidDivideTurns(level: number): number {
+  return ENHANCE_MERMAID_DIVIDE_TURNS[clampLevel(level) - 1];
+}
+export function enhanceSheepCooldownCut(level: number): number {
+  return ENHANCE_SHEEP_COOLDOWN_CUT[clampLevel(level) - 1];
+}
+export function enhanceRabbitCleanse(level: number): number {
+  return ENHANCE_RABBIT_CLEANSE[clampLevel(level) - 1];
+}
+export function enhanceRabbitRegenTurns(level: number): number {
+  return ENHANCE_RABBIT_REGEN_TURNS[clampLevel(level) - 1];
+}
+export function enhanceTigerBleedTurns(level: number): number {
+  return ENHANCE_TIGER_BLEED_TURNS[clampLevel(level) - 1];
+}
+
+/**
+ * Lv.Max의 **별도 배수**(2026-10-29) — Max에 닿은 뒤에도 경험치는 계속 쌓이고, 임계값(10 · 20)을 한 번 더 채울 때마다 ×1씩 오른다
+ * (Max에 막 닿았을 때 ×1 → 한 번 더 채우면 ×2 → ×3 …). Max가 아니면 1.
+ * 이 배수는 **지금 걸린 배율에 곱한다** — 디자인어로 ×7이 걸린 채 별도 배수 ×3인 카드를 쓰면 ×21(배율과 똑같이 효과량에만 걸리고,
+ * 지속 효과 · 쿨타임 감소 · 정화처럼 배율에서 빠지는 것은 여기서도 빠진다). 짝 효과에도 걸린다(그 카드의 힘이라서).
+ */
+export function enhanceOverMultiplier(animal: Animal, exp: number): number {
+  const t = THRESHOLDS[animal];
+  const maxExp = (ENHANCE_MAX_LEVEL - 1) * t;
+  if (exp < maxExp) return 1;
+  return 1 + Math.floor((exp - maxExp) / t);
+}
 
 /**
  * 기술 효과량 하나 — 기본값 × 배율 ÷ 나눗셈(디자인어 Lv.9+가 건 것)을 **반올림**한다(요청 원문 "소수점 반올림").
@@ -121,10 +165,11 @@ export function enhanceAmount(base: number, mult: number, divisor: number = 1): 
  * 디자인어를 쓴 뒤의 배율. 배율이 걸려 있지 않으면(1) 그 레벨의 배율이 되고, 이미 걸려 있으면 그 위에 증가량을 더한다.
  * 다만 **새로 거는 것보다 작아지지는 않는다** — 예를 들어 ×2가 걸린 채 Lv.4(×5, 겹치면 +4)를 쓰면 ×6, Lv.1(×2, +1)이면 ×3이다.
  */
-export function enhanceMermaidAfter(pending: number, level: number): number {
-  const base = enhanceValue('mermaid', level);
+export function enhanceMermaidAfter(pending: number, level: number, over: number = 1): number {
+  // Max의 별도 배수(over)는 디자인어 자신의 효과 — 거는 배율과 겹칠 때의 증가량 — 에 곱한다
+  const base = enhanceValue('mermaid', level) * over;
   if (pending <= 1) return base;
-  return Math.max(base, pending + ENHANCE_MERMAID_STACK[clampLevel(level) - 1]);
+  return Math.max(base, pending + ENHANCE_MERMAID_STACK[clampLevel(level) - 1] * over);
 }
 
 function clampLevel(level: number): number {
@@ -136,13 +181,40 @@ function clampLevel(level: number): number {
  * 0이면 지금 쓸 수 있다. 쓰는 순간 `쿨타임 + 1`로 세우고, 그 편의 차례가 끝날 때마다 1씩 줄인다(엔진 turnManager) —
  * 그래서 쓴 차례가 끝난 직후 화면에는 쿨타임 그대로의 숫자가 보이고, 그만큼의 내 차례를 건너뛴 뒤 다시 열린다.
  */
-export interface EnhanceState {
+export interface EnhanceState extends EnhanceStatus {
   cooldowns: Record<SideId, Record<Animal, number>>;
+}
+
+/** 지속 효과 하나 — 남은 턴 수와 한 턴의 양(출혈은 깎는 양, 지속 회복은 오르는 양). turns 0이면 없다. */
+export interface EnhanceDot {
+  turns: number;
+  amount: number;
+}
+
+/**
+ * 편마다 걸린 지속 효과(체력창의 아이콘 · 기술 카드의 "÷N 적용"이 읽는다). 화면은 연출 순간까지 이 묶음을 통째로 가린다 —
+ * 그래서 이벤트(skillApplied · enhanceTick)가 적용 직후의 묶음을 `status`로 함께 싣는다(cloneEnhanceStatus).
+ */
+export interface EnhanceStatus {
   /**
    * 편마다 "다음 고른 기술의 효과를 나눌 수"(1 = 없음). 상대의 디자인어 Lv.9+가 건다(이미 걸려 있으면 큰 쪽).
    * 그 편이 디자인어가 아닌 기술을 **고르면** 쓰이고 1로 돌아간다(배율이 소모되는 것과 같은 때). 짝 효과는 나누지도 소모하지도 않는다.
+   * 고르지 않아도 divisorTurns만큼 그 편의 차례가 끝나면 사라진다(Lv.9 2턴 · Lv.10 3턴 · Max 10턴).
    */
   divisors: Record<SideId, number>;
+  divisorTurns: Record<SideId, number>;
+  /**
+   * 출혈(상대 특허랑이 Lv.9+) · 지속 회복(내 상표토끼 Lv.9+). 그 편의 **차례가 시작될 때** 출혈 → 회복 순으로 한 번씩 들고
+   * 턴이 하나 준다(엔진 turnManager.advanceTurn). 다시 걸리면 턴은 더하고, 한 턴의 양은 큰 쪽.
+   */
+  bleed: Record<SideId, EnhanceDot>;
+  regen: Record<SideId, EnhanceDot>;
+}
+
+/** 지속 효과 묶음의 복사본 — 직렬화와 이벤트의 `status`가 쓴다(엔진 상태를 그대로 실으면 뒤의 변경이 따라 들어간다). */
+export function cloneEnhanceStatus(e: EnhanceStatus): EnhanceStatus {
+  const dots = (r: Record<SideId, EnhanceDot>) => Object.fromEntries(Object.entries(r).map(([s, d]) => [s, { ...d }]));
+  return { divisors: { ...e.divisors }, divisorTurns: { ...e.divisorTurns }, bleed: dots(e.bleed), regen: dots(e.regen) };
 }
 
 /**
@@ -194,15 +266,11 @@ export function expProgressFor(
   enhance: boolean,
   animal: Animal,
   exp: number,
-): { level: number; inLevel: number; need: number | null } {
-  if (!enhance) {
-    const t = THRESHOLDS[animal];
-    return { level: Math.floor(exp / t), inLevel: exp % t, need: t };
-  }
-  const level = enhanceLevel(animal, exp);
-  if (level >= ENHANCE_MAX_LEVEL) return { level, inLevel: 0, need: null };
+): { level: number; inLevel: number; need: number | null; over: number } {
   const t = THRESHOLDS[animal];
-  return { level, inLevel: exp % t, need: t };
+  if (!enhance) return { level: Math.floor(exp / t), inLevel: exp % t, need: t, over: 1 };
+  // Max에서도 막대는 다음 별도 배수(×2 · ×3 …)까지 계속 찬다(enhanceOverMultiplier)
+  return { level: enhanceLevel(animal, exp), inLevel: exp % t, need: t, over: enhanceOverMultiplier(animal, exp) };
 }
 
 /** 이 편의 이 카드가 앞으로 못 쓰는 내 차례 수(강화 판이 아니면 언제나 0). */

@@ -4,17 +4,24 @@ import {
   enhanceCooldownLeft,
   enhanceMermaidAfter,
   enhanceAmount,
+  ENHANCE_DOT_MAX_TURNS,
   enhanceDivisorOf,
   enhanceMermaidCut,
   enhanceMermaidDivide,
+  enhanceMermaidDivideTurns,
+  enhanceOverMultiplier,
+  enhanceRabbitCleanse,
+  enhanceRabbitRegenTurns,
+  enhanceSheepCooldownCut,
   enhanceSheepExp,
+  enhanceTigerBleedTurns,
   enhanceTigerHeal,
   enhanceValue,
   opponentsOf,
   skillLevelFor,
   skillMultiplier,
 } from 'shared';
-import type { Animal, ClientGameState, SideId } from 'shared';
+import type { Animal, ClientGameState, EnhanceStatus, SideId } from 'shared';
 
 /**
  * previewSkill/levelOf 등 exp 기반 계산에, 서버가 이미 반영한 진짜 경험치(gameState.teams[team].exp)
@@ -50,20 +57,21 @@ export function withDisplayedHp(gameState: ClientGameState, displayedHp: Record<
 }
 
 /**
- * 배율·추가 뽑기·나눗셈도 화면상 값(useAnimationQueue의 displayedTeamPatch · displayedDivisors — 기술 효과 연출 전)으로 바꿔 끼운다.
+ * 배율·추가 뽑기·지속 효과도 화면상 값(useAnimationQueue의 displayedTeamPatch · displayedStatus — 기술 효과 연출 전)으로 바꿔 끼운다.
  * 팀 패널의 "×N"·"+N회" 스티커와 기술 카드 미리보기가 뽑기 연출이 끝나기 전에 바뀌지 않게 한다(2026-10-29).
  * 가릴 것이 없으면 원래 객체를 그대로 돌려준다.
  */
 export function withDisplayedTeams(
   gameState: ClientGameState,
   patch: Readonly<Record<SideId, { pendingMultiplier: number; pendingExtraDraws: number }>>,
-  divisors: Readonly<Record<SideId, number>> | null,
+  // 카드 강화의 지속 효과 묶음(나눗셈 · 출혈 · 지속 회복) — 연출 전 값. null이면 서버 값 그대로
+  status: Readonly<EnhanceStatus> | null,
 ): ClientGameState {
   const sides = Object.keys(patch).filter(s => gameState.teams[s]);
-  if (sides.length === 0 && !divisors) return gameState;
+  if (sides.length === 0 && !status) return gameState;
   const teams = { ...gameState.teams };
   for (const side of sides) teams[side] = { ...teams[side], ...patch[side] };
-  const enhance = divisors && gameState.enhance ? { ...gameState.enhance, divisors: { ...divisors } } : gameState.enhance;
+  const enhance = status && gameState.enhance ? { ...gameState.enhance, ...status } : gameState.enhance;
   return { ...gameState, teams, enhance };
 }
 
@@ -119,6 +127,19 @@ export interface SkillPreview {
   // 카드 강화 — 디자인어 Lv.9+가 상대의 다음 기술에 거는 나눗셈 · 이 기술에 지금 걸려 있는 나눗셈(상대 디자인어). 없으면 1
   oppDivisor?: number;
   divisor?: number;
+  // 카드 강화 3차 표(배율 무관) — 디자인어 나눗셈의 턴 · 실용신양 쿨타임 감소 · 상표토끼 정화와 지속 회복 · 특허랑이 출혈 턴(없으면 0)
+  oppDivisorTurns?: number;
+  cooldownCut?: number;
+  cleanse?: number;
+  regenTurns?: number;
+  bleedTurns?: number;
+  // 카드 강화 — Lv.Max의 별도 배수(1이면 없음). 위 효과량에는 이미 곱해져 있다
+  over?: number;
+}
+
+/** 카드 강화 — 이 편의 이 카드의 Lv.Max 별도 배수(Max가 아니거나 강화 판이 아니면 1). 서버 applyEnhanceEffect와 같은 함수. */
+export function overMultiplierOf(gameState: ClientGameState, team: SideId, animal: Animal): number {
+  return gameState.enhance ? enhanceOverMultiplier(animal, gameState.teams[team].exp[animal]) : 1;
 }
 
 /**
@@ -151,7 +172,7 @@ export function finishingMove(
   if (gameState.enhance && cooldownOf(gameState, team, animal) > 0) return none;
   const winHp = gameState.settings.targetScore * 2;
   if (gameState.enhance) {
-    const mult = me.pendingMultiplier;
+    const mult = me.pendingMultiplier * overMultiplierOf(gameState, team, animal);
     const div = enhanceDivisorOf(gameState, team);
     const amount = enhanceAmount(enhanceValue(animal, level), mult, div);
     const firstWin = !Object.values(gameState.teams).some(t => t.finish?.reason === 'win');
@@ -177,6 +198,10 @@ export function finishingMove(
   return { finishes: targets.length > 0, targets };
 }
 
+function dotRoom(add: number, current: number | undefined): number {
+  return Math.max(0, Math.min(add, ENHANCE_DOT_MAX_TURNS - (current ?? 0)));
+}
+
 export function previewSkill(gameState: ClientGameState, team: SideId, animal: Animal): SkillPreview {
   const opponent = opponentsOf(gameState, team)[0];
   const level = levelOf(gameState, team, animal);
@@ -194,7 +219,8 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   if (gameState.enhance) {
     // 서버 applyEnhanceEffect와 같은 계산 — 기본값 × 배율 ÷ 나눗셈(상대 디자인어 Lv.9+), 반올림. 디자인어 자신은 나누지 않는다.
     const divisor = animal === 'mermaid' ? 1 : enhanceDivisorOf(gameState, team);
-    const value = enhanceAmount(enhanceValue(animal, level), mult, divisor);
+    const over = overMultiplierOf(gameState, team, animal);
+    const value = enhanceAmount(enhanceValue(animal, level), mult * over, divisor);
     if (animal === 'sheep') extraDraws = value;
     else if (animal === 'rabbit') myHpDelta = value;
     else if (animal === 'tiger') {
@@ -202,13 +228,20 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
       const foes = opponentsOf(gameState, team);
       oppHpIsMax = foes.length !== 1;
       oppHpDelta = -(oppHpIsMax ? value : Math.min(value, Math.max(0, gameState.teams[foes[0]]?.hp ?? 0)));
-      myHpDelta = enhanceAmount(enhanceTigerHeal(level), mult, divisor);
-    } else multiplierAfter = enhanceMermaidAfter(mult, level);
-    const randomExp = animal === 'sheep' ? enhanceAmount(enhanceSheepExp(level), mult, divisor) : 0;
+      myHpDelta = enhanceAmount(enhanceTigerHeal(level), mult * over, divisor);
+    } else multiplierAfter = enhanceMermaidAfter(mult, level, over);
+    const randomExp = animal === 'sheep' ? enhanceAmount(enhanceSheepExp(level), mult * over, divisor) : 0;
     const oppMultiplierCut = animal === 'mermaid' ? enhanceMermaidCut(level) : 0;
     const oppDivisor = animal === 'mermaid' ? enhanceMermaidDivide(level) : 1;
     return {
       animal, level, myHpDelta, oppHpDelta, extraDraws, multiplierAfter, oppHpIsMax, randomExp, oppMultiplierCut, oppDivisor, divisor,
+      oppDivisorTurns: animal === 'mermaid' ? enhanceMermaidDivideTurns(level) : 0,
+      cooldownCut: animal === 'sheep' ? enhanceSheepCooldownCut(level) : 0,
+      cleanse: animal === 'rabbit' ? enhanceRabbitCleanse(level) : 0,
+      // 출혈·지속 회복은 최대 10턴(ENHANCE_DOT_MAX_TURNS) — 서버처럼 이미 걸린 턴을 빼고 더해질 만큼만(꽉 찼으면 0이라 문구가 빠진다)
+      regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level), gameState.enhance.regen?.[team]?.turns) : 0,
+      bleedTurns: animal === 'tiger' ? dotRoom(enhanceTigerBleedTurns(level), opponent !== undefined ? gameState.enhance.bleed?.[opponent]?.turns : 0) : 0,
+      over,
     };
   }
 

@@ -67,6 +67,12 @@ npm install          # 반드시 루트에서 — npm workspaces 구조라 하�
 `npm install` 한 번이면 `client`/`server`/`shared` 세 워크스페이스가 모두 준비됩니다.
 `shared`는 심링크로 연결되므로 따로 빌드하지 않습니다.
 
+> ⚠️ **프로젝트 폴더를 통째로 복사·이동했다면 `node_modules/shared`를 확인할 것**(2026-10-30에 실제로 겪었다).
+> 복사하면 그 연결(Windows는 junction)이 **일반 폴더 사본**으로 바뀌어, 그 뒤 `shared/`를 고쳐도 서버(`ts-node`)는 낡은 사본을 읽는다.
+> Node 24에서는 아예 `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`으로 서버가 뜨지 않는다(ts-node가 node_modules 안의 .ts를 건너뛰기 때문).
+> 클라이언트(tsconfig paths)와 테스트(jest moduleNameMapper)는 `../shared`를 직접 보므로 멀쩡해 원인을 찾기 어렵다.
+> PowerShell에서 `(Get-Item node_modulesshared).LinkType`이 `Junction`이 아니면 루트에서 `npm install`을 다시 하거나 junction을 다시 만든다.
+
 ### 1-3. 실행 — 터미널 2개
 
 ```bash

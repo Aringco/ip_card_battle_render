@@ -4,6 +4,7 @@ import {
   LOSE_HP,
   INDIVIDUAL_TWO_SKILLS_FROM,
   clampSettings,
+  cloneEnhanceStatus,
   festivalDrawInfoAt,
   maxTurnOf,
   nextActiveSide,
@@ -109,6 +110,12 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 차례가 끝나는 길(기술·패스·시간초과·항복)이 모두 여기를 지나므로 이 한 곳이면 된다.
   const cds = state.enhance?.cooldowns[currentTeam];
   if (cds) for (const a of Object.keys(cds) as Array<keyof typeof cds>) cds[a] = Math.max(0, cds[a] - 1);
+  // 같은 자리에서 그 편에 걸린 효과 감소(상대 디자인어 Lv.9+ ÷N)의 남은 턴도 하나 준다 — 0이 되면 기술을 안 골랐어도 사라진다.
+  const enh = state.enhance;
+  if (enh && (enh.divisorTurns[currentTeam] ?? 0) > 0) {
+    enh.divisorTurns[currentTeam] -= 1;
+    if (enh.divisorTurns[currentTeam] === 0) enh.divisors[currentTeam] = 1;
+  }
 
   // 한 라운드가 다 돈 시점 — turnOrder에서 다음 편의 위치가 지금 편의 위치보다 앞이면
   // 끝까지 돌아 처음으로 되돌아온 것이다. 팀전([선, 후])에서는 후공 팀이 마친 순간과 정확히 같고
@@ -167,6 +174,44 @@ export function advanceTurn(state: GameState): GameEvent[] {
   state.activeTeam = nextTeam;
   state.activePlayerIndex = state.teams[nextTeam].playerIndex;
 
+  // 카드 강화 — 차례가 시작된 편의 지속 효과(출혈 → 회복). 체력이 움직이므로 그 자리에서 승패를 본다.
+  if (state.enhance) {
+    events.push(...tickEnhanceStatus(state, nextTeam));
+    events.push(...checkKnockout(state));
+  }
+
+  return events;
+}
+
+/**
+ * 카드 강화 — 차례가 시작된 편의 출혈(상대 특허랑이 Lv.9+)과 지속 회복(내 상표토끼 Lv.9+)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
+ * **출혈이 먼저다**(요청 원문 "출혈 > 회복 순") — 출혈로 체력이 0이 되면 회복은 들지 않고 그대로 진다(advanceTurn의 checkKnockout).
+ * 양은 걸 때 정해 둔 한 턴의 양 그대로다(배율 무관).
+ */
+function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
+  const enh = state.enhance!;
+  const team = state.teams[side];
+  const events: GameEvent[] = [];
+  const hpAfter = () => Object.fromEntries(Object.keys(state.teams).map(s => [s, state.teams[s].hp]));
+
+  const bleed = enh.bleed[side];
+  if (bleed && bleed.turns > 0) {
+    const amount = Math.min(bleed.amount, Math.max(0, team.hp));
+    team.hp -= amount;
+    bleed.turns -= 1;
+    if (bleed.turns === 0) bleed.amount = 0;
+    events.push({ type: 'enhanceTick', team: side, kind: 'bleed', amount, turnsLeft: bleed.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh) });
+    if (team.hp <= LOSE_HP) return events;
+  }
+
+  const regen = enh.regen[side];
+  if (regen && regen.turns > 0) {
+    team.hp += regen.amount;
+    regen.turns -= 1;
+    const amount = regen.amount;
+    if (regen.turns === 0) regen.amount = 0;
+    events.push({ type: 'enhanceTick', team: side, kind: 'regen', amount, turnsLeft: regen.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh) });
+  }
   return events;
 }
 
@@ -318,6 +363,13 @@ export function initEnhanceGame(
     for (const card of state.stacks[animal]) card.num = 1;
   }
   const zero = () => ({ sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 });
-  state.enhance = { cooldowns: { A: zero(), B: zero() }, divisors: { A: 1, B: 1 } };
+  const dot = () => ({ turns: 0, amount: 0 });
+  state.enhance = {
+    cooldowns: { A: zero(), B: zero() },
+    divisors: { A: 1, B: 1 },
+    divisorTurns: { A: 0, B: 0 },
+    bleed: { A: dot(), B: dot() },
+    regen: { A: dot(), B: dot() },
+  };
   return state;
 }

@@ -26,9 +26,10 @@ function AnimalTable({
   // 분자는 "이번 레벨 안에서 쌓은 만큼"만 보여준다 — 누적 총량을 그대로 쓰면 레벨이
   // 오른 뒤에도 분모를 넘는 값(예: 18/10)이 찍혀 레벨이 오히려 먼저 오른 것처럼
   // 헷갈렸다. 레벨업 직후에는 항상 0으로 시작한다.
-  // 카드 강화 판은 레벨마다 폭이 다르고(누적 경험치 표) Lv.5에서 끝난다 — 그때는 "MAX"(need === null).
+  // 카드 강화 판은 Lv.Max(11)에서 레벨이 멈추지만 막대는 계속 찬다 — 한 번 채울 때마다 별도 배수가 ×1씩 오른다(over).
   const enhance = !!gameState.enhance;
-  const { level, inLevel: expInLevel, need } = expProgressFor(enhance, animal, exp);
+  const { level, inLevel: expInLevel, need, over } = expProgressFor(enhance, animal, exp);
+  const isMax = enhance && level >= ENHANCE_MAX_LEVEL;
   const progressPct = need === null ? 100 : (expInLevel / need) * 100;
   const multiplier = gameState.teams[team].pendingMultiplier;
   const extraDraws = gameState.teams[team].pendingExtraDraws;
@@ -77,13 +78,13 @@ function AnimalTable({
   // 옅게 다른 색으로 채워, 얼굴/경험치와 시각적으로 확실히 구분되는 하나의 구역처럼 보이게 한다.
   const levelBadge = (
     <div className="exp-row-lv self-stretch shrink-0 flex flex-col items-center justify-center gap-0 bg-jungle-100 rounded-md">
-      <span className="exp-row-lv-cap font-bold text-jungle-500 leading-none">Lv.</span>
-      {/* 카드 강화의 마지막 단계는 숫자 대신 "Max" — 칸 폭을 넘지 않게 글자를 줄인다 */}
+      {/* 카드 강화의 마지막 단계는 숫자 대신 "Max" — 칸 폭을 넘지 않게 글자를 줄인다. 별도 배수가 붙으면 "Max / ×N" */}
+      <span className="exp-row-lv-cap font-bold text-jungle-500 leading-none">{isMax && over > 1 ? 'Max' : 'Lv.'}</span>
       <span
-        className="exp-row-lv-num font-black text-jungle-700 leading-none tabular-nums"
-        style={enhance && level >= ENHANCE_MAX_LEVEL ? { fontSize: '0.55em' } : undefined}
+        className={`exp-row-lv-num font-black leading-none tabular-nums ${isMax && over > 1 ? 'text-orange-500' : 'text-jungle-700'}`}
+        style={isMax ? { fontSize: '0.55em' } : undefined}
       >
-        {enhance && level >= ENHANCE_MAX_LEVEL ? 'Max' : level}
+        {isMax ? (over > 1 ? `×${over}` : 'Max') : level}
       </span>
     </div>
   );
@@ -164,7 +165,7 @@ function AnimalTable({
           }}
         >
           <div className="bg-jungle-950 text-white rounded-lg px-4 py-3 shadow-xl text-center">
-            <p className="font-bold text-lg mb-1.5">{SKILL_TITLE[animal]} (Lv. {enhance && level >= ENHANCE_MAX_LEVEL ? 'Max' : level})</p>
+            <p className="font-bold text-lg mb-1.5">{SKILL_TITLE[animal]} (Lv. {isMax ? `Max${over > 1 ? ` ×${over}` : ''}` : level})</p>
             <p className="leading-relaxed text-base text-jungle-100">
               {enhance ? describeEnhanceSkillShort(animal, level) : describeSkillShort(animal, level)}
             </p>

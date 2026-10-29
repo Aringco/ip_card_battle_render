@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Animal, ClientGameEvent, ClientGameState, FinishReason, Place, StackedCard, SideId } from 'shared';
-import { ANIMALS } from 'shared';
+import type { Animal, ClientGameEvent, ClientGameState, EnhanceStatus, FinishReason, Place, StackedCard, SideId } from 'shared';
+import { ANIMALS, cloneEnhanceStatus } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { SKILL_TITLE } from '@/lib/skillInfo';
 import { playRandomSound, playRandomSoundSequence } from '@/lib/sounds';
@@ -151,6 +151,12 @@ export interface DisplayedTeamPatch {
   pendingExtraDraws: number;
 }
 
+/** 카드 강화 — 지속 효과가 한 번 든 순간(TeamTotalPanel이 id가 바뀔 때마다 파티클을 다시 터뜨린다) */
+export interface DotPulse {
+  id: number;
+  kind: 'bleed' | 'regen';
+}
+
 export interface AnimationState {
   screenShakeLevel: number; // 0 = none
   leafParticleCount: number;
@@ -172,7 +178,10 @@ export interface AnimationState {
   // 기술 효과가 바꾼 "다음 행동 배율 · 다음 턴 추가 뽑기 · (강화) 나눗셈" 중 아직 연출이 재생되지 않은 몫을 되돌린 값 — 가릴 것이 없는 편은 빠진다.
   // 화면은 lib/skills.ts의 withDisplayedTeams로 끼워 넣는다(팀 패널 스티커 · 기술 카드 미리보기).
   displayedTeamPatch: Readonly<Record<SideId, DisplayedTeamPatch>>;
-  displayedDivisors: Readonly<Record<SideId, number>> | null;
+  // 카드 강화의 지속 효과(나눗셈 · 출혈 · 지속 회복)의 연출 전 값 — null이면 서버 값 그대로(체력창 아이콘이 연출 순간에 바뀐다)
+  displayedStatus: Readonly<EnhanceStatus> | null;
+  // 카드 강화 — 출혈·지속 회복이 방금 한 번 든 편(체력창이 핏방울·십자가를 한 번 크게 터뜨린다)
+  dotPulse: ReadonlyMap<SideId, DotPulse>;
   hpPulse: ReadonlyMap<SideId, HpPulse>; // 체력 오브가 지금 상승/감소 연출 중인지
   festivalFlash: boolean; // 축제 진입 순간 보드 전체 섬광
   festivalBurst: boolean; // 축제 진입 순간 보드 여기저기 도토리 폭죽(15발)
@@ -206,6 +215,8 @@ export interface RankBanner {
 const EMPTY_SCORE_MAP = new Map<string, number>() as ReadonlyMap<string, number>;
 const EMPTY_HP_PULSE_MAP = new Map<SideId, HpPulse>() as ReadonlyMap<SideId, HpPulse>;
 const EMPTY_ID_SET = new Set<number>() as ReadonlySet<number>;
+const EMPTY_DOT_PULSE_MAP = new Map<SideId, DotPulse>() as ReadonlyMap<SideId, DotPulse>;
+const TICK_DUR = 1000; // 출혈·지속 회복 한 번(서버 room.ts의 TL_TICK_MS와 같은 값)
 
 const EMPTY_GAP = 80;
 const SCORE_FLASH_DUR = 500;
@@ -304,7 +315,10 @@ export function useAnimationQueue(
   // 서버 진실은 클릭 즉시 바뀌어, 뽑기 연출이 끝나기도 전에 팀 패널의 "×3"·"+8회" 스티커와 기술 카드의 미리보기 숫자가 먼저 바뀌었다.
   // 체력·경험치 가림과 같은 방식(렌더 도중 동기 보정)으로 걸고, Pass 1.6이 효과를 재생하는 순간 하나씩 풀어 마지막 효과에서 걷어낸다.
   const [teamPatch, setTeamPatch] = useState<Record<SideId, DisplayedTeamPatch>>({});
-  const [divisorsPatch, setDivisorsPatch] = useState<Record<SideId, number> | null>(null);
+  // 지속 효과 묶음(나눗셈 · 출혈 · 지속 회복)도 같은 방식 — 이번 액션 전 값으로 가렸다가, 효과·지속 효과 연출마다 그 이벤트의 status로 바꾸고
+  // 타임라인이 끝나면 걷는다(서버 진실 그대로).
+  const [statusPatch, setStatusPatch] = useState<EnhanceStatus | null>(null);
+  const [dotPulse, setDotPulse] = useState<ReadonlyMap<SideId, DotPulse>>(EMPTY_DOT_PULSE_MAP);
   // "화면에 지금 그려야 하는 카드"를 실제 서버 진실(gameState.stacks)과 분리해서 관리한다.
   // 서버는 액션이 끝나는 즉시 최종 상태(수집으로 카드가 사라진 상태)를 보내오지만,
   // 화면에는 "등장 → (짝 맞으면) 흔들기 → 날아가기" 연출이 끝난 뒤에야 사라지도록,
@@ -363,6 +377,11 @@ export function useAnimationQueue(
     // "flushSync was called from inside a lifecycle method" 경고가 났다. exp 마스킹과
     // 똑같이 렌더 도중 동기 보정으로 옮기면 경고 없이 같은 목적을 달성한다 —
     // 오히려 한 단계 더 이르게, 새 gameState와 같은 커밋에 반영된다.
+    // 정산 연출이 시작됐다는 표시도 같은 커밋에 세운다. 아래 레이아웃 이펙트가 세우면 그 앞의 첫 커밋은 isSettling이 아직
+    // false라, 판을 끝내는 수(phase 'ended')가 오면 방 화면이 그 커밋에 결과 화면을 마운트하고 게임 화면을 통째로 내렸다가
+    // 다시 올렸다 — 페인트 전이라 눈에는 안 보였지만, 기술 카드를 내리찍는 연출(SkillQuake)이 그 자리에서 끊기고 결과 화면의
+    // 이펙트까지 한 번 돌았다(2026-10-30). 이벤트가 있으면 이펙트는 언제나 true로 세우고 끝에서 내리므로 값이 어긋나지 않는다.
+    if (lastEvents.length > 0) setIsSettling(true);
     if (lastEvents.length > 0 && pendingFlipRef.current) {
       const { team, playerIndex } = pendingFlipRef.current;
       pendingFlipRef.current = null;
@@ -391,6 +410,11 @@ export function useAnimationQueue(
       hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + ev.myHpDelta;
       if (opp !== undefined) hpCredits[opp] = (hpCredits[opp] ?? 0) + ev.oppHpDelta;
     });
+    // 카드 강화 — 차례가 시작될 때 든 출혈·지속 회복도 그 연출 순간에 드러낸다(효과 재생 뒤의 지속 효과 단계)
+    lastEvents.forEach(ev => {
+      if (ev.type !== 'enhanceTick') return;
+      hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + (ev.kind === 'bleed' ? -ev.amount : ev.amount);
+    });
     setPendingHpCredit(hpCredits);
 
     // 배율·추가 뽑기 — 이번 액션의 기술 효과가 바꾸기 **전** 값을 편마다 되돌려 둔다.
@@ -412,13 +436,12 @@ export function useAnimationQueue(
         }
       }
       setTeamPatch(patch);
-      const prevDiv = prevState?.enhance?.divisors;
-      const nowDiv = gameState.enhance?.divisors;
-      setDivisorsPatch(prevDiv && nowDiv && Object.keys(nowDiv).some(s => nowDiv[s] !== prevDiv[s]) ? { ...prevDiv } : null);
     } else {
       setTeamPatch({});
-      setDivisorsPatch(null);
     }
+    // 지속 효과 묶음 — 이번 액션에 그것을 바꾸는 이벤트가 있으면 직전 서버 값으로 가린다(지속 효과만 든 액션도 있다 — 턴 마치기)
+    const touchesStatus = lastEvents.some(e => (e.type === 'skillApplied' && e.status) || e.type === 'enhanceTick');
+    setStatusPatch(touchesStatus && prevState?.enhance ? cloneEnhanceStatus(prevState.enhance) : null);
   }
   // ⚠️ 위 블록이 "직전 서버 상태"로 읽으므로 블록 **뒤에서** 갱신한다.
   prevGameStateRef.current = gameState;
@@ -452,7 +475,8 @@ export function useAnimationQueue(
     setPendingExpCredit({});
     setPendingHpCredit({});
     setTeamPatch({});
-    setDivisorsPatch(null);
+    setStatusPatch(null);
+    setDotPulse(EMPTY_DOT_PULSE_MAP);
     // ⚠️ **좌절 이모티콘(persist)은 여기서도 걷어야 한다.** 그것만 제거 타이머가 없어
     //    저절로 사라지지 않는데, 걷어내는 곳이 아래 레이아웃 이펙트 한 군데뿐이었다 —
     //    그쪽은 이벤트가 있는 갱신에서만 도므로, **이벤트가 비어 있는 갱신**으로 판이
@@ -760,8 +784,11 @@ export function useAnimationQueue(
         addPlaceFocus(place, slotAt);
 
         // 슬롯이 뜨고 0.3초 뒤에 card_1/card_2 사운드를 재생한다(스핀 종료까지는 기다리지 않음).
+        // 예약 뽑기 롤은 5초 안에 끝나도록 장 간격이 8ms까지 좁아진다(shared rollDrawStep) — 장마다 울리면 소리가 뭉개지므로
+        // 간격이 60ms보다 좁으면 그만큼 건너뛰어 대략 60ms에 한 번만 울린다.
         const pitch = inRoll ? Math.min(1.35, 1 + (rollIdx - 1) * 0.035) : 1;
-        sched(() => playRandomSound('card', pitch), slotAt + 300);
+        const soundEvery = inRoll ? Math.max(1, Math.ceil(60 / rollDrawStep(inFestivalRoll ? festivalRollTotal : bonusRollTotal))) : 1;
+        if ((rollIdx - 1) % soundEvery === 0) sched(() => playRandomSound('card', pitch), slotAt + 300);
 
         sched(() => {
           setNewCardId(card.id);
@@ -1008,15 +1035,27 @@ export function useAnimationQueue(
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${multiplierAfter}`);
         if (skillEv.oppMultiplierCut) effectParts.push(`상대 배율 -${skillEv.oppMultiplierCut}`);
         if (skillEv.randomExp) effectParts.push(`${SKILL_TITLE[skillEv.randomExp.animal]} 경험치 +${skillEv.randomExp.amount}`);
-        if (skillEv.oppDivisor) effectParts.push(`상대 효과 ÷${skillEv.oppDivisor}`);
+        if (skillEv.oppDivisor) effectParts.push(`상대 효과 ÷${skillEv.oppDivisor}${skillEv.oppDivisorTurns ? `(${skillEv.oppDivisorTurns}턴)` : ''}`);
+        if (skillEv.cooldownCut) {
+          const c = skillEv.cooldownCut;
+          effectParts.push(`${SKILL_TITLE[c.animal]} 쿨타임 ${c.after === 0 ? '초기화' : `-${c.before - c.after}턴`}`);
+        }
+        if (skillEv.cleanse) {
+          const c = skillEv.cleanse;
+          effectParts.push(`${c.kind === 'bleed' ? '출혈' : '효과 감소'} ${c.after === 0 ? '정화' : `-${c.before - c.after}턴`}`);
+        }
+        if (skillEv.regenAdded) effectParts.push(`지속 회복 +${skillEv.regenAdded.turns}턴`);
+        if (skillEv.bleedAdded) effectParts.push(`출혈 +${skillEv.bleedAdded.turns}턴`);
         if (skillEv.divisorUsed) effectParts.push(`(÷${skillEv.divisorUsed} 적용)`);
-        addCaption(`${skillEv.pair ? '페어 효과! ' : ''}${effectParts.join(', ')}`, 'effect', at, { team });
+        const overText = skillEv.overMultiplier ? `Max ×${skillEv.overMultiplier}! ` : '';
+        addCaption(`${skillEv.pair ? '페어 효과! ' : ''}${overText}${effectParts.join(', ')}`, 'effect', at, { team });
 
         sched(() => {
           // 배율·추가 뽑기 가림을 이 효과만큼 푼다 — 마지막 효과면 통째로 걷어 서버 진실로 맞춘다(위 teamPatch)
+          // 지속 효과 묶음은 이 효과 직후의 값으로 — 뒤에 지속 효과(enhanceTick)가 남아 있을 수 있어 여기서 걷지 않는다(타임라인 끝에서 걷는다)
+          if (skillEv.status) setStatusPatch(skillEv.status);
           if (skillEv === lastEffect) {
             setTeamPatch({});
-            setDivisorsPatch(null);
           } else {
             setTeamPatch(prev => {
               const next = { ...prev };
@@ -1125,6 +1164,35 @@ export function useAnimationQueue(
       }
     }
 
+    // ── 카드 강화: 차례가 시작된 편의 출혈 → 지속 회복(enhanceTick). 턴이 넘어가는 순간의 일이라 효과 재생 뒤에 둔다. ────
+    {
+      const ticks = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'enhanceTick' }> => e.type === 'enhanceTick');
+      for (const ev of ticks) {
+        const at = cursor;
+        const bleed = ev.kind === 'bleed';
+        const left = ev.turnsLeft > 0 ? ` (남은 ${ev.turnsLeft}턴)` : '';
+        addCaption(bleed ? `출혈! 체력 -${ev.amount}${left}` : `지속 회복! 체력 +${ev.amount}${left}`, 'effect', at, { team: ev.team });
+        sched(() => {
+          setStatusPatch(ev.status);
+          const delta = bleed ? -ev.amount : ev.amount;
+          setPendingHpCredit(prev => ({ ...prev, [ev.team]: (prev[ev.team] ?? 0) - delta }));
+          if (ev.amount > 0) {
+            pulseHp(ev.team, bleed ? 'loss' : 'gain');
+            addFloat(bleed ? `-${ev.amount}` : `+${ev.amount}`, ev.team, bleed ? 'penalty' : 'bonus');
+          }
+          const id = ++floatIdCounter;
+          setDotPulse(prev => new Map([...prev, [ev.team, { id, kind: ev.kind }]]));
+          sched(() => setDotPulse(prev => {
+            if (prev.get(ev.team)?.id !== id) return prev;
+            const next = new Map(prev);
+            next.delete(ev.team);
+            return next;
+          }), TICK_DUR);
+        }, at);
+        cursor = at + TICK_DUR;
+      }
+    }
+
     // ── festival은 턴 전환 이벤트라 위 재생이 모두 끝난 뒤에 이어 재생한다. ────
     const festivalEv = lastEvents.find(e => e.type === 'festival');
     if (festivalEv) {
@@ -1207,6 +1275,8 @@ export function useAnimationQueue(
       setTigerImpact(false);
       setRabbitPressure(null);
       setHpPulse(EMPTY_HP_PULSE_MAP);
+      setStatusPatch(null);
+      setDotPulse(EMPTY_DOT_PULSE_MAP);
     }, cursor);
 
     return () => {
@@ -1298,7 +1368,8 @@ export function useAnimationQueue(
     displayedExp,
     displayedHp,
     displayedTeamPatch: teamPatch,
-    displayedDivisors: divisorsPatch,
+    displayedStatus: statusPatch,
+    dotPulse,
     hpPulse,
     festivalFlash,
     festivalBurst,

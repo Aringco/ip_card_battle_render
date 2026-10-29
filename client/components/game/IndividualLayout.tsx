@@ -102,7 +102,7 @@ export function IndividualLayout({
   // 기술 카드는 내 것을, 관전자는 지금 고르고 있는(없으면 지금 차례인) 사람의 것을 보여준다.
   const skillPreviewTeam = mySide ?? gameState.pendingChoice ?? activeSide;
   // 배율·추가 뽑기는 연출 전 값으로(팀전 GameLayout과 같다 — useAnimationQueue의 displayedTeamPatch)
-  const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedDivisors);
+  const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedStatus);
   const skillPreviewGameState = withDisplayedExp(
     viewState,
     skillPreviewTeam,

@@ -5,7 +5,12 @@ import {
   enhanceCooldown,
   enhanceMermaidCut,
   enhanceMermaidDivide,
+  enhanceMermaidDivideTurns,
+  enhanceRabbitCleanse,
+  enhanceRabbitRegenTurns,
+  enhanceSheepCooldownCut,
   enhanceSheepExp,
+  enhanceTigerBleedTurns,
   enhanceTigerHeal,
   enhanceValue,
 } from 'shared';
@@ -47,16 +52,20 @@ export function describeSkill(animal: Animal, level: number): SkillDescription {
 /**
  * 카드 강화 판의 기술 카드 본문 — 이 레벨의 효과(배율 곱하기 전)와 쿨타임. 3줄째가 쿨타임이다.
  * 캐치프레이즈는 일반 판과 같다. 줄바꿈은 여기서 정한 그대로 그려진다(SkillChoiceBar — white-space: pre).
+ * Lv.6 · Lv.9부터 붙는 효과는 앞 두 줄에 눌러 담는다 — 카드 높이에 3줄(효과 2 + 쿨타임 1)까지만 들어간다(길면 글자가 작아진다).
  */
 export function describeEnhanceSkill(animal: Animal, level: number): SkillDescription {
   const v = enhanceValue(animal, level);
   const cd = enhanceCooldown(animal, level);
   const cdLine = cd === 0 ? '쿨타임 없음' : `쿨타임 ${cd}턴`;
   const base = describeSkill(animal, level);
-  // Lv.6부터 붙는 둘째 효과가 있으면 둘째 줄에 함께 둔다 — 카드 높이에 3줄(효과 2 + 쿨타임 1)까지만 들어간다.
   switch (animal) {
     case 'sheep': {
       const exp = enhanceSheepExp(level);
+      const cut = enhanceSheepCooldownCut(level);
+      if (cut > 0) {
+        return { ...base, effect: `카드 +${v}장, 무작위 경험치 +${exp},\n무작위 쿨타임 ${cutText(cut, '초기화')}\n${cdLine}` };
+      }
       return {
         ...base,
         effect: exp > 0
@@ -64,21 +73,35 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
           : `다음 턴에 카드를\n${v}장 더 뽑습니다.\n${cdLine}`,
       };
     }
-    case 'rabbit':
-      return { ...base, effect: `즉시 내 체력이\n${v}만큼 오릅니다.\n${cdLine}` };
+    case 'rabbit': {
+      const cleanse = enhanceRabbitCleanse(level);
+      const regen = enhanceRabbitRegenTurns(level);
+      if (regen > 0) {
+        return { ...base, effect: `체력 +${v}, 부정 효과 ${cutText(cleanse, '정화')},\n지속 회복 +${regen}턴(턴당 +${v})\n${cdLine}` };
+      }
+      return {
+        ...base,
+        effect: cleanse > 0
+          ? `즉시 내 체력 +${v},\n부정 효과 1개 −${cleanse}턴\n${cdLine}`
+          : `즉시 내 체력이\n${v}만큼 오릅니다.\n${cdLine}`,
+      };
+    }
     case 'mermaid': {
       const cut = enhanceMermaidCut(level);
       const divide = enhanceMermaidDivide(level);
+      const turns = enhanceMermaidDivideTurns(level);
       const stack = ENHANCE_MERMAID_STACK[level - 1];
       return {
         ...base,
         effect: cut > 0
-          ? `다음 기술 ×${v} (겹치면 +${stack}),\n상대 배율 −${cut}${divide > 1 ? `, 상대 효과 ÷${divide}` : ''}\n${cdLine}`
+          ? `다음 기술 ×${v} (겹치면 +${stack}),\n상대 배율 −${cut}${divide > 1 ? `, 효과 ÷${divide}(${turns}턴)` : ''}\n${cdLine}`
           : `다음 기술의 효과 ×${v}\n(겹쳐 쓰면 +${stack})\n${cdLine}`,
       };
     }
     case 'tiger': {
       const heal = enhanceTigerHeal(level);
+      const bleed = enhanceTigerBleedTurns(level);
+      if (bleed > 0) return { ...base, effect: `상대 −${v}, 내 체력 +${heal},\n출혈 +${bleed}턴(턴당 −${v})\n${cdLine}` };
       return {
         ...base,
         effect: heal > 0
@@ -89,6 +112,11 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
   }
 }
 
+/** 남은 턴 줄이기 문구 — 표의 Infinity는 "초기화"·"정화" */
+function cutText(turns: number, all: string): string {
+  return Number.isFinite(turns) ? `−${turns}턴` : all;
+}
+
 /** 카드 강화 판의 호버 툴팁 한 줄 */
 export function describeEnhanceSkillShort(animal: Animal, level: number): string {
   const v = enhanceValue(animal, level);
@@ -97,17 +125,25 @@ export function describeEnhanceSkillShort(animal: Animal, level: number): string
   switch (animal) {
     case 'sheep': {
       const exp = enhanceSheepExp(level);
-      return `다음 턴에 카드를 ${v}장 더 뽑습니다${exp > 0 ? `, 무작위 카드 경험치 +${exp}` : ''}.${cdText}`;
+      const cut = enhanceSheepCooldownCut(level);
+      return `다음 턴에 카드를 ${v}장 더 뽑습니다${exp > 0 ? `, 무작위 카드 경험치 +${exp}` : ''}${cut > 0 ? `, 다른 카드 하나의 쿨타임 ${cutText(cut, '초기화')}` : ''}.${cdText}`;
     }
-    case 'rabbit': return `체력이 ${v}만큼 오릅니다.${cdText}`;
+    case 'rabbit': {
+      const cleanse = enhanceRabbitCleanse(level);
+      const regen = enhanceRabbitRegenTurns(level);
+      return `체력이 ${v}만큼 오릅니다${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}${regen > 0 ? `, 지속 회복 +${regen}턴(턴당 +${v}, 최대 10턴)` : ''}.${cdText}`;
+    }
     case 'mermaid': {
       const cut = enhanceMermaidCut(level);
       const divide = enhanceMermaidDivide(level);
-      return `다음 기술의 효과가 ${v}배가 됩니다${cut > 0 ? `, 상대 배율 −${cut}` : ''}${divide > 1 ? `, 상대의 다음 기술 효과 ÷${divide}` : ''}.${cdText}`;
+      const turns = enhanceMermaidDivideTurns(level);
+      return `다음 기술의 효과가 ${v}배가 됩니다${cut > 0 ? `, 상대 배율 −${cut}` : ''}${divide > 1 ? `, 상대 기술 효과 ÷${divide}(${turns}턴)` : ''}.${cdText}`;
     }
     case 'tiger': {
       const heal = enhanceTigerHeal(level);
-      return heal > 0 ? `상대 체력 −${v}, 내 체력 +${heal}${cdText}` : `상대 체력을 ${v}만큼 깎습니다.${cdText}`;
+      const bleed = enhanceTigerBleedTurns(level);
+      if (heal <= 0) return `상대 체력을 ${v}만큼 깎습니다.${cdText}`;
+      return `상대 체력 −${v}, 내 체력 +${heal}${bleed > 0 ? `, 출혈 +${bleed}턴(턴당 −${v}, 최대 10턴)` : ''}${cdText}`;
     }
   }
 }

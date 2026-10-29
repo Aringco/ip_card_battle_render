@@ -2,7 +2,7 @@
 // scripts/generateAssetManifest.mjs 가 public/ 을 훑어 만든다 (npm run gen:assets).
 // public/ 에 사운드나 이미지를 추가/삭제한 뒤 dev/build를 다시 돌리면 갱신된다.
 
-export type SfxName = 'sheep' | 'mermaid' | 'tiger' | 'rabbit' | 'card' | 'bomb';
+export type SfxName = 'sheep' | 'mermaid' | 'tiger' | 'rabbit' | 'card' | 'bomb' | 'thud';
 
 /** 효과음 — 접두사별 파일 목록(같은 접두사 안에서 무작위로 하나 재생) */
 export const SFX_MANIFEST: Record<SfxName, string[]> = {
@@ -37,6 +37,9 @@ export const SFX_MANIFEST: Record<SfxName, string[]> = {
   ],
   "bomb": [
     "/sounds/bomb.wav"
+  ],
+  "thud": [
+    "/sounds/thud.wav"
   ]
 };
 

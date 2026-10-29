@@ -1,5 +1,6 @@
 import type { GameEvent, GameState, SideId, TeamState } from 'shared';
 import type { ClientGameEvent, ClientGameState } from 'shared';
+import { cloneEnhanceStatus } from 'shared';
 
 /**
  * 서버 GameState → 클라이언트 전송용 ClientGameState 변환.
@@ -77,7 +78,7 @@ export function serializeState(
       ? {
           enhance: {
             cooldowns: Object.fromEntries(Object.entries(state.enhance.cooldowns).map(([side, cd]) => [side, { ...cd }])),
-            divisors: { ...state.enhance.divisors },
+            ...cloneEnhanceStatus(state.enhance),
           },
         }
       : {}),

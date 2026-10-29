@@ -1,5 +1,5 @@
 import type { PlayerColorId } from './constants';
-import type { EnhanceState } from './enhance';
+import type { EnhanceState, EnhanceStatus } from './enhance';
 
 export type Animal = 'sheep' | 'rabbit' | 'mermaid' | 'tiger';
 export type Team = 'A' | 'B';
@@ -197,6 +197,29 @@ export type GameEvent =
       oppDivisor?: number;
       // 카드 강화 — 이번 기술의 효과가 상대 디자인어 때문에 이 수로 나뉘었다(반올림)
       divisorUsed?: number;
+      // 카드 강화 — 디자인어 Lv.9+: 위 나눗셈이 이어지는 상대 차례 수
+      oppDivisorTurns?: number;
+      // 카드 강화 — Lv.Max의 별도 배수(×2 이상일 때만). 효과량에는 이미 곱해져 있다
+      overMultiplier?: number;
+      // 카드 강화 — 실용신양 Lv.9+: 쿨타임을 줄인 내 카드(before → after, after 0이면 다시 쓸 수 있다)
+      cooldownCut?: { animal: Animal; before: number; after: number };
+      // 카드 강화 — 상표토끼 Lv.6+: 남은 턴을 줄인 내 부정한 효과(after 0이면 사라졌다)
+      cleanse?: { kind: 'bleed' | 'divisor'; before: number; after: number };
+      // 카드 강화 — 상표토끼 Lv.9+ 지속 회복 · 특허랑이 Lv.9+ 출혈(상대에게): 더한 턴 수와 한 턴의 양
+      regenAdded?: { turns: number; amount: number };
+      bleedAdded?: { turns: number; amount: number };
+      // 카드 강화 — 이 효과를 적용한 직후의 지속 효과 묶음(화면이 연출 순간에 이 값으로 체력창 아이콘을 바꾼다)
+      status?: EnhanceStatus;
+    }
+  // 카드 강화 — 차례가 시작된 편의 지속 효과가 한 번 들었다(출혈 → 회복 순). amount는 실제로 바뀐 체력(출혈은 깎인 양, 양수).
+  | {
+      type: 'enhanceTick';
+      team: SideId;
+      kind: 'bleed' | 'regen';
+      amount: number;
+      turnsLeft: number;
+      hpAfter: Record<SideId, number>;
+      status: EnhanceStatus;
     }
   // 카드 강화 — 이 장소를 눌러 이번에 count장이 한꺼번에 나온다(뒤따르는 draw count개가 그 카드들이다). 화면은 겹쳐서 빠르게 띄운다.
   | { type: 'placeDraws'; place: Place; count: number }

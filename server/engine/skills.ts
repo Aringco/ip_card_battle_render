@@ -1,13 +1,21 @@
 import {
   ANIMALS,
   THRESHOLDS,
+  cloneEnhanceStatus,
   enhanceCooldown,
   enhanceCooldownLeft,
   enhanceMermaidAfter,
   enhanceAmount,
   enhanceMermaidCut,
   enhanceMermaidDivide,
+  enhanceMermaidDivideTurns,
+  enhanceOverMultiplier,
+  enhanceRabbitCleanse,
+  enhanceRabbitRegenTurns,
+  enhanceSheepCooldownCut,
   enhanceSheepExp,
+  enhanceTigerBleedTurns,
+  ENHANCE_DOT_MAX_TURNS,
   enhanceTigerHeal,
   enhanceValue,
   opponentsOf,
@@ -175,12 +183,15 @@ export function applySkillChoice(
 /**
  * 카드 강화 판 — 기술 한 번의 효과(고른 기술 · 짝 효과가 함께 쓴다). shared/enhance.ts의 표를 따른다.
  * - 실용신양: 다음 내 턴 추가 뽑기 `값 × 배율`(쌓는다). Lv.6부터 내 카드 넷 중 무작위 하나에 경험치 `+N × 배율`.
- * - 상표토끼: 내 체력 `+값 × 배율`.
+ *   Lv.9부터 내 **다른** 카드 중 쿨타임이 걸린 무작위 한 장의 쿨타임 −1 · −2 · 초기화(배율 무관).
+ * - 상표토끼: 내 체력 `+값 × 배율`. Lv.6부터 나에게 걸린 부정한 효과(효과 감소 · 출혈) 중 무작위 하나의 남은 턴 −N(Max는 정화).
+ *   Lv.9부터 지속 회복 +1 · +2 · +4턴(한 턴에 그 레벨의 기본 회복량). 둘 다 배율 무관.
  * - 디자인어: 내 배율을 걸거나 키운다(enhanceMermaidAfter — 배율을 곱하지 않는다). Lv.6부터 상대가 쌓아 둔 배율을 깎는다(×1 아래로는 안 내려간다).
+ *   Lv.9부터 상대의 다음 고른 기술 효과를 ÷2 · ÷3 · ÷5(반올림)로 만들고, 그것이 2 · 3 · 10턴 이어진다(EnhanceState.divisors · divisorTurns).
  * - 특허랑이: 상대 체력 `−값 × 배율`(가진 만큼만 — 빼앗지 않는다). Lv.6부터 내 체력 회복 `+N × 배율`이 따로 붙는다.
- * - 디자인어 Lv.9부터: 상대의 다음 고른 기술 효과를 ÷2·÷3·÷5(반올림)로 만든다(EnhanceState.divisors).
- * 수치 효과는 모두 enhanceAmount(기본값 × 배율 ÷ 나눗셈, 반올림)다. 경험치는 깎지 않는다(레벨은 쌓아 올린 강화 단계다).
- * 배율·나눗셈을 쓰는지·쿨타임을 거는지는 부르는 쪽이 정한다.
+ *   Lv.9부터 상대에게 출혈 +1 · +2 · +4턴(한 턴에 그 레벨의 기본 공격력 — 배율 무관).
+ * 수치 효과는 모두 enhanceAmount(기본값 × 배율 × Max 별도 배수 ÷ 나눗셈, 반올림)다. 경험치는 깎지 않는다(레벨은 쌓아 올린 강화 단계다).
+ * 배율·나눗셈을 쓰는지·쿨타임을 거는지는 부르는 쪽이 정한다. Max의 별도 배수(enhanceOverMultiplier)는 여기서 곱한다 — 고른 기술 · 짝 효과 모두.
  */
 function applyEnhanceEffect(
   state: GameState,
@@ -193,8 +204,20 @@ function applyEnhanceEffect(
   rng: () => number,
 ): Pick<
   Extract<GameEvent, { type: 'skillApplied' }>,
-  'myHpDelta' | 'oppHpDelta' | 'extraDrawsQueued' | 'randomExp' | 'oppMultiplierCut' | 'oppDivisor'
+  | 'myHpDelta'
+  | 'oppHpDelta'
+  | 'extraDrawsQueued'
+  | 'randomExp'
+  | 'oppMultiplierCut'
+  | 'oppDivisor'
+  | 'oppDivisorTurns'
+  | 'overMultiplier'
+  | 'cooldownCut'
+  | 'cleanse'
+  | 'regenAdded'
+  | 'bleedAdded'
 > {
+  const enh = state.enhance!;
   const me = state.teams[team];
   const foe = opponent === undefined ? undefined : state.teams[opponent];
   let myHpDelta = 0;
@@ -203,10 +226,18 @@ function applyEnhanceEffect(
   let randomExp: { animal: Animal; amount: number } | undefined;
   let oppMultiplierCut: number | undefined;
   let oppDivisor: number | undefined;
-  const amount = (base: number) => enhanceAmount(base, mult, divisor);
+  let oppDivisorTurns: number | undefined;
+  let cooldownCut: { animal: Animal; before: number; after: number } | undefined;
+  let cleanse: { kind: 'bleed' | 'divisor'; before: number; after: number } | undefined;
+  let regenAdded: { turns: number; amount: number } | undefined;
+  let bleedAdded: { turns: number; amount: number } | undefined;
+  // 실용신양의 무작위 경험치가 이 카드의 배수를 바꿀 수 있으므로 효과 전에 한 번 정한다
+  const over = enhanceOverMultiplier(animal, me.exp[animal]);
+  const amount = (base: number) => enhanceAmount(base, mult * over, divisor);
+  const pick = <T>(list: readonly T[]): T => list[Math.floor(rng() * list.length)];
 
   if (animal === 'mermaid') {
-    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level);
+    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level, over);
     const cut = enhanceMermaidCut(level);
     if (cut > 0 && foe) {
       const before = foe.pendingMultiplier;
@@ -214,9 +245,11 @@ function applyEnhanceEffect(
       oppMultiplierCut = before - foe.pendingMultiplier;
     }
     const divide = enhanceMermaidDivide(level);
-    if (divide > 1 && opponent !== undefined && state.enhance) {
-      state.enhance.divisors[opponent] = Math.max(state.enhance.divisors[opponent] ?? 1, divide);
-      oppDivisor = state.enhance.divisors[opponent];
+    if (divide > 1 && opponent !== undefined) {
+      enh.divisors[opponent] = Math.max(enh.divisors[opponent] ?? 1, divide);
+      enh.divisorTurns[opponent] = Math.max(enh.divisorTurns[opponent] ?? 0, enhanceMermaidDivideTurns(level));
+      oppDivisor = enh.divisors[opponent];
+      oppDivisorTurns = enh.divisorTurns[opponent];
     }
   } else if (animal === 'sheep') {
     extraDrawsQueued = amount(enhanceValue('sheep', level));
@@ -224,15 +257,65 @@ function applyEnhanceEffect(
     me.pendingExtraDraws += extraDrawsQueued;
     const bonus = amount(enhanceSheepExp(level));
     if (bonus > 0) {
-      const target = ANIMALS[Math.floor(rng() * ANIMALS.length)];
+      const target = pick(ANIMALS);
       me.exp[target] += bonus;
       randomExp = { animal: target, amount: bonus };
     }
+    // 쿨타임 감소 — 실용신양 자신은 빠진다(Max의 초기화로 같은 차례에 자기를 또 쓰게 되면 안 된다)
+    const cdCut = enhanceSheepCooldownCut(level);
+    const cds = enh.cooldowns[team];
+    const cooling = cds ? ANIMALS.filter(a => a !== 'sheep' && cds[a] > 0) : [];
+    if (cdCut > 0 && cooling.length > 0) {
+      const target = pick(cooling);
+      const before = cds[target];
+      cds[target] = Math.max(0, before - cdCut);
+      cooldownCut = { animal: target, before, after: cds[target] };
+    }
   } else if (animal === 'rabbit') {
-    myHpDelta = amount(enhanceValue('rabbit', level));
+    const heal = enhanceValue('rabbit', level);
+    myHpDelta = amount(heal);
+    // 부정한 효과 줄이기 — 나에게 걸린 것 중 무작위 하나(효과 감소 ÷N · 출혈). 걸린 것이 없으면 아무 일도 없다.
+    const cleanseTurns = enhanceRabbitCleanse(level);
+    const bad: Array<'bleed' | 'divisor'> = [];
+    if ((enh.bleed[team]?.turns ?? 0) > 0) bad.push('bleed');
+    if ((enh.divisors[team] ?? 1) > 1) bad.push('divisor');
+    if (cleanseTurns > 0 && bad.length > 0) {
+      const kind = pick(bad);
+      if (kind === 'bleed') {
+        const b = enh.bleed[team];
+        const before = b.turns;
+        b.turns = Math.max(0, before - cleanseTurns);
+        if (b.turns === 0) b.amount = 0;
+        cleanse = { kind, before, after: b.turns };
+      } else {
+        const before = Math.max(1, enh.divisorTurns[team] ?? 0);
+        enh.divisorTurns[team] = Math.max(0, before - cleanseTurns);
+        if (enh.divisorTurns[team] === 0) enh.divisors[team] = 1;
+        cleanse = { kind, before, after: enh.divisorTurns[team] };
+      }
+    }
+    const regenTurns = enhanceRabbitRegenTurns(level);
+    if (regenTurns > 0) {
+      const r = (enh.regen[team] ??= { turns: 0, amount: 0 });
+      r.amount = Math.max(r.turns > 0 ? r.amount : 0, heal);
+      // 최대 10턴(ENHANCE_DOT_MAX_TURNS) — 이미 꽉 차 있으면 턴은 늘지 않고 한 턴의 양만 큰 쪽으로 바뀐다
+      const added = Math.min(regenTurns, ENHANCE_DOT_MAX_TURNS - r.turns);
+      r.turns += Math.max(0, added);
+      if (added > 0) regenAdded = { turns: added, amount: r.amount };
+    }
   } else {
-    oppHpDelta = -Math.min(amount(enhanceValue('tiger', level)), Math.max(0, foe?.hp ?? 0));
+    const attack = enhanceValue('tiger', level);
+    oppHpDelta = -Math.min(amount(attack), Math.max(0, foe?.hp ?? 0));
     myHpDelta = amount(enhanceTigerHeal(level));
+    const bleedTurns = enhanceTigerBleedTurns(level);
+    if (bleedTurns > 0 && opponent !== undefined) {
+      const b = (enh.bleed[opponent] ??= { turns: 0, amount: 0 });
+      b.amount = Math.max(b.turns > 0 ? b.amount : 0, attack);
+      // 최대 10턴(ENHANCE_DOT_MAX_TURNS) — 지속 회복과 같다
+      const added = Math.min(bleedTurns, ENHANCE_DOT_MAX_TURNS - b.turns);
+      b.turns += Math.max(0, added);
+      if (added > 0) bleedAdded = { turns: added, amount: b.amount };
+    }
   }
 
   if (foe) foe.hp = Math.max(0, foe.hp + oppHpDelta);
@@ -247,6 +330,12 @@ function applyEnhanceEffect(
     ...(randomExp ? { randomExp } : {}),
     ...(oppMultiplierCut !== undefined ? { oppMultiplierCut } : {}),
     ...(oppDivisor !== undefined ? { oppDivisor } : {}),
+    ...(oppDivisorTurns !== undefined ? { oppDivisorTurns } : {}),
+    ...(over > 1 ? { overMultiplier: over } : {}),
+    ...(cooldownCut ? { cooldownCut } : {}),
+    ...(cleanse ? { cleanse } : {}),
+    ...(regenAdded ? { regenAdded } : {}),
+    ...(bleedAdded ? { bleedAdded } : {}),
   };
 }
 
@@ -265,16 +354,19 @@ function applyEnhanceSkill(
   rng: () => number,
 ): GameEvent {
   const me = state.teams[team];
+  const enh = state.enhance!;
   const multiplierUsed = animal === 'mermaid' ? 1 : me.pendingMultiplier;
-  // 상대 디자인어(Lv.9+)가 건 나눗셈 — 배율과 같은 때(디자인어가 아닌 기술을 고를 때) 쓰이고 사라진다
-  const divisorUsed = animal === 'mermaid' ? 1 : (state.enhance!.divisors[team] ?? 1);
-  const effect = applyEnhanceEffect(state, team, animal, level, multiplierUsed, divisorUsed, opponent, rng);
+  // 상대 디자인어(Lv.9+)가 건 나눗셈 — 배율과 같은 때(디자인어가 아닌 기술을 고를 때) 쓰이고 사라진다.
+  // 효과보다 **먼저** 걷는다 — 상표토끼의 정화가 이미 쓰인 나눗셈을 고르면 헛방이 된다.
+  const divisorUsed = animal === 'mermaid' ? 1 : (enh.divisors[team] ?? 1);
   if (animal !== 'mermaid') {
-    me.pendingMultiplier = 1;
-    state.enhance!.divisors[team] = 1;
+    enh.divisors[team] = 1;
+    enh.divisorTurns[team] = 0;
   }
+  const effect = applyEnhanceEffect(state, team, animal, level, multiplierUsed, divisorUsed, opponent, rng);
+  if (animal !== 'mermaid') me.pendingMultiplier = 1;
 
-  const cooldowns = state.enhance!.cooldowns[team];
+  const cooldowns = enh.cooldowns[team];
   if (cooldowns) cooldowns[animal] = enhanceCooldown(animal, level) + 1;
   me.skillStats[animal].count += 1;
   me.skillStats[animal].totalLevel += level;
@@ -291,12 +383,14 @@ function applyEnhanceSkill(
     hpAfter: hpSnapshot(state),
     ...(animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
     ...(divisorUsed > 1 ? { divisorUsed } : {}),
+    status: cloneEnhanceStatus(enh),
   };
 }
 
 /**
  * 카드 강화 판 — 짝이 맞은 순간 그 카드의 기술이 저절로 발동한다(정산이 경험치를 더한 **뒤의** 레벨). 고른 기술과 다른 점:
- * - 쌓아 둔 배율(디자인어)을 **쓰지도 소모하지도 않는다** — 기본 효과 그대로다. 디자인어 짝은 그 배율을 키운다(기술과 같은 규칙).
+ * - 쌓아 둔 배율(디자인어)을 **쓰지도 소모하지도 않는다** — 기본 효과 그대로다(Max의 별도 배수는 카드 자신의 힘이라 곱한다).
+ *   디자인어 짝은 그 배율을 키운다(기술과 같은 규칙).
  * - 쿨타임을 걸지 않는다(덤이라 다음 선택을 막지 않는다). 실용신양 짝은 다음 내 턴의 추가 뽑기에 **더한다**.
  * - 통계는 효과량만 더하고 사용 횟수는 세지 않는다(결과 화면의 "몇 번 썼나"는 고른 기술만).
  * 승패는 부르는 쪽(gameEngine.processPlayerAction)이 뽑기를 모두 마친 뒤 한 번 본다.
@@ -315,6 +409,7 @@ export function applyEnhancePairEffect(state: GameState, team: SideId, animal: A
     ...effect,
     hpAfter: hpSnapshot(state),
     pair: true,
+    status: cloneEnhanceStatus(state.enhance!),
   };
 }
 

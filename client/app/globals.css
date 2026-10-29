@@ -7296,3 +7296,228 @@ body {
   .enh-burst-piece,
   .enh-burst-ring { display: none; }
 }
+
+/* ── 카드 강화 3차 표 — 체력창의 지속 효과(TeamTotalPanel) ──────────────────────────────────────────
+   출혈(상대 특허랑이 Lv.9+): 빨간 그림자 + 위에서 흘러내리는 핏방울 + 핏방울 아이콘 안의 남은 턴.
+   지속 회복(내 상표토끼 Lv.9+): 초록 그림자 + 떠오르는 초록 십자가 + 십자가 아이콘 안의 남은 턴.
+   둘 다 있으면 그림자를 겹친다. 크기는 액자 폭(--pf-w)에 비례한다(.hp-orb-value와 같은 기준).
+   ⚠️ 그림자는 구슬 자신의 box-shadow가 아니라 **위에 얹은 층(.hp-orb-dot-glow)의 안쪽 그림자**다 — 바깥 그림자는 칸(.play-cell, overflow hidden)에
+   잘려 안 보이고, 구슬의 안쪽 그림자는 자식인 액체(.hp-orb-liquid)에 덮여 아래 절반에서 사라졌다(실제로 그렇게 만들었다가 고쳤다). */
+.hp-orb-dot-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: hpDotGlow 1.6s ease-in-out infinite;
+}
+.hp-orb-bleeding .hp-orb-dot-glow { box-shadow: inset 0 0 0 3px rgba(220, 38, 38, 0.9), inset 0 0 22px 8px rgba(220, 38, 38, 0.6); }
+.hp-orb-healing .hp-orb-dot-glow { box-shadow: inset 0 0 0 3px rgba(34, 197, 94, 0.9), inset 0 0 22px 8px rgba(34, 197, 94, 0.55); }
+/* 둘 다 — 테두리는 빨강(출혈이 먼저 든다), 그 안쪽으로 초록이 번진다 */
+.hp-orb-bleeding.hp-orb-healing .hp-orb-dot-glow {
+  box-shadow: inset 0 0 0 3px rgba(220, 38, 38, 0.9), inset 0 0 14px 6px rgba(220, 38, 38, 0.5), inset 0 0 30px 12px rgba(34, 197, 94, 0.45);
+}
+@keyframes hpDotGlow {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+
+.hp-orb-bleed,
+.hp-orb-heal,
+.hp-orb-dot-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* 핏방울 — 둥근 아래 + 뾰족한 위(한 귀퉁이만 각진 사각형을 45도 돌린 모양) */
+.hp-orb-drop {
+  position: absolute;
+  top: -8%;
+  width: calc(var(--pf-w, 1200px) * 0.0065);
+  height: calc(var(--pf-w, 1200px) * 0.0065);
+  background: radial-gradient(circle at 35% 35%, #fca5a5 0%, #dc2626 45%, #7f1d1d 100%);
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
+  box-shadow: 0 0 4px rgba(127, 29, 29, 0.6);
+}
+.hp-orb-bleed .hp-orb-drop { animation: hpDropFall 2.4s cubic-bezier(0.55, 0, 0.9, 0.6) infinite; opacity: 0; }
+/* 흘러내리는 자국 — 방울 뒤에 짧게 남는 붉은 줄 */
+.hp-orb-bleed .hp-orb-drop::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  top: -220%;
+  width: 40%;
+  height: 220%;
+  background: linear-gradient(to bottom, transparent, rgba(220, 38, 38, 0.55));
+  transform: rotate(-45deg);
+  transform-origin: 50% 100%;
+}
+@keyframes hpDropFall {
+  0%   { opacity: 0; transform: translateY(0) rotate(45deg) scale(0.6); }
+  12%  { opacity: 1; transform: translateY(15%) rotate(45deg) scale(1); }
+  85%  { opacity: 0.9; }
+  100% { opacity: 0; top: 104%; transform: translateY(0) rotate(45deg) scale(0.85); }
+}
+/* 초록 십자가 — 가로·세로 막대 둘 */
+.hp-orb-cross {
+  position: absolute;
+  bottom: -8%;
+  width: calc(var(--pf-w, 1200px) * 0.0085);
+  height: calc(var(--pf-w, 1200px) * 0.0085);
+  filter: drop-shadow(0 0 3px rgba(22, 163, 74, 0.8));
+}
+.hp-orb-cross::before,
+.hp-orb-cross::after {
+  content: '';
+  position: absolute;
+  background: #4ade80;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.hp-orb-cross::before { left: 34%; right: 34%; top: 0; bottom: 0; }
+.hp-orb-cross::after  { top: 34%; bottom: 34%; left: 0; right: 0; }
+.hp-orb-heal .hp-orb-cross { animation: hpCrossRise 2.6s ease-out infinite; opacity: 0; }
+@keyframes hpCrossRise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+  15%  { opacity: 1; transform: translateY(-20%) scale(1); }
+  100% { opacity: 0; bottom: 100%; transform: translateY(0) scale(0.75) rotate(20deg); }
+}
+/* 한 번 든 순간 — 가운데에서 크게 터진다(출혈은 아래로, 회복은 위로 치우친다) */
+.hp-orb-dot-burst { overflow: visible; }
+.hp-orb-dot-burst > span {
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  animation: hpDotBurst 900ms ease-out forwards;
+}
+.hp-orb-dot-burst.is-bleed > span { --lift: 30px; }
+.hp-orb-dot-burst.is-regen > span { --lift: -30px; }
+@keyframes hpDotBurst {
+  0%   { opacity: 1; translate: -50% -50%; scale: 0.4; }
+  100% { opacity: 0; translate: calc(-50% + var(--bx)) calc(-50% + var(--by) + var(--lift)); scale: 1.4; }
+}
+
+/* 남은 턴 아이콘 — 체력창 오른쪽 위에 세로로 */
+.hp-orb-status {
+  position: absolute;
+  top: 7%;
+  right: 7%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3em;
+  font-size: calc(var(--pf-w, 1200px) * 0.011);
+  pointer-events: auto;
+}
+.hp-status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2em;
+  height: 2.2em;
+}
+.hp-status b {
+  position: relative;
+  z-index: 1;
+  font-weight: 900;
+  font-size: 1.05em;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.hp-status-icon { position: absolute; inset: 0; }
+.hp-status-bleed .hp-status-icon {
+  inset: 12%;
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 50%, #7f1d1d 100%);
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg) translate(4%, 4%);
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.9);
+}
+.hp-status-regen .hp-status-icon { filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.95)); }
+.hp-status-regen .hp-status-icon::before,
+.hp-status-regen .hp-status-icon::after {
+  content: '';
+  position: absolute;
+  background: #22c55e;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+}
+.hp-status-regen .hp-status-icon::before { left: 30%; right: 30%; top: 0; bottom: 0; }
+.hp-status-regen .hp-status-icon::after  { top: 30%; bottom: 30%; left: 0; right: 0; }
+/* 효과 감소(÷N, 상대 디자인어 Lv.9+) — 보라 원 안에 ÷N, 남은 턴은 오른쪽 아래 작은 숫자 */
+.hp-status-divide .hp-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #c4b5fd 0%, #7c3aed 60%, #4c1d95 100%);
+  border: 1.5px solid #fff;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.85em;
+  box-shadow: 0 0 6px rgba(124, 58, 237, 0.85);
+}
+.hp-status-divide b {
+  position: absolute;
+  right: -0.35em;
+  bottom: -0.35em;
+  font-size: 0.8em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-orb-dot-glow { animation: none; }
+  .hp-orb-bleed .hp-orb-drop, .hp-orb-heal .hp-orb-cross, .hp-orb-dot-burst > span { animation: none; opacity: 0.8; }
+}
+
+/* 기술 카드 제목 옆 — Lv.Max의 별도 배수(×2 · ×3 …) */
+.enh-title-over {
+  font-size: 0.82em;
+  color: #fb923c;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* ── 카드 강화 — 기술 카드를 고르는 순간의 흙먼지(SkillQuake.tsx) ─────────────────────────────────────
+   body로 portal한 층이라 화면 좌표(fixed)다 — 기술 카드 띠·판의 칸은 overflow를 잘라 카드 밖으로 퍼지는 먼지가 안 보인다.
+   덩이(.quake-puff)는 카드 아래 변 가운데에서 부풀며 양옆·위로 번지고, 진도가 높으면 판 전체가 뿌옇다(.quake-haze, 진도 10이면 1초).
+   크기·거리·진하기·길이는 모두 진도에서 정해 변수(--dx · --dy · --op · --dur · --haze)로 받는다. 배치는 바꾸지 않는다. */
+.quake-dust {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+}
+.quake-haze {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 80%, rgba(214, 190, 150, 1) 0%, rgba(190, 165, 125, 0.75) 45%, rgba(160, 135, 100, 0.45) 100%);
+  opacity: 0;
+  animation: quakeHaze var(--dur, 1000ms) ease-out forwards;
+}
+@keyframes quakeHaze {
+  0%   { opacity: 0; }
+  18%  { opacity: var(--haze, 0.4); }
+  100% { opacity: 0; }
+}
+.quake-puff {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, rgba(222, 200, 160, 0.95) 0%, rgba(190, 160, 115, 0.7) 45%, rgba(160, 130, 90, 0) 72%);
+  filter: blur(4px);
+  opacity: 0;
+  transform: translate(-50%, -60%) scale(0.3);
+  animation: quakePuff var(--dur, 800ms) cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+@keyframes quakePuff {
+  0%   { opacity: 0; transform: translate(-50%, -60%) scale(0.3); }
+  15%  { opacity: var(--op, 0.6); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-60% + var(--dy, 0px))) scale(1.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quake-puff { animation-duration: 1ms; }
+  .quake-haze { animation: none; }
+}

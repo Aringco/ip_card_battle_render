@@ -58,6 +58,7 @@ import {
   enhanceTigerHeal,
   enhanceAmount,
   enhanceDivisorOf,
+  enhanceOverMultiplier,
 } from 'shared';
 import type { EventEndReason, EventInfo, EventKind } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
@@ -110,7 +111,7 @@ const SETTLE_FESTIVAL_MS = 700;     // 축제 시작 연출
 // 아래 근사식의 상한(대규모 연쇄 뽑기 대비) — 근사식은 연쇄 뽑기를 장당 0.3초로 세어 크게 부풀기 때문이다.
 const SETTLE_ESTIMATE_MAX_MS = 15000;
 // 연출 유예 전체의 상한 — 화면 타임라인을 그대로 따라 센 값(settleTimelineMs)에 거는 안전선. 카드 강화 판의 최악(예약 뽑기 두 롤 ·
-// 짝 넷 · 짝 효과 넷)도 40초 남짓이다(롤 하나는 rollDrawStep이 12초 안팎으로 묶는다).
+// 짝 넷 · 짝 효과 넷)도 40초 남짓이다(롤 하나는 rollDrawStep이 5초 안으로 묶는다).
 const SETTLE_GRACE_MAX_MS = 60000;
 
 /**
@@ -136,6 +137,7 @@ const TL_EFFECT_MS = 1200;
 const TL_TIGER_MS = 500 + 900 + 80;
 const TL_RANK_MS = 1700;
 const TL_FESTIVAL_MS = 900;
+const TL_TICK_MS = 1000; // 카드 강화의 출혈·지속 회복 한 번(useAnimationQueue의 TICK_DUR)
 
 /** useAnimationQueue의 Pass 1(뽑기) → 1.5(정산) → 1.6(효과) → 순위 → 축제 스케줄을 그대로 따라 센 연출 길이 */
 function settleTimelineMs(events: GameEvent[]): number {
@@ -178,6 +180,7 @@ function settleTimelineMs(events: GameEvent[]): number {
     if (ev.type === 'skillApplied' && ev.level > 0) cursor += ev.animal === 'tiger' ? TL_TIGER_MS : TL_EFFECT_MS;
     else if (ev.type === 'ranked') cursor += TL_RANK_MS;
   }
+  cursor += events.filter(e => e.type === 'enhanceTick').length * TL_TICK_MS;
   if (events.some(e => e.type === 'festival')) cursor += TL_FESTIVAL_MS;
   return cursor;
 }
@@ -194,7 +197,7 @@ function settleEstimateMs(events: GameEvent[]): number {
     if (ev.type === 'draw') draws++;
     else if (ev.type === 'bonusDraws' || ev.type === 'festivalDraws') rolls++;
     else if (ev.type === 'collect') collects++;
-    else if (ev.type === 'skillApplied') skills++;
+    else if (ev.type === 'skillApplied' || ev.type === 'enhanceTick') skills++;
     else if (ev.type === 'festival') festivals++;
   }
 
@@ -268,14 +271,15 @@ function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal | null
   const mult = me.pendingMultiplier;
   const winHp = state.settings.targetScore * 2;
   const div = enhanceDivisorOf(state, side);
-  const value = (a: Animal) => enhanceAmount(enhanceValue(a, levelOf(state, side, a)), mult, div);
+  const over = (a: Animal) => enhanceOverMultiplier(a, me.exp[a]);
+  const value = (a: Animal) => enhanceAmount(enhanceValue(a, levelOf(state, side, a)), mult * over(a), div);
 
   if (options.includes('tiger') && value('tiger') >= foeHp) return 'tiger';
   if (options.includes('rabbit') && me.hp + value('rabbit') >= winHp) return 'rabbit';
   if (options.includes('mermaid') && mult === 1 && options.length > 1 && Math.random() < 0.35) return 'mermaid';
 
   const gain = (a: Animal): number => {
-    if (a === 'tiger') return Math.min(value(a), foeHp) + enhanceAmount(enhanceTigerHeal(levelOf(state, side, a)), mult, div);
+    if (a === 'tiger') return Math.min(value(a), foeHp) + enhanceAmount(enhanceTigerHeal(levelOf(state, side, a)), mult * over(a), div);
     if (a === 'rabbit') return value(a);
     if (a === 'sheep') return value(a) * 0.6; // 카드는 곧바로 점수가 아니다
     return mult === 1 ? 1.5 : 0;              // 디자인어 — 이미 걸려 있으면 굳이 쓰지 않는다
