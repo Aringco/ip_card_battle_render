@@ -38,7 +38,10 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  *   trimTop  … 위쪽 몇 줄을 버린다(옆 조각에서 가늘게 이어진 부스러기 제거용).
  *   resizeH  … 잘라낸 뒤 이 높이로 줄인다. 원본이 화면에서 쓰는 크기보다 훨씬 클 때
  *              쓴다 — 그냥 두면 쓰지도 않는 해상도가 그대로 빌드에 실린다.
+ *   size     … 잘라낸 뒤 정확히 이 [폭, 높이]로 맞춘다. 시트를 다른 해상도의 새 그림으로 갈 때 globals.css의 슬라이스 값을
+ *              그대로 쓰려고 예전 출력 크기를 적어 둔다(마스터 시트 v2).
  * 시트 단위 옵션
+ *   minAlpha … 성분을 묶는 알파 문턱(기본 16). 조각 둘레에 반투명 번짐이 있어 이웃끼리 이어질 때 올린다.
  *   stripTop … 시트 맨 위 몇 줄을 통째로 지운다. 배경 제거가 남긴 **가장자리 띠**
  *              전용이다 — 폭 전체를 가로지르므로 그대로 두면 그 줄이 닿는 조각이
  *              전부 한 성분으로 붙어 버린다(실제로 상단 바가 시트 전체 폭으로 잡혔다).
@@ -52,63 +55,65 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  */
 const SHEETS = [
   {
-    // 마스터 시트 — 2560×1376. `play_ui_sheet.png`와 **같은 배치의 깨끗한 재수출본**이다
-    // (알파가 제대로 살아 있고, 예전 것은 체커보드가 구워져 있어 경계상자가 2~4px씩
-    // 달랐다). 상단 바까지 이 한 장에서 나오므로 예전 시트 둘은 걷어냈다.
-    src: 'master_sheet.png',
-    stripTop: 6,
+    // 마스터 시트 v2(2026-10-30) — 1711×919, 알파 있음. 예전 master_sheet.png(2560×1339)와 **같은 배치의 새 그림**이라 조각 36개를
+    // 모두 여기서 다시 자른다(예전 시트는 assets-src에 기록으로만 남아 있다).
+    // ⚠️ minAlpha 128 — 새 시트는 조각 둘레에 알파가 낮은 색 번짐(빨강 · 노랑 · 초록)이 있어 기본값(16)으로 성분을 묶으면 이웃 조각이
+    //    번짐으로 이어져 한 덩어리가 된다(board_h와 acorn_bar가 685×475 한 성분으로 잡혔다). 128로 묶은 뒤 경계 2px만 다시 넓혀
+    //    가장자리의 부드러운 알파는 살린다(loadSheet의 grow).
+    // ⚠️ size — 시트가 예전보다 작아(약 0.67배) 그대로 자르면 조각이 작아지고, globals.css의 9분할 슬라이스·테두리 값(public/play/README.md)이
+    //    전부 어긋난다. 그래서 각 조각을 **예전 출력 크기 그대로** 맞춘다 — CSS는 손대지 않는다(비율 차이는 4% 이내).
+    src: 'master_sheet_v2.png',
+    minAlpha: 128,
     pieces: [
       // 맨 윗줄 통째 = 상단 바(팻말 + 들보 + 덩굴 마무리가 한 몸)
-      { name: 'upper_bar', at: [34, 6, 2500, 233] },
+      { name: 'upper_bar', at: [19, 9, 1677, 159], size: [2500, 233] },
 
       // ── 나무 액자 + 양피지 (9분할) ──
-      { name: 'board_h', at: [21, 221, 752, 552] },
-      { name: 'board_sq', at: [1568, 379, 502, 459] },
-      { name: 'board_v', at: [769, 425, 271, 378] },
+      { name: 'board_h', at: [14, 159, 506, 365], size: [752, 552] },
+      { name: 'board_sq', at: [1056, 262, 332, 305], size: [502, 459] },
+      { name: 'board_v', at: [517, 294, 180, 249], size: [271, 378] },
 
       // ── 줄 노트 (9분할) ──
-      { name: 'note_green', at: [633, 947, 266, 370] },
-      { name: 'note_pink', at: [916, 947, 272, 377] },
-      { name: 'note_green_rows', at: [23, 925, 289, 406] },
-      { name: 'note_pink_rows', at: [327, 925, 293, 407] },
+      { name: 'note_green', at: [426, 642, 177, 248], size: [266, 370] },
+      { name: 'note_pink', at: [614, 644, 185, 248], size: [272, 377] },
+      { name: 'note_green_rows', at: [17, 631, 193, 265], size: [289, 406] },
+      { name: 'note_pink_rows', at: [220, 630, 197, 267], size: [293, 407] },
 
       // ── 알약·띠 (가로 3분할) ──
-      { name: 'pill_gold', at: [1569, 238, 194, 118] },
-      { name: 'pill_wood', at: [1784, 244, 248, 101] },
-      { name: 'pill_leaf', at: [2049, 230, 278, 125] },
-      { name: 'pill_sm_green', at: [1061, 754, 156, 81] },
-      { name: 'pill_sm_wood', at: [1235, 754, 154, 80] },
-      { name: 'pill_sm_gold', at: [1406, 748, 146, 84] },
-      { name: 'acorn_bar', at: [28, 760, 619, 164] },
-      { name: 'bar_dark', at: [1050, 415, 510, 186] },
-      { name: 'bar_light', at: [1044, 592, 518, 146] },
-      { name: 'bar_sm', at: [665, 813, 373, 119] },
-      { name: 'plank', at: [781, 230, 535, 196] },
-      { name: 'label_small', at: [2269, 604, 256, 182] },
+      { name: 'pill_gold', at: [1056, 170, 131, 77], size: [194, 118] },
+      { name: 'pill_wood', at: [1200, 173, 164, 68], size: [248, 101] },
+      { name: 'pill_leaf', at: [1377, 159, 185, 86], size: [278, 125] },
+      { name: 'pill_sm_green', at: [711, 510, 108, 55], size: [156, 81] },
+      { name: 'pill_sm_wood', at: [830, 510, 104, 54], size: [154, 80] },
+      { name: 'pill_sm_gold', at: [944, 506, 98, 57], size: [146, 84] },
+      { name: 'acorn_bar', at: [21, 515, 417, 108], size: [619, 164] },
+      { name: 'bar_dark', at: [704, 286, 342, 123], size: [510, 186] },
+      { name: 'bar_light', at: [703, 404, 344, 96], size: [518, 146] },
+      { name: 'bar_sm', at: [451, 550, 243, 81], size: [373, 119] },
+      { name: 'plank', at: [525, 164, 355, 129], size: [535, 196] },
+      { name: 'label_small', at: [1524, 410, 163, 123], size: [256, 182] },
 
       // ── 게이지 ──
-      // 예전 시트에서는 옆 조각의 흰 부스러기가 붙어 trimTop이 필요했는데,
-      // 이 재수출본은 깨끗해서 그럴 일이 없다(y가 855 → 867로 그 몫만큼 내려왔다).
-      { name: 'gauge', at: [1064, 857, 502, 59] },
-      { name: 'gauge_fill', at: [1596, 861, 239, 53] },
-      { name: 'gauge_track', at: [1857, 861, 170, 53] },
+      { name: 'gauge', at: [713, 580, 337, 40], size: [502, 59] },
+      { name: 'gauge_fill', at: [1074, 582, 158, 37], size: [239, 53] },
+      { name: 'gauge_track', at: [1246, 581, 114, 38], size: [170, 53] },
 
       // ── 고정 크기 ──
-      { name: 'arrow_green', at: [2351, 245, 197, 113] },
-      { name: 'arrow_wood', at: [2135, 373, 362, 221] },
-      { name: 'badge_crown', at: [2068, 616, 183, 186] },
-      { name: 'icon_lock', at: [1377, 1223, 94, 114] },
-      { name: 'icon_acorn', at: [1242, 1232, 75, 100] },
-      { name: 'icon_cog', at: [1679, 1233, 100, 103] },
+      { name: 'arrow_green', at: [1575, 173, 129, 77], size: [197, 113] },
+      { name: 'arrow_wood', at: [1434, 262, 237, 143], size: [362, 221] },
+      { name: 'badge_crown', at: [1391, 419, 121, 128], size: [183, 186] },
+      { name: 'icon_lock', at: [920, 821, 66, 81], size: [94, 114] },
+      { name: 'icon_acorn', at: [831, 830, 52, 67], size: [75, 100] },
+      { name: 'icon_cog', at: [1126, 830, 69, 71], size: [100, 103] },
 
       // ── 귀퉁이 장식 ──
-      { name: 'decor_log', at: [1207, 935, 407, 138] },
-      { name: 'decor_bush', at: [2106, 965, 171, 152] },
-      { name: 'decor_grass', at: [1217, 1076, 203, 137] },
-      { name: 'decor_stump', at: [2214, 836, 141, 120] },
-      { name: 'decor_cattail', at: [2368, 791, 167, 173] },
-      { name: 'decor_stones', at: [2385, 1248, 152, 73] },
-      { name: 'decor_mushroom', at: [2022, 1196, 127, 138] },
+      { name: 'decor_log', at: [811, 637, 273, 89], size: [407, 138] },
+      { name: 'decor_bush', at: [1414, 656, 113, 99], size: [171, 152] },
+      { name: 'decor_grass', at: [817, 727, 132, 92], size: [203, 137] },
+      { name: 'decor_stump', at: [1486, 566, 93, 81], size: [141, 120] },
+      { name: 'decor_cattail', at: [1590, 538, 107, 114], size: [167, 173] },
+      { name: 'decor_stones', at: [1597, 843, 100, 48], size: [152, 73] },
+      { name: 'decor_mushroom', at: [1356, 809, 85, 92], size: [127, 138] },
     ],
   },
   {
@@ -187,7 +192,7 @@ const isChecker = (r, g, b) => {
 };
 
 /** 시트 하나를 읽어 알파를 되살리고 연결 성분까지 계산한다. */
-async function loadSheet(file, { stripTop = 0 } = {}) {
+async function loadSheet(file, { stripTop = 0, minAlpha = 16 } = {}) {
   const { data, info } = await sharp(path.join(SRC_DIR, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const W = info.width, H = info.height, C = info.channels, N = W * H;
 
@@ -239,7 +244,7 @@ async function loadSheet(file, { stripTop = 0 } = {}) {
   const label = new Int32Array(N).fill(-1);
   const boxes = [];
   for (let s = 0; s < N; s++) {
-    if (label[s] !== -1 || alpha[s] <= 16) continue;
+    if (label[s] !== -1 || alpha[s] <= minAlpha) continue;
     const id = boxes.length; const st = [s]; label[s] = id;
     let minx = W, miny = H, maxx = -1, maxy = -1;
     while (st.length) {
@@ -250,19 +255,40 @@ async function loadSheet(file, { stripTop = 0 } = {}) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const j = ny * W + nx;
-        if (label[j] !== -1 || alpha[j] <= 16) continue;
+        if (label[j] !== -1 || alpha[j] <= minAlpha) continue;
         label[j] = id; st.push(j);
       }
     }
     boxes.push([minx, miny, maxx - minx + 1, maxy - miny + 1]);
   }
+
+  // ── ③ 경계 되살리기(minAlpha를 올린 시트만) — 높은 문턱으로 묶으면 조각 가장자리의 반투명 화소(앤티에일리어싱)가 성분에서 빠져
+  //    테두리가 거칠어진다. 성분에 붙은 반투명 화소를 2px까지만 그 성분으로 다시 넓힌다 — 이웃 조각까지 닿을 만큼은 아니다.
+  //    경계상자(boxes)는 넓히기 전 값 그대로 둔다(--list로 찍은 at과 맞아야 한다). 자를 때는 2px 여유를 둔다(extractComp).
+  if (minAlpha > 16) {
+    for (let pass = 0; pass < GROW; pass++) {
+      const add = [];
+      for (let i = 0; i < N; i++) {
+        if (label[i] !== -1 || alpha[i] <= 16) continue;
+        const x = i % W;
+        const n = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i - W, i + W].find(j => j >= 0 && j < N && label[j] !== -1);
+        if (n !== undefined) add.push([i, label[n]]);
+      }
+      for (const [i, l] of add) label[i] = l;
+    }
+  }
   return { data, alpha, label, boxes, W, H, C };
 }
 
+/** 경계 되살리기 폭(px) — loadSheet의 ③ */
+const GROW = 2;
+
 /** 성분 하나만 남긴 RGBA 버퍼를 만든다(지정 구역으로 자른 뒤 알파 경계상자에 바짝 자름). */
 function extractComp(sheet, compId, rect) {
-  const { data, alpha, label, W, C } = sheet;
-  const [rx, ry, rw, rh] = rect;
+  const { data, alpha, label, W, H, C } = sheet;
+  // 경계를 되살린 화소(loadSheet ③)가 경계상자 밖으로 GROW px까지 나올 수 있다 — 그만큼 넓혀 훑는다(남는 여백은 아래에서 바짝 자른다)
+  const rx = Math.max(0, rect[0] - GROW), ry = Math.max(0, rect[1] - GROW);
+  const rw = Math.min(W, rect[0] + rect[2] + GROW) - rx, rh = Math.min(H, rect[1] + rect[3] + GROW) - ry;
   let minx = rw, miny = rh, maxx = -1, maxy = -1;
   for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
     const i = (ry + y) * W + (rx + x);
@@ -396,10 +422,12 @@ for (const { src, pieces, ...sheetOpts } of SHEETS) {
 
     let out = sharp(buf, { raw: { width: w, height: h, channels: 4 } });
     if (piece.resizeH) { out = out.resize({ height: piece.resizeH }); }
+    // 예전 출력 크기에 맞춘다(마스터 시트 v2 — globals.css의 슬라이스 값이 그 크기에 묶여 있다)
+    if (piece.size) { out = out.resize({ width: piece.size[0], height: piece.size[1], fit: 'fill', kernel: 'lanczos3' }); }
 
     const file = path.join(OUT_DIR, `${piece.name}.webp`);
     await out.webp({ quality: 92 }).toFile(file);
-    if (piece.resizeH) {
+    if (piece.resizeH || piece.size) {
       const m = await sharp(file).metadata();
       w = m.width; h = m.height;
     }
