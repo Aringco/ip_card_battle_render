@@ -60,6 +60,8 @@ export function TeamTotalPanel({
   const healing = (regen?.turns ?? 0) > 0;
   const divisor = enh?.divisors?.[team] ?? 1;
   const divisorTurns = enh?.divisorTurns?.[team] ?? 0;
+  // 회복 효율 감소(상대 특허랑이 Lv.6+ — 이 편의 다음 1턴)
+  const healCut = (enh?.healCut?.[team]?.turns ?? 0) > 0 ? enh!.healCut[team].pct : 0;
 
   const [activePulse, setActivePulse] = useState<{ id: number; direction: 'gain' | 'loss' } | null>(null);
   const [shards, setShards] = useState<{ dx: number; dy: number }[]>([]);
@@ -151,7 +153,7 @@ export function TeamTotalPanel({
       )}
       <p className="hp-orb-value tabular-nums">{hp}</p>
       {/* 남은 턴 — 핏방울(출혈) · 초록 십자가(지속 회복) 아이콘 안에 숫자. 상대 디자인어의 효과 감소(÷N)도 함께 둔다 */}
-      {(bleeding || healing || divisor > 1) && (
+      {(bleeding || healing || divisor > 1 || healCut > 0) && (
         <div className="hp-orb-status">
           {bleeding && (
             <span className="hp-status hp-status-bleed" title={`출혈 — 차례를 마칠 때마다 체력 −${bleed!.amount} (${bleed!.turns}턴 남음)`}>
@@ -166,9 +168,15 @@ export function TeamTotalPanel({
             </span>
           )}
           {divisor > 1 && (
-            <span className="hp-status hp-status-divide" title={`효과 감소 — 다음 고른 기술 ÷${divisor}${divisorTurns > 0 ? ` (${divisorTurns}턴 남음)` : ''}`}>
+            <span className="hp-status hp-status-divide" title={`효과 감소 — 고르는 기술 ÷${divisor}${divisorTurns > 0 ? ` (${divisorTurns}턴 남음)` : ''}`}>
               <span className="hp-status-icon" aria-hidden>÷{divisor}</span>
               {divisorTurns > 0 && <b className="tabular-nums">{divisorTurns}</b>}
+            </span>
+          )}
+          {healCut > 0 && (
+            <span className="hp-status hp-status-healcut" title={healCut >= 100 ? '회복 금지 — 이번 차례에는 체력이 오르지 않는다' : `회복 효율 감소 — 이번 차례의 회복 −${healCut}%`}>
+              <span className="hp-status-icon" aria-hidden />
+              <b className="tabular-nums">{healCut >= 100 ? '✕' : `-${healCut}%`}</b>
             </span>
           )}
         </div>

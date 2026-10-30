@@ -55,7 +55,9 @@ import {
   opponentsOf,
   clampEnhanceSettings,
   enhanceValue,
-  enhanceTigerHeal,
+  enhanceRabbitBoostPct,
+  enhanceHealAfterCut,
+  enhanceHealCutOf,
   enhanceAmount,
   enhanceDivisorOf,
   enhanceOverMultiplier,
@@ -278,14 +280,20 @@ function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal | null
   const div = enhanceDivisorOf(state, side);
   const over = (a: Animal) => enhanceOverMultiplier(a, me.exp[a]);
   const value = (a: Animal) => enhanceAmount(enhanceValue(a, levelOf(state, side, a)), mult * over(a), div);
+  // 상표토끼 — 즉시 회복 + Lv.6부터 시작 체력의 N%, 그리고 상대 특허랑이가 건 회복 효율 감소(엔진 applyEnhanceEffect와 같은 계산)
+  const rabbitHeal = () => {
+    const pct = enhanceRabbitBoostPct(levelOf(state, side, 'rabbit'));
+    const boost = pct > 0 ? enhanceAmount((state.settings.targetScore * pct) / 100, mult * over('rabbit'), div) : 0;
+    return enhanceHealAfterCut(value('rabbit') + boost, enhanceHealCutOf(state, side));
+  };
 
   if (options.includes('tiger') && value('tiger') >= foeHp) return 'tiger';
-  if (options.includes('rabbit') && me.hp + value('rabbit') >= winHp) return 'rabbit';
+  if (options.includes('rabbit') && me.hp + rabbitHeal() >= winHp) return 'rabbit';
   if (options.includes('mermaid') && mult === 1 && options.length > 1 && Math.random() < 0.35) return 'mermaid';
 
   const gain = (a: Animal): number => {
-    if (a === 'tiger') return Math.min(value(a), foeHp) + enhanceAmount(enhanceTigerHeal(levelOf(state, side, a)), mult * over(a), div);
-    if (a === 'rabbit') return value(a);
+    if (a === 'tiger') return Math.min(value(a), foeHp);
+    if (a === 'rabbit') return rabbitHeal();
     if (a === 'sheep') return value(a) * 0.6; // 카드는 곧바로 점수가 아니다
     return mult === 1 ? 1.5 : 0;              // 디자인어 — 이미 걸려 있으면 굳이 쓰지 않는다
   };

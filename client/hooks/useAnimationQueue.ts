@@ -409,10 +409,16 @@ export function useAnimationQueue(
         const key = deltaKeyOf(ev.team, ev.animal);
         newCredits[key] = (newCredits[key] ?? 0) + ev.exp;
       }
-      // 카드 강화 — 실용신양 Lv.6+가 무작위 카드에 준 경험치도 그 효과 연출 순간에 드러낸다(Pass 1.6)
+      // 카드 강화 — 실용신양이 무작위 카드에 준 경험치(Lv.6+는 레벨)도 그 효과 연출 순간에 드러낸다(Pass 1.6)
       if (ev.type === 'skillApplied' && ev.randomExp) {
         const key = deltaKeyOf(ev.team, ev.randomExp.animal);
         newCredits[key] = (newCredits[key] ?? 0) + ev.randomExp.amount;
+      }
+      // 카드 강화 — Lv.Max 별도 배수는 쓰면 ×1로 돌아간다(서버가 그 몫의 경험치를 깎아 expSpent로 싣는다). 깎인 것도 효과 연출 순간까지
+      // 가린다(음수 가림 — 그동안 깎이기 전 값이 보인다). 일반 판의 expSpent(레벨 소모)는 예전처럼 클릭 즉시 보이므로 강화 판만(overMultiplier)
+      if (ev.type === 'skillApplied' && ev.overMultiplier && ev.expSpent > 0) {
+        const key = deltaKeyOf(ev.team, ev.animal);
+        newCredits[key] = (newCredits[key] ?? 0) - ev.expSpent;
       }
       // 싹쓸이 보너스 — "싹쓸이!"가 뜨는 순간에 드러낸다(아래 싹쓸이 단계)
       if (ev.type === 'sweep') {
@@ -454,7 +460,9 @@ export function useAnimationQueue(
         const now = gameState.teams[side];
         const queued = effects.filter(e => e.team === side).reduce((n, e) => n + e.extraDrawsQueued, 0);
         const mult = prevState?.teams[side]?.pendingMultiplier ?? now.pendingMultiplier;
-        const extra = Math.max(0, now.pendingExtraDraws - queued);
+        // 특허랑이 Lv.Max가 이 편의 추가 뽑기를 걷었으면 지금 값(0)이 아니라 걷기 전 값을 보인다 — 발톱이 닿는 순간 걷는다(아래 Pass 1.6)
+        const purged = effects.find(e => e.purged && (e.target ?? Object.keys(e.hpAfter).find(s => s !== e.team)) === side)?.purged;
+        const extra = purged ? purged.extraDraws : Math.max(0, now.pendingExtraDraws - queued);
         if (mult !== now.pendingMultiplier || extra !== now.pendingExtraDraws) {
           patch[side] = { pendingMultiplier: mult, pendingExtraDraws: extra };
         }
@@ -1114,11 +1122,14 @@ export function useAnimationQueue(
         if (myHpDelta > 0) effectParts.push(`내 체력 +${myHpDelta}`);
         if (oppHpDelta < 0) effectParts.push(`상대 체력 ${oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${multiplierAfter}`);
+        if (skillEv.hpBoost) effectParts.push(`최대 체력 +${skillEv.hpBoost.pct}%`);
         if (skillEv.oppMultiplierCut) effectParts.push(`상대 배율 -${skillEv.oppMultiplierCut}`);
-        if (skillEv.randomExp) effectParts.push(`${SKILL_TITLE[skillEv.randomExp.animal]} 경험치 +${skillEv.randomExp.amount}`);
+        if (skillEv.randomExp) {
+          const r = skillEv.randomExp;
+          effectParts.push(`${SKILL_TITLE[r.animal]} ${r.levels ? `레벨 +${r.levels}` : `경험치 +${r.amount}`}`);
+        }
         if (skillEv.oppDivisor) effectParts.push(`상대 효과 ÷${skillEv.oppDivisor}${skillEv.oppDivisorTurns ? `(${skillEv.oppDivisorTurns}턴)` : ''}`);
-        if (skillEv.cooldownCut) {
-          const c = skillEv.cooldownCut;
+        for (const c of skillEv.cooldownCuts ?? []) {
           effectParts.push(`${SKILL_TITLE[c.animal]} 쿨타임 ${c.after === 0 ? '초기화' : `-${c.before - c.after}턴`}`);
         }
         if (skillEv.cleanse) {
@@ -1127,7 +1138,10 @@ export function useAnimationQueue(
         }
         if (skillEv.regenAdded) effectParts.push(`지속 회복 +${skillEv.regenAdded.turns}턴`);
         if (skillEv.bleedAdded) effectParts.push(`출혈 +${skillEv.bleedAdded.turns}턴`);
+        if (skillEv.healCutAdded) effectParts.push(skillEv.healCutAdded.pct >= 100 ? '상대 회복 금지' : `상대 회복 -${skillEv.healCutAdded.pct}%`);
+        if (skillEv.purged) effectParts.push('상대의 이로운 효과 제거');
         if (skillEv.divisorUsed) effectParts.push(`(÷${skillEv.divisorUsed} 적용)`);
+        if (skillEv.healCutUsed) effectParts.push(`(회복 -${skillEv.healCutUsed}% 적용)`);
         const overText = skillEv.overMultiplier ? `Max ×${skillEv.overMultiplier}! ` : '';
         addCaption(`${skillEv.pair ? '페어 효과! ' : ''}${overText}${effectParts.join(', ')}`, 'effect', at, { team });
 
@@ -1150,6 +1164,8 @@ export function useAnimationQueue(
               }
               const cut = skillEv.oppMultiplierCut;
               if (cut && next[opp]) next[opp] = { ...next[opp], pendingMultiplier: Math.max(1, next[opp].pendingMultiplier - cut) };
+              // 특허랑이 Lv.Max — 상대의 배율 · 다음 턴 추가 뽑기를 이 순간 걷는다
+              if (skillEv.purged && next[opp]) next[opp] = { pendingMultiplier: 1, pendingExtraDraws: 0 };
               return next;
             });
           }
@@ -1159,12 +1175,19 @@ export function useAnimationQueue(
           if (gs && !skillEv.pair) {
             addEmoticon(team, gs.teams[team].playerIndex, emoticonFile(animal, 'happy'), at);
           }
-          // 카드 강화 — 무작위 카드 경험치(실용신양 Lv.6+)를 이제야 드러낸다(위 pendingExpCredit)
+          // 카드 강화 — Lv.Max 별도 배수가 ×1로 돌아간 것을 이제야 드러낸다(위 음수 가림). ⚠️ 아래 무작위 경험치보다 **먼저** 푼다 —
+          // 실용신양이 자기 자신에게 레벨을 더했으면 같은 칸에 둘이 겹쳐 있고, 그쪽의 Math.max(0, …)가 음수 몫까지 지워 버린다.
+          if (skillEv.overMultiplier && skillEv.expSpent > 0) {
+            const key = deltaKeyOf(team, animal);
+            const spent = skillEv.expSpent;
+            setPendingExpCredit(prev => ({ ...prev, [key]: (prev[key] ?? 0) + spent }));
+          }
+          // 카드 강화 — 실용신양의 무작위 카드 경험치 · 레벨(Lv.6+)을 이제야 드러낸다(위 pendingExpCredit)
           const bonus = skillEv.randomExp;
           if (bonus) {
             const key = deltaKeyOf(team, bonus.animal);
             setPendingExpCredit(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) - bonus.amount) }));
-            addFloat(`${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
+            addFloat(bonus.levels ? `${SKILL_TITLE[bonus.animal]} Lv +${bonus.levels}` : `${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
           }
           // 이 효과의 체력 변화를 이제야 드러낸다(위 pendingHpCredit) — 특허랑이는 발톱이 닿는 순간(아래)
           const revealHp = () =>
@@ -1217,8 +1240,6 @@ export function useAnimationQueue(
                 if (myHpDelta > 0) pulseHp(team, 'gain');
                 addFloat(`${oppHpDelta}`, opp, 'penalty');
               }
-              // 카드 강화 판의 특허랑이는 빼앗는 게 아니라 깎기 + 따로 붙는 회복이다(Lv.3부터) — 회복분을 내 쪽에 띄운다.
-              if (gameStateRef.current?.enhance && myHpDelta > 0) addFloat(`+${myHpDelta}`, team, 'bonus');
             }, TIGER_RECOIL_DUR);
           } else {
             // 실용신양 — 즉시 체력 변화는 없지만, "메~"를 한 번만 틀면 임팩트가 약해서
@@ -1248,14 +1269,15 @@ export function useAnimationQueue(
       }
     }
 
-    // ── 카드 강화: 차례가 시작된 편의 출혈 → 지속 회복(enhanceTick). 턴이 넘어가는 순간의 일이라 효과 재생 뒤에 둔다. ────
+    // ── 카드 강화: 차례를 마친 편의 출혈 → 지속 회복(enhanceTick). 턴이 넘어가는 순간의 일이라 효과 재생 뒤에 둔다. ────
     {
       const ticks = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'enhanceTick' }> => e.type === 'enhanceTick');
       for (const ev of ticks) {
         const at = cursor;
         const bleed = ev.kind === 'bleed';
         const left = ev.turnsLeft > 0 ? ` (남은 ${ev.turnsLeft}턴)` : '';
-        addCaption(bleed ? `출혈! 체력 -${ev.amount}${left}` : `지속 회복! 체력 +${ev.amount}${left}`, 'effect', at, { team: ev.team });
+        const cut = ev.healCutUsed ? ` (회복 -${ev.healCutUsed}% 적용)` : '';
+        addCaption(bleed ? `출혈! 체력 -${ev.amount}${left}` : `지속 회복! 체력 +${ev.amount}${left}${cut}`, 'effect', at, { team: ev.team });
         sched(() => {
           setStatusPatch(ev.status);
           const delta = bleed ? -ev.amount : ev.amount;

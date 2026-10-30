@@ -6467,6 +6467,7 @@ body {
 .ind-opp-status-mark.is-bleed  { color: #b91c1c; }
 .ind-opp-status-mark.is-regen  { color: #15803d; }
 .ind-opp-status-mark.is-divide { color: #7e22ce; }
+.ind-opp-status-mark.is-healcut { color: #6b7280; }
 .ind-opp-animals {
   flex: 1;
   min-height: 0;
@@ -7688,6 +7689,38 @@ body {
   right: -0.35em;
   bottom: -0.35em;
   font-size: 0.8em;
+}
+/* 회복 효율 감소(상대 특허랑이 Lv.6+) — 회색 십자가에 붉은 사선, 깎는 비율은 아래쪽에 작게(−100%는 ✕) */
+.hp-status-healcut .hp-status-icon { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.85)); }
+.hp-status-healcut .hp-status-icon::before,
+.hp-status-healcut .hp-status-icon::after {
+  content: '';
+  position: absolute;
+  background: #9ca3af;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+}
+.hp-status-healcut .hp-status-icon::before { left: 30%; right: 30%; top: 0; bottom: 0; }
+.hp-status-healcut .hp-status-icon::after  { top: 30%; bottom: 30%; left: 0; right: 0; }
+.hp-status-healcut::after {
+  content: '';
+  position: absolute;
+  left: 46%;
+  top: -8%;
+  width: 0.22em;
+  height: 116%;
+  background: #ef4444;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px #fff;
+}
+.hp-status-healcut b {
+  position: absolute;
+  right: -0.6em;
+  bottom: -0.45em;
+  z-index: 2;
+  font-size: 0.72em;
+  white-space: nowrap;
 }
 @media (prefers-reduced-motion: reduce) {
   .hp-orb-dot-glow { animation: none; }

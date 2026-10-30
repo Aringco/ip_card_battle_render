@@ -8,7 +8,7 @@ export type TargetSkill = 'tiger' | 'mermaid';
 
 const TEXT: Record<TargetSkill, { aria: string; title: string; sub: string }> = {
   tiger: { aria: '특허랑이로 노릴 상대 고르기', title: '누구에게서 빼앗을까요?', sub: '🐯 특허랑이가 상대의 체력을 빼앗아 와요' },
-  mermaid: { aria: '디자인어로 노릴 상대 고르기', title: '누구의 배율을 깎을까요?', sub: '🧜‍♀️ 디자인어가 상대의 배율을 깎고 효과를 나눠요' },
+  mermaid: { aria: '디자인어로 노릴 상대 고르기', title: '누구의 배율을 깎을까요?', sub: '🧜‍♀️ 디자인어가 상대의 배율을 나눠요(Lv.Max는 효과까지)' },
 };
 import { sideColor, sideName } from '@/lib/individual';
 
@@ -28,7 +28,7 @@ function useSecondsLeft(deadline: number, paused: boolean): number {
 /**
  * 개인전 — 특허랑이를 쓸 때 **누구에게서 빼앗을지** 고르는 화면(요구 G2).
  *
- * 규칙상 상대를 고르는 기술은 특허랑이와, 개인전 **강화** 방의 Lv.6+ 디자인어(상대 배율 −N · Lv.9+ 상대 효과 ÷N)다
+ * 규칙상 상대를 고르는 기술은 특허랑이와, 개인전 **강화** 방의 Lv.6+ 디자인어(상대 배율 ÷N · Lv.Max 상대 효과 ÷10)다
  * (2026-10-30 — shared의 needsTarget). 상표토끼·실용신양은 내 것만 건드리므로 이 화면을 띄우지 않는다.
  *
  * - 화면을 어둡게(검정, 불투명도 0.5) 하고 상대 닉네임 버튼으로 고른다. 시연 4장의 결말 고르기(DemoSceneMenu)

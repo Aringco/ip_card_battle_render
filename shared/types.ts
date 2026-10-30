@@ -182,7 +182,7 @@ export type GameEvent =
       team: SideId;
       animal: Animal;
       level: number;            // 발동에 사용된(초기화 직전) 레벨. 0이면 아무 일도 없었다는 뜻
-      expSpent: number;         // level × threshold — 소모된 경험치
+      expSpent: number;         // level × threshold — 소모된 경험치(카드 강화는 Lv.Max 별도 배수를 ×1로 되돌리며 깎은 몫, 없으면 0)
       multiplierUsed: number;   // 이번 발동에 실제로 곱해진 배율(=총 발동 횟수, 인어일 때는 항상 1)
       multiplierAfter: number;  // 발동 후 그 팀의 pendingMultiplier(인어면 레벨만큼 늘어난 값, 나머지는 1)
       myHpDelta: number;        // 내 체력 증감 — 항상 0 이상
@@ -195,35 +195,45 @@ export type GameEvent =
       oneWellLocked?: Animal;
       // 카드 강화 — 고른 기술이 아니라 **짝이 맞아 저절로 발동한** 효과다(정산 직후, collect 바로 뒤에 실린다).
       pair?: true;
-      // 카드 강화 — 실용신양 Lv.6+: 무작위로 고른 내 카드에 더해진 경험치(배율 반영 후)
-      randomExp?: { animal: Animal; amount: number };
-      // 카드 강화 — 디자인어 Lv.6+: 상대 배율이 실제로 깎인 양(×1 아래로는 안 내려가므로 표의 값보다 작을 수 있다)
+      // 카드 강화 — 실용신양: 무작위로 고른 내 카드에 더해진 경험치(배율 반영 후). Lv.6+는 "레벨 +N"이라 levels가 붙는다(amount = N × 임계값)
+      randomExp?: { animal: Animal; amount: number; levels?: number };
+      // 카드 강화 — 디자인어 Lv.6+: 상대 배율이 실제로 깎인 양(before − after). 표는 ÷N(Max는 ×1로)이다
       oppMultiplierCut?: number;
-      // 카드 강화 — 디자인어 Lv.9+: 상대의 다음 고른 기술에 건 나눗셈(÷2 · ÷3 · ÷5)
+      // 카드 강화 — 디자인어 Lv.Max: 상대 기술 효과에 건 나눗셈(÷10)
       oppDivisor?: number;
       // 카드 강화 — 이번 기술의 효과가 상대 디자인어 때문에 이 수로 나뉘었다(반올림)
       divisorUsed?: number;
-      // 카드 강화 — 디자인어 Lv.9+: 위 나눗셈이 이어지는 상대 차례 수
+      // 카드 강화 — 디자인어 Lv.Max: 위 나눗셈이 이어지는 상대 차례 수(쌓이면 최대 20)
       oppDivisorTurns?: number;
       // 카드 강화 — Lv.Max의 별도 배수(×2 이상일 때만). 효과량에는 이미 곱해져 있다
       overMultiplier?: number;
-      // 카드 강화 — 실용신양 Lv.9+: 쿨타임을 줄인 내 카드(before → after, after 0이면 다시 쓸 수 있다)
-      cooldownCut?: { animal: Animal; before: number; after: number };
+      // 카드 강화 — 실용신양 Lv.6+: 쿨타임을 줄인 내 카드들(before → after, after 0이면 다시 쓸 수 있다). Max는 두 장
+      cooldownCuts?: Array<{ animal: Animal; before: number; after: number }>;
       // 카드 강화 — 상표토끼 Lv.6+: 남은 턴을 줄인 내 부정한 효과(after 0이면 사라졌다)
       cleanse?: { kind: 'bleed' | 'divisor'; before: number; after: number };
-      // 카드 강화 — 상표토끼 Lv.9+ 지속 회복 · 특허랑이 Lv.9+ 출혈(상대에게): 더한 턴 수와 한 턴의 양
+      // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈(상대에게): 더한 턴 수와 한 턴의 양
       regenAdded?: { turns: number; amount: number };
       bleedAdded?: { turns: number; amount: number };
+      // 카드 강화 — 상표토끼 Lv.6+ "최대 체력 N% 증가": myHpDelta 가운데 그 몫(시작 체력의 N%)과 그 N
+      hpBoost?: { amount: number; pct: number };
+      // 카드 강화 — 이번 효과의 회복이 상대 특허랑이의 "회복 효율 −N%"로 줄었다(N)
+      healCutUsed?: number;
+      // 카드 강화 — 특허랑이 Lv.6+: 상대에게 건 회복 효율 감소(N%, 상대의 다음 1턴)
+      healCutAdded?: { pct: number; turns: number };
+      // 카드 강화 — 특허랑이 Lv.Max: 상대의 이로운 효과를 걷어냈다(걷기 전 값 — 지속 회복 턴 · 배율 · 다음 턴 추가 뽑기)
+      purged?: { regenTurns: number; multiplier: number; extraDraws: number };
       // 카드 강화 — 이 효과를 적용한 직후의 지속 효과 묶음(화면이 연출 순간에 이 값으로 체력창 아이콘을 바꾼다)
       status?: EnhanceStatus;
     }
-  // 카드 강화 — 차례가 시작된 편의 지속 효과가 한 번 들었다(출혈 → 회복 순). amount는 실제로 바뀐 체력(출혈은 깎인 양, 양수).
+  // 카드 강화 — 차례를 마친 편의 지속 효과가 한 번 들었다(출혈 → 회복 순). amount는 실제로 바뀐 체력(출혈은 깎인 양, 양수).
   | {
       type: 'enhanceTick';
       team: SideId;
       kind: 'bleed' | 'regen';
       amount: number;
       turnsLeft: number;
+      // 지속 회복이 상대 특허랑이의 "회복 효율 −N%"로 줄었다(N)
+      healCutUsed?: number;
       hpAfter: Record<SideId, number>;
       status: EnhanceStatus;
     }

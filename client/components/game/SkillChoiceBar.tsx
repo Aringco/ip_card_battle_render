@@ -306,17 +306,26 @@ export function SkillChoiceBar({
         if (preview.myHpDelta > 0) effectParts.push(`내 체력 ${preview.oppHpIsMax ? '최대 ' : ''}+${preview.myHpDelta}`);
         if (preview.oppHpDelta < 0) effectParts.push(`상대 체력 ${preview.oppHpIsMax ? '최대 ' : ''}${preview.oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${preview.multiplierAfter}`);
-        // 카드 강화 Lv.6+의 둘째 효과 — 연출 캡션(useAnimationQueue Pass 1.6)과 같은 문구
-        if (preview.oppMultiplierCut) effectParts.push(`상대 배율 -${preview.oppMultiplierCut}`);
+        // 카드 강화의 덧붙는 효과 — 연출 캡션(useAnimationQueue Pass 1.6)과 같은 문구
+        if (preview.oppMultiplierDivide && preview.oppMultiplierDivide > 1) {
+          effectParts.push(Number.isFinite(preview.oppMultiplierDivide) ? `상대 배율 ÷${preview.oppMultiplierDivide}` : '상대 배율 ×1로');
+        }
         if (preview.randomExp) effectParts.push(`무작위 경험치 +${preview.randomExp}`);
+        if (preview.randomLevels) effectParts.push(`무작위 레벨 +${preview.randomLevels}`);
         if (preview.oppDivisor && preview.oppDivisor > 1) effectParts.push(`상대 효과 ÷${preview.oppDivisor}(${preview.oppDivisorTurns}턴)`);
-        // 3차 표(배율 무관) — 연출 캡션과 같은 문구
-        if (preview.cooldownCut) effectParts.push(Number.isFinite(preview.cooldownCut) ? `쿨타임 -${preview.cooldownCut}턴` : '쿨타임 초기화');
+        // 배율 무관 — 연출 캡션과 같은 문구
+        if (preview.cooldownCut) {
+          const cards = (preview.cooldownCards ?? 1) > 1 ? ` ${preview.cooldownCards}장` : '';
+          effectParts.push(Number.isFinite(preview.cooldownCut) ? `쿨타임 -${preview.cooldownCut}턴${cards}` : `쿨타임 초기화${cards}`);
+        }
         if (preview.cleanse) effectParts.push(Number.isFinite(preview.cleanse) ? `부정 효과 -${preview.cleanse}턴` : '부정 효과 정화');
         if (preview.regenTurns) effectParts.push(`지속 회복 +${preview.regenTurns}턴`);
         if (preview.bleedTurns) effectParts.push(`출혈 +${preview.bleedTurns}턴`);
-        // 상대 디자인어(Lv.9+)에 걸려 이 카드의 효과가 나뉘어 있다 — 위 숫자는 이미 나눈 값이다
+        if (preview.oppHealCut) effectParts.push(preview.oppHealCut >= 100 ? '상대 회복 금지' : `상대 회복 -${preview.oppHealCut}%`);
+        if (preview.purge) effectParts.push('이로운 효과 제거');
+        // 상대 디자인어(Lv.Max)에 걸려 이 카드의 효과가 나뉘어 있다 · 상대 특허랑이에 걸려 회복이 줄어 있다 — 위 숫자는 이미 반영한 값이다
         if (preview.divisor && preview.divisor > 1) effectParts.push(`(÷${preview.divisor} 적용)`);
+        if (preview.healCut) effectParts.push(`(회복 -${preview.healCut}% 적용)`);
         const effectLabel = !wellOk(animal)
           ? '🔒 사용 불가'
           : cooling > 0

@@ -16,7 +16,6 @@ import {
   ENHANCE_SETTINGS,
   PLACES,
   PLACE_ANIMALS,
-  enhanceTigerHeal,
   enhanceValue,
   opponentsOf,
 } from 'shared';
@@ -56,7 +55,7 @@ function pickSkill(state: GameState, side: SideId, rng: () => number): Animal | 
   if (options.includes('rabbit') && me.hp + value('rabbit') >= winHp) return 'rabbit';
   if (options.includes('mermaid') && mult === 1 && options.length > 1 && rng() < 0.35) return 'mermaid';
   const gain = (a: Animal): number => {
-    if (a === 'tiger') return Math.min(value(a), foeHp) + enhanceTigerHeal(levelOf(state, side, a)) * mult;
+    if (a === 'tiger') return Math.min(value(a), foeHp);
     if (a === 'rabbit') return value(a);
     if (a === 'sheep') return value(a) * 0.6;
     return mult === 1 ? 1.5 : 0;

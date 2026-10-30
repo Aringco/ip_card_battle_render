@@ -112,7 +112,7 @@ function OpponentCard({
 }
 
 /**
- * 개인전 강화 방 — 그 사람에게 걸린 지속 효과(출혈 · 지속 회복 · 효과 감소 ÷N)의 남은 턴. 내 체력 구슬(TeamTotalPanel)의 아이콘과 같은 뜻을
+ * 개인전 강화 방 — 그 사람에게 걸린 지속 효과(출혈 · 지속 회복 · 효과 감소 ÷N · 회복 효율 감소)의 남은 턴. 내 체력 구슬(TeamTotalPanel)의 아이콘과 같은 뜻을
  * 칸이 좁아 글자 배지로 줄였다. 연출 전 값(withDisplayedTeams의 displayedStatus)을 받아 효과보다 먼저 뜨지 않는다.
  */
 function StatusMarks({ gameState, side }: { gameState: ClientGameState; side: SideId }) {
@@ -124,7 +124,14 @@ function StatusMarks({ gameState, side }: { gameState: ClientGameState; side: Si
   const marks: Array<{ key: string; text: string; title: string }> = [];
   if (bleed && bleed.turns > 0) marks.push({ key: 'bleed', text: `🩸${bleed.turns}`, title: `출혈 — 차례를 마칠 때마다 체력 −${bleed.amount} (${bleed.turns}턴 남음)` });
   if (regen && regen.turns > 0) marks.push({ key: 'regen', text: `✚${regen.turns}`, title: `지속 회복 — 차례를 마칠 때마다 체력 +${regen.amount} (${regen.turns}턴 남음)` });
-  if (divisor > 1) marks.push({ key: 'divide', text: `÷${divisor}`, title: `효과 감소 — 다음 고른 기술 ÷${divisor}` });
+  if (divisor > 1) {
+    const turns = enh.divisorTurns?.[side] ?? 0;
+    marks.push({ key: 'divide', text: `÷${divisor}`, title: `효과 감소 — 고르는 기술 ÷${divisor}${turns > 0 ? ` (${turns}턴 남음)` : ''}` });
+  }
+  const healCut = enh.healCut?.[side];
+  if (healCut && healCut.turns > 0) {
+    marks.push({ key: 'healcut', text: healCut.pct >= 100 ? '✚✕' : `✚-${healCut.pct}%`, title: healCut.pct >= 100 ? '회복 금지 — 다음 차례에 체력이 오르지 않는다' : `회복 효율 감소 — 다음 차례의 회복 −${healCut.pct}%` });
+  }
   if (marks.length === 0) return null;
   return (
     <span className="ind-opp-status">

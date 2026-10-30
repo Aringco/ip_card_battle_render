@@ -5,6 +5,8 @@ import {
   INDIVIDUAL_TWO_SKILLS_FROM,
   clampSettings,
   cloneEnhanceStatus,
+  enhanceHealAfterCut,
+  enhanceHealCutOf,
   festivalDrawInfoAt,
   maxTurnOf,
   nextActiveSide,
@@ -140,6 +142,12 @@ export function advanceTurn(state: GameState): GameEvent[] {
     enh.divisorTurns[currentTeam] -= 1;
     if (enh.divisorTurns[currentTeam] === 0) enh.divisors[currentTeam] = 1;
   }
+  // 회복 효율 감소(상대 특허랑이 Lv.6+ — "다음 1턴")도 그 편의 차례가 끝나며 준다. 위의 지속 회복에는 이미 걸린 뒤다.
+  const healCut = enh?.healCut?.[currentTeam];
+  if (healCut && healCut.turns > 0) {
+    healCut.turns -= 1;
+    if (healCut.turns === 0) healCut.pct = 0;
+  }
 
   // 한 라운드가 다 돈 시점 — turnOrder에서 다음 편의 위치가 지금 편의 위치보다 앞이면
   // 끝까지 돌아 처음으로 되돌아온 것이다. 팀전([선, 후])에서는 후공 팀이 마친 순간과 정확히 같고
@@ -202,9 +210,11 @@ export function advanceTurn(state: GameState): GameEvent[] {
 }
 
 /**
- * 카드 강화 — 차례를 마친 편의 출혈(상대 특허랑이 Lv.9+)과 지속 회복(내 상표토끼 Lv.9+)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
+ * 카드 강화 — 차례를 마친 편의 출혈(상대 특허랑이)과 지속 회복(내 상표토끼)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
  * **출혈이 먼저다**(요청 원문 "출혈 > 회복 순") — 출혈로 체력이 0이 되면 회복은 들지 않고 그대로 진다(advanceTurn의 judgeHp).
- * 양은 걸 때 정해 둔 한 턴의 양 그대로다(배율 무관).
+ * 양은 걸 때 정해 둔 한 턴의 양 그대로다(배율 무관). 지속 회복은 그 편에 걸린 회복 효율 감소(상대 특허랑이 Lv.6+)를 거친다.
+ * **발동한 차례에는 들지 않는다**(4차 표 "모든 지속 효과의 적용은 발동 턴의 다음 턴") — 이번 차례에 스스로 건 몫(fresh)은 빼고 센다.
+ * 상대가 건 출혈은 상대 차례에 걸리므로 fresh가 없다(그 편의 다음 차례 = 바로 이번 차례 끝에 든다).
  */
 function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
   const enh = state.enhance!;
@@ -213,23 +223,31 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
   const hpAfter = () => Object.fromEntries(Object.keys(state.teams).map(s => [s, state.teams[s].hp]));
 
   const bleed = enh.bleed[side];
-  if (bleed && bleed.turns > 0) {
+  if (bleed && bleed.turns - (bleed.fresh ?? 0) > 0) {
     const amount = Math.min(bleed.amount, Math.max(0, team.hp));
     team.hp -= amount;
     bleed.turns -= 1;
     if (bleed.turns === 0) bleed.amount = 0;
+    bleed.fresh = 0;
     events.push({ type: 'enhanceTick', team: side, kind: 'bleed', amount, turnsLeft: bleed.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh) });
     if (team.hp <= LOSE_HP) return events;
   }
+  if (bleed) bleed.fresh = 0;
 
   const regen = enh.regen[side];
-  if (regen && regen.turns > 0) {
-    team.hp += regen.amount;
+  if (regen && regen.turns - (regen.fresh ?? 0) > 0) {
+    const cut = enhanceHealCutOf(state, side);
+    const amount = enhanceHealAfterCut(regen.amount, cut);
+    team.hp += amount;
     regen.turns -= 1;
-    const amount = regen.amount;
     if (regen.turns === 0) regen.amount = 0;
-    events.push({ type: 'enhanceTick', team: side, kind: 'regen', amount, turnsLeft: regen.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh) });
+    regen.fresh = 0;
+    events.push({
+      type: 'enhanceTick', team: side, kind: 'regen', amount, turnsLeft: regen.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh),
+      ...(cut > 0 ? { healCutUsed: cut } : {}),
+    });
   }
+  if (regen) regen.fresh = 0;
   return events;
 }
 
@@ -404,5 +422,6 @@ function attachEnhance(state: GameState): void {
     divisorTurns: each(() => 0),
     bleed: each(() => ({ turns: 0, amount: 0 })),
     regen: each(() => ({ turns: 0, amount: 0 })),
+    healCut: each(() => ({ turns: 0, pct: 0 })),
   };
 }

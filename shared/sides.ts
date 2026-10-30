@@ -1,6 +1,6 @@
 import type { Animal, GameState, SideId } from './types';
 import { MAX_TURN } from './constants';
-import { enhanceMermaidCut } from './enhance';
+import { enhanceMermaidOppDivide } from './enhance';
 
 /**
  * 이 판의 턴 상한 — 평소에는 MAX_TURN(20), 이벤트 '목표점수 달성하기'(scoreRace)에서는 그 판의 maxTurn(10)이다.
@@ -49,5 +49,5 @@ export function nextActiveSide(state: GameState, from: SideId): SideId | null {
 export function needsTarget(state: Pick<GameState, 'mode' | 'enhance'>, animal: Animal, level: number): boolean {
   if (state.mode !== 'individual') return false;
   if (animal === 'tiger') return true;
-  return animal === 'mermaid' && !!state.enhance && enhanceMermaidCut(level) > 0;
+  return animal === 'mermaid' && !!state.enhance && enhanceMermaidOppDivide(level) > 1;
 }
