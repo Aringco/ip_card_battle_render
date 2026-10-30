@@ -56,7 +56,9 @@ export type ClientMessage =
   // 멈추고, 있으면 그 사람들에게 pauseRequest를 보내 PAUSE_REQUEST_TIMEOUT_SEC 동안 답을 기다린다.
   | { type: 'pauseRequest' }
   | { type: 'pauseRespond'; accept: boolean } // 요청받은 쪽의 대답(네/아니오)
-  | { type: 'resumeGame' }                    // 멈춘 게임을 다시 시작 — 멈춘 팀만 풀 수 있다
+  // 멈춘 게임을 다시 시작 — 멈춘 사람(팀)은 곧바로 푼다. 개인전에서는 다른 사람도 누를 수 있는데, 그러면 나머지 전원에게
+  // 수락을 묻는다(pauseRequest kind 'resume' — 모두 수락하면 다시 시작). 팀전에서 상대가 누르면 거절된다.
+  | { type: 'resumeGame' }
   // 항복하기(leave 없음)와 나가기(leave: true)는 **승패 처리가 같다** — 상대 팀 승리로
   // 게임이 끝난다. 다른 점은 나가기가 그 뒤 방에서까지 빠져 로비로 돌아간다는 것뿐이다.
   // 관전자가 보내면 승패는 건드리지 않고 나가기만 처리한다(관전자는 어느 팀도 아니다).
@@ -125,10 +127,11 @@ export type ServerMessage =
   // (ClientGameState.paused) 재접속 스냅샷으로도 그대로 복원된다 — 이 메시지는 "지금
   // 바뀌었다"는 알림이자 최신 상태 전달이다.
   | { type: 'pauseState'; state: ClientGameState }
-  // 상대가 일시정지를 요청했다 — 요청한 팀의 **상대 팀 사람들에게만** 간다.
-  | { type: 'pauseRequest'; fromTeam: Team; fromNickname: string; timeoutMs: number }
+  // 상대가 일시정지를 요청했다 — 요청한 팀의 **상대 팀 사람들에게만** 간다. 개인전은 판에 남은 다른 사람 모두에게 가고(전원 수락해야 멈춘다),
+  // kind 'resume'은 개인전에서 멈추지 않은 사람이 [게임 계속하기]를 눌러 나머지에게 다시 시작을 묻는 것이다(없으면 'pause').
+  | { type: 'pauseRequest'; fromTeam: SideId; fromNickname: string; timeoutMs: number; kind?: 'pause' | 'resume' }
   // 그 요청이 끝났다 — 요청자와 요청받은 쪽 **모두**에게 가서 양쪽 창을 함께 닫는다.
-  | { type: 'pauseRequestResult'; accepted: boolean; reason: 'accepted' | 'declined' | 'timeout' | 'cancelled' }
+  | { type: 'pauseRequestResult'; accepted: boolean; reason: 'accepted' | 'declined' | 'timeout' | 'cancelled'; kind?: 'pause' | 'resume' }
   // ─ 이벤트 모드 ─
   // 개발자 대기실 상태 — 대기 줄 길이·전적이 바뀔 때마다 온다. null이면 대기를 그만뒀다.
   | { type: 'eventDevStatus'; status: EventDevStatus | null }
@@ -289,6 +292,9 @@ export interface ClientGameState extends GameState {
   // 재개를 거부한다. 클라이언트가 스스로 기억하지 않게 상태에 실어 보내는 이유는
   // 재접속·같은 팀의 다른 사람에게도 같은 화면이 보여야 하기 때문이다.
   pausePendingAnswer: boolean;
+  // 개인전 — 멈추지 않은 사람이 다시 시작을 요청해 나머지의 답을 기다리는 중(그동안에도 판은 멈춰 있고, 시간은 자동 재개 시계 안에서 흐른다).
+  // remainingMs는 답을 기다리는 남은 ms(받은 순간 내 시계로 환산한다). 없으면 null.
+  resumeVote: { team: SideId; nickname: string; remainingMs: number } | null;
   // 팀마다 지금까지 쓴 일시정지 횟수(settings.pauseMaxCount까지). 요청하는 순간 올라간다 —
   // 묻는 동안에도 판이 멈추므로 거절당해도 되돌리지 않는다(server/room.ts 참고).
   pauseUsed: Record<SideId, number>;

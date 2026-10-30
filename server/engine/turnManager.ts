@@ -205,6 +205,8 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 팀 교대 후 다음 팀의 현재 playerIndex를 activePlayerIndex에 반영
   state.activeTeam = nextTeam;
   state.activePlayerIndex = state.teams[nextTeam].playerIndex;
+  // 카드 강화 — 디자인어 Lv.Max의 기술 회피는 그 편의 다음 차례가 시작되는 지금 끝난다(같은 턴의 뒤 사람들 · 다음 턴의 앞 사람들의 공격까지 받았다).
+  if (state.enhance?.evade?.[nextTeam]) state.enhance.evade[nextTeam] = 0;
 
   return events;
 }
@@ -212,7 +214,7 @@ export function advanceTurn(state: GameState): GameEvent[] {
 /**
  * 카드 강화 — 차례를 마친 편의 출혈(상대 특허랑이)과 지속 회복(내 상표토끼)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
  * **출혈이 먼저다**(요청 원문 "출혈 > 회복 순") — 출혈로 체력이 0이 되면 회복은 들지 않고 그대로 진다(advanceTurn의 judgeHp).
- * 양은 걸 때 정해 둔 한 턴의 양 그대로다(배율 무관). 지속 회복은 그 편에 걸린 회복 효율 감소(상대 특허랑이 Lv.6+)를 거친다.
+ * 양은 중첩(계수)으로 정해 둔 한 턴의 양 그대로다(배율 무관 — enhanceRegenTick · enhanceBleedTick). 끝나면 중첩도 0으로 돌아간다. 지속 회복은 그 편에 걸린 회복 효율 감소(상대 특허랑이 Lv.6+)를 거친다.
  * **발동한 차례에는 들지 않는다**(4차 표 "모든 지속 효과의 적용은 발동 턴의 다음 턴") — 이번 차례에 스스로 건 몫(fresh)은 빼고 센다.
  * 상대가 건 출혈은 상대 차례에 걸리므로 fresh가 없다(그 편의 다음 차례 = 바로 이번 차례 끝에 든다).
  */
@@ -227,7 +229,7 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
     const amount = Math.min(bleed.amount, Math.max(0, team.hp));
     team.hp -= amount;
     bleed.turns -= 1;
-    if (bleed.turns === 0) bleed.amount = 0;
+    if (bleed.turns === 0) Object.assign(bleed, { amount: 0, stack: 0 });
     bleed.fresh = 0;
     events.push({ type: 'enhanceTick', team: side, kind: 'bleed', amount, turnsLeft: bleed.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh) });
     if (team.hp <= LOSE_HP) return events;
@@ -240,7 +242,7 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
     const amount = enhanceHealAfterCut(regen.amount, cut);
     team.hp += amount;
     regen.turns -= 1;
-    if (regen.turns === 0) regen.amount = 0;
+    if (regen.turns === 0) Object.assign(regen, { amount: 0, stack: 0 });
     regen.fresh = 0;
     events.push({
       type: 'enhanceTick', team: side, kind: 'regen', amount, turnsLeft: regen.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh),
@@ -423,5 +425,6 @@ function attachEnhance(state: GameState): void {
     bleed: each(() => ({ turns: 0, amount: 0 })),
     regen: each(() => ({ turns: 0, amount: 0 })),
     healCut: each(() => ({ turns: 0, pct: 0 })),
+    evade: each(() => 0),
   };
 }

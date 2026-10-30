@@ -195,15 +195,15 @@ export type GameEvent =
       oneWellLocked?: Animal;
       // 카드 강화 — 고른 기술이 아니라 **짝이 맞아 저절로 발동한** 효과다(정산 직후, collect 바로 뒤에 실린다).
       pair?: true;
-      // 카드 강화 — 실용신양: 무작위로 고른 내 카드에 더해진 경험치(배율 반영 후). Lv.6+는 "레벨 +N"이라 levels가 붙는다(amount = N × 임계값)
-      randomExp?: { animal: Animal; amount: number; levels?: number };
+      // 카드 강화 — 실용신양: 무작위로 고른 내 카드에 더해진 경험치(배율 무관 — Lv.6+의 경험치 중첩 배수는 곱한 뒤). stack은 그 배수(×2 이상일 때만)
+      randomExp?: { animal: Animal; amount: number; stack?: number };
       // 카드 강화 — 디자인어 Lv.6+: 상대 배율이 실제로 깎인 양(before − after). 표는 ÷N(Max는 ×1로)이다
       oppMultiplierCut?: number;
       // 카드 강화 — 디자인어 Lv.Max: 상대 기술 효과에 건 나눗셈(÷10)
       oppDivisor?: number;
       // 카드 강화 — 이번 기술의 효과가 상대 디자인어 때문에 이 수로 나뉘었다(반올림)
       divisorUsed?: number;
-      // 카드 강화 — 디자인어 Lv.Max: 위 나눗셈이 이어지는 상대 차례 수(쌓이면 최대 20)
+      // 카드 강화 — 디자인어 Lv.Max: 위 나눗셈이 이어지는 상대 차례 수(쌓이면 최대 5)
       oppDivisorTurns?: number;
       // 카드 강화 — Lv.Max의 별도 배수(×2 이상일 때만). 효과량에는 이미 곱해져 있다
       overMultiplier?: number;
@@ -211,17 +211,19 @@ export type GameEvent =
       cooldownCuts?: Array<{ animal: Animal; before: number; after: number }>;
       // 카드 강화 — 상표토끼 Lv.6+: 남은 턴을 줄인 내 부정한 효과(after 0이면 사라졌다)
       cleanse?: { kind: 'bleed' | 'divisor'; before: number; after: number };
-      // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈(상대에게): 더한 턴 수와 한 턴의 양
-      regenAdded?: { turns: number; amount: number };
-      bleedAdded?: { turns: number; amount: number };
-      // 카드 강화 — 상표토끼 Lv.6+ "최대 체력 N% 증가": myHpDelta 가운데 그 몫(시작 체력의 N%)과 그 N
-      hpBoost?: { amount: number; pct: number };
+      // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈(상대에게): 더한 턴 수와 한 턴의 양, Lv.6+가 더한 중첩(계수)과 더한 뒤의 값
+      regenAdded?: { turns: number; amount: number; stackAdded?: number; stack?: number };
+      bleedAdded?: { turns: number; amount: number; stackAdded?: number; stack?: number };
       // 카드 강화 — 이번 효과의 회복이 상대 특허랑이의 "회복 효율 −N%"로 줄었다(N)
       healCutUsed?: number;
       // 카드 강화 — 특허랑이 Lv.6+: 상대에게 건 회복 효율 감소(N%, 상대의 다음 1턴)
       healCutAdded?: { pct: number; turns: number };
       // 카드 강화 — 특허랑이 Lv.Max: 상대의 이로운 효과를 걷어냈다(걷기 전 값 — 지속 회복 턴 · 배율 · 다음 턴 추가 뽑기)
       purged?: { regenTurns: number; multiplier: number; extraDraws: number };
+      // 카드 강화 — 디자인어 Lv.Max: 나에게 건 기술 회피(N%, 내 다음 차례까지)
+      evadeAdded?: number;
+      // 카드 강화 — 대상(상대)이 디자인어 Lv.Max의 회피로 이 기술을 피했다 — 상대에게 거는 것은 하나도 들지 않았다
+      evaded?: true;
       // 카드 강화 — 이 효과를 적용한 직후의 지속 효과 묶음(화면이 연출 순간에 이 값으로 체력창 아이콘을 바꾼다)
       status?: EnhanceStatus;
     }

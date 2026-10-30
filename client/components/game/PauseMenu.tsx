@@ -32,10 +32,11 @@ const CONFIRM_TEXT: Record<Exclude<Confirm, null>, { title: string; detail: stri
   leave: { title: '게임을 포기하고 나가시겠습니까?', detail: '상대 팀의 승리로 게임이 끝나고 로비로 돌아갑니다.' },
 };
 
-// 개인전은 상대 팀이 없다 — 항복·나가기는 "나만 패배로 기록되고 판은 계속된다".
+// 개인전은 상대 팀이 없다 — 항복·나가기는 "나만 하위 순위로 확정되고 판은 계속된다"(2026-10-30).
+// 항복은 그 자리에서 관전자가 되어 판을 계속 보고, 나가기는 게임을 나와 지금까지의 점수판을 본다.
 const INDIVIDUAL_CONFIRM_TEXT: Record<Exclude<Confirm, null>, { title: string; detail: string }> = {
-  surrender: { title: '정말 항복하시겠습니까?', detail: '나는 패배로 기록되고, 남은 사람들의 판은 계속됩니다.' },
-  leave: { title: '게임을 포기하고 나가시겠습니까?', detail: '나는 패배로 기록되고, 남은 사람들의 판은 계속됩니다. 로비로 돌아갑니다.' },
+  surrender: { title: '정말 항복하시겠습니까?', detail: '지금 순위가 확정되고 관전자로 바뀝니다. 남은 사람들의 판은 계속됩니다.' },
+  leave: { title: '게임을 포기하고 나가시겠습니까?', detail: '하위 순위로 확정되고 게임을 나가 점수판을 봅니다. 남은 사람들의 판은 계속됩니다.' },
 };
 
 /** 마감 시각까지 남은 초(올림). 마감이 없으면 null. */
@@ -91,6 +92,8 @@ export function PauseMenu({
   paused,
   pausedBy,
   pausePending,
+  resumeVote,
+  resumeVoteUntil,
   pauseLeft,
   pauseUnlimited,
   pauseUntil,
@@ -105,6 +108,7 @@ export function PauseMenu({
   onSurrender,
   onLeave,
   individual = false,
+  ended = false,
   noPauseText,
 }: {
   paused: boolean;
@@ -112,6 +116,10 @@ export function PauseMenu({
   pausedBy: { team: SideId; nickname: string } | null;
   /** 상대의 대답을 기다리는 중(서버가 알려준다) — 그동안에도 판은 멈춰 있다. */
   pausePending: boolean;
+  /** 개인전 — 누군가 낸 다시 시작 요청이 나머지의 답을 기다리는 중(서버가 알려준다). 없으면 null. */
+  resumeVote: { team: SideId; nickname: string } | null;
+  /** 그 요청의 마감 시각(내 시계 기준) — 요청한 본인의 버튼에 남은 초를 센다. */
+  resumeVoteUntil: number | null;
   /** 우리 팀에 남은 일시정지 횟수. 0이면 버튼이 잠긴다(서버도 같은 규칙으로 막는다). */
   pauseLeft: number;
   /** 이 방에는 횟수·시간 제한이 없다(혼자 놀기) — 남은 횟수도 자동 재개 안내도 숨긴다. */
@@ -120,7 +128,7 @@ export function PauseMenu({
   pauseUntil: number | null;
   /** null이면 관전자 — 승패를 가를 수 없으니 [나가기]만 쓸 수 있다. */
   myTeam: SideId | null;
-  pauseRequest: { fromTeam: SideId; fromNickname: string; timeoutMs: number; receivedAt: number } | null;
+  pauseRequest: { fromTeam: SideId; fromNickname: string; timeoutMs: number; receivedAt: number; kind: 'pause' | 'resume' } | null;
   pauseWaitingUntil: number | null;
   pauseNotice: string | null;
   onClearNotice: () => void;
@@ -129,19 +137,28 @@ export function PauseMenu({
   onRespond: (accept: boolean) => void;
   onSurrender: () => void;
   onLeave: () => void;
-  /** 개인전 — 항복·나가기의 안내 문구가 "상대 팀의 승리"가 아니라 "나만 패배로 기록"이 된다. */
+  /**
+   * 개인전 — 항복·나가기의 안내 문구가 "상대 팀의 승리"가 아니라 "나만 하위 순위로 확정"이 되고, 일시정지 · 다시 시작이
+   * 판에 남은 사람 전원의 수락을 받는다(멈추지 않은 사람도 [게임 계속하기 요청]을 낼 수 있다 — 서버가 같은 규칙으로 막는다).
+   */
   individual?: boolean;
+  /** 판이 끝났다 — 순위가 정해져도 "관전 모드" 안내를 띄우지 않는다(곧 결과 화면이 덮는다). */
+  ended?: boolean;
   /** 이 판은 일시정지가 아예 없다(이벤트 판) — 횟수 대신 이 문구를 보여 준다. */
   noPauseText?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
+  const [spectateNotice, setSpectateNotice] = useState<string | null>(null);
 
   const spectating = myTeam === null;
   const waitingLeft = useSecondsLeft(pauseWaitingUntil);
   const requestLeft = useSecondsLeft(pauseRequest ? pauseRequest.receivedAt + pauseRequest.timeoutMs : null);
-  // 멈춘 팀만 다시 시작할 수 있다. 상대가 멈춘 경우에는 버튼이 "기다리는 중"으로 남는다.
+  const resumeVoteLeft = useSecondsLeft(resumeVote ? resumeVoteUntil : null);
+  // 멈춘 팀(사람)은 곧바로 다시 시작한다. 팀전에서 상대가 멈춘 경우에는 버튼이 "기다리는 중"으로 남고,
+  // 개인전에서는 다른 사람도 다시 시작을 요청할 수 있다(나머지 전원이 수락해야 풀린다).
   const canResume = paused && (pausedBy === null || pausedBy.team === myTeam);
+  const canAskResume = individual && paused && !canResume && !pausePending && !spectating && resumeVote === null;
   // 남은 초는 직접 누른 사람만 안다(그 순간부터 센다). 같은 팀의 다른 사람·재접속한
   // 사람은 서버가 보내주는 pausePending으로 "기다리는 중"임만 알고 숫자 없이 표시한다.
   const waiting = pauseWaitingUntil !== null || (pausePending && canResume);
@@ -175,6 +192,26 @@ export function PauseMenu({
     wasPausedRef.current = paused;
   }, [paused, pauseRequest]);
 
+  // 개인전에서 항복하면(또는 순위가 정해지면) 판은 남은 사람들끼리 계속되고 나는 관전자(myTeam null)가 된다.
+  // 팀전처럼 결과 화면이 이 창을 덮지 않으므로 여기서 닫는다 — 안 닫으면 "정말 항복하시겠습니까?"가 그대로 남고,
+  // 다시 [네]를 눌러도 서버는 이미 처리한 항복이라 무시해 "항복이 안 눌린다"로 보였다(2026-10-30).
+  // 남이 멈춰 둔 판이면 창은 열어 둔 채(닫을 수 없다) 관전자 메뉴로 바뀐다.
+  // 개인전은 그 순간을 한 줄로 알린다 — 항복하면 관전자로 바뀐다(2026-10-30 요청 "순위 확정, 자동 관전자 전환").
+  const wasPlayerRef = useRef(myTeam !== null);
+  useEffect(() => {
+    if (wasPlayerRef.current && myTeam === null) {
+      setConfirm(null);
+      if (!paused) setOpen(false);
+      if (individual && !ended) setSpectateNotice('순위가 확정되어 관전 모드로 바뀌었어요.');
+    }
+    wasPlayerRef.current = myTeam !== null;
+  }, [myTeam, paused, individual, ended]);
+  useEffect(() => {
+    if (!spectateNotice) return;
+    const id = setTimeout(() => setSpectateNotice(null), 4000);
+    return () => clearTimeout(id);
+  }, [spectateNotice]);
+
   // 안내 한 줄은 잠시 뒤 스스로 사라진다(거절·시간초과는 그 순간만 알면 되는 소식이다).
   useEffect(() => {
     if (!pauseNotice) return;
@@ -206,10 +243,18 @@ export function PauseMenu({
   // 보면 "게임 계속하기"가 되는데, 아직 상대가 수락하지 않아 누를 수 없는 버튼이다.
   const pauseButtonLabel = waiting
     ? `응답을 기다리는 중…${waitingLeft === null ? '' : ` ${waitingLeft}`}`
+    : pausePending && !canResume
+      ? '모두의 답을 기다리는 중…'
     : paused
       ? canResume
         ? '게임 계속하기'
-        : `${pausedBy?.nickname ?? '상대'} 님이 멈췄어요`
+        : resumeVote !== null
+          ? resumeVote.team === myTeam
+            ? `다른 사람의 답을 기다리는 중…${resumeVoteLeft === null ? '' : ` ${resumeVoteLeft}`}`
+            : `${resumeVote.nickname} 님이 계속하기를 요청했어요`
+          : canAskResume
+            ? '게임 계속하기 요청'
+            : `${pausedBy?.nickname ?? '상대'} 님이 멈췄어요`
       : outOfPauses
         ? (noPauseText ?? '일시정지를 다 썼어요')
         : pauseUnlimited
@@ -226,9 +271,9 @@ export function PauseMenu({
       )}
 
       {/* 거절·시간초과 안내 한 줄 */}
-      {pauseNotice && (
+      {(pauseNotice ?? spectateNotice) && (
         <div className="pause-toast" role="status">
-          {pauseNotice}
+          {pauseNotice ?? spectateNotice}
         </div>
       )}
 
@@ -247,7 +292,7 @@ export function PauseMenu({
                       <PlankButton
                         block
                         className="pause-btn"
-                        disabled={waiting || outOfPauses || (paused && !canResume)}
+                        disabled={waiting || outOfPauses || (paused && !canResume && !canAskResume)}
                         onClick={paused ? onResume : onRequestPause}
                       >
                         {pauseButtonLabel}
@@ -258,6 +303,7 @@ export function PauseMenu({
                     {paused && autoResumeLeft !== null && (
                       <p className="pause-note pause-note-tight">
                         <span className="pause-count">{formatClock(autoResumeLeft)}</span> 뒤에 자동으로 다시 시작해요.
+                        {canAskResume && <><br />다른 사람이 모두 수락하면 바로 다시 시작해요.</>}
                       </p>
                     )}
                     {!spectating && (
@@ -300,12 +346,34 @@ export function PauseMenu({
         // 판이 계속 흐르는 것처럼 보인다).
         <div className={`pause-dim pause-dim-ask ${paused ? 'pause-dim-frozen' : ''}`}>
           <BoardFrame split className="pause-card">
-            <h2 className="pause-title">상대방이 게임 일시정지를 요청하였습니다.</h2>
-            <p className="pause-note">
-              {pauseRequest.fromNickname} 님의 요청이에요. 수락하시겠습니까?
-              <br />
-              <span className="pause-count">{requestLeft ?? 0}초</span> 안에 답하지 않으면 게임이 그대로 이어집니다.
-            </p>
+            {pauseRequest.kind === 'resume' ? (
+              <>
+                <h2 className="pause-title">{pauseRequest.fromNickname} 님이 게임 계속하기를 요청했어요.</h2>
+                <p className="pause-note">
+                  모두 수락하면 게임이 다시 시작돼요.
+                  <br />
+                  <span className="pause-count">{requestLeft ?? 0}초</span> 안에 모두 답하지 않으면 일시정지가 이어져요.
+                </p>
+              </>
+            ) : individual ? (
+              <>
+                <h2 className="pause-title">{pauseRequest.fromNickname} 님이 게임 일시정지를 요청했어요.</h2>
+                <p className="pause-note">
+                  모두 수락하면 게임이 멈춰요.
+                  <br />
+                  <span className="pause-count">{requestLeft ?? 0}초</span> 안에 모두 답하지 않으면 게임이 그대로 이어져요.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="pause-title">상대방이 게임 일시정지를 요청하였습니다.</h2>
+                <p className="pause-note">
+                  {pauseRequest.fromNickname} 님의 요청이에요. 수락하시겠습니까?
+                  <br />
+                  <span className="pause-count">{requestLeft ?? 0}초</span> 안에 답하지 않으면 게임이 그대로 이어집니다.
+                </p>
+              </>
+            )}
             <YesNo onYes={() => onRespond(true)} onNo={() => onRespond(false)} />
           </BoardFrame>
         </div>

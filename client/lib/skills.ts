@@ -4,7 +4,7 @@ import {
   enhanceCooldownLeft,
   enhanceMermaidAfter,
   enhanceAmount,
-  ENHANCE_DOT_MAX_TURNS,
+  enhanceBleedTick,
   enhanceDivisorOf,
   enhanceHealAfterCut,
   enhanceHealCutOf,
@@ -12,18 +12,24 @@ import {
   enhanceMermaidDivideTurns,
   enhanceMermaidOppDivide,
   enhanceOverMultiplier,
-  enhanceRabbitBoostPct,
+  enhanceMermaidEvadePct,
   enhanceRabbitCleanse,
+  enhanceRabbitRegenStack,
   enhanceRabbitRegenTurns,
+  enhanceRegenTick,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
-  enhanceSheepLevels,
+  enhanceSheepExpStack,
+  enhanceTigerBleedStack,
   enhanceTigerBleedTurns,
   enhanceTigerHealCut,
   enhanceTigerPurges,
   enhanceValue,
+  ENHANCE_BLEED_MAX_TURNS,
   ENHANCE_DIVISOR_MAX_TURNS,
+  ENHANCE_REGEN_MAX_TURNS,
+  ENHANCE_STACK_MAX,
   opponentsOf,
   skillLevelFor,
   skillMultiplier,
@@ -128,9 +134,9 @@ export interface SkillPreview {
   // 개인전의 특허랑이 — 누구를 노릴지 정해지기 전이라 "상대가 가진 만큼으로 자르기"를 할 수 없다.
   // oppHpDelta는 자르지 않은 값이고, 화면은 "최대"를 붙여 보여준다. 팀전은 언제나 false.
   oppHpIsMax: boolean;
-  // 카드 강화 — 실용신양이 무작위 카드에 주는 경험치(Lv.1~5) · 레벨(Lv.6+, 둘 다 배율 반영) · 디자인어 Lv.6+가 상대 배율을 나누는 수(Infinity = ×1로). 없으면 0
+  // 카드 강화 — 실용신양이 무작위 카드에 주는 경험치(배율 무관 — Lv.6+ 중첩 배수는 곱한 값)와 그 배수 · 디자인어 Lv.6+가 상대 배율을 나누는 수(Infinity = ×1로). 없으면 0
   randomExp?: number;
-  randomLevels?: number;
+  randomExpStack?: number;
   oppMultiplierDivide?: number;
   // 카드 강화 — 디자인어 Lv.Max가 상대 기술 효과에 거는 나눗셈 · 이 기술에 지금 걸려 있는 나눗셈(상대 디자인어). 없으면 1
   oppDivisor?: number;
@@ -142,9 +148,14 @@ export interface SkillPreview {
   cleanse?: number;
   regenTurns?: number;
   bleedTurns?: number;
-  // 카드 강화 — 상표토끼 Lv.6+ "최대 체력 N%"(myHpDelta에 이미 들어 있다) · 내 회복에 걸린 회복 효율 감소(%) ·
-  // 특허랑이 Lv.6+가 상대에게 거는 회복 효율 감소(%) · 특허랑이 Lv.Max의 이로운 효과 제거
-  hpBoostPct?: number;
+  // 카드 강화 — 상표토끼 회복 중첩 · 특허랑이 출혈 누적 계수(Lv.6+가 더하는 수)와 걸고 난 뒤의 한 턴의 양(상대가 하나뿐이면 이미 걸린 몫을 넣어 센다)
+  regenStack?: number;
+  regenTick?: number;
+  bleedStack?: number;
+  bleedTick?: number;
+  // 카드 강화 — 디자인어 Lv.Max의 기술 회피(%)
+  evadePct?: number;
+  // 카드 강화 — 내 회복에 걸린 회복 효율 감소(%) · 특허랑이 Lv.6+가 상대에게 거는 회복 효율 감소(%) · 특허랑이 Lv.Max의 이로운 효과 제거
   healCut?: number;
   oppHealCut?: number;
   purge?: boolean;
@@ -210,8 +221,8 @@ export function finishingMove(
   return { finishes: targets.length > 0, targets };
 }
 
-function dotRoom(add: number, current: number | undefined): number {
-  return Math.max(0, Math.min(add, ENHANCE_DOT_MAX_TURNS - (current ?? 0)));
+function dotRoom(add: number, current: number | undefined, cap: number): number {
+  return Math.max(0, Math.min(add, cap - (current ?? 0)));
 }
 
 export function previewSkill(gameState: ClientGameState, team: SideId, animal: Animal): SkillPreview {
@@ -227,49 +238,55 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   let multiplierAfter = 1;
   let oppHpIsMax = false;
 
-  // 카드 강화 판 — 서버 engine/skills.ts의 applyEnhanceEffect와 같은 공식(4차 표 — 레벨 표 × 배율, 특허랑이는 깎기만)
+  // 카드 강화 판 — 서버 engine/skills.ts의 applyEnhanceEffect와 같은 공식(5차 표 — 배율은 장수 · 즉시 회복 · 공격력에만, 특허랑이는 깎기만)
   if (gameState.enhance) {
-    // 서버와 같은 계산 — 기본값 × 배율 × Max 별도 배수 ÷ 나눗셈(상대 디자인어 Lv.Max), 반올림. 디자인어 자신은 나누지 않는다.
+    // 서버와 같은 계산 — 기본값 × 배율 × Max 별도 배수 ÷ 나눗셈(상대 디자인어 Lv.Max), 반올림. 디자인어 자신은 나누지도 곱하지도 않는다.
     const divisor = animal === 'mermaid' ? 1 : enhanceDivisorOf(gameState, team);
-    const over = overMultiplierOf(gameState, team, animal);
+    const over = animal === 'mermaid' ? 1 : overMultiplierOf(gameState, team, animal);
     const amount = (base: number) => enhanceAmount(base, mult * over, divisor);
     const value = amount(enhanceValue(animal, level));
     // 상대 특허랑이가 나에게 건 회복 효율 감소 — 상표토끼의 회복에만 든다
     const healCut = animal === 'rabbit' ? enhanceHealCutOf(gameState, team) : 0;
-    const hpBoostPct = animal === 'rabbit' ? enhanceRabbitBoostPct(level) : 0;
     // 상대가 하나뿐이면(혼자 놀기 1:1) 그 상대에게 걸린 것을 빼고 보인다. 여럿이면 대상이 정해지기 전이라 표의 값 그대로다
     const foes = opponentsOf(gameState, team);
     const soleFoe = foes.length === 1 ? foes[0] : undefined;
     if (animal === 'sheep') extraDraws = value;
-    else if (animal === 'rabbit') {
-      const boost = hpBoostPct > 0 ? amount((gameState.settings.targetScore * hpBoostPct) / 100) : 0;
-      myHpDelta = enhanceHealAfterCut(value + boost, healCut);
-    } else if (animal === 'tiger') {
+    else if (animal === 'rabbit') myHpDelta = enhanceHealAfterCut(value, healCut);
+    else if (animal === 'tiger') {
       // 상대가 하나뿐이면 그 상대가 가진 만큼으로 자른다. 여럿이면 대상이 정해지기 전이라 "최대"로 보인다.
       oppHpIsMax = soleFoe === undefined;
       oppHpDelta = -(oppHpIsMax ? value : Math.min(value, Math.max(0, gameState.teams[soleFoe!]?.hp ?? 0)));
-    } else multiplierAfter = enhanceMermaidAfter(mult, level, over);
+    } else multiplierAfter = enhanceMermaidAfter(mult, level);
     const sheep = animal === 'sheep';
     const oppDivisor = animal === 'mermaid' ? enhanceMermaidDivide(level) : 1;
+    // 중첩(계수)을 더한 뒤의 한 턴의 양 — 상대가 하나뿐이면 그 상대에게 이미 쌓인 계수를 넣어 센다(서버 addDot과 같은 계산)
+    const regenStack = animal === 'rabbit' ? enhanceRabbitRegenStack(level) : 0;
+    const bleedStack = animal === 'tiger' ? enhanceTigerBleedStack(level) : 0;
+    const myRegen = gameState.enhance.regen?.[team];
+    const foeBleed = soleFoe !== undefined ? gameState.enhance.bleed?.[soleFoe] : undefined;
+    const stackAfter = (had: { turns: number; stack?: number } | undefined, add: number) =>
+      Math.min(ENHANCE_STACK_MAX, ((had?.turns ?? 0) > 0 ? (had?.stack ?? 0) : 0) + add);
     return {
       animal, level, myHpDelta, oppHpDelta, extraDraws, multiplierAfter, oppHpIsMax, divisor, over,
-      randomExp: sheep ? amount(enhanceSheepExp(level)) : 0,
-      randomLevels: sheep ? amount(enhanceSheepLevels(level)) : 0,
+      randomExp: sheep ? enhanceSheepExp(level) * enhanceSheepExpStack(level) : 0,
+      randomExpStack: sheep ? enhanceSheepExpStack(level) : 1,
       oppMultiplierDivide: animal === 'mermaid' ? enhanceMermaidOppDivide(level) : 1,
       oppDivisor,
-      // 다시 걸면 턴을 더하고 최대 20턴 — 상대가 하나뿐이면 이미 걸린 턴을 넣어 실제로 남을 턴을 보인다
+      // 다시 걸면 턴을 더하고 최대 5턴 — 상대가 하나뿐이면 이미 걸린 턴을 넣어 실제로 남을 턴을 보인다
       oppDivisorTurns: oppDivisor > 1
         ? Math.min(ENHANCE_DIVISOR_MAX_TURNS, enhanceMermaidDivideTurns(level) + (soleFoe !== undefined && (gameState.enhance.divisors?.[soleFoe] ?? 1) > 1 ? (gameState.enhance.divisorTurns?.[soleFoe] ?? 0) : 0))
         : 0,
       cooldownCut: sheep ? enhanceSheepCooldownCut(level) : 0,
       cooldownCards: sheep ? enhanceSheepCooldownCards(level) : 0,
       cleanse: animal === 'rabbit' ? enhanceRabbitCleanse(level) : 0,
-      // 출혈·지속 회복은 최대 40턴(ENHANCE_DOT_MAX_TURNS) — 서버처럼 이미 걸린 턴을 빼고 더해질 만큼만(꽉 찼으면 0이라 문구가 빠진다)
-      regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level), gameState.enhance.regen?.[team]?.turns) : 0,
-      bleedTurns: animal === 'tiger'
-        ? dotRoom(enhanceTigerBleedTurns(level), soleFoe !== undefined ? gameState.enhance.bleed?.[soleFoe]?.turns : 0)
-        : 0,
-      hpBoostPct,
+      // 지속 회복은 최대 20턴 · 출혈은 최대 40턴 — 서버처럼 이미 걸린 턴을 빼고 더해질 만큼만(꽉 찼으면 0이라 문구가 빠진다)
+      regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level), myRegen?.turns, ENHANCE_REGEN_MAX_TURNS) : 0,
+      bleedTurns: animal === 'tiger' ? dotRoom(enhanceTigerBleedTurns(level), foeBleed?.turns, ENHANCE_BLEED_MAX_TURNS) : 0,
+      regenStack,
+      regenTick: animal === 'rabbit' ? enhanceRegenTick(stackAfter(myRegen, regenStack)) : 0,
+      bleedStack,
+      bleedTick: animal === 'tiger' ? enhanceBleedTick(stackAfter(foeBleed, bleedStack)) : 0,
+      evadePct: animal === 'mermaid' ? enhanceMermaidEvadePct(level) : 0,
       healCut,
       oppHealCut: animal === 'tiger' ? enhanceTigerHealCut(level) : 0,
       purge: animal === 'tiger' && enhanceTigerPurges(level),

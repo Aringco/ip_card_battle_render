@@ -1,5 +1,5 @@
 import type { ClientGameState, ServerMessage } from 'shared';
-import { EMOTE_MIN_INTERVAL_MS, INDIVIDUAL_MAX_PLAYERS, PLAYER_COLORS, SPECTATOR } from 'shared';
+import { EMOTE_MIN_INTERVAL_MS, INDIVIDUAL_MAX_PLAYERS, INDIVIDUAL_PAUSE_VOTE_SEC, PLAYER_COLORS, SPECTATOR } from 'shared';
 import { Room } from '../room';
 
 /**
@@ -346,48 +346,186 @@ describe('항복·나가기 (R6·R7)', () => {
   });
 });
 
-describe('일시정지 (R8)', () => {
-  it('R8 아무에게도 묻지 않고 곧바로 멈춘다', () => {
+describe('일시정지 (R8) — 전원 수락제(2026-10-30)', () => {
+  const paused = (s: Seat) => lastOf(s.ws, 'pauseState')!.state;
+
+  it('판에 남은 다른 사람 모두에게 묻고, 묻는 동안에도 판은 멈춰 있다(자동 재개 시계는 아직 없다)', () => {
     const { room, seats } = setupRoom(3);
     startGame(room, seats);
     room.handlePauseRequest('p-2');
-    for (const s of seats) {
-      expect(lastOf(s.ws, 'pauseRequest')).toBeUndefined();
+    expect(lastOf(seats[1].ws, 'pauseRequest')).toBeUndefined(); // 요청한 사람에게는 묻지 않는다
+    for (const s of [seats[0], seats[2]]) {
+      expect(lastOf(s.ws, 'pauseRequest')).toMatchObject({ fromTeam: 'p2', fromNickname: '플레이어2', timeoutMs: INDIVIDUAL_PAUSE_VOTE_SEC * 1000, kind: 'pause' });
     }
-    const paused = lastOf(seats[0].ws, 'pauseState')!.state;
-    expect(paused.paused).toBe(true);
-    expect(paused.pausedBy).toEqual({ team: 'p2', nickname: '플레이어2' });
-    expect(paused.pausePendingAnswer).toBe(false);
-    expect(paused.pauseUsed.p2).toBe(1);
+    const st = paused(seats[0]);
+    expect(st.paused).toBe(true);
+    expect(st.pausedBy).toEqual({ team: 'p2', nickname: '플레이어2' });
+    expect(st.pausePendingAnswer).toBe(true);
+    expect(st.pauseRemainingMs).toBe(0);
+    expect(st.pauseUsed.p2).toBe(1);
   });
 
-  it('멈춘 사람만 다시 시작할 수 있다', () => {
+  it('모두 수락해야 멈춘 채로 남고, 그때부터 자동 재개 시계가 돈다', () => {
     const { room, seats } = setupRoom(3);
     startGame(room, seats);
     room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toBeUndefined(); // 한 명 남았다
+    expect(paused(seats[0]).pausePendingAnswer).toBe(true);
+    jest.advanceTimersByTime(10_000); // 묻는 시간은 일시정지 시간에서 빠진다
+    room.handlePauseRespond('p-3', true);
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toMatchObject({ accepted: true, kind: 'pause' });
+    const st = paused(seats[0]);
+    expect(st.paused).toBe(true);
+    expect(st.pausePendingAnswer).toBe(false);
+    expect(st.pauseRemainingMs).toBe(st.settings.pauseMaxMin * 60_000);
+  });
+
+  it('한 명이라도 거절하면 그 자리에서 풀린다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.handlePauseRespond('p-3', false);
+    expect(lastOf(seats[1].ws, 'pauseRequestResult')).toMatchObject({ accepted: false, reason: 'declined', kind: 'pause' });
+    expect(paused(seats[0]).paused).toBe(false);
+  });
+
+  it('시간 안에 다 답하지 않으면 거절과 같다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    jest.advanceTimersByTime(INDIVIDUAL_PAUSE_VOTE_SEC * 1000 + 10);
+    expect(lastOf(seats[1].ws, 'pauseRequestResult')).toMatchObject({ accepted: false, reason: 'timeout' });
+    expect(paused(seats[0]).paused).toBe(false);
+  });
+
+  it('순위가 정해진 사람에게는 묻지 않는다 — 남은 사람이 없으면 곧바로 멈춘다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.forfeit('p-3');
+    room.handlePauseRequest('p-2');
+    expect(lastOf(seats[2].ws, 'pauseRequest')).toBeUndefined();
+    expect(lastOf(seats[0].ws, 'pauseRequest')).toBeDefined();
+    room.handlePauseRespond('p-3', true); // 물어보지 않은 사람의 답은 무시
+    expect(paused(seats[0]).pausePendingAnswer).toBe(true);
+    room.handlePauseRespond('p-1', true);
+    expect(paused(seats[0]).pausePendingAnswer).toBe(false);
+  });
+
+  it('답할 사람이 끊기거나 항복하면 그 사람을 빼고 센다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.forfeit('p-3');
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toMatchObject({ accepted: true });
+    expect(paused(seats[0]).paused).toBe(true);
+  });
+
+  it('멈춘 사람은 곧바로 다시 시작한다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.handlePauseRespond('p-3', true);
+    room.handleResume('p-2');
+    expect(paused(seats[0]).paused).toBe(false);
+  });
+
+  it('다른 사람이 [계속하기]를 누르면 그 사람을 뺀 전원에게 묻고, 모두 수락하면 다시 시작한다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.handlePauseRespond('p-3', true);
+    room.handleResume('p-3');
+    expect(lastOf(seats[2].ws, 'pauseRequest')).toMatchObject({ kind: 'pause' }); // p3에게는 새로 묻지 않는다
+    for (const s of [seats[0], seats[1]]) expect(lastOf(s.ws, 'pauseRequest')).toMatchObject({ kind: 'resume', fromTeam: 'p3' });
+    const st = paused(seats[0]);
+    expect(st.paused).toBe(true);
+    expect(st.resumeVote).toMatchObject({ team: 'p3', nickname: '플레이어3' });
+    expect(st.pausePendingAnswer).toBe(false);
+    room.handlePauseRespond('p-2', true); // 멈춘 사람도 답한다
+    expect(paused(seats[0]).paused).toBe(true);
+    room.handlePauseRespond('p-1', true);
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toMatchObject({ accepted: true, kind: 'resume' });
+    expect(paused(seats[0]).paused).toBe(false);
+    expect(paused(seats[0]).resumeVote).toBeNull();
+  });
+
+  it('다시 시작 요청이 거절·무응답이면 멈춘 채로 남는다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.handlePauseRespond('p-3', true);
+    room.handleResume('p-1');
+    room.handlePauseRespond('p-2', false);
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toMatchObject({ accepted: false, reason: 'declined', kind: 'resume' });
+    expect(paused(seats[0]).paused).toBe(true);
+    expect(paused(seats[0]).resumeVote).toBeNull();
+    room.handleResume('p-1');
+    jest.advanceTimersByTime(INDIVIDUAL_PAUSE_VOTE_SEC * 1000 + 10);
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toMatchObject({ accepted: false, reason: 'timeout', kind: 'resume' });
+    expect(paused(seats[0]).paused).toBe(true);
+  });
+
+  it('다시 시작 요청을 기다리는 시간도 일시정지 시간 안이다 — 자동 재개 시각이 오면 답과 무관하게 풀린다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.handlePauseRespond('p-3', true);
+    const maxMs = paused(seats[0]).settings.pauseMaxMin * 60_000;
+    jest.advanceTimersByTime(maxMs - 3_000);
+    room.handleResume('p-1');
+    expect(paused(seats[0]).resumeVote).not.toBeNull();
+    jest.advanceTimersByTime(3_010);
+    expect(paused(seats[0]).paused).toBe(false);
+    expect(lastOf(seats[1].ws, 'pauseRequestResult')).toMatchObject({ kind: 'resume', accepted: true });
+  });
+
+  it('멈춘 사람이 다시 시작하면 진행 중이던 다시 시작 요청도 함께 닫힌다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
+    room.handlePauseRespond('p-3', true);
+    room.handleResume('p-1');
+    room.handleResume('p-2');
+    expect(paused(seats[0]).paused).toBe(false);
+    expect(lastOf(seats[2].ws, 'pauseRequestResult')).toMatchObject({ kind: 'resume' });
+  });
+
+  it('순위가 정해진 사람은 다시 시작을 요청할 수 없다', () => {
+    const { room, seats } = setupRoom(3);
+    startGame(room, seats);
+    room.forfeit('p-3');
+    room.handlePauseRequest('p-2');
+    room.handlePauseRespond('p-1', true);
     room.handleResume('p-3');
     expect(lastOf(seats[2].ws, 'error')!.code).toBe('PAUSE_UNAVAILABLE');
-    expect(lastOf(seats[0].ws, 'pauseState')!.state.paused).toBe(true);
-    room.handleResume('p-2');
-    expect(lastOf(seats[0].ws, 'pauseState')!.state.paused).toBe(false);
+    expect(paused(seats[0]).paused).toBe(true);
   });
 
-  it('횟수는 사람마다 따로 센다', () => {
+  it('횟수는 사람마다 따로 센다(요청하는 순간 깎인다 — 거절당해도 되돌리지 않는다)', () => {
     const { room, seats } = setupRoom(3);
     startGame(room, seats);
     const max = gameState(seats[0]).settings.pauseMaxCount;
     for (let i = 0; i < max; i++) {
       room.handlePauseRequest('p-2');
-      room.handleResume('p-2');
+      room.handlePauseRespond('p-1', false);
     }
     room.handlePauseRequest('p-2');
     expect(lastOf(seats[1].ws, 'error')!.code).toBe('PAUSE_UNAVAILABLE');
     // 다른 사람은 아직 쓸 수 있다
     room.handlePauseRequest('p-3');
-    expect(lastOf(seats[0].ws, 'pauseState')!.state.pausedBy).toMatchObject({ team: 'p3' });
+    expect(paused(seats[0]).pausedBy).toMatchObject({ team: 'p3' });
   });
 
-  it('멈춰 있는 동안에는 조작이 거부된다', () => {
+  it('멈춰 있는 동안(묻는 동안 포함)에는 조작이 거부된다', () => {
     const { room, seats } = setupRoom(3);
     startGame(room, seats);
     const active = activeSeat(seats, gameState(seats[0]));
@@ -396,12 +534,13 @@ describe('일시정지 (R8)', () => {
     expect(lastOf(active.ws, 'error')!.code).toBe('PAUSE_UNAVAILABLE');
   });
 
-  it('멈춰 둔 사람이 항복하면 일시정지가 풀린다', () => {
+  it('멈춰 둔 사람이 항복하면 일시정지가 풀린다(묻는 중이면 요청도 취소된다)', () => {
     const { room, seats } = setupRoom(3);
     startGame(room, seats);
     room.handlePauseRequest('p-2');
     room.forfeit('p-2');
-    expect(lastOf(seats[0].ws, 'pauseState')!.state.paused).toBe(false);
+    expect(lastOf(seats[0].ws, 'pauseRequestResult')).toMatchObject({ accepted: false, reason: 'cancelled' });
+    expect(paused(seats[0]).paused).toBe(false);
   });
 
   it('순위가 정해진 사람은 일시정지를 쓸 수 없다', () => {

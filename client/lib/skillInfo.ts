@@ -1,21 +1,27 @@
 // 행동 관련 표시용 상수·문구 — SkillChoiceBar와 ScorePanel(호버 툴팁)이 함께 사용한다.
 import type { Animal } from 'shared';
 import {
+  ENHANCE_BLEED_MAX_TURNS,
+  ENHANCE_BLEED_TICK,
   ENHANCE_DIVISOR_MAX_TURNS,
-  ENHANCE_DOT_MAX_TURNS,
   ENHANCE_MERMAID_STACK,
   ENHANCE_MERMAID_STACK_MULTIPLY_FROM,
+  ENHANCE_REGEN_MAX_TURNS,
+  ENHANCE_REGEN_TICK,
+  ENHANCE_STACK_MAX,
   enhanceCooldown,
   enhanceMermaidDivide,
   enhanceMermaidDivideTurns,
+  enhanceMermaidEvadePct,
   enhanceMermaidOppDivide,
-  enhanceRabbitBoostPct,
   enhanceRabbitCleanse,
+  enhanceRabbitRegenStack,
   enhanceRabbitRegenTurns,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
-  enhanceSheepLevels,
+  enhanceSheepExpStack,
+  enhanceTigerBleedStack,
   enhanceTigerBleedTurns,
   enhanceTigerHealCut,
   enhanceTigerPurges,
@@ -57,7 +63,7 @@ export function describeSkill(animal: Animal, level: number): SkillDescription {
 }
 
 /**
- * 카드 강화 판의 기술 카드 본문 — 이 레벨의 효과(배율 곱하기 전)와 쿨타임. 3줄째가 쿨타임이다(4차 표 — 2026-10-30).
+ * 카드 강화 판의 기술 카드 본문 — 이 레벨의 효과(배율 곱하기 전)와 쿨타임. 3줄째가 쿨타임이다(5차 표 — 2026-10-30).
  * 캐치프레이즈는 일반 판과 같다. 줄바꿈은 여기서 정한 그대로 그려진다(SkillChoiceBar — white-space: pre).
  * Lv.6 · Lv.Max부터 붙는 효과는 앞 두 줄에 눌러 담는다 — 카드 높이에 3줄(효과 2 + 쿨타임 1)까지만 들어간다(길면 글자가 작아진다).
  */
@@ -68,36 +74,41 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
   const base = describeSkill(animal, level);
   switch (animal) {
     case 'sheep': {
-      const levels = enhanceSheepLevels(level);
-      if (levels > 0) {
-        return { ...base, effect: `카드 +${v}장, 무작위 레벨 +${levels},\n무작위 쿨타임 ${cooldownCutText(level)}\n${cdLine}` };
+      const exp = enhanceSheepExp(level) * enhanceSheepExpStack(level);
+      if (enhanceSheepCooldownCut(level) > 0) {
+        return { ...base, effect: `카드 +${v}장, 무작위 경험치 +${exp},\n무작위 쿨타임 ${cooldownCutText(level)}\n${cdLine}` };
       }
-      return { ...base, effect: `다음 턴 카드 +${v}장,\n무작위 카드 경험치 +${enhanceSheepExp(level)}\n${cdLine}` };
+      return { ...base, effect: `다음 턴 카드 +${v}장,\n무작위 카드 경험치 +${exp}\n${cdLine}` };
     }
     case 'rabbit': {
       const regen = enhanceRabbitRegenTurns(level);
-      const pct = enhanceRabbitBoostPct(level);
-      if (pct > 0) {
-        return { ...base, effect: `체력 +${v}, 최대 체력 +${pct}%,\n지속 회복 +${regen}턴, 부정 효과 ${cutText(enhanceRabbitCleanse(level), '정화')}\n${cdLine}` };
+      const stack = enhanceRabbitRegenStack(level);
+      if (stack > 0) {
+        return { ...base, effect: `체력 +${v}, 지속 회복 +${regen}턴, 중첩 +${stack},\n부정 효과 ${cutText(enhanceRabbitCleanse(level), '정화')}\n${cdLine}` };
       }
-      return { ...base, effect: `즉시 내 체력 +${v},\n지속 회복 +${regen}턴(턴당 +${v})\n${cdLine}` };
+      return { ...base, effect: `즉시 내 체력 +${v},\n지속 회복 +${regen}턴(턴당 +${ENHANCE_REGEN_TICK.low})\n${cdLine}` };
     }
     case 'mermaid': {
       const stack = ENHANCE_MERMAID_STACK[level - 1];
       const multiplies = level >= ENHANCE_MERMAID_STACK_MULTIPLY_FROM;
       if (!multiplies) return { ...base, effect: `다음 기술의 효과 ×${v}\n(겹쳐 쓰면 +${stack})\n${cdLine}` };
       const divide = enhanceMermaidDivide(level);
-      return {
-        ...base,
-        effect: `다음 기술 ×${v} (겹치면 ×${stack}),\n${oppMultiplierText(level)}${divide > 1 ? `, 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴)` : ''}\n${cdLine}`,
-      };
+      const evade = enhanceMermaidEvadePct(level);
+      if (divide > 1) {
+        return {
+          ...base,
+          effect: `다음 기술 ×${v} (겹치면 ×${stack}), ${oppMultiplierText(level)},\n상대 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴), 회피 ${evade}%\n${cdLine}`,
+        };
+      }
+      return { ...base, effect: `다음 기술 ×${v} (겹치면 ×${stack}),\n${oppMultiplierText(level)}(1턴)\n${cdLine}` };
     }
     case 'tiger': {
       const bleed = enhanceTigerBleedTurns(level);
+      const stack = enhanceTigerBleedStack(level);
       const cut = enhanceTigerHealCut(level);
-      if (enhanceTigerPurges(level)) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 회복 금지,\n상대의 이로운 효과 모두 제거\n${cdLine}` };
-      if (cut > 0) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴,\n상대 회복 −${cut}%(1턴)\n${cdLine}` };
-      return { ...base, effect: `상대 체력 −${v},\n출혈 +${bleed}턴(턴당 −${v})\n${cdLine}` };
+      if (enhanceTigerPurges(level)) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack}, 회복 금지,\n상대의 이로운 효과 모두 제거\n${cdLine}` };
+      if (cut > 0) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack},\n상대 회복 −${cut}%(1턴)\n${cdLine}` };
+      return { ...base, effect: `상대 체력 −${v},\n출혈 +${bleed}턴(턴당 −${ENHANCE_BLEED_TICK.low})\n${cdLine}` };
     }
   }
 }
@@ -113,10 +124,10 @@ function cooldownCutText(level: number): string {
   return `${cutText(enhanceSheepCooldownCut(level), '초기화')}${cards > 1 ? `(${cards}장)` : ''}`;
 }
 
-/** 디자인어 Lv.6+의 상대 배율 문구 — "상대 배율 ÷N" · Max "상대 배율 ×1로" */
+/** 디자인어 Lv.6+의 상대 배율 문구 — "상대 배율 ÷N" · Max "상대 배율 제거" */
 function oppMultiplierText(level: number): string {
   const div = enhanceMermaidOppDivide(level);
-  return Number.isFinite(div) ? `상대 배율 ÷${div}` : '상대 배율 ×1로';
+  return Number.isFinite(div) ? `상대 배율 ÷${div}` : '상대 배율 제거';
 }
 
 /** 카드 강화 판의 호버 툴팁 한 줄 */
@@ -126,24 +137,29 @@ export function describeEnhanceSkillShort(animal: Animal, level: number): string
   const cdText = cd === 0 ? '' : ` (쿨타임 ${cd}턴)`;
   switch (animal) {
     case 'sheep': {
-      const levels = enhanceSheepLevels(level);
-      const gain = levels > 0 ? `무작위 카드 레벨 +${levels}, 다른 카드 쿨타임 ${cooldownCutText(level)}` : `무작위 카드 경험치 +${enhanceSheepExp(level)}`;
-      return `다음 턴에 카드를 ${v}장 더 뽑습니다, ${gain}.${cdText}`;
+      const stack = enhanceSheepExpStack(level);
+      const exp = enhanceSheepExp(level) * stack;
+      const cdCut = enhanceSheepCooldownCut(level) > 0 ? `, 다른 카드 쿨타임 ${cooldownCutText(level)}` : '';
+      return `다음 턴에 카드를 ${v}장 더 뽑습니다(배율은 장수에만), 무작위 카드 경험치 +${exp}${stack > 1 ? `(중첩 ×${stack})` : ''}${cdCut}.${cdText}`;
     }
     case 'rabbit': {
-      const pct = enhanceRabbitBoostPct(level);
+      const stack = enhanceRabbitRegenStack(level);
       const cleanse = enhanceRabbitCleanse(level);
-      return `체력이 ${v}만큼 오릅니다${pct > 0 ? `, 최대 체력 +${pct}%(시작 체력 기준)` : ''}, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(턴당 +${v}, 최대 ${ENHANCE_DOT_MAX_TURNS}턴)${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
+      const tick = stack > 0 ? `턴당 ${ENHANCE_REGEN_TICK.high} × 중첩` : `턴당 +${ENHANCE_REGEN_TICK.low}`;
+      return `체력이 ${v}만큼 오릅니다, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(${tick}, 최대 ${ENHANCE_REGEN_MAX_TURNS}턴)${stack > 0 ? `, 회복 중첩 +${stack}(최대 ${ENHANCE_STACK_MAX})` : ''}${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
     }
     case 'mermaid': {
       const stack = ENHANCE_MERMAID_STACK[level - 1];
       const multiplies = level >= ENHANCE_MERMAID_STACK_MULTIPLY_FROM;
       const divide = enhanceMermaidDivide(level);
-      return `다음 기술의 효과가 ${v}배가 됩니다(겹쳐 쓰면 ${multiplies ? '×' : '+'}${stack})${multiplies ? `, ${oppMultiplierText(level)}` : ''}${divide > 1 ? `, 상대 기술 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴, 최대 ${ENHANCE_DIVISOR_MAX_TURNS}턴)` : ''}.${cdText}`;
+      const evade = enhanceMermaidEvadePct(level);
+      return `다음 기술의 효과가 ${v}배가 됩니다(겹쳐 쓰면 ${multiplies ? '×' : '+'}${stack})${multiplies ? `, ${oppMultiplierText(level)}` : ''}${divide > 1 ? `, 상대 기술 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴, 최대 ${ENHANCE_DIVISOR_MAX_TURNS}턴)` : ''}${evade > 0 ? `, 내 다음 차례까지 상대 기술을 ${evade}% 확률로 회피` : ''}.${cdText}`;
     }
     case 'tiger': {
+      const stack = enhanceTigerBleedStack(level);
       const cut = enhanceTigerHealCut(level);
-      return `상대 체력을 ${v}만큼 깎습니다, 출혈 +${enhanceTigerBleedTurns(level)}턴(턴당 −${v}, 최대 ${ENHANCE_DOT_MAX_TURNS}턴)${cut > 0 ? `, 상대 회복 효율 −${cut}%(다음 1턴)` : ''}${enhanceTigerPurges(level) ? ', 상대의 이로운 효과 모두 제거' : ''}.${cdText}`;
+      const tick = stack > 0 ? `턴당 −${ENHANCE_BLEED_TICK.high} × (1 + ${ENHANCE_BLEED_TICK.rate} × 계수)` : `턴당 −${ENHANCE_BLEED_TICK.low}`;
+      return `상대 체력을 ${v}만큼 깎습니다, 출혈 +${enhanceTigerBleedTurns(level)}턴(${tick}, 최대 ${ENHANCE_BLEED_MAX_TURNS}턴)${stack > 0 ? `, 출혈 계수 +${stack}(최대 ${ENHANCE_STACK_MAX})` : ''}${cut > 0 ? `, 상대 회복 효율 −${cut}%(다음 1턴)` : ''}${enhanceTigerPurges(level) ? ', 상대의 이로운 효과 모두 제거' : ''}.${cdText}`;
     }
   }
 }

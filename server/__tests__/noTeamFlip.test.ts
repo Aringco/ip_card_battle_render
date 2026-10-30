@@ -26,7 +26,7 @@ const ALLOWED: Array<[string, string, string]> = [
   ['client/hooks/useAnimationQueue.ts', "const loser: SideId = winner === 'A'", '결정타 연출(gameEnd knockout)은 팀전 경로 — 개인전의 gameEnd는 reason이 ranked'],
   ['client/components/lobby/WaitingRoom.tsx', "otherName={teamNames[team === 'A'", '대기실 팀 이름 — 팀전 전용'],
   // 아래 둘은 개인전이 앞에서 따로 처리하고 빠진 뒤(handlePauseRequest·forfeit)의 팀전 경로다.
-  ['server/room.ts', 'const opponent: Team = p.team', '일시정지를 물을 상대 팀 — 개인전은 묻지 않고 먼저 멈춘다'],
+  ['server/room.ts', "this.connectedHumansOf(p.team === 'A'", '일시정지를 물을 상대 팀 — 개인전은 askableIndividuals(남은 사람 전원)가 먼저 가져간다'],
   ['server/room.ts', 'const winner: Team = p.team', '항복한 팀의 상대 = 승자 — 개인전은 forfeitIndividual이 먼저 가져간다'],
 ];
 

@@ -112,7 +112,7 @@ function OpponentCard({
 }
 
 /**
- * 개인전 강화 방 — 그 사람에게 걸린 지속 효과(출혈 · 지속 회복 · 효과 감소 ÷N · 회복 효율 감소)의 남은 턴. 내 체력 구슬(TeamTotalPanel)의 아이콘과 같은 뜻을
+ * 개인전 강화 방 — 그 사람에게 걸린 지속 효과(출혈 · 지속 회복 · 효과 감소 ÷N · 회복 효율 감소 · 기술 회피)의 남은 턴. 내 체력 구슬(TeamTotalPanel)의 아이콘과 같은 뜻을
  * 칸이 좁아 글자 배지로 줄였다. 연출 전 값(withDisplayedTeams의 displayedStatus)을 받아 효과보다 먼저 뜨지 않는다.
  */
 function StatusMarks({ gameState, side }: { gameState: ClientGameState; side: SideId }) {
@@ -132,6 +132,8 @@ function StatusMarks({ gameState, side }: { gameState: ClientGameState; side: Si
   if (healCut && healCut.turns > 0) {
     marks.push({ key: 'healcut', text: healCut.pct >= 100 ? '✚✕' : `✚-${healCut.pct}%`, title: healCut.pct >= 100 ? '회복 금지 — 다음 차례에 체력이 오르지 않는다' : `회복 효율 감소 — 다음 차례의 회복 −${healCut.pct}%` });
   }
+  const evade = enh.evade?.[side] ?? 0;
+  if (evade > 0) marks.push({ key: 'evade', text: `💨${evade}%`, title: `기술 회피 — 그 사람의 다음 차례까지 노리는 기술을 ${evade}% 확률로 피한다` });
   if (marks.length === 0) return null;
   return (
     <span className="ind-opp-status">

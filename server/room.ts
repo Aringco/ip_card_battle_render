@@ -35,6 +35,7 @@ import {
   INDIVIDUAL_MAX_PLAYERS,
   INDIVIDUAL_MIN_PLAYERS,
   PAUSE_REQUEST_TIMEOUT_SEC,
+  INDIVIDUAL_PAUSE_VOTE_SEC,
   isPlayingSeat,
   isTeamSeat,
   clampSettings,
@@ -55,7 +56,6 @@ import {
   opponentsOf,
   clampEnhanceSettings,
   enhanceValue,
-  enhanceRabbitBoostPct,
   enhanceHealAfterCut,
   enhanceHealCutOf,
   enhanceAmount,
@@ -280,12 +280,8 @@ function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal | null
   const div = enhanceDivisorOf(state, side);
   const over = (a: Animal) => enhanceOverMultiplier(a, me.exp[a]);
   const value = (a: Animal) => enhanceAmount(enhanceValue(a, levelOf(state, side, a)), mult * over(a), div);
-  // 상표토끼 — 즉시 회복 + Lv.6부터 시작 체력의 N%, 그리고 상대 특허랑이가 건 회복 효율 감소(엔진 applyEnhanceEffect와 같은 계산)
-  const rabbitHeal = () => {
-    const pct = enhanceRabbitBoostPct(levelOf(state, side, 'rabbit'));
-    const boost = pct > 0 ? enhanceAmount((state.settings.targetScore * pct) / 100, mult * over('rabbit'), div) : 0;
-    return enhanceHealAfterCut(value('rabbit') + boost, enhanceHealCutOf(state, side));
-  };
+  // 상표토끼 — 즉시 회복에 상대 특허랑이가 건 회복 효율 감소를 거친 값(엔진 applyEnhanceEffect와 같은 계산)
+  const rabbitHeal = () => enhanceHealAfterCut(value('rabbit'), enhanceHealCutOf(state, side));
 
   if (options.includes('tiger') && value('tiger') >= foeHp) return 'tiger';
   if (options.includes('rabbit') && me.hp + rabbitHeal() >= winHp) return 'rabbit';
@@ -461,8 +457,17 @@ export class Room {
   // 남은 시간이 1초에 고정된 채 얼어붙는다(TurnTimer가 maxSeconds로 잘라 표시한다).
   private pausedTurnTotalMs = 0;
   private pausedCpuRemainingMs: number | null = null;
-  // 상대의 대답을 기다리는 중인 일시정지 요청(멀티 플레이 전용).
-  private pauseRequest: { playerId: string; team: SideId; nickname: string } | null = null;
+  // 대답을 기다리는 중인 요청(멀티 플레이 전용). kind 'pause'는 일시정지 요청(묻는 동안에도 판은 멈춰 있다),
+  // 'resume'은 개인전에서 멈추지 않은 사람이 낸 다시 시작 요청(이미 멈춘 판에서 묻는다).
+  // waiting은 아직 답하지 않은 사람들(개인전 — **전원**이 수락해야 성립한다). 팀전은 null이고 한 사람의 답으로 정해진다.
+  private pauseRequest: {
+    playerId: string;
+    team: SideId;
+    nickname: string;
+    kind: 'pause' | 'resume';
+    waiting: Set<string> | null;
+    deadline: number;
+  } | null = null;
   private pauseRequestTimer: ReturnType<typeof setTimeout> | null = null;
   // 팀마다 쓴 일시정지 횟수(settings.pauseMaxCount까지). **요청하는 순간** 하나 깎는다 —
   // 상대가 고르는 20초 동안에도 판은 이미 멈춰 있으므로, 수락 여부와 무관하게 그 요청
@@ -1309,7 +1314,10 @@ export class Room {
     const snap = serializeState(this.state, deadline, totalMs, this.finalTeamNames(), this.sidePlayerIds ?? this.teamPlayerIds, {
       paused: this.paused,
       pausedBy: this.pausedBy ? { team: this.pausedBy.team, nickname: this.pausedBy.nickname } : null,
-      pendingAnswer: this.pauseRequest !== null,
+      pendingAnswer: this.pauseRequest?.kind === 'pause',
+      resumeVote: this.pauseRequest?.kind === 'resume'
+        ? { team: this.pauseRequest.team, nickname: this.pauseRequest.nickname, remainingMs: Math.max(0, this.pauseRequest.deadline - Date.now()) }
+        : null,
       used: { ...this.pauseUsed },
       // 혼자 놀기는 일시정지가 무제한이지만, 컴퓨터와 하는 **이벤트 판은 아예 못 쓴다**(목표점수 달성하기의 시계를
       // 멈춰 두고 생각할 수 있게 되므로) — 그래서 "무제한" 표시도 끈다.
@@ -1738,60 +1746,136 @@ export class Room {
     // 거절당할 때마다 다시 요청하면 횟수 제한이 무의미해진다.
     this.pauseUsed[side] = (this.pauseUsed[side] ?? 0) + 1;
 
-    // 개인전은 아무에게도 묻지 않고 즉시 멈춘다 — 상대가 여럿이라 누구에게 물을지 정할 수 없고,
-    // 횟수·시간 제한(사람마다)이 남용을 막는다. 다시 시작은 멈춘 사람만 한다.
-    if (this.state.mode === 'individual') {
-      this.applyPause({ playerId, team: side, nickname: p.nickname });
-      return;
-    }
-
-    const opponent: Team = p.team === 'A' ? 'B' : 'A';
-    const askable = this.connectedHumansOf(opponent);
+    // 개인전 — 판에 남은 다른 사람 **전원**에게 묻는다(2026-10-30 — 그 전에는 묻지 않고 즉시 멈췄다). 모두 수락해야 멈춘 채로 남고,
+    // 한 명이라도 거절하거나 INDIVIDUAL_PAUSE_VOTE_SEC 안에 다 답하지 않으면 풀린다. 묻는 동안의 시간은 일시정지 시간에서 빠진다.
+    const individual = this.state.mode === 'individual';
+    const askable = individual
+      ? this.askableIndividuals(playerId)
+      : this.connectedHumansOf(p.team === 'A' ? 'B' : 'A');
     if (askable.length === 0) {
       this.applyPause({ playerId, team: side, nickname: p.nickname });
       return;
     }
 
-    this.pauseRequest = { playerId, team: side, nickname: p.nickname };
+    const timeoutMs = (individual ? INDIVIDUAL_PAUSE_VOTE_SEC : PAUSE_REQUEST_TIMEOUT_SEC) * 1000;
+    this.pauseRequest = {
+      playerId,
+      team: side,
+      nickname: p.nickname,
+      kind: 'pause',
+      waiting: individual ? new Set(askable.map(o => o.playerId)) : null,
+      deadline: Date.now() + timeoutMs,
+    };
     // 답을 기다리는 동안에도 멈춰 둔다(위 주석 참고). pauseState를 먼저 보내야 요청
     // 창이 뜬 화면의 뒤쪽 판이 이미 회색으로 죽어 있어, 무엇을 고르는 중인지 읽힌다.
     this.applyPause({ playerId, team: side, nickname: p.nickname });
-    const timeoutMs = PAUSE_REQUEST_TIMEOUT_SEC * 1000;
     for (const o of askable) {
-      this.sendTo(o.playerId, { type: 'pauseRequest', fromTeam: side as Team, fromNickname: p.nickname, timeoutMs });
+      this.sendTo(o.playerId, { type: 'pauseRequest', fromTeam: side, fromNickname: p.nickname, timeoutMs, kind: 'pause' });
     }
     this.pauseRequestTimer = setTimeout(() => this.settlePauseRequest(false, 'timeout'), timeoutMs);
   }
 
-  /** 요청받은 쪽의 대답. 요청한 팀 사람은 자기 요청에 스스로 답할 수 없다. */
+  /** 개인전에서 수락을 물을 사람 — 순위가 정해지지 않은 편의, 지금 접속해 있는, 나 아닌 사람(관전자는 자리가 없어 빠진다). */
+  private askableIndividuals(exceptPlayerId: string): PlayerConnection[] {
+    const state = this.state;
+    if (!state) return [];
+    return state.turnOrder
+      .filter(side => !state.teams[side]?.finish)
+      .flatMap(side => this.connectedHumansOf(side))
+      .filter(o => o.playerId !== exceptPlayerId);
+  }
+
+  /**
+   * 요청받은 쪽의 대답. 요청한 사람(팀)은 자기 요청에 스스로 답할 수 없다.
+   * 팀전은 한 사람의 답으로 정해지고, 개인전은 물어본 사람 **전원**이 수락해야 성립한다(한 명이라도 거절하면 그 자리에서 끝).
+   */
   handlePauseRespond(playerId: string, accept: boolean): void {
     const req = this.pauseRequest;
     if (!req) return;
     const p = this.playingMember(playerId);
     if (!p || this.sideOf(p) === req.team) return;
+    if (req.waiting) {
+      if (!req.waiting.has(playerId)) return;
+      if (!accept) {
+        this.settlePauseRequest(false, 'declined');
+        return;
+      }
+      req.waiting.delete(playerId);
+      if (req.waiting.size === 0) this.settlePauseRequest(true, 'accepted');
+      return;
+    }
     this.settlePauseRequest(accept, accept ? 'accepted' : 'declined');
   }
 
   /**
-   * 멈춘 게임을 다시 시작한다. **멈춘 팀만** 풀 수 있다 — 상대가 곧바로 풀어버릴 수
+   * 개인전 투표에서 한 사람이 빠졌다(연결 끊김 · 항복 · 나가기). 요청한 사람이면 요청이 취소되고,
+   * 답할 사람이면 그 사람을 빼고 — 남은 사람이 모두 이미 수락했으면 그 자리에서 성립한다.
+   */
+  private dropFromPauseVote(playerId: string): void {
+    const req = this.pauseRequest;
+    if (!req) return;
+    if (req.playerId === playerId) {
+      this.settlePauseRequest(false, 'cancelled');
+      return;
+    }
+    if (req.waiting?.delete(playerId) && req.waiting.size === 0) this.settlePauseRequest(true, 'accepted');
+  }
+
+  /**
+   * 멈춘 게임을 다시 시작한다. **멈춘 사람(팀)은 곧바로** 푼다 — 팀전에서 상대가 곧바로 풀어버릴 수
    * 있으면 일시정지가 아무 의미도 없기 때문이다(그 팀이 전부 끊기면 handleDisconnect가
    * 대신 풀어주므로 판이 영영 멈춰 있을 일은 없다).
+   * 개인전에서는 멈추지 않은 사람도 누를 수 있다 — 그 사람을 뺀 나머지 전원에게 INDIVIDUAL_PAUSE_VOTE_SEC 동안 수락을 묻고,
+   * 모두 수락하면 다시 시작한다(2026-10-30). 이 시간은 일시정지 시간 안에서 흐른다 — 자동 재개 시각이 먼저 오면 답과 무관하게 풀린다.
    */
   handleResume(playerId: string): void {
-    if (!this.paused) return;
+    if (!this.paused || !this.state) return;
     const p = this.players.get(playerId);
     if (!p) return;
-    // 상대가 아직 고르는 중이면 풀지 않는다 — 그 20초는 "멈춤"이 아니라 "묻는 중"이고,
+    // 상대가 아직 고르는 중이면 풀지 않는다 — 그 시간은 "멈춤"이 아니라 "묻는 중"이고,
     // 여기서 풀어버리면 답이 도착했을 때 이미 흐르는 판을 다시 멈추게 된다.
-    if (this.pauseRequest) {
+    if (this.pauseRequest?.kind === 'pause') {
       this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '상대의 답을 기다리는 중입니다.' });
       return;
     }
-    if (this.pausedBy && this.sideOf(p) !== this.pausedBy.team) {
+    const side = this.sideOf(p);
+    if (!this.pausedBy || side === this.pausedBy.team) {
+      this.applyResume();
+      return;
+    }
+    if (this.state.mode !== 'individual') {
       this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '일시정지를 요청한 쪽만 다시 시작할 수 있습니다.' });
       return;
     }
-    this.applyResume();
+    // 개인전 — 순위가 정해진 사람 · 관전자는 판을 다시 열 수 없다
+    if (side === null || this.state.teams[side]?.finish) {
+      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '판에 남은 사람만 다시 시작을 요청할 수 있어요.' });
+      return;
+    }
+    if (this.pauseRequest) {
+      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '이미 다시 시작 요청이 진행 중이에요.' });
+      return;
+    }
+    const askable = this.askableIndividuals(playerId);
+    if (askable.length === 0) {
+      this.applyResume();
+      return;
+    }
+    const timeoutMs = INDIVIDUAL_PAUSE_VOTE_SEC * 1000;
+    this.pauseRequest = {
+      playerId,
+      team: side,
+      nickname: p.nickname,
+      kind: 'resume',
+      waiting: new Set(askable.map(o => o.playerId)),
+      deadline: Date.now() + timeoutMs,
+    };
+    for (const o of askable) {
+      this.sendTo(o.playerId, { type: 'pauseRequest', fromTeam: side, fromNickname: p.nickname, timeoutMs, kind: 'resume' });
+    }
+    this.pauseRequestTimer = setTimeout(() => this.settlePauseRequest(false, 'timeout'), timeoutMs);
+    // 요청한 사람의 버튼이 "답을 기다리는 중"으로 바뀌도록(resumeVote) 상태를 다시 보낸다
+    this.broadcast({ type: 'pauseState', state: this.snapshot() });
   }
 
   private settlePauseRequest(accepted: boolean, reason: 'accepted' | 'declined' | 'timeout' | 'cancelled'): void {
@@ -1803,15 +1887,24 @@ export class Room {
       this.pauseRequestTimer = null;
     }
     // 요청자와 요청받은 쪽의 창을 **함께** 닫아야 하므로 방 전체에 알린다.
-    this.broadcast({ type: 'pauseRequestResult', accepted, reason });
-    // 묻는 동안 이미 멈춰 있었다(handlePauseRequest 참고). 수락이면 그대로 두고,
-    // 거절·무응답·요청자 이탈이면 그 자리에서 풀어 판을 되돌린다.
+    this.broadcast({ type: 'pauseRequestResult', accepted, reason, kind: req.kind });
+
+    // 다시 시작 요청 — 모두 수락했으면 풀고, 아니면 멈춘 채로 둔다(버튼을 "답을 기다리는 중"에서 되돌리도록 상태를 다시 보낸다).
+    if (req.kind === 'resume') {
+      if (accepted) this.applyResume();
+      else if (this.paused) this.broadcast({ type: 'pauseState', state: this.snapshot() });
+      return;
+    }
+
+    // 묻는 동안 이미 멈춰 있었다(handlePauseRequest 참고). 수락이면 그대로 두고 그때부터 자동 재개 시계를 건다
+    // (묻던 시간은 일시정지 시간에서 뺀다). 거절·무응답·요청자 이탈이면 그 자리에서 풀어 판을 되돌린다.
     if (!accepted) {
       this.applyResume();
     } else if (this.paused) {
       // ⚠️ 멈춤 자체는 달라진 것이 없어도 **한 번 더 보내야 한다** — 방금 pauseRequest를
       // 비웠으니 pausePendingAnswer가 false로 바뀌었고, 그걸 알리지 않으면 요청한 쪽
       // 버튼이 "응답을 기다리는 중"에 붙박인다(applyPause는 이미 멈춘 방에서 아무것도 안 한다).
+      this.startPauseClock();
       this.broadcast({ type: 'pauseState', state: this.snapshot() });
     } else {
       this.applyPause(req);
@@ -1832,26 +1925,48 @@ export class Room {
     this.clearTimer(); // ⚠️ turnDeadline·turnTotalMs를 0으로 되돌린다 — 위에서 먼저 챙긴 이유다.
     this.paused = true;
     this.pausedBy = by;
-    // 한 번의 일시정지에 상한을 둔다 — 멈춘 팀이 자리를 뜨면 상대는 풀 수도 없어
-    // 영영 기다리게 된다(푸는 것은 멈춘 팀뿐이다). 시간이 다 되면 서버가 대신 푼다.
-    // 혼자 놀기에는 기다릴 상대가 없으므로 상한을 두지 않는다(원하는 만큼 멈춰둔다).
-    if (this.vsComputer) {
-      this.broadcast({ type: 'pauseState', state: this.snapshot() });
-      return;
-    }
+    // 수락을 묻는 중이면 자동 재개 시계는 아직 걸지 않는다 — 묻는 시간은 일시정지 시간에서 뺀다(수락되면 settlePauseRequest가 건다).
+    if (this.pauseRequest?.kind !== 'pause') this.startPauseClock();
+    this.broadcast({ type: 'pauseState', state: this.snapshot() });
+  }
+
+  /**
+   * 한 번의 일시정지에 상한을 둔다 — 멈춘 팀이 자리를 뜨면 상대는 풀 수도 없어
+   * 영영 기다리게 된다(팀전은 푸는 것이 멈춘 팀뿐이다). 시간이 다 되면 서버가 대신 푼다 —
+   * 개인전의 다시 시작 요청이 답을 기다리는 중이어도 그렇다(그 시간은 일시정지 시간 안이다).
+   * 혼자 놀기에는 기다릴 상대가 없으므로 상한을 두지 않는다(원하는 만큼 멈춰둔다).
+   */
+  private startPauseClock(): void {
+    if (!this.state || this.vsComputer) return;
+    this.clearPauseAutoResume();
     const maxMs = this.state.settings.pauseMaxMin * 60_000;
     this.pauseAutoResumeDeadline = Date.now() + maxMs;
     this.pauseAutoResumeTimer = setTimeout(() => {
-      // 묻는 중에 시간이 다 되는 일은 없다(20초 < 최소 1분)지만, 설정을 바꿔도 안전하도록
-      // 대기 중인 요청을 먼저 거절과 같이 정리한다 — 그쪽이 applyResume까지 마친다.
-      if (this.pauseRequest) this.settlePauseRequest(false, 'timeout');
+      // 일시정지를 묻는 중에는 시계가 걸리지 않지만(applyPause), 설정을 바꿔도 안전하도록 그 요청은 거절과 같이 정리한다 —
+      // 그쪽이 applyResume까지 마친다. 다시 시작 요청은 applyResume이 함께 걷는다.
+      if (this.pauseRequest?.kind === 'pause') this.settlePauseRequest(false, 'timeout');
       else this.applyResume();
     }, maxMs);
-    this.broadcast({ type: 'pauseState', state: this.snapshot() });
   }
 
   private applyResume(): void {
     if (!this.paused) return;
+    // 답을 기다리던 요청이 남아 있으면 먼저 걷는다 — 다시 시작 요청은 성립한 것과 같고(판이 다시 흐른다),
+    // 일시정지 요청은 취소다(멈춘 사람이 항복해 풀린 경우).
+    const req = this.pauseRequest;
+    if (req) {
+      this.pauseRequest = null;
+      if (this.pauseRequestTimer !== null) {
+        clearTimeout(this.pauseRequestTimer);
+        this.pauseRequestTimer = null;
+      }
+      this.broadcast({
+        type: 'pauseRequestResult',
+        accepted: req.kind === 'resume',
+        reason: req.kind === 'resume' ? 'accepted' : 'cancelled',
+        kind: req.kind,
+      });
+    }
     this.paused = false;
     this.pausedBy = null;
     this.clearPauseAutoResume();
@@ -1941,8 +2056,10 @@ export class Room {
     const side = this.sideOf(p);
     if (side === null || state.teams[side].finish) return;
 
-    // 이 사람이 멈춰 둔 일시정지는 풀어 준다 — 다시 시작할 수 있는 사람이 멈춘 사람뿐이라, 그대로 두면
-    // 남은 사람들의 판이 자동 재개 시간까지 멈춰 있게 된다.
+    // 이 사람이 낸 요청은 취소되고, 이 사람에게 묻던 답은 빼고 센다(판에서 빠지는 사람이라 답할 자격이 없다).
+    this.dropFromPauseVote(p.playerId);
+    // 이 사람이 멈춰 둔 일시정지는 풀어 준다 — 곧바로 풀 수 있는 사람이 멈춘 사람뿐이라, 그대로 두면
+    // 남은 사람들이 전원 수락을 모으거나 자동 재개 시간까지 기다려야 한다.
     if (this.paused && this.pausedBy?.team === side) this.applyResume();
 
     const wasActive = state.activeTeam === side;
@@ -2011,9 +2128,9 @@ export class Room {
     }
     // 게임 중 이탈: 차례가 오면 타이머 만료로 자동 강제진행
 
-    // 답을 기다리던 사람이 사라지면 그 요청은 성립하지 않는다 — 물어본 쪽 화면에
-    // 20초짜리 창만 덩그러니 남지 않도록 곧바로 걷는다.
-    if (this.pauseRequest?.playerId === playerId) this.settlePauseRequest(false, 'cancelled');
+    // 요청한 사람이 사라지면 그 요청은 성립하지 않는다 — 물어본 쪽 화면에
+    // 20초짜리 창만 덩그러니 남지 않도록 곧바로 걷는다. 개인전에서 답할 사람이 사라지면 그 사람만 빼고 센다.
+    this.dropFromPauseVote(playerId);
 
     // 멈춘 팀에 아무도 남지 않으면 **아무도 다시 시작할 수 없다**(재개는 그 팀만
     // 할 수 있으므로). 판이 영영 멈춘 채로 남지 않도록 여기서 대신 풀어준다.

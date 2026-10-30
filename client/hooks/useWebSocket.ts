@@ -25,7 +25,7 @@ import type {
   SideId,
   Team,
 } from 'shared';
-import { DEFAULT_SETTINGS, EMOTE_QUEUE_MAX, EMOTE_SHOW_MS, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
+import { DEFAULT_SETTINGS, EMOTE_QUEUE_MAX, EMOTE_SHOW_MS, INDIVIDUAL_PAUSE_VOTE_SEC, PAUSE_REQUEST_TIMEOUT_SEC } from 'shared';
 
 type LobbyTeamNames = Record<Team, string | null>;
 
@@ -136,9 +136,12 @@ export interface UseWebSocketReturn {
   // 상대가 보낸 일시정지 요청 — 수락/거절 창을 띄울 근거다. receivedAt은 받은 순간의
   // 내 시계라, 남은 초는 (receivedAt + timeoutMs - now)로 화면이 직접 센다(서버 시계의
   // 절대 시각을 그대로 쓰지 않는다 — 턴 타이머와 같은 이유).
-  pauseRequest: { fromTeam: Team; fromNickname: string; timeoutMs: number; receivedAt: number } | null;
+  // kind 'resume'은 개인전에서 멈추지 않은 사람이 낸 다시 시작 요청이다(그 외에는 'pause').
+  pauseRequest: { fromTeam: SideId; fromNickname: string; timeoutMs: number; receivedAt: number; kind: 'pause' | 'resume' } | null;
   // 내가 보낸 요청의 답을 기다리는 중이면 그 마감 시각(내 시계 기준), 아니면 null.
   pauseWaitingUntil: number | null;
+  // 개인전 — 누군가 낸 다시 시작 요청의 답을 기다리는 마감 시각(내 시계 기준, 서버가 보낸 남은 ms를 받은 순간 환산한다). 없으면 null.
+  resumeVoteUntil: number | null;
   // 멈춰 있다면 자동으로 다시 시작되는 시각(내 시계 기준), 아니면 null.
   pauseUntil: number | null;
   // 요청이 거절/시간초과로 끝났을 때의 한 줄 안내(직접 닫거나 잠시 뒤 사라진다).
@@ -174,7 +177,8 @@ export interface UseWebSocketReturn {
   /** 시연 4장 — 볼 결말(강탈승·회복승·패배)을 고른다 */
   demoScene: (key: string) => void;
   // ─ 게임 중 메뉴(⏸) ─
-  requestPause: () => void;
+  // 개인전은 답을 기다리는 시간이 다르다(INDIVIDUAL_PAUSE_VOTE_SEC) — 부르는 쪽이 판의 종류를 알려 준다.
+  requestPause: (individual?: boolean) => void;
   respondPause: (accept: boolean) => void;
   resumeGame: () => void;
   /** 항복하기 — 상대 팀 승리로 게임을 끝내고 그대로 결과 화면을 본다. */
@@ -255,6 +259,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [pauseRequest, setPauseRequest] = useState<UseWebSocketReturn['pauseRequest']>(null);
   const [pauseWaitingUntil, setPauseWaitingUntil] = useState<number | null>(null);
   const [pauseUntil, setPauseUntil] = useState<number | null>(null);
+  const [resumeVoteUntil, setResumeVoteUntil] = useState<number | null>(null);
   const [pauseNotice, setPauseNotice] = useState<string | null>(null);
 
   const [eventDevStatus, setEventDevStatus] = useState<EventDevStatus | null>(null);
@@ -274,6 +279,7 @@ export function useWebSocket(): UseWebSocketReturn {
     setTurnDeadline(state.turnRemainingMs > 0 ? Date.now() + state.turnRemainingMs : 0);
     // 자동 재개까지 남은 시간도 **받은 그 순간** 내 시계로 환산한다(턴 타이머와 같은 규칙).
     setPauseUntil(state.pauseRemainingMs > 0 ? Date.now() + state.pauseRemainingMs : null);
+    setResumeVoteUntil(state.resumeVote ? Date.now() + state.resumeVote.remainingMs : null);
     // 목표점수 달성하기의 시작 룰렛 — 같은 규칙. 끝난 뒤의 스냅샷에는 실려 오지 않으므로 0으로 돌아간다(F5 뒤 다시 돌지 않는다).
     const intro = state.event?.introRemainingMs ?? 0;
     setEventIntroUntil(intro > 0 ? Date.now() + intro : 0);
@@ -445,9 +451,10 @@ export function useWebSocket(): UseWebSocketReturn {
           // 판을 멈추므로 이 메시지가 그 시작에도 온다 — 예전처럼 무조건 지우면 요청한
           // 쪽 버튼이 곧바로 "게임 계속하기"로 바뀌고(아직 수락 전인데) 물어보던 창도
           // 뜨자마자 사라진다. 멈춤/재개가 **확정**된 경우에만 정리한다.
+          // 개인전의 다시 시작 요청(resumeVote)도 답을 기다리는 중이다 — 그 창도 닫지 않는다.
           if (!msg.state.pausePendingAnswer) {
-            setPauseRequest(null);
             setPauseWaitingUntil(null);
+            if (!msg.state.resumeVote) setPauseRequest(null);
           }
           break;
 
@@ -457,20 +464,27 @@ export function useWebSocket(): UseWebSocketReturn {
             fromNickname: msg.fromNickname,
             timeoutMs: msg.timeoutMs,
             receivedAt: Date.now(),
+            kind: msg.kind ?? 'pause',
           });
           break;
 
         case 'pauseRequestResult':
           setPauseRequest(null);
           setPauseWaitingUntil(null);
-          // 수락이면 곧이어 pauseState가 화면을 멈추므로 따로 알릴 것이 없다.
+          // 수락이면 곧이어 pauseState가 화면을 멈추(풀)므로 따로 알릴 것이 없다.
           if (!msg.accepted) {
             setPauseNotice(
-              msg.reason === 'timeout'
-                ? '상대방이 시간 안에 답하지 않아 게임을 계속합니다.'
-                : msg.reason === 'cancelled'
-                  ? '일시정지 요청이 취소되었습니다.'
-                  : '상대방이 일시정지를 거절했습니다.',
+              msg.kind === 'resume'
+                ? msg.reason === 'timeout'
+                  ? '모두 답하지 않아 일시정지가 이어집니다.'
+                  : msg.reason === 'cancelled'
+                    ? '다시 시작 요청이 취소되었습니다.'
+                    : '다시 시작 요청이 거절되어 일시정지가 이어집니다.'
+                : msg.reason === 'timeout'
+                  ? '시간 안에 모두 답하지 않아 게임을 계속합니다.'
+                  : msg.reason === 'cancelled'
+                    ? '일시정지 요청이 취소되었습니다.'
+                    : '일시정지 요청이 거절되었습니다.',
             );
           }
           break;
@@ -580,11 +594,11 @@ export function useWebSocket(): UseWebSocketReturn {
   const demoContinue = useCallback(() => send({ type: 'demoContinue' }), [send]);
   const demoScene = useCallback((key: string) => send({ type: 'demoScene', key }), [send]);
 
-  const requestPause = useCallback(() => {
+  const requestPause = useCallback((individual = false) => {
     setPauseNotice(null);
     // 상대가 사람이 아니면(싱글) 서버가 곧바로 멈추고 pauseState가 이 값을 지운다.
     // 사람이면 그 답을 기다리는 동안 이 마감 시각으로 남은 초를 센다.
-    setPauseWaitingUntil(Date.now() + PAUSE_REQUEST_TIMEOUT_SEC * 1000);
+    setPauseWaitingUntil(Date.now() + (individual ? INDIVIDUAL_PAUSE_VOTE_SEC : PAUSE_REQUEST_TIMEOUT_SEC) * 1000);
     send({ type: 'pauseRequest' });
   }, [send]);
 
@@ -646,7 +660,7 @@ export function useWebSocket(): UseWebSocketReturn {
     isHost: memberId !== null && memberId === hostMemberId,
     roomNotice, clearRoomNotice, chatLog, emotes,
     gameState, turnDeadline, lastEvents, error,
-    pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
+    pauseRequest, pauseWaitingUntil, resumeVoteUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
     movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat, sendEmote,
     drawCard, chooseSkill, passSkill, demoContinue, demoScene,

@@ -1122,11 +1122,10 @@ export function useAnimationQueue(
         if (myHpDelta > 0) effectParts.push(`내 체력 +${myHpDelta}`);
         if (oppHpDelta < 0) effectParts.push(`상대 체력 ${oppHpDelta}`);
         if (animal === 'mermaid') effectParts.push(`다음 행동 ×${multiplierAfter}`);
-        if (skillEv.hpBoost) effectParts.push(`최대 체력 +${skillEv.hpBoost.pct}%`);
         if (skillEv.oppMultiplierCut) effectParts.push(`상대 배율 -${skillEv.oppMultiplierCut}`);
         if (skillEv.randomExp) {
           const r = skillEv.randomExp;
-          effectParts.push(`${SKILL_TITLE[r.animal]} ${r.levels ? `레벨 +${r.levels}` : `경험치 +${r.amount}`}`);
+          effectParts.push(`${SKILL_TITLE[r.animal]} 경험치 +${r.amount}`);
         }
         if (skillEv.oppDivisor) effectParts.push(`상대 효과 ÷${skillEv.oppDivisor}${skillEv.oppDivisorTurns ? `(${skillEv.oppDivisorTurns}턴)` : ''}`);
         for (const c of skillEv.cooldownCuts ?? []) {
@@ -1136,8 +1135,13 @@ export function useAnimationQueue(
           const c = skillEv.cleanse;
           effectParts.push(`${c.kind === 'bleed' ? '출혈' : '효과 감소'} ${c.after === 0 ? '정화' : `-${c.before - c.after}턴`}`);
         }
-        if (skillEv.regenAdded) effectParts.push(`지속 회복 +${skillEv.regenAdded.turns}턴`);
-        if (skillEv.bleedAdded) effectParts.push(`출혈 +${skillEv.bleedAdded.turns}턴`);
+        if (skillEv.regenAdded?.turns) effectParts.push(`지속 회복 +${skillEv.regenAdded.turns}턴`);
+        if (skillEv.regenAdded?.stackAdded) effectParts.push(`회복 중첩 +${skillEv.regenAdded.stackAdded}`);
+        if (skillEv.bleedAdded?.turns) effectParts.push(`출혈 +${skillEv.bleedAdded.turns}턴`);
+        if (skillEv.bleedAdded?.stackAdded) effectParts.push(`출혈 계수 +${skillEv.bleedAdded.stackAdded}`);
+        if (skillEv.evadeAdded) effectParts.push(`회피 ${skillEv.evadeAdded}%`);
+        // 상대가 디자인어 Lv.Max의 회피로 피했다 — 상대에게 거는 것은 하나도 들지 않았다
+        if (skillEv.evaded) effectParts.push('상대가 피했다!');
         if (skillEv.healCutAdded) effectParts.push(skillEv.healCutAdded.pct >= 100 ? '상대 회복 금지' : `상대 회복 -${skillEv.healCutAdded.pct}%`);
         if (skillEv.purged) effectParts.push('상대의 이로운 효과 제거');
         if (skillEv.divisorUsed) effectParts.push(`(÷${skillEv.divisorUsed} 적용)`);
@@ -1187,7 +1191,7 @@ export function useAnimationQueue(
           if (bonus) {
             const key = deltaKeyOf(team, bonus.animal);
             setPendingExpCredit(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) - bonus.amount) }));
-            addFloat(bonus.levels ? `${SKILL_TITLE[bonus.animal]} Lv +${bonus.levels}` : `${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
+            addFloat(`${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
           }
           // 이 효과의 체력 변화를 이제야 드러낸다(위 pendingHpCredit) — 특허랑이는 발톱이 닿는 순간(아래)
           const revealHp = () =>
@@ -1240,6 +1244,8 @@ export function useAnimationQueue(
                 if (myHpDelta > 0) pulseHp(team, 'gain');
                 addFloat(`${oppHpDelta}`, opp, 'penalty');
               }
+              // 디자인어 Lv.Max의 회피 — 발톱이 닿는 순간 대상 쪽에 "회피!"
+              if (skillEv.evaded) addFloat('회피!', opp, 'bonus');
             }, TIGER_RECOIL_DUR);
           } else {
             // 실용신양 — 즉시 체력 변화는 없지만, "메~"를 한 번만 틀면 임팩트가 약해서

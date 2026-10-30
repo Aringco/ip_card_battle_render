@@ -91,12 +91,12 @@ describe('강화 규칙 표', () => {
     expect(enhanceMermaidAfter(2, 1)).toBe(3);
     expect(enhanceMermaidAfter(8, 5)).toBe(13);
     expect(enhanceMermaidAfter(2, 4)).toBe(6);
-    expect(enhanceMermaidAfter(1, 6)).toBe(10);
-    expect(enhanceMermaidAfter(3, 6)).toBe(10);   // 3 × 2 = 6 < 새로 거는 ×10
+    expect(enhanceMermaidAfter(1, 6)).toBe(5);
+    expect(enhanceMermaidAfter(2, 6)).toBe(5);    // 2 × 2 = 4 < 새로 거는 ×5
     expect(enhanceMermaidAfter(10, 7)).toBe(30);  // 10 × 3
     expect(enhanceMermaidAfter(30, 10)).toBe(300); // 30 × 10
-    expect(enhanceMermaidAfter(1, 11)).toBe(100);
-    expect(enhanceMermaidAfter(5, 11)).toBe(500); // 5 × 100
+    expect(enhanceMermaidAfter(1, 11)).toBe(5);
+    expect(enhanceMermaidAfter(5, 11)).toBe(100); // 5 × 20
   });
 });
 
@@ -201,22 +201,23 @@ describe('강화 판 기술', () => {
     expect(s.teams.A.exp.rabbit).toBe(before);
   });
 
-  // 4차 표(2026-10-30) — 목표 100이면 Lv.6+의 "최대 체력 N%"가 곧 +N이다(시작 체력의 N%)
+  // 5차 표(2026-10-30) — 즉시 회복 · 지속 회복 턴 · Lv.6+ 회복 중첩(한 턴의 양 32 × 중첩, 그 전에는 2)
   it.each([
-    [1, 2, 1], [2, 4, 2], [3, 8, 4], [4, 16, 6], [5, 32, 8], [6, 64 + 10, 10], [7, 128 + 20, 12], [8, 256 + 30, 14],
-    [9, 512 + 50, 16], [10, 1024 + 100, 18], [11, 2048 + 200, 20],
-  ])('상표토끼 Lv.%i → 체력 +%i · 지속 회복 +%i턴', (level, gain, regen) => {
-    const s = newGame({ targetScore: 100 });
+    [1, 2, 1, 0, 2], [2, 4, 2, 0, 2], [3, 8, 3, 0, 2], [4, 16, 4, 0, 2], [5, 32, 5, 0, 2],
+    [6, 64, 5, 1, 32], [7, 64, 5, 2, 64], [8, 64, 5, 3, 96], [9, 64, 5, 4, 128], [10, 64, 5, 5, 160], [11, 128, 10, 10, 320],
+  ])('상표토끼 Lv.%i → 체력 +%i · 지속 회복 +%i턴 · 중첩 %i(한 턴 +%i)', (level, gain, regen, stack, tick) => {
+    const s = newGame({ targetScore: 200 });
     setLevel(s, 'A', 'rabbit', level);
     toChoice(s);
     const ev = processSkillChoice(s, 'rabbit').events[0];
-    expect(s.teams.A.hp).toBe(100 + gain);
-    // 지속 회복의 한 턴 양은 그 레벨의 기본 회복량(배율 · 최대 체력 % 무관)
-    expect(ev).toMatchObject({ regenAdded: { turns: regen, amount: enhanceValue('rabbit', level) } });
+    expect(s.teams.A.hp).toBe(200 + gain);
+    expect(ev).toMatchObject({ regenAdded: { turns: regen, amount: tick } });
+    if (stack > 0) expect(ev).toMatchObject({ regenAdded: { stackAdded: stack, stack } });
+    else expect(ev).not.toHaveProperty('regenAdded.stack');
   });
 
   it.each([
-    [1, 1], [2, 2], [3, 4], [4, 8], [5, 16], [6, 32], [7, 32], [8, 64], [9, 64], [10, 128], [11, 256],
+    [1, 1], [2, 2], [3, 4], [4, 8], [5, 16], [6, 32], [7, 32], [8, 32], [9, 32], [10, 32], [11, 64],
   ])('실용신양 Lv.%i → 다음 턴 추가 뽑기 %i장', (level, draws) => {
     const s = newGame();
     setLevel(s, 'A', 'sheep', level);
@@ -225,9 +226,11 @@ describe('강화 판 기술', () => {
     expect(s.teams.A.pendingExtraDraws).toBe(draws);
   });
 
+  // 출혈 한 턴의 양 — 계수가 없으면 10, Lv.6+에 맞으면 80 × (1 + 0.2 × 계수)
   it.each([
-    [1, 10, 1], [2, 20, 2], [3, 40, 4], [4, 60, 6], [5, 80, 8], [6, 100, 10], [7, 200, 12], [8, 400, 14], [9, 800, 16], [10, 1000, 18], [11, 2000, 20],
-  ])('특허랑이 Lv.%i → 상대 −%i · 출혈 +%i턴(내 체력은 그대로)', (level, dmg, bleed) => {
+    [1, 10, 1, 0, 10], [2, 20, 2, 0, 10], [3, 40, 4, 0, 10], [4, 60, 6, 0, 10], [5, 80, 8, 0, 10],
+    [6, 100, 10, 1, 96], [7, 100, 10, 2, 112], [8, 100, 10, 3, 128], [9, 100, 10, 4, 144], [10, 100, 10, 5, 160], [11, 200, 20, 10, 240],
+  ])('특허랑이 Lv.%i → 상대 −%i · 출혈 +%i턴 · 계수 %i(한 턴 −%i, 내 체력은 그대로)', (level, dmg, bleed, stack, tick) => {
     const s = newGame({ targetScore: 2500 });
     setLevel(s, 'A', 'tiger', level);
     toChoice(s);
@@ -235,7 +238,8 @@ describe('강화 판 기술', () => {
     // 출혈은 상대의 차례가 **끝날 때** 든다 — 내 기술로 차례가 넘어간 지금은 아직 즉시 피해뿐이다
     expect(s.teams.B.hp).toBe(2500 - dmg);
     expect(s.teams.A.hp).toBe(2500);
-    expect(ev).toMatchObject({ myHpDelta: 0, bleedAdded: { turns: bleed, amount: dmg } });
+    expect(ev).toMatchObject({ myHpDelta: 0, bleedAdded: { turns: bleed, amount: tick } });
+    if (stack > 0) expect(ev).toMatchObject({ bleedAdded: { stackAdded: stack, stack } });
   });
 
   it('디자인어 배율은 다음 기술의 효과에 곱해지고, 쓴 뒤 1로 돌아간다', () => {
@@ -251,25 +255,33 @@ describe('강화 판 기술', () => {
     expect(s.teams.A.pendingMultiplier).toBe(1);
   });
 
-  it('실용신양 — Lv.1~5는 무작위 카드 하나에 경험치, Lv.6부터는 레벨(둘 다 배율 반영)', () => {
+  it('실용신양 — 배율은 장수에만 걸리고, 무작위 카드의 경험치는 표의 값 × 경험치 중첩 배수(Lv.6+ 그 한 번의 곱)', () => {
     const s = newGame();
     setLevel(s, 'A', 'sheep', 3);
     s.teams.A.pendingMultiplier = 2;
     toChoice(s);
     const ev = applySkillChoice(s, 'A', 'sheep', undefined, () => 0.6); // ANIMALS[2] = 디자인어
-    expect(ev).toMatchObject({ extraDrawsQueued: 8, randomExp: { animal: 'mermaid', amount: 8 } });
-    expect(ev).not.toHaveProperty('randomExp.levels');
-    expect(s.teams.A.exp.mermaid).toBe(8);
+    expect(ev).toMatchObject({ extraDrawsQueued: 8, randomExp: { animal: 'mermaid', amount: 4 } });
+    expect(ev).not.toHaveProperty('randomExp.stack');
+    expect(s.teams.A.exp.mermaid).toBe(4);
 
-    // Lv.6 — 레벨 +1 × 배율 2 = +2(디자인어 임계값 20 × 2 = 경험치 40)
+    // Lv.7 — 경험치 10 × 중첩 배수 2 = 20(배율 2는 장수에만)
     const t = newGame();
-    setLevel(t, 'A', 'sheep', 6);
+    setLevel(t, 'A', 'sheep', 7);
     t.teams.A.pendingMultiplier = 2;
     toChoice(t);
     expect(applySkillChoice(t, 'A', 'sheep', undefined, () => 0.6)).toMatchObject({
-      extraDrawsQueued: 64, randomExp: { animal: 'mermaid', amount: 40, levels: 2 },
+      extraDrawsQueued: 64, randomExp: { animal: 'mermaid', amount: 20, stack: 2 },
     });
-    expect(levelOf(t, 'A', 'mermaid')).toBe(3);
+    expect(levelOf(t, 'A', 'mermaid')).toBe(2);
+
+    // Lv.Max — 64장 · 경험치 20 × 10 = 200
+    const u = newGame();
+    setLevel(u, 'A', 'sheep', 11);
+    toChoice(u);
+    expect(applySkillChoice(u, 'A', 'sheep', undefined, () => 0.6)).toMatchObject({
+      extraDrawsQueued: 64, randomExp: { animal: 'mermaid', amount: 200, stack: 10 },
+    });
   });
 
   it('디자인어 Lv.6부터 — 상대가 쌓아 둔 배율을 ÷N(반올림, ×1 아래로는 안 내려간다), Max는 ×1로', () => {
@@ -279,17 +291,17 @@ describe('강화 판 기술', () => {
     toChoice(s);
     expect(processSkillChoice(s, 'mermaid').events[0]).toMatchObject({ oppMultiplierCut: 9 });
     expect(s.teams.B.pendingMultiplier).toBe(3);
-    expect(s.teams.A.pendingMultiplier).toBe(30);
+    expect(s.teams.A.pendingMultiplier).toBe(5);
     const t = newGame();
     setLevel(t, 'A', 'mermaid', 11);
     t.teams.B.pendingMultiplier = 50;
     toChoice(t);
     processSkillChoice(t, 'mermaid');
     expect(t.teams.B.pendingMultiplier).toBe(1);
-    expect(t.teams.A.pendingMultiplier).toBe(100);
+    expect(t.teams.A.pendingMultiplier).toBe(5);
   });
 
-  it('디자인어 Lv.Max만 상대 기술 효과 ÷10(10턴)을 건다 — 다시 걸면 턴을 더하고 최대 20턴', () => {
+  it('디자인어 Lv.Max만 상대 기술 효과 ÷10(2턴)을 건다 — 다시 걸면 턴을 더하고 최대 5턴', () => {
     const s = newGame();
     setLevel(s, 'A', 'mermaid', 10);
     toChoice(s);
@@ -299,15 +311,15 @@ describe('강화 판 기술', () => {
     const t = newGame();
     setLevel(t, 'A', 'mermaid', 11);
     toChoice(t);
-    expect(processSkillChoice(t, 'mermaid').events[0]).toMatchObject({ oppDivisor: 10, oppDivisorTurns: 10 });
+    expect(processSkillChoice(t, 'mermaid').events[0]).toMatchObject({ oppDivisor: 10, oppDivisorTurns: 2 });
     expect(t.enhance!.divisors.B).toBe(10);
 
     const u = newGame();
     setLevel(u, 'A', 'mermaid', 11);
     u.enhance!.divisors.B = 10;
-    u.enhance!.divisorTurns.B = 15;
+    u.enhance!.divisorTurns.B = 4;
     toChoice(u);
-    expect(processSkillChoice(u, 'mermaid').events[0]).toMatchObject({ oppDivisorTurns: 20 });
+    expect(processSkillChoice(u, 'mermaid').events[0]).toMatchObject({ oppDivisorTurns: 5 });
   });
 
   it('나눗셈은 걸려 있는 동안 고르는 기술마다 쓰이고(반올림) 남는다 — 디자인어는 나뉘지 않는다', () => {
@@ -379,69 +391,110 @@ describe('강화 판 기술', () => {
   });
 });
 
-describe('강화 판 4차 표 — 지속 효과 · 회복 효율 · 정화 · 쿨타임 감소 · Max 별도 배수', () => {
-  it('특허랑이 — 출혈은 상대가 기술을 모두 쓰고 차례가 끝날 때마다 공격력만큼 깎는다(배율 무관)', () => {
+describe('강화 판 5차 표 — 지속 효과 · 중첩 · 회복 효율 · 정화 · 쿨타임 감소 · 회피 · Max 별도 배수', () => {
+  it('특허랑이 — 출혈은 상대가 기술을 모두 쓰고 차례가 끝날 때마다 든다(배율 무관 — Lv.1~5는 10)', () => {
     const s = newGame({ targetScore: 500 });
     setLevel(s, 'A', 'tiger', 5);
     s.teams.A.pendingMultiplier = 3; // 즉시 피해에만 곱해지고 출혈에는 안 곱해진다
     toChoice(s);
     const { events } = processSkillChoice(s, 'tiger');
-    expect(events[0]).toMatchObject({ oppHpDelta: -240, bleedAdded: { turns: 8, amount: 80 } });
+    expect(events[0]).toMatchObject({ oppHpDelta: -240, bleedAdded: { turns: 8, amount: 10 } });
     // 내 차례가 끝나 상대 차례가 시작될 때는 들지 않는다
     expect(events.find(e => e.type === 'enhanceTick')).toBeUndefined();
     expect(s.teams.B.hp).toBe(500 - 240);
-    expect(s.enhance!.bleed.B).toMatchObject({ turns: 8, amount: 80 });
+    expect(s.enhance!.bleed.B).toMatchObject({ turns: 8, amount: 10 });
     // B가 자기 차례(발동 턴의 다음 턴)를 마치는 순간 든다
     toChoice(s);
     const end = processPass(s).events;
-    expect(end.find(e => e.type === 'enhanceTick')).toMatchObject({ team: 'B', kind: 'bleed', amount: 80, turnsLeft: 7 });
-    expect(s.teams.B.hp).toBe(180);
+    expect(end.find(e => e.type === 'enhanceTick')).toMatchObject({ team: 'B', kind: 'bleed', amount: 10, turnsLeft: 7 });
+    expect(s.teams.B.hp).toBe(250);
     // 내 차례가 끝날 때는 B의 출혈이 들지 않는다
     toChoice(s);
     processPass(s);
-    expect(s.teams.B.hp).toBe(180);
+    expect(s.teams.B.hp).toBe(250);
   });
 
-  it('상표토끼 — 지속 회복은 건 차례에는 들지 않고, 내 다음 차례가 끝날 때부터 기본 회복량만큼 오른다', () => {
+  it('특허랑이 Lv.6+ — 출혈 누적 계수가 맞을 때마다 쌓이고(최대 20), 출혈이 끝나면 0으로 돌아간다', () => {
+    const s = newGame({ targetScore: 2500 });
+    setLevel(s, 'A', 'tiger', 6);
+    toChoice(s);
+    applySkillChoice(s, 'A', 'tiger');
+    expect(s.enhance!.bleed.B).toMatchObject({ turns: 10, amount: 96, stack: 1 });
+    applySkillChoice(s, 'A', 'tiger');
+    expect(s.enhance!.bleed.B).toMatchObject({ turns: 20, amount: 112, stack: 2 });
+
+    const t = newGame({ targetScore: 2500 });
+    setLevel(t, 'A', 'tiger', 11);
+    t.enhance!.bleed.B = { turns: 5, amount: 80 * 4, stack: 15 };
+    toChoice(t);
+    expect(applySkillChoice(t, 'A', 'tiger')).toMatchObject({ bleedAdded: { turns: 20, amount: 400, stackAdded: 5, stack: 20 } });
+
+    // 마지막 한 턴이 들면 계수도 사라진다 — 다음 Lv.1~5 출혈은 다시 10에서
+    const u = newGame({ targetScore: 2500 });
+    u.enhance!.bleed.B = { turns: 1, amount: 96, stack: 1 };
+    u.activeTeam = 'B';
+    toChoice(u);
+    processPass(u);
+    expect(u.enhance!.bleed.B).toMatchObject({ turns: 0, amount: 0, stack: 0 });
+  });
+
+  it('상표토끼 — 지속 회복은 건 차례에는 들지 않고, 내 다음 차례가 끝날 때부터 든다(Lv.1~5는 2)', () => {
     const s = newGame({ targetScore: 200 });
-    setLevel(s, 'A', 'rabbit', 3); // +8 · 지속 회복 4턴(턴당 8)
+    setLevel(s, 'A', 'rabbit', 3); // +8 · 지속 회복 3턴(턴당 2)
     toChoice(s);
     const { events } = processSkillChoice(s, 'rabbit');
-    expect(events[0]).toMatchObject({ myHpDelta: 8, regenAdded: { turns: 4, amount: 8 } });
+    expect(events[0]).toMatchObject({ myHpDelta: 8, regenAdded: { turns: 3, amount: 2 } });
     expect(events.find(e => e.type === 'enhanceTick')).toBeUndefined();
     expect(s.teams.A.hp).toBe(208);
-    expect(s.enhance!.regen.A).toMatchObject({ turns: 4, amount: 8 });
+    expect(s.enhance!.regen.A).toMatchObject({ turns: 3, amount: 2 });
     toChoice(s);
     processPass(s); // B
     expect(s.teams.A.hp).toBe(208);
     toChoice(s);
-    expect(processPass(s).events.find(e => e.type === 'enhanceTick')).toMatchObject({ team: 'A', kind: 'regen', amount: 8, turnsLeft: 3 });
-    expect(s.teams.A.hp).toBe(216);
+    expect(processPass(s).events.find(e => e.type === 'enhanceTick')).toMatchObject({ team: 'A', kind: 'regen', amount: 2, turnsLeft: 2 });
+    expect(s.teams.A.hp).toBe(210);
 
     // 이미 걸려 있던 몫은 다시 걸어도 이번 차례 끝에 그대로 든다 — 새로 더한 턴만 다음 차례부터
     const t = newGame({ targetScore: 200 });
-    t.enhance!.regen.A = { turns: 2, amount: 8 };
+    t.enhance!.regen.A = { turns: 2, amount: 2 };
     toChoice(t);
-    processSkillChoice(t, 'rabbit'); // Lv.1 — +2 · 지속 회복 +1턴(한 턴의 양은 큰 쪽 8)
-    expect(t.teams.A.hp).toBe(200 + 2 + 8);
+    processSkillChoice(t, 'rabbit'); // Lv.1 — +2 · 지속 회복 +1턴
+    expect(t.teams.A.hp).toBe(200 + 2 + 2);
     expect(t.enhance!.regen.A.turns).toBe(2);
   });
 
-  it('출혈·지속 회복은 최대 40턴까지만 쌓인다 — 꽉 차면 턴은 그대로', () => {
+  it('상표토끼 Lv.6+ — 회복 중첩이 쓸 때마다 쌓이고(최대 20), 한 턴의 양은 32 × 중첩', () => {
+    const s = newGame({ targetScore: 2500 });
+    setLevel(s, 'A', 'rabbit', 6);
+    toChoice(s);
+    applySkillChoice(s, 'A', 'rabbit');
+    expect(s.enhance!.regen.A).toMatchObject({ turns: 5, amount: 32, stack: 1 });
+    setLevel(s, 'A', 'rabbit', 7);
+    applySkillChoice(s, 'A', 'rabbit');
+    expect(s.enhance!.regen.A).toMatchObject({ turns: 10, amount: 96, stack: 3 });
+
+    const t = newGame({ targetScore: 2500 });
+    setLevel(t, 'A', 'rabbit', 11);
+    t.enhance!.regen.A = { turns: 2, amount: 32 * 18, stack: 18 };
+    toChoice(t);
+    expect(applySkillChoice(t, 'A', 'rabbit')).toMatchObject({ regenAdded: { turns: 10, amount: 640, stackAdded: 2, stack: 20 } });
+  });
+
+  it('지속 회복은 최대 20턴, 출혈은 최대 40턴까지만 쌓인다 — 꽉 차면 턴은 그대로', () => {
     const s = newGame({ targetScore: 2500 });
     setLevel(s, 'A', 'tiger', 11);
-    s.enhance!.bleed.B = { turns: 38, amount: 2000 };
+    s.enhance!.bleed.B = { turns: 38, amount: 240, stack: 10 };
     toChoice(s);
     // 38 + 20 → 40에서 잘린다(더해진 것은 2턴)
-    expect(processSkillChoice(s, 'tiger').events[0]).toMatchObject({ bleedAdded: { turns: 2, amount: 2000 } });
+    expect(processSkillChoice(s, 'tiger').events[0]).toMatchObject({ bleedAdded: { turns: 2, stack: 20 } });
     expect(s.enhance!.bleed.B.turns).toBe(40);
 
     const u = newGame({ targetScore: 2500 });
-    u.enhance!.regen.A = { turns: 40, amount: 2 };
+    u.enhance!.regen.A = { turns: 20, amount: 2 };
     toChoice(u);
-    // 이미 40이면 아예 더하지 않는다(regenAdded 없음). 내 차례가 끝나며 한 번 들어 39가 남는다
+    // 이미 20이면 아예 더하지 않는다(regenAdded 없음). 내 차례가 끝나며 한 번 들어 19가 남는다
     expect(processSkillChoice(u, 'rabbit').events[0]).not.toHaveProperty('regenAdded');
-    expect(u.enhance!.regen.A.turns).toBe(39);
+    expect(u.enhance!.regen.A.turns).toBe(19);
   });
 
   it('출혈과 지속 회복이 함께 있으면 출혈이 먼저 — 출혈로 0이 되면 회복 없이 진다', () => {
@@ -469,18 +522,18 @@ describe('강화 판 4차 표 — 지속 효과 · 회복 효율 · 정화 · �
 
   it('특허랑이 Lv.6+ — 상대의 다음 1턴 동안 회복(기술 · 지속 회복)이 N% 줄고, 그 차례가 끝나면 풀린다', () => {
     const s = newGame({ targetScore: 500 });
-    setLevel(s, 'A', 'tiger', 8); // −400 · 회복 효율 −30%
+    setLevel(s, 'A', 'tiger', 8); // −100 · 회복 효율 −30%
     toChoice(s);
-    expect(processSkillChoice(s, 'tiger').events[0]).toMatchObject({ oppHpDelta: -400, healCutAdded: { pct: 30, turns: 1 } });
+    expect(processSkillChoice(s, 'tiger').events[0]).toMatchObject({ oppHpDelta: -100, healCutAdded: { pct: 30, turns: 1 } });
     s.enhance!.bleed.B = { turns: 0, amount: 0 }; // 회복만 보려고 출혈은 걷는다
-    s.enhance!.regen.B = { turns: 2, amount: 10 };
+    s.enhance!.regen.B = { turns: 2, amount: 32, stack: 1 };
     setLevel(s, 'B', 'rabbit', 4); // +16 → ×0.7 = 11
     toChoice(s);
     const { events } = processSkillChoice(s, 'rabbit');
     expect(events[0]).toMatchObject({ myHpDelta: 11, healCutUsed: 30 });
-    // 그 차례 끝의 지속 회복도 줄어든다 — 한 턴의 양 16(큰 쪽) × 0.7 = 11
-    expect(events.find(e => e.type === 'enhanceTick')).toMatchObject({ kind: 'regen', amount: 11, healCutUsed: 30 });
-    expect(s.teams.B.hp).toBe(100 + 11 + 11);
+    // 그 차례 끝의 지속 회복도 줄어든다 — 32 × 0.7 = 22
+    expect(events.find(e => e.type === 'enhanceTick')).toMatchObject({ kind: 'regen', amount: 22, healCutUsed: 30 });
+    expect(s.teams.B.hp).toBe(400 + 11 + 22);
     expect(s.enhance!.healCut.B).toEqual({ turns: 0, pct: 0 });
 
     // Lv.Max는 −100%(회복 금지)
@@ -493,15 +546,20 @@ describe('강화 판 4차 표 — 지속 효과 · 회복 효율 · 정화 · �
     expect(processSkillChoice(t, 'rabbit').events[0]).toMatchObject({ myHpDelta: 0, healCutUsed: 100 });
   });
 
-  it('특허랑이 Lv.Max — 상대의 이로운 효과(지속 회복 · 배율 · 다음 턴 추가 뽑기)를 모두 걷는다', () => {
+  it('특허랑이 Lv.Max — 상대의 이로운 효과(지속 회복과 중첩 · 배율 · 다음 턴 추가 뽑기 · 회피)를 모두 걷는다', () => {
     const s = newGame({ targetScore: 2500 });
     setLevel(s, 'A', 'tiger', 11);
-    s.enhance!.regen.B = { turns: 5, amount: 10 };
+    s.enhance!.regen.B = { turns: 5, amount: 64, stack: 2 };
+    s.enhance!.evade!.B = 20;
     s.teams.B.pendingMultiplier = 7;
     s.teams.B.pendingExtraDraws = 12;
     toChoice(s);
-    expect(processSkillChoice(s, 'tiger').events[0]).toMatchObject({ purged: { regenTurns: 5, multiplier: 7, extraDraws: 12 } });
+    // 회피를 굴리는 첫 rng(0.99 → 99%)는 빗나간다
+    const ev = applySkillChoice(s, 'A', 'tiger', undefined, () => 0.99);
+    expect(ev).toMatchObject({ purged: { regenTurns: 5, multiplier: 7, extraDraws: 12 } });
     expect(s.enhance!.regen.B.turns).toBe(0);
+    expect(s.enhance!.regen.B.stack ?? 0).toBe(0);
+    expect(s.enhance!.evade!.B).toBe(0);
     expect(s.teams.B.pendingMultiplier).toBe(1);
     expect(s.teams.B.pendingExtraDraws).toBe(0);
 
@@ -513,7 +571,42 @@ describe('강화 판 4차 표 — 지속 효과 · 회복 효율 · 정화 · �
     expect(t.teams.B.pendingMultiplier).toBe(7);
   });
 
-  it('상표토끼 Lv.6+ — 나에게 걸린 부정한 효과 하나의 남은 턴을 줄이고, Max는 정화한다', () => {
+  it('디자인어 Lv.Max — 내 다음 차례까지 나를 노리는 기술을 20% 확률로 피한다(공격마다 따로 굴린다)', () => {
+    const s = newGame({ targetScore: 200 });
+    setLevel(s, 'A', 'mermaid', 11);
+    toChoice(s);
+    expect(processSkillChoice(s, 'mermaid').events[0]).toMatchObject({ evadeAdded: 20 });
+    expect(s.enhance!.evade!.A).toBe(20);
+    s.enhance!.divisors.B = 1; // 같은 기술의 ÷10은 걷어 두고 회피만 본다
+    s.enhance!.divisorTurns.B = 0;
+    // B 차례 — 0.1(10%)이면 피한다: 피해 · 출혈이 하나도 들지 않는다
+    setLevel(s, 'B', 'tiger', 6);
+    toChoice(s);
+    const dodged = applySkillChoice(s, 'B', 'tiger', undefined, () => 0.1);
+    expect(dodged).toMatchObject({ evaded: true, oppHpDelta: 0 });
+    expect(dodged).not.toHaveProperty('bleedAdded');
+    expect(s.teams.A.hp).toBe(200);
+    expect(s.enhance!.bleed.A.turns).toBe(0);
+    // 다음 공격은 다시 굴린다 — 0.5(50%)면 맞는다
+    s.enhance!.cooldowns.B.tiger = 0;
+    const hit = applySkillChoice(s, 'B', 'tiger', undefined, () => 0.5);
+    expect(hit).not.toHaveProperty('evaded');
+    expect(s.teams.A.hp).toBe(100);
+    // 디자인어의 배율 나누기도 피한다 — 자기 배율은 그대로 오른다
+    s.teams.A.pendingMultiplier = 12;
+    setLevel(s, 'B', 'mermaid', 8);
+    const div = applySkillChoice(s, 'B', 'mermaid', undefined, () => 0.1);
+    expect(div).toMatchObject({ evaded: true, multiplierAfter: 5 });
+    expect(div).not.toHaveProperty('oppMultiplierCut');
+    expect(s.teams.A.pendingMultiplier).toBe(12);
+    // 내 차례가 다시 오면 회피가 끝난다
+    toChoice(s);
+    processPass(s);
+    expect(s.activeTeam).toBe('A');
+    expect(s.enhance!.evade!.A).toBe(0);
+  });
+
+  it('상표토끼 Lv.6+ — 나에게 걸린 부정한 효과 하나의 남은 턴을 줄이고, Max는 정화한다(계수도 함께)', () => {
     const s = newGame({ targetScore: 200 });
     s.enhance!.bleed.A = { turns: 4, amount: 20 };
     setLevel(s, 'A', 'rabbit', 7);
@@ -524,31 +617,31 @@ describe('강화 판 4차 표 — 지속 효과 · 회복 효율 · 정화 · �
     expect(s.enhance!.bleed.A.turns).toBe(1);
 
     const t = newGame({ targetScore: 2500 });
-    t.enhance!.bleed.A = { turns: 4, amount: 20 };
+    t.enhance!.bleed.A = { turns: 4, amount: 112, stack: 2 };
     setLevel(t, 'A', 'rabbit', 11);
     toChoice(t);
     processSkillChoice(t, 'rabbit');
-    expect(t.enhance!.bleed.A).toMatchObject({ turns: 0, amount: 0 });
+    expect(t.enhance!.bleed.A).toMatchObject({ turns: 0, amount: 0, stack: 0 });
   });
 
-  it('상표토끼의 정화는 걸려 있는 효과 감소도 고를 수 있다(나눗셈은 이제 쓴다고 사라지지 않는다)', () => {
+  it('상표토끼의 정화는 걸려 있는 효과 감소도 고를 수 있다(나눗셈은 쓴다고 사라지지 않는다)', () => {
     const s = newGame({ targetScore: 200 });
     s.enhance!.divisors.A = 10;
     s.enhance!.divisorTurns.A = 2;
     s.enhance!.bleed.A = { turns: 3, amount: 10 };
-    setLevel(s, 'A', 'rabbit', 6); // 64 ÷10 = 6, 시작 체력 10% 20 ÷10 = 2
+    setLevel(s, 'A', 'rabbit', 6); // 64 ÷10 = 6
     toChoice(s);
     const ev = applySkillChoice(s, 'A', 'rabbit', undefined, () => 0.99); // [출혈, 효과 감소] 중 뒤쪽
-    expect(ev).toMatchObject({ myHpDelta: 8, divisorUsed: 10, cleanse: { kind: 'divisor', before: 2, after: 1 } });
+    expect(ev).toMatchObject({ myHpDelta: 6, divisorUsed: 10, cleanse: { kind: 'divisor', before: 2, after: 1 } });
     expect(s.enhance!.divisors.A).toBe(10);
   });
 
-  it('디자인어 Lv.Max — 효과 감소는 상대 차례 10번이 끝나면 사라진다(그 사이 기술을 골라도 남는다)', () => {
+  it('디자인어 Lv.Max — 효과 감소는 상대 차례 2번이 끝나면 사라진다(그 사이 기술을 골라도 남는다)', () => {
     const s = newGame({ targetScore: 200 });
     setLevel(s, 'A', 'mermaid', 11);
     toChoice(s);
-    expect(processSkillChoice(s, 'mermaid').events[0]).toMatchObject({ oppDivisor: 10, oppDivisorTurns: 10 });
-    for (let i = 0; i < 10; i++) {
+    expect(processSkillChoice(s, 'mermaid').events[0]).toMatchObject({ oppDivisor: 10, oppDivisorTurns: 2 });
+    for (let i = 0; i < 2; i++) {
       expect(s.enhance!.divisors.B).toBe(10);
       toChoice(s); processPass(s); // B 넘김
       toChoice(s); processPass(s); // A 넘김
@@ -580,45 +673,46 @@ describe('강화 판 4차 표 — 지속 효과 · 회복 효율 · 정화 · �
     expect(t.enhance!.cooldowns.A).toMatchObject({ rabbit: 0, mermaid: 0, tiger: 3 });
   });
 
-  it('Lv.Max 별도 배수 — 임계값을 더 채울 때마다 ×1씩, 지금 걸린 배율에 곱한다(×7 × ×3 = ×21)', () => {
+  it('Lv.Max 별도 배수 — 임계값을 더 채울 때마다 ×1씩, 지금 걸린 배율에 곱한다(×7 × ×3 = ×21, 장수에만)', () => {
     const s = newGame({ targetScore: 2500 });
     s.teams.A.exp.sheep = 10 * 12; // Max(100) + 20 → ×3
     s.teams.A.pendingMultiplier = 7;
     toChoice(s);
     const ev = applySkillChoice(s, 'A', 'sheep', undefined, rng0);
-    expect(ev).toMatchObject({ overMultiplier: 3, extraDrawsQueued: 256 * 21, randomExp: { animal: 'sheep', levels: 10 * 21 } });
+    expect(ev).toMatchObject({ overMultiplier: 3, extraDrawsQueued: 64 * 21, randomExp: { animal: 'sheep', amount: 200 } });
   });
 
-  it('Lv.Max 별도 배수는 짝 효과에도 걸리고, 디자인어는 거는 배율이 그만큼 커진다', () => {
+  it('Lv.Max 별도 배수는 짝 효과에도 걸리고, 디자인어 자신에게는 걸리지 않는다', () => {
     const s = newGame({ targetScore: 2500 });
     s.teams.A.exp.mermaid = 20 * 11; // ×2
     toChoice(s);
-    expect(processSkillChoice(s, 'mermaid').events[0]).toMatchObject({ overMultiplier: 2, multiplierAfter: 200 });
+    const mermaid = processSkillChoice(s, 'mermaid').events[0];
+    expect(mermaid).toMatchObject({ multiplierAfter: 5 });
+    expect(mermaid).not.toHaveProperty('overMultiplier');
 
     const t = newGame({ targetScore: 2500 });
     for (const a of ANIMALS) t.stacks[a] = [];
     t.teams.A.exp.rabbit = 10 * 12 - 1; // 짝(+2)으로 Max + 21 → ×3
     t.stacks.rabbit.push({ id: 90010, animal: 'rabbit', num: 1, collectedBy: null });
     const pair = processPlayerAction(t, 'house', rng0).events.find(e => e.type === 'skillApplied');
-    // 즉시 회복 2048 × 3 + 시작 체력 200%(5000) × 3
-    expect(pair).toMatchObject({ pair: true, overMultiplier: 3, myHpDelta: 2048 * 3 + 5000 * 3 });
+    expect(pair).toMatchObject({ pair: true, overMultiplier: 3, myHpDelta: 128 * 3 });
   });
 
   it('Lv.Max 별도 배수는 그 카드를 쓰면 ×1로 돌아간다 — 다음 배수까지 쌓던 나머지는 남고, 짝 효과로는 깎지 않는다', () => {
     const s = newGame({ targetScore: 2500 });
     s.teams.A.exp.sheep = 10 * 13 + 7; // Max(100) + 37 → ×4, 나머지 7
     toChoice(s);
-    // 효과에는 ×4가 그대로 곱해지고, 그 뒤 (4 − 1) × 10 = 30을 깎는다(무작위 레벨은 디자인어에게)
-    expect(applySkillChoice(s, 'A', 'sheep', undefined, () => 0.6)).toMatchObject({ overMultiplier: 4, extraDrawsQueued: 256 * 4, expSpent: 30 });
+    // 효과에는 ×4가 그대로 곱해지고, 그 뒤 (4 − 1) × 10 = 30을 깎는다(무작위 경험치는 디자인어에게)
+    expect(applySkillChoice(s, 'A', 'sheep', undefined, () => 0.6)).toMatchObject({ overMultiplier: 4, extraDrawsQueued: 64 * 4, expSpent: 30 });
     expect(s.teams.A.exp.sheep).toBe(107);
     expect(expProgressFor(true, 'sheep', s.teams.A.exp.sheep)).toMatchObject({ level: 11, over: 1, inLevel: 7 });
 
-    // 실용신양이 자기 자신에게 레벨을 더했으면 그 몫은 남는다(깎는 것은 쓰기 전의 배수 몫뿐)
+    // 실용신양이 자기 자신에게 경험치를 더했으면 그 몫은 남는다(깎는 것은 쓰기 전의 배수 몫뿐)
     const t = newGame({ targetScore: 2500 });
     t.teams.A.exp.sheep = 137;
     toChoice(t);
-    applySkillChoice(t, 'A', 'sheep', undefined, rng0); // 무작위 레벨 +10 × 4가 실용신양에게
-    expect(t.teams.A.exp.sheep).toBe(137 - 30 + 40 * 10);
+    applySkillChoice(t, 'A', 'sheep', undefined, rng0); // 무작위 경험치 20 × 10이 실용신양에게
+    expect(t.teams.A.exp.sheep).toBe(137 - 30 + 200);
 
     // Max가 아니면 깎을 것이 없다
     const v = newGame();

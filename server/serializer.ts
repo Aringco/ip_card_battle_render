@@ -24,6 +24,7 @@ export function serializeState(
     paused: boolean;
     pausedBy: { team: SideId; nickname: string } | null;
     pendingAnswer: boolean;
+    resumeVote?: { team: SideId; nickname: string; remainingMs: number } | null;
     used: Record<SideId, number>;
     unlimited: boolean;
     remainingMs: number;
@@ -43,6 +44,7 @@ export function serializeState(
     paused: pause.paused,
     pausedBy: pause.pausedBy,
     pausePendingAnswer: pause.pendingAnswer,
+    resumeVote: pause.resumeVote ?? null,
     pauseUsed: { ...pause.used },
     pauseUnlimited: pause.unlimited,
     pauseRemainingMs: pause.remainingMs,

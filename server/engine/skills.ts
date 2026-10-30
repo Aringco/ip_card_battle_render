@@ -13,18 +13,25 @@ import {
   enhanceMermaidOppDivide,
   enhanceOppMultiplierAfter,
   enhanceOverMultiplier,
-  enhanceRabbitBoostPct,
   enhanceRabbitCleanse,
+  enhanceRabbitRegenStack,
   enhanceRabbitRegenTurns,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
-  enhanceSheepLevels,
+  enhanceSheepExpStack,
+  enhanceTigerBleedStack,
   enhanceTigerBleedTurns,
   enhanceTigerHealCut,
   enhanceTigerPurges,
+  enhanceBleedTick,
+  enhanceEvadeOf,
+  enhanceMermaidEvadePct,
+  enhanceRegenTick,
+  ENHANCE_BLEED_MAX_TURNS,
   ENHANCE_DIVISOR_MAX_TURNS,
-  ENHANCE_DOT_MAX_TURNS,
+  ENHANCE_REGEN_MAX_TURNS,
+  ENHANCE_STACK_MAX,
   ENHANCE_HEAL_CUT_TURNS,
   enhanceValue,
   opponentsOf,
@@ -190,16 +197,18 @@ export function applySkillChoice(
 }
 
 /**
- * 카드 강화 판 — 기술 한 번의 효과(고른 기술 · 짝 효과가 함께 쓴다). shared/enhance.ts의 표(2026-10-30 4차 표)를 따른다.
- * - 실용신양: 다음 내 턴 추가 뽑기 `값 × 배율`(쌓는다). Lv.1~5는 내 카드 넷 중 무작위 하나에 경험치 `+N × 배율`, Lv.6부터는 레벨 `+N × 배율`.
- *   Lv.6부터 내 **다른** 카드 중 쿨타임이 걸린 무작위 카드의 쿨타임 −1 ~ −3(Max는 두 장 초기화 — 배율 무관).
- * - 상표토끼: 내 체력 `+값 × 배율` · 지속 회복 +턴(한 턴에 그 레벨의 기본 회복량 — 배율 무관). Lv.6부터 시작 체력의 N% `× 배율`이 더 오르고,
- *   나에게 걸린 부정한 효과(효과 감소 · 출혈) 중 무작위 하나의 남은 턴 −N(Max는 정화 — 배율 무관).
- * - 디자인어: 내 배율을 걸거나 키운다(enhanceMermaidAfter — 배율을 곱하지 않는다). Lv.6부터 상대가 쌓아 둔 배율을 ÷N(Max는 ×1로).
- *   Lv.Max는 상대가 고르는 기술의 효과를 ÷10으로 만들고 그것이 10턴(쌓이면 최대 20턴) 이어진다(EnhanceState.divisors · divisorTurns).
- * - 특허랑이: 상대 체력 `−값 × 배율`(가진 만큼만 — 빼앗지 않는다) · 출혈 +턴(한 턴에 그 레벨의 기본 공격력 — 배율 무관).
- *   Lv.6부터 상대의 회복 효율 −N%(상대의 다음 1턴), Lv.Max는 상대의 이로운 효과(지속 회복 · 배율 · 다음 턴 추가 뽑기)를 모두 걷는다.
- * 수치 효과는 모두 enhanceAmount(기본값 × 배율 × Max 별도 배수 ÷ 나눗셈, 반올림)다. 내 회복은 상대가 건 회복 효율 감소를 거친다.
+ * 카드 강화 판 — 기술 한 번의 효과(고른 기술 · 짝 효과가 함께 쓴다). shared/enhance.ts의 표(2026-10-30 5차 표)를 따른다.
+ * **배율(mult — 디자인어 × Lv.Max 별도 배수)과 나눗셈(상대 디자인어 Lv.Max의 ÷10)을 받는 것은 실용신양의 장수 · 상표토끼의 즉시 회복 ·
+ * 특허랑이의 공격력 셋뿐이다.** 나머지는 표의 값 그대로다.
+ * - 실용신양: 다음 내 턴 추가 뽑기 `값 × 배율`(쌓는다) · 내 카드 넷 중 무작위 하나에 경험치 `+N × 경험치 중첩 배수`(Lv.6+ ×1 ~ Max ×10).
+ *   Lv.6부터 내 **다른** 카드 중 쿨타임이 걸린 무작위 카드의 쿨타임 −1 ~ −3(Max는 두 장 초기화).
+ * - 상표토끼: 내 체력 `+값 × 배율` · 지속 회복 +턴(최대 20). Lv.6부터 회복 중첩 +N(최대 20 — 한 턴의 양 32 × 중첩, 그 전에는 2)과
+ *   나에게 걸린 부정한 효과(효과 감소 · 출혈) 중 무작위 하나의 남은 턴 −N(Max는 정화).
+ * - 디자인어: 내 배율을 걸거나 키운다(enhanceMermaidAfter). Lv.6부터 상대가 쌓아 둔 배율을 ÷N(Max는 ×1로).
+ *   Lv.Max는 상대가 고르는 기술의 효과를 ÷10으로 만들고 그것이 2턴(쌓이면 최대 5턴) 이어지며, 내 다음 차례까지 상대 기술을 20% 확률로 피한다.
+ * - 특허랑이: 상대 체력 `−값 × 배율`(가진 만큼만 — 빼앗지 않는다) · 출혈 +턴(최대 40). Lv.6부터 출혈 누적 계수 +N(최대 20 — 한 턴의 양
+ *   80 × (1 + 0.2 × 계수), 그 전에는 10)과 상대의 회복 효율 −N%(상대의 다음 1턴), Lv.Max는 상대의 이로운 효과를 모두 걷는다.
+ * 상대에게 거는 것(특허랑이 전부 · 디자인어의 배율 나누기와 ÷10)은 상대의 기술 회피(디자인어 Lv.Max)에 걸리면 하나도 들지 않는다.
  * 경험치는 깎지 않는다(레벨은 쌓아 올린 강화 단계다). 배율·나눗셈을 쓰는지·쿨타임을 거는지는 부르는 쪽이 정한다.
  * 지속 효과는 발동한 차례의 **다음** 차례가 끝날 때부터 든다 — 자기 차례에 스스로 건 몫(지속 회복)은 fresh로 표시해 둔다(turnManager).
  */
@@ -226,77 +235,99 @@ function applyEnhanceEffect(
   | 'cleanse'
   | 'regenAdded'
   | 'bleedAdded'
-  | 'hpBoost'
   | 'healCutUsed'
   | 'healCutAdded'
   | 'purged'
+  | 'evadeAdded'
+  | 'evaded'
 > {
   const enh = state.enhance!;
   const me = state.teams[team];
-  const foe = opponent === undefined ? undefined : state.teams[opponent];
+  let foe = opponent === undefined ? undefined : state.teams[opponent];
   let myHpDelta = 0;
   let oppHpDelta = 0;
   let extraDrawsQueued = 0;
-  let randomExp: { animal: Animal; amount: number; levels?: number } | undefined;
+  let randomExp: { animal: Animal; amount: number; stack?: number } | undefined;
   let oppMultiplierCut: number | undefined;
   let oppDivisor: number | undefined;
   let oppDivisorTurns: number | undefined;
   const cooldownCuts: Array<{ animal: Animal; before: number; after: number }> = [];
   let cleanse: { kind: 'bleed' | 'divisor'; before: number; after: number } | undefined;
-  let regenAdded: { turns: number; amount: number } | undefined;
-  let bleedAdded: { turns: number; amount: number } | undefined;
-  let hpBoost: { amount: number; pct: number } | undefined;
+  let regenAdded: { turns: number; amount: number; stackAdded?: number; stack?: number } | undefined;
+  let bleedAdded: { turns: number; amount: number; stackAdded?: number; stack?: number } | undefined;
   let healCutUsed: number | undefined;
   let healCutAdded: { pct: number; turns: number } | undefined;
   let purged: { regenTurns: number; multiplier: number; extraDraws: number } | undefined;
+  let evadeAdded: number | undefined;
+  let evaded = false;
   // 실용신양의 무작위 경험치가 이 카드의 배수를 바꿀 수 있으므로 효과 전에 한 번 정한다
   const over = enhanceOverMultiplier(animal, me.exp[animal]);
   const amount = (base: number) => enhanceAmount(base, mult * over, divisor);
   const pick = <T>(list: readonly T[]): T => list[Math.floor(rng() * list.length)];
-  // 출혈 · 지속 회복을 더한다(최대 40턴 — 넘는 몫은 버리고, 한 턴의 양은 큰 쪽). 그 편이 지금 차례인 편이면(내가 나에게 건 지속 회복)
-  // 이번 차례 끝에는 들지 않도록 fresh에 함께 적어 둔다 — "발동 턴의 다음 턴부터"(turnManager.tickEnhanceStatus).
-  const addDot = (side: SideId, kind: 'bleed' | 'regen', turns: number, perTurn: number) => {
+
+  // 상대를 노리는 기술 — 상대가 디자인어 Lv.Max의 회피를 두르고 있으면 공격마다 따로 굴린다(피하면 상대에게 거는 것이 하나도 들지 않는다).
+  const hostile = animal === 'tiger' || (animal === 'mermaid' && (enhanceMermaidOppDivide(level) > 1 || enhanceMermaidDivide(level) > 1));
+  if (hostile && opponent !== undefined) {
+    const pct = enhanceEvadeOf(state, opponent);
+    if (pct > 0 && rng() * 100 < pct) {
+      evaded = true;
+      foe = undefined;
+    }
+  }
+
+  // 출혈 · 지속 회복을 더한다(턴은 더하고 상한에서 자르며, Lv.6+는 중첩(계수)도 더해 최대 20). 한 턴의 양은 중첩에서 다시 정한다.
+  // 그 편이 지금 차례인 편이면(내가 나에게 건 지속 회복) 이번 차례 끝에는 들지 않도록 fresh에 함께 적어 둔다 — "발동 턴의 다음 턴부터".
+  const addDot = (side: SideId, kind: 'bleed' | 'regen', turns: number, stackAdd: number) => {
     const d = (enh[kind][side] ??= { turns: 0, amount: 0 });
-    d.amount = Math.max(d.turns > 0 ? d.amount : 0, perTurn);
-    const added = Math.max(0, Math.min(turns, ENHANCE_DOT_MAX_TURNS - d.turns));
+    const cap = kind === 'bleed' ? ENHANCE_BLEED_MAX_TURNS : ENHANCE_REGEN_MAX_TURNS;
+    const added = Math.max(0, Math.min(turns, cap - d.turns));
     d.turns += added;
     if (added > 0 && side === state.activeTeam) d.fresh = (d.fresh ?? 0) + added;
-    return added > 0 ? { turns: added, amount: d.amount } : undefined;
+    if (d.turns <= 0) return undefined;
+    const before = d.stack ?? 0;
+    d.stack = Math.min(ENHANCE_STACK_MAX, before + stackAdd);
+    d.amount = kind === 'bleed' ? enhanceBleedTick(d.stack) : enhanceRegenTick(d.stack);
+    if (added === 0 && d.stack === before) return undefined;
+    return {
+      turns: added,
+      amount: d.amount,
+      ...(stackAdd > 0 ? { stackAdded: d.stack - before, stack: d.stack } : {}),
+    };
   };
 
   if (animal === 'mermaid') {
-    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level, over);
+    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level);
     if (enhanceMermaidOppDivide(level) > 1 && foe) {
       const before = foe.pendingMultiplier;
       foe.pendingMultiplier = enhanceOppMultiplierAfter(before, level);
       oppMultiplierCut = before - foe.pendingMultiplier;
     }
     const divide = enhanceMermaidDivide(level);
-    if (divide > 1 && opponent !== undefined) {
+    if (divide > 1 && foe && opponent !== undefined) {
       const had = (enh.divisors[opponent] ?? 1) > 1 ? (enh.divisorTurns[opponent] ?? 0) : 0;
       enh.divisors[opponent] = Math.max(enh.divisors[opponent] ?? 1, divide);
       enh.divisorTurns[opponent] = Math.min(ENHANCE_DIVISOR_MAX_TURNS, had + enhanceMermaidDivideTurns(level));
       oppDivisor = enh.divisors[opponent];
       oppDivisorTurns = enh.divisorTurns[opponent];
     }
+    // 기술 회피 — 내 다음 차례가 시작될 때 advanceTurn이 지운다
+    const evade = enhanceMermaidEvadePct(level);
+    if (evade > 0) {
+      enh.evade ??= {};
+      enh.evade[team] = Math.max(enh.evade[team] ?? 0, evade);
+      evadeAdded = enh.evade[team];
+    }
   } else if (animal === 'sheep') {
     extraDrawsQueued = amount(enhanceValue('sheep', level));
     // 쌓는다 — 짝 효과로 이미 예약된 몫을 기술이 지우면 안 된다(일반 판은 덮어쓴다)
     me.pendingExtraDraws += extraDrawsQueued;
-    const exp = enhanceSheepExp(level);
-    const levels = enhanceSheepLevels(level);
-    if (exp > 0) {
+    // 경험치(배율 무관) — Lv.6+는 그 한 번에 중첩 배수를 곱한다
+    const stack = enhanceSheepExpStack(level);
+    const bonus = enhanceSheepExp(level) * stack;
+    if (bonus > 0) {
       const target = pick(ANIMALS);
-      const bonus = amount(exp);
       me.exp[target] += bonus;
-      randomExp = { animal: target, amount: bonus };
-    } else if (levels > 0) {
-      // 레벨 +N — 그 카드의 임계값 N개만큼 경험치를 더한다(안에서 쌓은 몫이 남고, Max면 별도 배수가 그만큼 오른다)
-      const target = pick(ANIMALS);
-      const up = amount(levels);
-      const bonus = up * THRESHOLDS[target];
-      me.exp[target] += bonus;
-      randomExp = { animal: target, amount: bonus, levels: up };
+      randomExp = { animal: target, amount: bonus, ...(stack > 1 ? { stack } : {}) };
     }
     // 쿨타임 감소(배율 무관) — 실용신양 자신은 빠진다(Max의 초기화로 같은 차례에 자기를 또 쓰게 되면 안 된다)
     const cdCut = enhanceSheepCooldownCut(level);
@@ -309,14 +340,10 @@ function applyEnhanceEffect(
       cooldownCuts.push({ animal: target, before, after: cds[target] });
     }
   } else if (animal === 'rabbit') {
-    const heal = enhanceValue('rabbit', level);
-    const pct = enhanceRabbitBoostPct(level);
-    const boost = pct > 0 ? amount((state.settings.targetScore * pct) / 100) : 0;
-    const raw = amount(heal) + boost;
+    const raw = amount(enhanceValue('rabbit', level));
     const cut = enhanceHealCutOf(state, team);
     myHpDelta = enhanceHealAfterCut(raw, cut);
     if (cut > 0 && raw > 0) healCutUsed = cut;
-    if (pct > 0) hpBoost = { amount: boost, pct };
     // 부정한 효과 줄이기(배율 무관) — 나에게 걸린 것 중 무작위 하나(효과 감소 ÷N · 출혈). 걸린 것이 없으면 아무 일도 없다.
     const cleanseTurns = enhanceRabbitCleanse(level);
     const bad: Array<'bleed' | 'divisor'> = [];
@@ -329,7 +356,7 @@ function applyEnhanceEffect(
         const before = b.turns;
         b.turns = Math.max(0, before - cleanseTurns);
         b.fresh = Math.min(b.fresh ?? 0, b.turns);
-        if (b.turns === 0) b.amount = 0;
+        if (b.turns === 0) Object.assign(b, { amount: 0, stack: 0 });
         cleanse = { kind, before, after: b.turns };
       } else {
         const before = Math.max(1, enh.divisorTurns[team] ?? 0);
@@ -338,19 +365,19 @@ function applyEnhanceEffect(
         cleanse = { kind, before, after: enh.divisorTurns[team] };
       }
     }
-    regenAdded = addDot(team, 'regen', enhanceRabbitRegenTurns(level), heal);
+    regenAdded = addDot(team, 'regen', enhanceRabbitRegenTurns(level), enhanceRabbitRegenStack(level));
   } else {
-    const attack = enhanceValue('tiger', level);
-    oppHpDelta = -Math.min(amount(attack), Math.max(0, foe?.hp ?? 0));
-    if (opponent !== undefined) {
-      // Lv.Max — 상대의 이로운 효과를 먼저 모두 걷는다(지속 회복 · 쌓아 둔 배율 · 다음 턴 추가 뽑기)
-      if (enhanceTigerPurges(level) && foe) {
+    if (foe && opponent !== undefined) {
+      oppHpDelta = -Math.min(amount(enhanceValue('tiger', level)), Math.max(0, foe.hp));
+      // Lv.Max — 상대의 이로운 효과를 먼저 모두 걷는다(지속 회복과 그 중첩 · 쌓아 둔 배율 · 다음 턴 추가 뽑기 · 기술 회피)
+      if (enhanceTigerPurges(level)) {
         purged = { regenTurns: enh.regen[opponent]?.turns ?? 0, multiplier: foe.pendingMultiplier, extraDraws: foe.pendingExtraDraws };
         enh.regen[opponent] = { turns: 0, amount: 0 };
         foe.pendingMultiplier = 1;
         foe.pendingExtraDraws = 0;
+        if (enh.evade) enh.evade[opponent] = 0;
       }
-      bleedAdded = addDot(opponent, 'bleed', enhanceTigerBleedTurns(level), attack);
+      bleedAdded = addDot(opponent, 'bleed', enhanceTigerBleedTurns(level), enhanceTigerBleedStack(level));
       const healCut = enhanceTigerHealCut(level);
       if (healCut > 0) {
         const c = (enh.healCut[opponent] ??= { turns: 0, pct: 0 });
@@ -374,15 +401,16 @@ function applyEnhanceEffect(
     ...(oppMultiplierCut !== undefined ? { oppMultiplierCut } : {}),
     ...(oppDivisor !== undefined ? { oppDivisor } : {}),
     ...(oppDivisorTurns !== undefined ? { oppDivisorTurns } : {}),
-    ...(over > 1 ? { overMultiplier: over } : {}),
+    ...(over > 1 && animal !== 'mermaid' ? { overMultiplier: over } : {}),
     ...(cooldownCuts.length > 0 ? { cooldownCuts } : {}),
     ...(cleanse ? { cleanse } : {}),
     ...(regenAdded ? { regenAdded } : {}),
     ...(bleedAdded ? { bleedAdded } : {}),
-    ...(hpBoost ? { hpBoost } : {}),
     ...(healCutUsed !== undefined ? { healCutUsed } : {}),
     ...(healCutAdded ? { healCutAdded } : {}),
     ...(purged ? { purged } : {}),
+    ...(evadeAdded !== undefined ? { evadeAdded } : {}),
+    ...(evaded ? { evaded: true as const } : {}),
   };
 }
 

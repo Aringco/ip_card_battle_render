@@ -19,7 +19,8 @@ const RESULT_BACKGROUNDS = [
 
 interface Row {
   side: SideId;
-  rank: number;
+  /** 아직 순위가 정해지지 않았으면 null(판이 이어지는 중 — inProgress) */
+  rank: number | null;
   reason: string;
   hp: number;
 }
@@ -30,15 +31,19 @@ interface Row {
  * - 모든 판에서 1위부터 꼴찌까지 전원의 순위가 나온다. 승리 화면은 **1위만** 본다(공동 1위면 모두 승리).
  *   나머지는 패배 화면이다. 처음부터 관전자였던 사람은 판정 없이 순위표만 본다.
  * - 순위표는 `teams[side].finish`를 읽는다 — `gameEnd.winner`가 아니다(그 값은 호환용이고 공동 1위면 'draw'다).
+ * - **inProgress** — 판 도중 [나가기]로 나온 사람의 점수판(2026-10-30). 나간 순간까지의 순위표이고, 순위가 아직 정해지지 않은 사람은
+ *   맨 위에 "진행 중"으로 남는다(그들이 위쪽 순위를 다툰다).
  */
 export function IndividualEndScreen({
   gameState,
   mySide,
   onBack,
+  inProgress = false,
 }: {
   gameState: ClientGameState;
   mySide: SideId | null;
   onBack: () => void;
+  inProgress?: boolean;
 }) {
   const rows: Row[] = useMemo(() => {
     const list = gameState.turnOrder.map((side, order) => {
@@ -46,14 +51,14 @@ export function IndividualEndScreen({
       return {
         side,
         order,
-        rank: t.finish?.rank ?? gameState.turnOrder.length,
-        reason: t.finish ? FINISH_WORD[t.finish.reason] : '-',
+        rank: t.finish?.rank ?? (inProgress ? null : gameState.turnOrder.length),
+        reason: t.finish ? FINISH_WORD[t.finish.reason] : inProgress ? '진행 중' : '-',
         hp: t.hp,
       };
     });
-    list.sort((a, b) => a.rank - b.rank || a.order - b.order);
+    list.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.order - b.order);
     return list;
-  }, [gameState]);
+  }, [gameState, inProgress]);
 
   const myRank = mySide !== null ? gameState.teams[mySide]?.finish?.rank ?? null : null;
   const iWon = myRank === 1;
@@ -61,15 +66,18 @@ export function IndividualEndScreen({
   const tied = topRows.length > 1;
   const turnLimit = Object.values(gameState.teams).some(t => t.finish?.reason === 'turnLimit');
 
-  const winnerText =
-    mySide === null || myRank === null
+  const winnerText = inProgress
+    ? myRank === null ? '게임에서 나왔어요' : `${myRank}위 — 게임에서 나왔어요`
+    : mySide === null || myRank === null
       ? tied
         ? `공동 1위 — ${topRows.map(r => sideName(gameState, r.side)).join(', ')}`
         : `1위 — ${sideName(gameState, topRows[0]?.side ?? gameState.startingTeam)}`
       : iWon
         ? tied ? '공동 1위! 승리!' : '1위! 승리!'
         : `${myRank}위 — 패배`;
-  const reasonText = turnLimit ? '제한 턴 종료 — 남은 사람은 체력순으로 순위를 정했어요' : '순위가 모두 정해졌어요';
+  const reasonText = inProgress
+    ? '남은 사람들의 판은 계속되고 있어요 — 나온 순간까지의 순위표예요'
+    : turnLimit ? '제한 턴 종료 — 남은 사람은 체력순으로 순위를 정했어요' : '순위가 모두 정해졌어요';
 
   const [background] = useState(() => RESULT_BACKGROUNDS[Math.floor(Math.random() * RESULT_BACKGROUNDS.length)]);
   const confetti = useMemo(
@@ -109,7 +117,8 @@ export function IndividualEndScreen({
         ))}
 
         <div className="winner-bounce-in flex flex-col items-center gap-3">
-          {myRank === null ? (
+          {/* 판 도중 나온 사람은 메달 대신 깃발 — 메달 그림은 1위 · 그 밖(2위 그림) 둘뿐이다 */}
+          {myRank === null || inProgress ? (
             <div style={{ fontSize: '4rem' }}>🏁</div>
           ) : (
             <img
@@ -142,7 +151,7 @@ export function IndividualEndScreen({
                       r.rank === 1 ? 'bg-amber-100/80' : ''
                     } ${mine ? 'ring-2 ring-amber-400' : ''}`}
                   >
-                    <span className="w-9 text-right tabular-nums text-board-ink">{r.rank}위</span>
+                    <span className="w-9 text-right tabular-nums text-board-ink">{r.rank === null ? '-' : `${r.rank}위`}</span>
                     <span
                       aria-hidden
                       className="inline-block w-4 h-4 rounded-sm border border-black/30 shrink-0"

@@ -27,11 +27,14 @@ export default function GamePage() {
   const {
     gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, demoContinue, demoScene,
     error, connected, playerId,
-    pauseRequest, pauseWaitingUntil, pauseUntil, pauseNotice, clearPauseNotice,
+    pauseRequest, pauseWaitingUntil, resumeVoteUntil, pauseUntil, pauseNotice, clearPauseNotice,
     requestPause, respondPause, resumeGame, surrender, leaveGame, eventIntroUntil,
     emotes, sendEmote,
   } = useWebSocket();
   const [myTeam, setMyTeam] = useState<SideId | null>(null);
+  // 개인전에서 [나가기]로 판을 나온 사람의 편 — 그 뒤로는 서버가 이 화면에 아무것도 보내지 않으므로(방에서 빠졌다)
+  // 나간 순간의 상태로 점수판을 보여 준다. 나가면 playerId도 지워지므로 내 편은 여기 따로 붙들어 둔다.
+  const [leftSide, setLeftSide] = useState<SideId | null>(null);
 
   // 개인전 1:1(두 명)은 일반(팀전) 화면으로 그린다 — 편 id만 'A'(나)·'B'(상대)로 바꿔 화면·연출에 넘긴다(lib/duel.ts).
   // ⚠️ 이벤트는 **lastEvents가 바뀔 때만** 다시 만든다 — 상태만 바뀐 갱신(일시정지 등)에 새 배열을 만들면 연출 큐가
@@ -128,6 +131,18 @@ export default function GamePage() {
     router.push('/');
   }, [leaveGame, router]);
 
+  // 게임 중 메뉴의 [나가기] — 개인전에서 판에 앉아 있던 사람은 로비가 아니라 **점수판**으로 간다(2026-10-30 요청).
+  // 남은 사람들에게는 하위 순위로 확정되고(서버 forfeitIndividual), 나는 그 결과까지 실린 마지막 상태로 순위표를 본다.
+  const handleMenuLeave = useCallback(() => {
+    const side = gameState && gameState.mode === 'individual' && gameState.phase === 'playing' ? mySideOf(gameState, playerId) : null;
+    if (side === null) {
+      handleLeave();
+      return;
+    }
+    leaveGame();
+    setLeftSide(side);
+  }, [gameState, playerId, leaveGame, handleLeave]);
+
   // 이벤트 — 도전자는 이벤트 폼으로(로비가 그 폼을 연 채로 시작), 개발자는 로비로 돌아가 저절로 다시 대기한다
   // (개발자 세션은 eventSession에 남아 있으므로 로비가 마운트되자마자 대기를 다시 알린다 — 상시 대기).
   const handleEventBack = useCallback(() => {
@@ -160,6 +175,19 @@ export default function GamePage() {
   const canActInGame = individual ? mySide !== null && !isFinished(gameState, mySide) : myTeam !== null;
   // 개인전 1:1을 팀전 화면으로 그릴 때의 내 편 — 나는 언제나 왼쪽('A'), 관전자는 null
   const duelMyTeam: SideId | null = duel && mySide !== null ? 'A' : null;
+
+  // 개인전에서 나간 사람 — 판이 아직 이어지고 있어도 나간 순간까지의 순위표를 본다. 로비로는 이 화면의 버튼으로 간다
+  // (방에서는 이미 빠졌으니 다시 나가기를 보낼 필요가 없다).
+  if (leftSide !== null) {
+    return (
+      <IndividualEndScreen
+        gameState={gameState}
+        mySide={leftSide}
+        inProgress={gameState.phase === 'playing'}
+        onBack={() => router.push('/')}
+      />
+    );
+  }
 
   // 체력이 즉시 10/0에 닿아 게임이 끝난 경우, 그 결정타 연출(체력 구슬 반응 +
   // "결정타!" 강조)이 끝까지 재생된 뒤에야 종료 화면으로 넘어간다 — 승리를 만든
@@ -241,6 +269,8 @@ export default function GamePage() {
         paused={gameState.paused}
         pausedBy={gameState.pausedBy}
         pausePending={gameState.pausePendingAnswer}
+        resumeVote={gameState.resumeVote ?? null}
+        resumeVoteUntil={resumeVoteUntil}
         // 관전자(myTeam === null)는 애초에 멈출 수 없어 이 숫자를 쓰지 않는다.
         pauseLeft={
           individual
@@ -253,15 +283,16 @@ export default function GamePage() {
         pauseUntil={pauseUntil}
         myTeam={individual ? (canActInGame ? mySide : null) : myTeam}
         individual={individual}
+        ended={gameState.phase === 'ended'}
         pauseRequest={pauseRequest}
         pauseWaitingUntil={pauseWaitingUntil}
         pauseNotice={pauseNotice}
         onClearNotice={clearPauseNotice}
-        onRequestPause={requestPause}
+        onRequestPause={() => requestPause(individual)}
         onResume={resumeGame}
         onRespond={respondPause}
         onSurrender={surrender}
-        onLeave={handleLeave}
+        onLeave={handleMenuLeave}
         noPauseText={gameState.event ? '이벤트 판은 일시정지가 없어요' : undefined}
       />
       {/* 세로로 든 폰에 "가로로 돌려 주세요"를 덮는다. **항상 마운트하고** 보이는 조건은

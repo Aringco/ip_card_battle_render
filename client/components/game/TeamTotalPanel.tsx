@@ -62,6 +62,8 @@ export function TeamTotalPanel({
   const divisorTurns = enh?.divisorTurns?.[team] ?? 0;
   // 회복 효율 감소(상대 특허랑이 Lv.6+ — 이 편의 다음 1턴)
   const healCut = (enh?.healCut?.[team]?.turns ?? 0) > 0 ? enh!.healCut[team].pct : 0;
+  // 기술 회피(내 디자인어 Lv.Max — 내 다음 차례까지)
+  const evade = enh?.evade?.[team] ?? 0;
 
   const [activePulse, setActivePulse] = useState<{ id: number; direction: 'gain' | 'loss' } | null>(null);
   const [shards, setShards] = useState<{ dx: number; dy: number }[]>([]);
@@ -153,7 +155,7 @@ export function TeamTotalPanel({
       )}
       <p className="hp-orb-value tabular-nums">{hp}</p>
       {/* 남은 턴 — 핏방울(출혈) · 초록 십자가(지속 회복) 아이콘 안에 숫자. 상대 디자인어의 효과 감소(÷N)도 함께 둔다 */}
-      {(bleeding || healing || divisor > 1 || healCut > 0) && (
+      {(bleeding || healing || divisor > 1 || healCut > 0 || evade > 0) && (
         <div className="hp-orb-status">
           {bleeding && (
             <span className="hp-status hp-status-bleed" title={`출혈 — 차례를 마칠 때마다 체력 −${bleed!.amount} (${bleed!.turns}턴 남음)`}>
@@ -177,6 +179,12 @@ export function TeamTotalPanel({
             <span className="hp-status hp-status-healcut" title={healCut >= 100 ? '회복 금지 — 이번 차례에는 체력이 오르지 않는다' : `회복 효율 감소 — 이번 차례의 회복 −${healCut}%`}>
               <span className="hp-status-icon" aria-hidden />
               <b className="tabular-nums">{healCut >= 100 ? '✕' : `-${healCut}%`}</b>
+            </span>
+          )}
+          {evade > 0 && (
+            <span className="hp-status hp-status-evade" title={`기술 회피 — 다음 내 차례까지 나를 노리는 기술을 ${evade}% 확률로 피한다`}>
+              <span className="hp-status-icon" aria-hidden />
+              <b className="tabular-nums">{evade}%</b>
             </span>
           )}
         </div>
