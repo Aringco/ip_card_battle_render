@@ -58,3 +58,21 @@ export function finishLabel(state: ClientGameState, side: SideId): string | null
 }
 
 export { FINISH_WORD };
+
+/**
+ * 순위가 정해졌지만 아직 그 "n위 확정!" 연출이 재생되지 않은 편의 finish를 가린 상태(2026-10-31 — "승/패가 선반영된다").
+ * 서버는 체력이 0이 되는 그 갱신에 finish를 함께 싣는데, 그대로 그리면 체력이 내려가는 연출보다 먼저 상대 칸에 "n위 · 탈락"이 붙었다.
+ * hidden은 useAnimationQueue의 hiddenFinish. 가릴 것이 없으면 원래 객체를 그대로 돌려준다(받는 쪽이 매 렌더 새 객체로 보지 않게).
+ */
+export function withDisplayedFinish(state: ClientGameState, hidden: readonly SideId[]): ClientGameState {
+  const sides = hidden.filter(s => state.teams[s]?.finish);
+  if (sides.length === 0) return state;
+  const teams = { ...state.teams };
+  const ranks = { ...state.ranks };
+  for (const s of sides) {
+    const { finish: _finish, ...rest } = teams[s];
+    teams[s] = rest;
+    delete ranks[s];
+  }
+  return { ...state, teams, ranks };
+}

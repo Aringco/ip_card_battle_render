@@ -2,7 +2,6 @@ import { ANIMALS, ENHANCE_RESERVED_DRAW_CAP, SHEEP_SAFETY_CAP, SWEEP_BONUS_EXP, 
 import type { Animal, GameEvent, GameState, Place } from 'shared';
 import { dealOpeningSharedCards, drawCardAt, randomPlace } from './places';
 import type { RNG } from './places';
-import { applyEnhancePairEffect } from './skills';
 
 /**
  * 장소 클릭 처리.
@@ -143,8 +142,8 @@ export function settleStacks(state: GameState, rng: RNG = Math.random): GameEven
       exp,
       cardIds: uncollected.map(c => c.id),
     });
-    // 카드 강화 — 짝이 맞은 그 카드의 기술이 곧바로 발동한다(방금 더한 경험치까지 반영한 레벨). 시연은 강화 판이 아니라 닿지 않는다.
-    if (state.enhance) events.push(applyEnhancePairEffect(state, team, animal, rng));
+    // (카드 강화의 "짝 효과" — 짝이 맞은 카드의 기술이 그 자리에서 저절로 발동하던 규칙 — 는 2026-10-31 요청으로 걷었다.
+    //  짝이 맞는 순간 기술이 터지는 것이 직관적이지 않았다. 강화 판도 짝은 경험치만 올린다.)
   }
 
   return events;

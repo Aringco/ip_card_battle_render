@@ -80,6 +80,7 @@ export function serializeState(
       ? {
           enhance: {
             cooldowns: Object.fromEntries(Object.entries(state.enhance.cooldowns).map(([side, cd]) => [side, { ...cd }])),
+            usedThisTurn: [...(state.enhance.usedThisTurn ?? [])],
             ...cloneEnhanceStatus(state.enhance),
           },
         }

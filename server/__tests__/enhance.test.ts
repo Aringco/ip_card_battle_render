@@ -12,6 +12,7 @@ import {
   enhanceSkillsPerTurn,
   THRESHOLDS,
   enhanceCooldown,
+  enhanceCooldownShown,
   enhanceLevel,
   enhanceMermaidAfter,
   enhanceValue,
@@ -38,8 +39,8 @@ function newGame(overrides: Partial<typeof ENHANCE_SETTINGS> = {}): GameState {
 }
 
 /**
- * 지금 차례인 편을 곧장 기술 단계로 — 장소를 누르지 않는다. 강화 판은 뽑기에서 짝이 맞으면 효과가 저절로 터져 체력이 바뀌므로,
- * 기술 하나의 효과만 재려면 뽑기를 거치지 않아야 한다(뽑기·짝 효과는 아래 '짝 효과' 묶음이 따로 잰다).
+ * 지금 차례인 편을 곧장 기술 단계로 — 장소를 누르지 않는다. 기술 하나의 효과만 재려면 뽑기(짝 · 싹쓸이의 경험치)를 거치지 않는 편이
+ * 깔끔하다(뽑기 · 짝은 아래 '강화 판 짝' 묶음이 따로 잰다).
  */
 function toChoice(state: GameState): void {
   state.pendingChoice = state.activeTeam;
@@ -138,8 +139,8 @@ describe('강화 판 시작', () => {
   });
 });
 
-describe('강화 판 짝 효과', () => {
-  it('뽑는 카드는 모두 1이고, 짝이 맞으면 모인 장수만큼 경험치 + 그 카드의 기술이 곧바로 발동한다', () => {
+describe('강화 판 짝', () => {
+  it('뽑는 카드는 모두 1이고, 짝이 맞으면 모인 장수만큼 경험치만 오른다 — 그 카드의 기술은 발동하지 않는다(2026-10-31 짝 효과 해제)', () => {
     const s = newGame();
     for (const a of ANIMALS) s.stacks[a] = [];
     s.stacks.tiger.push({ id: 90002, animal: 'tiger', num: 1, collectedBy: null }); // 필드를 비우지 않는 구경꾼(비면 싹쓸이)
@@ -149,45 +150,27 @@ describe('강화 판 짝 효과', () => {
     const { events } = processPlayerAction(s, 'forest_road', rng0); // 숲길 3장 — 모두 토끼 → 4장 짝
     expect(s.stacks.rabbit.filter(c => c.collectedBy === 'B').length).toBe(4);
     expect(s.teams.B.exp.rabbit).toBe(4);
-    const pair = events.find(e => e.type === 'skillApplied');
-    expect(pair).toMatchObject({ team: 'B', animal: 'rabbit', level: 1, myHpDelta: 2, pair: true });
-    expect(s.teams.B.hp).toBe(27);
-    // 짝 효과는 쿨타임을 걸지 않는다 — 고른 기술의 차례는 그대로 열려 있다
+    expect(events.some(e => e.type === 'skillApplied')).toBe(false);
+    expect(s.teams.B.hp).toBe(25);
     expect(s.pendingChoice).toBe('B');
-    expect(s.enhance!.cooldowns.B.rabbit).toBe(0);
   });
 
-  it('레벨은 정산으로 오른 뒤의 값으로 — 이번 짝으로 Lv.2가 되면 Lv.2 효과', () => {
-    const s = newGame();
-    for (const a of ANIMALS) s.stacks[a] = [];
-    s.teams.A.exp.rabbit = 9;                // 짝 2장이면 11 → Lv.2
-    s.stacks.rabbit.push({ id: 90001, animal: 'rabbit', num: 1, collectedBy: null });
-    s.stacks.tiger.push({ id: 90003, animal: 'tiger', num: 1, collectedBy: null }); // 싹쓸이를 피하는 구경꾼
-    processPlayerAction(s, 'house', rng0);   // 토끼 1장 → 2장 짝
-    expect(s.teams.A.exp.rabbit).toBe(11);
-    expect(s.teams.A.hp).toBe(25 + 4);
-  });
-
-  it('짝 효과는 배율을 쓰지도 소모하지도 않는다', () => {
+  it('짝은 체력 · 배율 · 나눗셈을 건드리지 않는다 — 특허랑이 짝으로도 판이 끝나지 않는다', () => {
     const s = newGame();
     for (const a of ANIMALS) s.stacks[a] = [];
     s.teams.A.pendingMultiplier = 3;
-    s.stacks.rabbit.push({ id: 90002, animal: 'rabbit', num: 1, collectedBy: null });
-    processPlayerAction(s, 'house', rng0);
-    expect(s.teams.A.hp).toBe(27);
-    expect(s.teams.A.pendingMultiplier).toBe(3);
-  });
-
-  it('특허랑이 짝으로 상대가 0이 되면 기술 단계 없이 그 자리에서 이긴다', () => {
-    const s = newGame();
-    for (const a of ANIMALS) s.stacks[a] = [];
+    s.enhance!.divisors.A = 5;
     s.teams.B.hp = 1;
     s.stacks.tiger.push({ id: 90003, animal: 'tiger', num: 1, collectedBy: null });
+    s.stacks.rabbit.push({ id: 90005, animal: 'rabbit', num: 1, collectedBy: null }); // 싹쓸이를 피하는 구경꾼
     const { events } = processPlayerAction(s, 'dock', () => 0.99); // 부둣가 마지막 동물(호랑이) 3장 → 4장 짝
-    expect(s.phase).toBe('ended');
-    expect(s.winner).toBe('A');
-    expect(s.pendingChoice).toBeNull();
-    expect(events.at(-1)).toEqual({ type: 'gameEnd', winner: 'A', reason: 'knockout' });
+    expect(events.some(e => e.type === 'collect' && e.animal === 'tiger')).toBe(true);
+    expect(events.some(e => e.type === 'skillApplied' || e.type === 'gameEnd')).toBe(false);
+    expect(s.phase).toBe('playing');
+    expect(s.teams.B.hp).toBe(1);
+    expect(s.teams.A.pendingMultiplier).toBe(3);
+    expect(s.enhance!.divisors.A).toBe(5);
+    expect(s.pendingChoice).toBe('A');
   });
 });
 
@@ -355,16 +338,6 @@ describe('강화 판 기술', () => {
     expect(u.teams.A.hp).toBe(25);
   });
 
-  it('나눗셈은 짝 효과를 나누지도 소모하지도 않는다', () => {
-    const s = newGame();
-    for (const a of ANIMALS) s.stacks[a] = [];
-    s.enhance!.divisors.A = 5;
-    s.stacks.rabbit.push({ id: 90004, animal: 'rabbit', num: 1, collectedBy: null });
-    processPlayerAction(s, 'house', rng0);
-    expect(s.teams.A.hp).toBe(27);
-    expect(s.enhance!.divisors.A).toBe(5);
-  });
-
   it('쿨타임 — 특허랑이 Lv.1은 쓴 다음 내 차례 하나를 쉬고, 그다음 차례에 다시 열린다', () => {
     const s = newGame();
     toChoice(s);
@@ -388,6 +361,29 @@ describe('강화 판 기술', () => {
     cycle(s);
     processSkillChoice(s, 'rabbit');
     expect(s.enhance!.cooldowns.A.rabbit).toBe(1);
+  });
+
+  it('쿨타임 — 한 차례 2장 판에서 두 번째 기술을 골라도 앞서 쓴 카드의 남은 쿨타임은 줄지 않는다(화면 표시)', () => {
+    const s = newGame({ skillGrowth: true, skillGrowthTurns: 1, skillGrowthMax: 2 });
+    s.skillsPerTurn = 2;
+    toChoice(s);
+    processSkillChoice(s, 'tiger');
+    // 첫 장 뒤 — 아직 내 차례(기술 하나 더). 저장값에는 이 차례 몫(+1)이 들어 있지만 화면에는 쿨타임 그대로 보인다
+    expect(s.pendingChoice).toBe('A');
+    expect(s.enhance!.usedThisTurn).toEqual(['tiger']);
+    expect(eligibleAnimals(s, 'A')).not.toContain('tiger');
+    expect(enhanceCooldownShown(s, 'A', 'tiger')).toBe(enhanceCooldown('tiger', 1));
+    // 두 번째 장으로 차례가 끝나도 같은 숫자다 — 고른 횟수가 아니라 내 차례가 끝날 때만 준다
+    processSkillChoice(s, 'rabbit');
+    expect(s.activeTeam).toBe('B');
+    expect(s.enhance!.usedThisTurn).toEqual([]);
+    expect(enhanceCooldownShown(s, 'A', 'tiger')).toBe(enhanceCooldown('tiger', 1));
+    // 쿨타임 0인 상표토끼는 쓴 차례에만 잠기고(화면 0 = "다음 차례에 다시") 다음 내 차례에 바로 열린다
+    expect(s.enhance!.cooldowns.A.rabbit).toBe(0);
+    cycle(s);
+    expect(eligibleAnimals(s, 'A')).toContain('rabbit');
+    expect(eligibleAnimals(s, 'A')).not.toContain('tiger');
+    expect(enhanceCooldownShown(s, 'A', 'tiger')).toBe(1);
   });
 });
 
@@ -682,23 +678,16 @@ describe('강화 판 5차 표 — 지속 효과 · 중첩 · 회복 효율 · �
     expect(ev).toMatchObject({ overMultiplier: 3, extraDrawsQueued: 64 * 21, randomExp: { animal: 'sheep', amount: 200 } });
   });
 
-  it('Lv.Max 별도 배수는 짝 효과에도 걸리고, 디자인어 자신에게는 걸리지 않는다', () => {
+  it('Lv.Max 별도 배수는 디자인어 자신에게는 걸리지 않는다', () => {
     const s = newGame({ targetScore: 2500 });
     s.teams.A.exp.mermaid = 20 * 11; // ×2
     toChoice(s);
     const mermaid = processSkillChoice(s, 'mermaid').events[0];
     expect(mermaid).toMatchObject({ multiplierAfter: 5 });
     expect(mermaid).not.toHaveProperty('overMultiplier');
-
-    const t = newGame({ targetScore: 2500 });
-    for (const a of ANIMALS) t.stacks[a] = [];
-    t.teams.A.exp.rabbit = 10 * 12 - 1; // 짝(+2)으로 Max + 21 → ×3
-    t.stacks.rabbit.push({ id: 90010, animal: 'rabbit', num: 1, collectedBy: null });
-    const pair = processPlayerAction(t, 'house', rng0).events.find(e => e.type === 'skillApplied');
-    expect(pair).toMatchObject({ pair: true, overMultiplier: 3, myHpDelta: 128 * 3 });
   });
 
-  it('Lv.Max 별도 배수는 그 카드를 쓰면 ×1로 돌아간다 — 다음 배수까지 쌓던 나머지는 남고, 짝 효과로는 깎지 않는다', () => {
+  it('Lv.Max 별도 배수는 그 카드를 쓰면 ×1로 돌아간다 — 다음 배수까지 쌓던 나머지는 남는다', () => {
     const s = newGame({ targetScore: 2500 });
     s.teams.A.exp.sheep = 10 * 13 + 7; // Max(100) + 37 → ×4, 나머지 7
     toChoice(s);
@@ -720,16 +709,6 @@ describe('강화 판 5차 표 — 지속 효과 · 중첩 · 회복 효율 · �
     toChoice(v);
     expect(applySkillChoice(v, 'A', 'tiger')).toMatchObject({ expSpent: 0 });
     expect(v.teams.A.exp.tiger).toBe(20 * 9);
-
-    // 짝 효과는 사용이 아니라 깎지 않는다
-    const u = newGame({ targetScore: 2500 });
-    for (const a of ANIMALS) u.stacks[a] = [];
-    u.teams.A.exp.rabbit = 10 * 12 - 1;
-    u.stacks.rabbit.push({ id: 90011, animal: 'rabbit', num: 1, collectedBy: null });
-    u.stacks.tiger.push({ id: 90012, animal: 'tiger', num: 1, collectedBy: null }); // 싹쓸이 보너스를 피하는 구경꾼
-    const pair = processPlayerAction(u, 'house', rng0).events.find(e => e.type === 'skillApplied');
-    expect(pair).toMatchObject({ pair: true, overMultiplier: 3, expSpent: 0 });
-    expect(u.teams.A.exp.rabbit).toBe(121);
   });
 });
 
@@ -990,7 +969,7 @@ describe('방 — 카드 강화 혼자 놀기', () => {
     room.handlePassSkill('me');
     jest.advanceTimersByTime(20_000);
     const bSkills = ws.sent.flatMap(m => (m.type === 'actionResult' ? m.events : []))
-      .filter(e => e.type === 'skillApplied' && e.team === 'B' && !e.pair); // 짝 효과(pair)는 고른 기술이 아니다
+      .filter(e => e.type === 'skillApplied' && e.team === 'B');
     expect(bSkills.length).toBe(2);
     expect(lastState(ws).activeTeam).toBe('A');
     expect(ws.sent.some(m => m.type === 'error')).toBe(false);

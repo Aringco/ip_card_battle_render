@@ -445,6 +445,7 @@ function applyEnhanceSkill(
 
   const cooldowns = enh.cooldowns[team];
   if (cooldowns) cooldowns[animal] = enhanceCooldown(animal, level) + 1;
+  (enh.usedThisTurn ??= []).push(animal);
   me.skillStats[animal].count += 1;
   me.skillStats[animal].totalLevel += level;
 
@@ -462,37 +463,6 @@ function applyEnhanceSkill(
     ...((animal === 'tiger' || (animal === 'mermaid' && target !== undefined)) && opponent !== undefined ? { target: opponent } : {}),
     ...(divisorUsed > 1 ? { divisorUsed } : {}),
     status: cloneEnhanceStatus(enh),
-  };
-}
-
-/**
- * 카드 강화 판 — 짝이 맞은 순간 그 카드의 기술이 저절로 발동한다(정산이 경험치를 더한 **뒤의** 레벨). 고른 기술과 다른 점:
- * - 쌓아 둔 배율(디자인어)을 **쓰지도 소모하지도 않는다** — 기본 효과 그대로다(Max의 별도 배수는 카드 자신의 힘이라 곱한다).
- *   디자인어 짝은 그 배율을 키운다(기술과 같은 규칙).
- * - 쿨타임을 걸지 않는다(덤이라 다음 선택을 막지 않는다). 실용신양 짝은 다음 내 턴의 추가 뽑기에 **더한다**.
- * - 통계는 효과량만 더하고 사용 횟수는 세지 않는다(결과 화면의 "몇 번 썼나"는 고른 기술만).
- * 승패는 부르는 쪽(gameEngine.processPlayerAction)이 뽑기를 모두 마친 뒤 한 번 본다.
- */
-export function applyEnhancePairEffect(state: GameState, team: SideId, animal: Animal, rng: () => number = Math.random): GameEvent {
-  const level = levelOf(state, team, animal);
-  // 상대 — 팀전은 하나뿐이고, 개인전 강화 방은 고를 틈이 없는 덤이라 아직 판에 있는 사람 중 무작위 한 명이다.
-  const foes = opponentsOf(state, team);
-  const opponent = foes.length > 1 ? foes[Math.floor(rng() * foes.length)] : foes[0];
-  const effect = applyEnhanceEffect(state, team, animal, level, 1, 1, opponent, rng);
-  return {
-    type: 'skillApplied',
-    team,
-    animal,
-    level,
-    expSpent: 0,
-    multiplierUsed: 1,
-    multiplierAfter: state.teams[team].pendingMultiplier,
-    ...effect,
-    hpAfter: hpSnapshot(state),
-    // 개인전은 상대가 여럿이라 화면이 반대편을 스스로 찾을 수 없다 — 누구에게 갔는지 싣는다
-    ...(state.mode === 'individual' && opponent !== undefined && (animal === 'tiger' || animal === 'mermaid') ? { target: opponent } : {}),
-    pair: true,
-    status: cloneEnhanceStatus(state.enhance!),
   };
 }
 

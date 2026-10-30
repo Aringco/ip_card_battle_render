@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import type { Animal, ClientGameState, SideId } from 'shared';
-import { ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL, enhanceLevelLabel } from 'shared';
-import { cooldownOf, finishingMove, previewSkill } from '@/lib/skills';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { Animal, ClientGameState, EnhanceCardTier, SideId } from 'shared';
+import { ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL, enhanceCardTier, enhanceLevelLabel } from 'shared';
+import { cooldownOf, cooldownShownOf, finishingMove, previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeEnhanceSkill, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
+import { skillArtSrc } from '@/lib/playAssets';
 import { spectatorTeamVars } from '@/lib/teamColors';
-import { emVar } from '@/lib/textFit';
+import { emVar, maxLineEm } from '@/lib/textFit';
+import { playRandomSound } from '@/lib/sounds';
 import { GuideFinger } from './GuideFinger';
 import { quakeStageOf, useSkillQuake } from './SkillQuake';
 
@@ -152,6 +154,14 @@ const BURST_PIECES = Array.from({ length: 22 }, (_, i) => {
   };
 });
 
+/**
+ * 쿨타임 중인 카드의 문구 — shown은 다시 쓰기까지 건너뛸 내 차례 수(lib/skills.ts의 cooldownShownOf).
+ * 0은 "이번 차례에 이미 썼고 다음 차례에 다시 열린다"다(한 차례 기술 2장 이상인 판).
+ */
+function coolingLabel(shown: number): string {
+  return shown > 0 ? `⏳ 쿨타임\n${shown}턴 남음` : '✔ 이번 차례 사용\n다음 차례에 다시';
+}
+
 /** 레벨이 오른 순간 한 번 — key가 바뀔 때마다 처음부터 다시 터진다. 클릭은 가로채지 않는다. */
 function LevelUpBurst({ level }: { level: number }) {
   return (
@@ -175,24 +185,222 @@ function LevelUpBurst({ level }: { level: number }) {
   );
 }
 
+// [승격] — 등급(쇠 → 금 → 무지개, shared의 enhanceCardTier)이 바뀐 순간의 폭죽. 레벨업(22조각)보다 조각이 훨씬 많고 카드 밖으로 멀리 퍼진다.
+// 가운데에서 크게 한 번 터진 뒤, 카드 위쪽 세 곳에서 작은 폭죽이 이어 터진다(--ox/--oy가 터지는 자리). 모양은 레벨업과 같이 미리 정해 둔다.
+const PROMO_PIECES = [
+  ...Array.from({ length: 44 }, (_, i) => {
+    const angle = (i / 44) * Math.PI * 2 + (i % 2 ? 0.07 : -0.05);
+    const dist = 62 + ((i * 29) % 7) * 9;
+    return { ox: 50, oy: 50, dx: Math.cos(angle) * dist, dy: Math.sin(angle) * dist * 0.85, k: i, delay: (i % 5) * 35, size: 5 + (i % 4) * 2.5 };
+  }),
+  ...[
+    { ox: 24, oy: 26, at: 480 },
+    { ox: 76, oy: 32, at: 760 },
+    { ox: 50, oy: 14, at: 1040 },
+  ].flatMap(({ ox, oy, at }, w) =>
+    Array.from({ length: 16 }, (_, i) => {
+      const angle = (i / 16) * Math.PI * 2 + w * 0.3;
+      const dist = 24 + (i % 3) * 8;
+      return { ox, oy, dx: Math.cos(angle) * dist, dy: Math.sin(angle) * dist * 0.85, k: i * 3 + w * 7, delay: at + (i % 3) * 30, size: 4 + (i % 3) * 2 };
+    }),
+  ),
+];
+
+/** 승격 연출 한 번의 길이 — globals.css의 .enh-promo-* 애니메이션(2600ms)과 같은 값 */
+const PROMO_MS = 2600;
+
+// 승격하는 동안 카드 뒤로 번지는 빛 그림자의 색 — 금빛은 금색끼리, 무지개는 색상환을 돌며 바뀐다(키프레임마다 한 칸씩)
+const PROMO_SHADOW: Record<EnhanceCardTier, string[]> = {
+  iron: ['rgba(200, 205, 212, 0.9)'],
+  gold: ['rgba(255, 200, 60, 0.95)', 'rgba(255, 228, 130, 0.9)', 'rgba(255, 176, 32, 0.95)'],
+  rainbow: ['hsla(0, 100%, 70%, 0.95)', 'hsla(48, 100%, 65%, 0.95)', 'hsla(140, 90%, 62%, 0.95)', 'hsla(200, 100%, 68%, 0.95)', 'hsla(275, 100%, 72%, 0.95)'],
+};
+
+// 접점의 불꽃 — 경계선 위 가로 자리(x %)에서 튀어 오르거나 옆으로 흩어진 뒤 떨어진다(sx/sy px). 짧게(dur) 되풀이하며, 지연을 흩어 늘 몇 개씩 튄다.
+const PROMO_SPARKS = Array.from({ length: 26 }, (_, i) => {
+  const x = ((i * 37) % 100) + 0.5;
+  const side = i % 2 ? 1 : -1;
+  return {
+    x,
+    sx: side * (6 + ((i * 13) % 22)),
+    sy: -(8 + ((i * 7) % 20)),
+    rot: side * (20 + ((i * 17) % 50)),
+    k: i * 5,
+    delay: (i * 83) % 600,
+    dur: 380 + ((i * 47) % 260),
+  };
+});
+
+// 승격 폭죽 조각의 색 — 금빛 승격은 금 · 흰빛 다섯 가지를 돌고, 무지개 승격은 색상환을 돈다(k는 조각마다 정해 둔 번호)
+const PROMO_GOLD_COLORS = ['#ffd54a', '#fff3b0', '#ffb300', '#ffffff', '#ffe082'];
+function promoPieceColor(tier: EnhanceCardTier, k: number): string {
+  return tier === 'rainbow' ? `hsl(${(k * 37) % 360} 100% 72%)` : PROMO_GOLD_COLORS[k % PROMO_GOLD_COLORS.length];
+}
+
 /**
- * 카드 강화 판 — 레벨이 오른 카드마다 파티클 번호를 하나씩 올린다(그 번호가 LevelUpBurst의 key).
+ * [승격] 연출 — 카드 밖으로 폭죽이 퍼지고, 카드 전체가 새 등급의 빛(금빛 · 무지개빛)으로 덮였다가
+ * 그 빛이 **아래부터 걷히며** 새 등급의 카드가 드러난다(globals.css의 .enh-promo — 빛나는 경계선이 걷히는 자리를 따라 올라간다).
+ * 아래 카드는 이미 새 등급으로 그려져 있다(레벨이 오른 그 렌더에 등급도 바뀐다) — 이 층은 그것을 덮었다 걷을 뿐이다.
+ */
+function PromotionBurst({ tier, level }: { tier: EnhanceCardTier; level: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  // 카드(칸) 자체에 거는 두 가지 — ① 승격하는 동안 1.1배로 커졌다 돌아온다(강조) ② 카드 뒤로 새 등급 색의 빛 그림자가 번진다.
+  // ⚠️ 칸의 transform · filter는 hover(globals.css .holo-cell)가, translate · rotate는 내려찍기(SkillQuake)가 쓴다 — 그래서 확대는
+  //    개별 속성 `scale`로 건다(셋이 서로 덮지 않고 곱해진다). 그림자는 filter라 hover의 그림자를 잠깐 덮지만 2.6초 뒤 걷힌다.
+  //    WAAPI라 승격이 이어서 또 일어나도(key가 바뀌어 다시 마운트) 처음부터 다시 돈다. 커진 카드가 이웃 카드 위에 오도록 z-index도 잠깐 올린다.
+  useEffect(() => {
+    const cell = ref.current?.closest('.holo-cell');
+    if (!(cell instanceof HTMLElement) || typeof cell.animate !== 'function') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const shadows = PROMO_SHADOW[tier];
+    const shadowAt = (i: number, a: number) =>
+      `drop-shadow(0 0 ${Math.round(18 * a)}px ${shadows[i % shadows.length]}) drop-shadow(0 0 ${Math.round(38 * a)}px ${shadows[(i + 1) % shadows.length]})`;
+    // ⚠️ 곡선(easing)은 키프레임마다 단다 — 전체 timing에 걸면 진행률 자체가 휘어 offset이 어긋난다(1.1배 머묾이 일찍 풀렸다).
+    const timing = { duration: PROMO_MS };
+    const ease = 'ease-in-out';
+    const anims = [
+      cell.animate(
+        [
+          { scale: '1', easing: ease },
+          { scale: '1.1', offset: 0.14 },
+          { scale: '1.1', offset: 0.86, easing: ease },
+          { scale: '1' },
+        ],
+        timing,
+      ),
+      cell.animate(
+        [
+          { filter: shadowAt(0, 0), offset: 0, easing: ease },
+          { filter: shadowAt(0, 1), offset: 0.18, easing: ease },
+          { filter: shadowAt(1, 1.15), offset: 0.4, easing: ease },
+          { filter: shadowAt(2, 1), offset: 0.62, easing: ease },
+          { filter: shadowAt(3, 1.15), offset: 0.84, easing: ease },
+          { filter: shadowAt(4, 0), offset: 1 },
+        ],
+        timing,
+      ),
+    ];
+    cell.style.zIndex = '40';
+    const done = () => {
+      cell.style.zIndex = '';
+    };
+    anims[0].onfinish = done;
+    return () => {
+      anims.forEach(a => a.cancel());
+      done();
+    };
+  }, [tier]);
+
+  return (
+    <span ref={ref} className="enh-promo" data-tier={tier} aria-hidden>
+      <span className="enh-promo-glow" />
+      <span className="enh-promo-edge" />
+      {/* 빛이 걷히는 접점(경계선)을 따라 올라가며 튀는 불꽃 — 경계선과 같은 시간표로 움직이는 줄 위에서 조각마다 되풀이해 튄다 */}
+      <span className="enh-promo-sparks">
+        {PROMO_SPARKS.map((s, i) => (
+          <span
+            key={i}
+            className="enh-promo-spark"
+            style={{
+              ['--x' as string]: `${s.x}%`,
+              ['--sx' as string]: `${s.sx}px`,
+              ['--sy' as string]: `${s.sy}px`,
+              ['--rot' as string]: `${s.rot}deg`,
+              ['--c' as string]: promoPieceColor(tier, s.k),
+              animationDelay: `${s.delay}ms`,
+              animationDuration: `${s.dur}ms`,
+            }}
+          />
+        ))}
+      </span>
+      <span className="enh-promo-ring" />
+      {PROMO_PIECES.map((p, i) => (
+        <span
+          key={i}
+          className="enh-promo-piece"
+          style={{
+            ['--ox' as string]: `${p.ox}%`,
+            ['--oy' as string]: `${p.oy}%`,
+            ['--dx' as string]: `${p.dx.toFixed(1)}%`,
+            ['--dy' as string]: `${p.dy.toFixed(1)}%`,
+            ['--c' as string]: promoPieceColor(tier, p.k),
+            ['--size' as string]: `${p.size}px`,
+            animationDelay: `${p.delay}ms`,
+          }}
+        />
+      ))}
+      <span className="enh-promo-text skill-outline-text">
+        <span className="enh-promo-title">승격!</span>
+        <span className="enh-promo-lv">{level >= ENHANCE_MAX_LEVEL ? 'Lv.Max' : `Lv.${level}`}</span>
+      </span>
+    </span>
+  );
+}
+
+/**
+ * n: 연출 번호(key) · promo: 승격이면 새 등급 · hold: 승격 직후 잠깐 그대로 보여 줄 **옛 등급**(그림 · 테두리 · 홀로).
+ * 레벨이 오른 렌더에 카드는 곧바로 새 등급이 되지만, 승격의 빛(.enh-promo-glow)이 카드를 다 덮기 전에 새 그림이 비치면
+ * "빛에 덮였다가 아래부터 새 카드가 드러난다"가 깨진다 — 그래서 빛이 다 덮는 순간(PROMO_HOLD_MS)까지 옛 등급으로 그린다.
+ */
+type CardBurst = { n: number; promo: EnhanceCardTier | null; hold: EnhanceCardTier | null };
+
+/** 승격의 빛이 카드를 완전히 덮는 시각 — globals.css enhPromoGlow의 16%(2600ms 중) */
+const PROMO_HOLD_MS = Math.round(PROMO_MS * 0.16);
+
+/**
+ * 카드 강화 판 — 레벨이 오른 카드마다 파티클 번호를 하나씩 올린다(그 번호가 LevelUpBurst · PromotionBurst의 key).
+ * 등급이 바뀌었으면(Lv.5 → 6 · Lv.10 → Max — 한 번에 여러 단계를 건너 쇠 → 무지개로 가도) 레벨업 대신 승격 연출이다.
  * 보는 편이 바뀌면(관전자 화면의 차례 교대) 비교하지 않고 기준만 새로 잡는다 — 남의 레벨을 "올랐다"고 터뜨리지 않게.
  * 레벨은 화면상 경험치(withDisplayedExp)로 계산된 값이라, 카드가 내 칸에 도착한 뒤에 터진다.
  */
-function useLevelUpBursts(enabled: boolean, team: SideId, levels: number[]): number[] {
+function useLevelUpBursts(enabled: boolean, team: SideId, levels: number[]): CardBurst[] {
   const prev = useRef<{ team: SideId; levels: number[] } | null>(null);
-  const [bursts, setBursts] = useState<number[]>(() => levels.map(() => 0));
+  const [bursts, setBursts] = useState<CardBurst[]>(() => levels.map(() => ({ n: 0, promo: null, hold: null })));
+  const holdTimers = useRef<number[]>([]);
+  useEffect(() => () => holdTimers.current.forEach(t => window.clearTimeout(t)), []);
   const key = levels.join(',');
-  useEffect(() => {
+  // ⚠️ 레이아웃 이펙트다 — 옛 등급 붙들기(hold)가 **첫 페인트 전에** 들어가야 새 그림이 한 프레임도 먼저 비치지 않는다.
+  useLayoutEffect(() => {
     const before = prev.current;
     prev.current = { team, levels };
     if (!enabled || !before || before.team !== team) return;
     if (levels.every((l, i) => l <= before.levels[i])) return;
-    setBursts(b => b.map((n, i) => (levels[i] > before.levels[i] ? n + 1 : n)));
+    setBursts(b =>
+      b.map((x, i) => {
+        if (levels[i] <= before.levels[i]) return x;
+        const from = enhanceCardTier(before.levels[i]);
+        const to = enhanceCardTier(levels[i]);
+        if (to === from) return { n: x.n + 1, promo: null, hold: null };
+        const n = x.n + 1;
+        // 빛이 다 덮은 뒤 새 등급으로 — 그사이 또 오르면(n이 바뀜) 그쪽이 다시 정한다
+        holdTimers.current.push(
+          window.setTimeout(() => setBursts(c => c.map((y, j) => (j === i && y.n === n ? { ...y, hold: null } : y))), PROMO_HOLD_MS),
+        );
+        return { n, promo: to, hold: x.hold ?? from };
+      }),
+    );
+    // 효과음은 한 번에 하나 — 여러 장이 함께 올라도 겹쳐 울리지 않게, 그중 하나라도 승격이면 승격 소리(promotion.mp3), 아니면 레벨업(level_up.mp3)
+    // 레벨업은 받은 소리의 앞 1초만 쓴다(2026-10-31 — scripts/trimSound.mjs로 자른 파일, 원본은 assets-src/sounds). 잘린 끝은 0.15초 동안 줄인다.
+    const promoted = levels.some((l, i) => l > before.levels[i] && enhanceCardTier(l) !== enhanceCardTier(before.levels[i]));
+    if (promoted) playRandomSound('promotion');
+    else playRandomSound('level_up', 1, 1, undefined, 150);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, team, key]);
   return bursts;
+}
+
+/**
+ * 강화 판 제목("[실용신양] Lv.Max ×3")의 폭(em) — 레벨 · 배수 글자는 제목보다 작게(.enh-title-lv · .enh-title-over 0.82em) 그리므로 그만큼 줄여 더한다.
+ * CSS가 `가용폭 ÷ 이 값`으로 제목 크기의 상한을 정해, 한 줄이 카드 폭을 넘지 않는다.
+ */
+function titleEmVar(title: string, level: number, over: number): React.CSSProperties {
+  const tail = ` Lv.${enhanceLevelLabel(level)}${over > 1 ? ` ×${over}` : ''}`;
+  return { ['--title-em' as string]: (maxLineEm(`[${title}]`) + maxLineEm(tail) * 0.82).toFixed(2) };
+}
+
+/** 금색 등급 안에서의 세기 — 0 = Lv.6 … 1 = Max(쇠 등급은 0). .enh-gold의 짙기 · 속도가 이 값을 따른다. */
+function enhanceGoldStep(level: number): number {
+  return Math.max(0, (level - ENHANCE_GOLD_FROM) / (ENHANCE_MAX_LEVEL - ENHANCE_GOLD_FROM));
 }
 
 // 줄바꿈은 여기서 정해진 그대로 그려진다(CSS가 `white-space: pre`) — 길면 접히는 게
@@ -331,10 +539,13 @@ export function SkillChoiceBar({
         const effectLabel = !wellOk(animal)
           ? '🔒 사용 불가'
           : cooling > 0
-            ? `⏳ 쿨타임\n${cooling}턴 남음`
+            ? coolingLabel(cooldownShownOf(gameState, team, animal))
             : eligible ? effectParts.join('\n') : '레벨 부족';
         // 강화 단계 0~1 — 카드의 밝은 그라데이션과 무지개 홀로가 이 값을 따라 짙어진다(globals.css의 .enh-*)
         const enhStep = enhance ? (preview.level - 1) / (ENHANCE_MAX_LEVEL - 1) : 0;
+        // 등급 — 테두리 색과 홀로 겹이 이것으로 갈린다(강화 판이 아니면 null)
+        // 승격 직후 잠깐은 옛 등급으로 그린다(빛이 카드를 다 덮을 때까지 — CardBurst.hold)
+        const tier = enhance ? (bursts[i].hold ?? enhanceCardTier(preview.level)) : null;
 
         // 가이드 손가락이 버튼 위쪽 경계 밖으로 튀어나가는데, 버튼 자체는(모서리를 둥글게
         // 다듬으려고, 특히 맨 왼쪽 sheep은) overflow-hidden이라 그 안에 두면 잘려 보인다
@@ -370,12 +581,12 @@ export function SkillChoiceBar({
                 clickable ? 'skill-choice-glow' : ''
               }`}
               data-enh-level={enhance ? preview.level : undefined}
-              data-enh-gold={enhance && preview.level >= ENHANCE_GOLD_FROM ? '' : undefined}
+              data-enh-tier={tier ?? undefined}
               style={
                 enhance
                   ? ({
                       ['--enh' as string]: enhStep.toFixed(3),
-                      ['--gold' as string]: Math.max(0, (preview.level - ENHANCE_GOLD_FROM) / (ENHANCE_MAX_LEVEL - ENHANCE_GOLD_FROM)).toFixed(3),
+                      ['--gold' as string]: enhanceGoldStep(preview.level).toFixed(3),
                     } as React.CSSProperties)
                   : undefined
               }
@@ -390,16 +601,20 @@ export function SkillChoiceBar({
                   레벨이 모자란 것이 아니라 "지금은 아닌" 것이라 "레벨 부족"이 아니다. */}
               <div
                 className={`skill-choice-bg play-frame-inset absolute ${eligible && open(animal) ? '' : 'skill-choice-bg-disabled'}`}
-                style={{ backgroundImage: `url(/skills/${animal}_skill.png)` }}
+                // 그림은 등급마다 한 벌(쇠 · 일반 판 v1 / 금 v2 / 무지개 vmax — lib/playAssets.ts의 skillArtSrc)
+                style={{ backgroundImage: `url(${skillArtSrc(animal, tier)})` }}
               />
-              {/* 카드 강화 — 레벨이 오를수록 밝아지는 빛과, 가만히 있어도 흐르는 무지개 홀로(쿨타임 중엔 옅게) */}
-              {enhance && (
+              {/* 카드 강화 — 등급(tier)마다 홀로가 한 겹씩 더해진다(쿨타임 중엔 옅게, globals.css의 .enh-*):
+                  쇠(Lv.1~5) 밝은 빛 + 빛 반사 띠 → 금(Lv.6~10) 금빛 광채 추가 → 무지개(Max) 무지개 띠 추가 */}
+              {tier && (
                 <>
                   <div className={`enh-light play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
-                  <div className={`enh-rainbow play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
-                  {/* Lv.5 ~ Max — 금빛 광채(globals.css .enh-gold) */}
-                  {preview.level >= ENHANCE_GOLD_FROM && (
+                  <div className={`enh-sheen play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
+                  {tier !== 'iron' && (
                     <div className={`enh-gold play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
+                  )}
+                  {tier === 'rainbow' && (
+                    <div className={`enh-rainbow play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
                   )}
                 </>
               )}
@@ -424,21 +639,16 @@ export function SkillChoiceBar({
               {/* 아래 안여백은 **아래쪽 모서리 장식**만큼이다(.skill-text-block) —
                   p-3으로만 두면 대사 마지막 줄이 잎 뒤로 숨는다(실제로 숨었다). */}
               <div className="skill-text-block relative z-10 flex flex-col gap-1.5 p-3 min-h-0">
+                {/* Lv.Max의 별도 배수(경험치를 더 채울수록 ×2 · ×3 …) — 위 효과 숫자에는 이미 곱해져 있다.
+                    "Lv.Max ×3"을 **한 줄**에 이어 쓴다(2026-10-31 요청 — 하루 전에는 접히지 않게 "Lv.Max" 아래에 겹쳐 썼다).
+                    대신 제목이 카드 폭을 넘으면 제목 전체가 작아진다(--title-em — 설명 줄과 같은 폭 맞춤, globals.css .skill-text-title). */}
                 <h3
                   className="skill-text-title skill-outline-text font-extrabold"
-                  style={{ color: SKILL_COLOR[animal] }}
+                  style={{ color: SKILL_COLOR[animal], ...(enhance ? titleEmVar(SKILL_TITLE[animal], preview.level, preview.over ?? 1) : {}) }}
                 >
                   [{SKILL_TITLE[animal]}]
-                  {/* Lv.Max의 별도 배수(경험치를 더 채울수록 ×2 · ×3 …) — 위 효과 숫자에는 이미 곱해져 있다.
-                      "Lv.Max" **아래**에 겹쳐 쓴다(2026-10-30 요청 — 예전에는 뒤에 이어 써서 좁은 카드에서 제목이 두 줄로 접혔다) */}
-                  {enhance && ((preview.over ?? 1) > 1 ? (
-                    <span className="enh-title-stack">
-                      <span className="enh-title-lv">Lv.{enhanceLevelLabel(preview.level)}</span>
-                      <span className="enh-title-over">×{preview.over}</span>
-                    </span>
-                  ) : (
-                    <span className="enh-title-lv"> Lv.{enhanceLevelLabel(preview.level)}</span>
-                  ))}
+                  {enhance && <span className="enh-title-lv"> Lv.{enhanceLevelLabel(preview.level)}</span>}
+                  {enhance && (preview.over ?? 1) > 1 && <span className="enh-title-over"> ×{preview.over}</span>}
                 </h3>
                 {/* ⚠️ `whitespace-pre-line`이 아니라 `pre`다(CSS의 .skill-text-desc) —
                     줄바꿈은 살리되 **그 밖의 줄바꿈은 일어나지 않아야** 한다. 대신 줄이
@@ -460,7 +670,12 @@ export function SkillChoiceBar({
             {showSkillGuide && eligible && open(animal) && (
               <GuideFinger team={spectatorGuideTeam} />
             )}
-            {enhance && bursts[i] > 0 && <LevelUpBurst key={bursts[i]} level={preview.level} />}
+            {enhance && bursts[i].n > 0 &&
+              (bursts[i].promo ? (
+                <PromotionBurst key={bursts[i].n} tier={bursts[i].promo} level={preview.level} />
+              ) : (
+                <LevelUpBurst key={bursts[i].n} level={preview.level} />
+              ))}
           </HoloCell>
         );
       })}

@@ -4,7 +4,7 @@ import { ANIMALS, emoteById, needsTarget } from 'shared';
 import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
 import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { canUseSkill, finishingMove, levelOf, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
-import { isFinished, opponentOrder, sideColor, sideName } from '@/lib/individual';
+import { isFinished, opponentOrder, sideColor, sideName, withDisplayedFinish } from '@/lib/individual';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { EffectLayer } from '@/components/effects/EffectLayer';
@@ -55,7 +55,7 @@ function shakeScale(level: number): number {
  *    패널·색이 사라지면 안 된다) `finished`로 관전처럼 보이게 한다 — 조작만 전부 잠긴다(INDIVIDUAL_MODE_ROADMAP 주의 9).
  */
 export function IndividualLayout({
-  gameState,
+  gameState: serverState,
   turnDeadline,
   mySide,
   playerId,
@@ -83,6 +83,8 @@ export function IndividualLayout({
   emotes: ReceivedEmote[];
   onEmote: (emoteId: string) => void;
 }) {
+  // 순위("n위 · 탈락")는 그 "n위 확정!" 연출이 재생된 뒤에야 보인다 — 아래는 모두 이 가린 상태를 읽는다(lib/individual.ts withDisplayedFinish)
+  const gameState = useMemo(() => withDisplayedFinish(serverState, animState.hiddenFinish), [serverState, animState.hiddenFinish]);
   const isShaking = animState.screenShakeLevel > 0;
   const finished = isFinished(gameState, mySide);
   // 조작할 수 없는 시점 — 처음부터 관전자이거나, 순위가 정해져 판에서 빠진 사람.

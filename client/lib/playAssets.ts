@@ -1,3 +1,5 @@
+import type { Animal, EnhanceCardTier } from 'shared';
+
 /**
  * 플레이 화면 에셋 경로 — **여기 한 곳에서만 참조한다**(로비의 `lobbyAssets.ts`와 같은 원칙).
  *
@@ -200,3 +202,14 @@ export const PLAY_ASSETS = {
   pgSquare: '/play/pg_square.webp',
   pgStrip: '/play/pg_strip.webp',     // 해설판이 쓴다(가늘고 긴 종이)
 } as const;
+
+/**
+ * 기술 카드 그림 — 카드 강화의 등급마다 한 벌이다(2026-10-31). 원본은 `assets-src/skills/<벌>/`, 다시 만들려면
+ *   cd client && node scripts/makeSkillArt.mjs
+ * 쇠(Lv.1~5)와 일반 판(등급 없음 = null)은 v1, 금(Lv.6~10)은 v2, 무지개(Max)는 vmax — **승격하는 순간 그림이 바뀐다**
+ * (SkillChoiceBar가 승격 연출의 빛이 카드를 다 덮을 때까지 옛 그림을 붙들고 있다가 바꾼다).
+ */
+const SKILL_ART_SET: Record<EnhanceCardTier, string> = { iron: 'v1', gold: 'v2', rainbow: 'vmax' };
+export function skillArtSrc(animal: Animal, tier: EnhanceCardTier | null): string {
+  return `/skills/${tier ? SKILL_ART_SET[tier] : 'v1'}/${animal}_skill.webp`;
+}

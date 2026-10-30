@@ -129,8 +129,9 @@ export function advanceTurn(state: GameState): GameEvent[] {
     if (state.phase !== 'playing') return events;
   }
 
-  // 차례가 넘어갈 때마다 "이번 차례에 쓴 기술 수"를 비운다(개인전의 기술 2장 규칙).
+  // 차례가 넘어갈 때마다 "이번 차례에 쓴 기술 수"를 비운다(개인전의 기술 2장 규칙). 강화 판의 "이번 차례에 쓴 카드"(화면 표시용)도 함께.
   state.skillsUsedThisTurn = 0;
+  if (state.enhance) state.enhance.usedThisTurn = [];
 
   // 카드 강화 판 — 방금 차례를 마친 편의 쿨타임을 하나씩 줄인다(쓴 순간 "쿨타임 + 1"로 세워 두었다 — shared/enhance.ts).
   // 차례가 끝나는 길(기술·패스·시간초과·항복)이 모두 여기를 지나므로 이 한 곳이면 된다.
@@ -426,5 +427,6 @@ function attachEnhance(state: GameState): void {
     regen: each(() => ({ turns: 0, amount: 0 })),
     healCut: each(() => ({ turns: 0, pct: 0 })),
     evade: each(() => 0),
+    usedThisTurn: [],
   };
 }

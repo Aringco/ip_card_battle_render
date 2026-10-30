@@ -13,7 +13,7 @@ import type { SettingsLimits } from './constants';
 // 2. **카드 숫자가 모두 1이다.** 짝이 맞으면 모인 장수만큼 경험치가 오른다(화면의 카드에는 숫자가 없다).
 // 3. 기술마다 **쿨타임**이 있다(쓴 뒤 그 수만큼 내 차례에 못 쓴다). 레벨이 오를수록 효과도 쿨타임도 커진다.
 // 4. **턴 제한이 없다** — 목표 체력에 닿거나 상대 체력이 0이 되어야 끝난다(shared/sides.ts의 maxTurnOf가 Infinity).
-// 5. **짝이 맞으면 그 카드의 기술이 그 자리에서 발동한다**(정산으로 오른 레벨 그대로 — 배율·쿨타임과 무관한 덤이다).
+// 5. (짝이 맞으면 그 카드의 기술이 저절로 발동하던 "짝 효과"는 2026-10-31에 걷었다 — 직관적이지 않았다. 짝은 경험치만 올린다.)
 // 6. **장소를 누르면 여러 장이 나온다** — 동물 2종 장소(오두막·부둣가) 1~3장, 3종 장소(숲길·강가) 3~5장(ENHANCE_PLACE_DRAWS).
 //
 // 엔진·화면은 혼자 놀기 그대로다 — 나(A) 대 컴퓨터(B)의 팀전 1:1 판에 이 규칙을 얹은 것이다(화면은 GameLayout).
@@ -21,8 +21,19 @@ import type { SettingsLimits } from './constants';
 
 /** 최고 레벨 — Lv.1 ~ Lv.10 다음의 Lv.Max(11) */
 export const ENHANCE_MAX_LEVEL = 11;
-/** 기술 카드가 홀로에 더해 금빛으로 빛나기 시작하는 레벨(Lv.5 ~ Max — 화면 SkillChoiceBar의 .enh-gold) */
-export const ENHANCE_GOLD_FROM = 5;
+/**
+ * 기술 카드의 등급 — 테두리와 홀로가 바뀐다(2026-10-31 요청, 화면 SkillChoiceBar의 data-enh-tier).
+ *   iron    Lv.1 ~ 5   회색(차콜) 쇠 테두리 · 빛 반사 홀로만(같은 날 은색에서 바꿨다 — 은보다 쇠의 느낌)
+ *   gold    Lv.6 ~ 10  금색 테두리 · 금빛 홀로 추가
+ *   rainbow Lv.Max     흰빛과 무지개가 어우러진 테두리 · 무지개 홀로 추가
+ * 등급이 바뀌는 것을 [승격]이라 부르고, 그 순간은 레벨업보다 화려한 연출(PromotionBurst)을 띄운다.
+ */
+export type EnhanceCardTier = 'iron' | 'gold' | 'rainbow';
+/** 금색 등급이 시작되는 레벨(Lv.6 — 그 전에는 Lv.5부터 금빛이었다) */
+export const ENHANCE_GOLD_FROM = 6;
+export function enhanceCardTier(level: number): EnhanceCardTier {
+  return level >= ENHANCE_MAX_LEVEL ? 'rainbow' : level >= ENHANCE_GOLD_FROM ? 'gold' : 'iron';
+}
 
 /**
  * 장소를 한 번 눌렀을 때 나오는 장수(최소~최대, 무작위) — 그 장소가 다루는 동물 수로 가른다(일반 판의 숫자 범위 5~10 / 10~15와 같은 기준).
@@ -64,7 +75,7 @@ export const ENHANCE_MERMAID_DIVIDE_TURNS: readonly number[] = [0, 0, 0, 0, 0, 0
 /** 효과 감소(÷N, "반감 효과")가 쌓일 수 있는 최대 턴 수(5차 표 — 4차 표는 20) */
 export const ENHANCE_DIVISOR_MAX_TURNS = 5;
 /**
- * 디자인어 Lv.Max — 나를 노리는 상대의 기술(특허랑이 · 디자인어의 배율 나누기 · 효과 ÷10, 짝 효과 포함)을 이 확률(%)로 피한다.
+ * 디자인어 Lv.Max — 나를 노리는 상대의 기술(특허랑이 · 디자인어의 배율 나누기 · 효과 ÷10)을 이 확률(%)로 피한다.
  * 쓴 순간부터 **내 다음 차례가 올 때까지** 이어지고(개인전이면 같은 턴의 내 뒤 사람들 · 다음 턴의 내 앞 사람들), 공격마다 따로 굴린다. 0이면 없다.
  */
 export const ENHANCE_MERMAID_EVADE_PCT: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20];
@@ -200,9 +211,9 @@ export function enhanceHealAfterCut(heal: number, cutPct: number): number {
  * Lv.Max의 **별도 배수**(2026-10-29) — Max에 닿은 뒤에도 경험치는 계속 쌓이고, 임계값(10 · 20)을 한 번 더 채울 때마다 ×1씩 오른다
  * (Max에 막 닿았을 때 ×1 → 한 번 더 채우면 ×2 → ×3 …). Max가 아니면 1.
  * 이 배수는 **지금 걸린 배율에 곱한다** — 디자인어로 ×7이 걸린 채 별도 배수 ×3인 카드를 쓰면 ×21. 배율과 똑같이 실용신양의 장수 ·
- * 상표토끼의 즉시 회복 · 특허랑이의 공격력에만 걸린다(5차 표 — 디자인어 자신에게는 걸리지 않는다). 짝 효과에도 걸린다(그 카드의 힘이라서).
+ * 상표토끼의 즉시 회복 · 특허랑이의 공격력에만 걸린다(5차 표 — 디자인어 자신에게는 걸리지 않는다).
  * **그 카드를 고르면(기술 사용) ×1로 돌아간다**(2026-10-30) — 엔진이 (배수 − 1) × 임계값만큼 경험치를 깎는다(Max 아래로는 안 내려가고, 다음 배수까지
- * 쌓던 나머지는 남는다). 짝 효과로 발동할 때는 깎지 않는다.
+ * 쌓던 나머지는 남는다).
  */
 export function enhanceOverMultiplier(animal: Animal, exp: number): number {
   const t = THRESHOLDS[animal];
@@ -245,6 +256,12 @@ function clampLevel(level: number): number {
  */
 export interface EnhanceState extends EnhanceStatus {
   cooldowns: Record<SideId, Record<Animal, number>>;
+  /**
+   * 지금 차례인 편이 **이번 차례에** 쓴 카드(차례가 넘어갈 때 비운다 — 엔진 turnManager.advanceTurn). 잠금 판정에는 쓰지 않는다(쿨타임이 한다).
+   * 화면 표시용이다 — 쓴 차례 안에서는 쿨타임 값에 그 차례 몫(+1)이 아직 들어 있어, 그대로 보이면 한 차례 2장 이상인 판에서
+   * "2턴 남음"이 두 번째 기술을 고르자 "1턴 남음"으로 줄어드는 것처럼 보였다(2026-10-31). 화면은 enhanceCooldownShown으로 뺀다.
+   */
+  usedThisTurn?: Animal[];
 }
 
 /**
@@ -287,11 +304,11 @@ export interface EnhanceStatus {
   /** 출혈(상대 특허랑이 — 최대 40턴) · 지속 회복(내 상표토끼 — 최대 20턴). 다시 걸리면 턴은 더하고, 중첩(계수)도 더한다(최대 20). */
   bleed: Record<SideId, EnhanceDot>;
   regen: Record<SideId, EnhanceDot>;
-  /** 회복 효율 감소(상대 특허랑이 Lv.6+ — 그 편의 다음 1턴). 그동안 그 편의 모든 회복(기술 · 짝 효과 · 지속 회복)이 줄어든다. */
+  /** 회복 효율 감소(상대 특허랑이 Lv.6+ — 그 편의 다음 1턴). 그동안 그 편의 모든 회복(기술 · 지속 회복)이 줄어든다. */
   healCut: Record<SideId, EnhanceHealCut>;
   /**
    * 기술 회피 확률(%, 내 디자인어 Lv.Max) — 쓴 순간부터 그 편의 다음 차례가 시작될 때까지(엔진 advanceTurn이 지운다).
-   * 나를 노리는 기술(고른 것 · 짝 효과)마다 따로 굴려, 피하면 그 기술이 나에게 거는 것(피해 · 출혈 · 회복 감소 · 이로운 효과 제거 ·
+   * 나를 노리는 기술마다 따로 굴려, 피하면 그 기술이 나에게 거는 것(피해 · 출혈 · 회복 감소 · 이로운 효과 제거 ·
    * 배율 나누기 · 효과 ÷10)이 하나도 들지 않는다. 0이면 없다. 예전 판의 상태에는 없을 수 있다.
    */
   evade?: Record<SideId, number>;
@@ -394,4 +411,18 @@ export function enhanceCooldownLeft(
   animal: Animal,
 ): number {
   return state.enhance?.cooldowns[side]?.[animal] ?? 0;
+}
+
+/**
+ * 화면에 보일 "남은 쿨타임" — 이 카드를 다시 쓰기까지 건너뛸 내 차례 수. 이번 차례에 쓴 카드는 저장값에서 그 차례 몫(+1)을 뺀다
+ * (0이면 "다음 차례에 다시"). 잠금 여부는 이 값이 아니라 enhanceCooldownLeft로 본다.
+ */
+export function enhanceCooldownShown(
+  state: { activeTeam: SideId; enhance?: EnhanceState | null },
+  side: SideId,
+  animal: Animal,
+): number {
+  const left = enhanceCooldownLeft(state, side, animal);
+  const usedNow = state.activeTeam === side && (state.enhance?.usedThisTurn ?? []).includes(animal);
+  return usedNow ? Math.max(0, left - 1) : left;
 }

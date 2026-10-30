@@ -2,7 +2,7 @@
 // scripts/generateAssetManifest.mjs 가 public/ 을 훑어 만든다 (npm run gen:assets).
 // public/ 에 사운드나 이미지를 추가/삭제한 뒤 dev/build를 다시 돌리면 갱신된다.
 
-export type SfxName = 'sheep' | 'mermaid' | 'tiger' | 'rabbit' | 'card' | 'bomb' | 'thud';
+export type SfxName = 'sheep' | 'mermaid' | 'tiger' | 'rabbit' | 'card' | 'bomb' | 'thud' | 'bleed' | 'heal' | 'level_up' | 'promotion';
 
 /** 효과음 — 접두사별 파일 목록(같은 접두사 안에서 무작위로 하나 재생) */
 export const SFX_MANIFEST: Record<SfxName, string[]> = {
@@ -40,6 +40,18 @@ export const SFX_MANIFEST: Record<SfxName, string[]> = {
   ],
   "thud": [
     "/sounds/thud.wav"
+  ],
+  "bleed": [
+    "/sounds/bleed.mp3"
+  ],
+  "heal": [
+    "/sounds/heal.mp3"
+  ],
+  "level_up": [
+    "/sounds/level_up.mp3"
+  ],
+  "promotion": [
+    "/sounds/promotion.mp3"
   ]
 };
 
@@ -61,11 +73,19 @@ export const IMAGE_FILES: string[] = [
   "/places/house_text.png",
   "/places/river_road.png",
   "/places/river_road_text.png",
-  "/skills/mermaid_skill.png",
   "/skills/pass_skill.webp",
-  "/skills/rabbit_skill.png",
-  "/skills/sheep_skill.png",
-  "/skills/tiger_skill.png",
+  "/skills/v1/mermaid_skill.webp",
+  "/skills/v1/rabbit_skill.webp",
+  "/skills/v1/sheep_skill.webp",
+  "/skills/v1/tiger_skill.webp",
+  "/skills/v2/mermaid_skill.webp",
+  "/skills/v2/rabbit_skill.webp",
+  "/skills/v2/sheep_skill.webp",
+  "/skills/v2/tiger_skill.webp",
+  "/skills/vmax/mermaid_skill.webp",
+  "/skills/vmax/rabbit_skill.webp",
+  "/skills/vmax/sheep_skill.webp",
+  "/skills/vmax/tiger_skill.webp",
   "/emoticon/default/mermaid_burn.png",
   "/emoticon/default/mermaid_cry.png",
   "/emoticon/default/mermaid_focus.png",

@@ -2,6 +2,7 @@
 // 공식을 클라이언트에서 그대로 복제한다(상태를 바꾸지 않는 순수 계산).
 import {
   enhanceCooldownLeft,
+  enhanceCooldownShown,
   enhanceMermaidAfter,
   enhanceAmount,
   enhanceBleedTick,
@@ -95,6 +96,14 @@ export function levelOf(gameState: ClientGameState, team: SideId, animal: Animal
 /** 카드 강화 판 — 이 카드를 앞으로 못 쓰는 내 차례 수(0이면 지금 쓸 수 있다). 다른 판은 언제나 0. */
 export function cooldownOf(gameState: ClientGameState, team: SideId, animal: Animal): number {
   return enhanceCooldownLeft(gameState, team, animal);
+}
+
+/**
+ * 카드에 "n턴 남음"으로 보일 수 — 이번 차례에 쓴 카드는 저장값의 그 차례 몫(+1)을 뺀 값(shared의 enhanceCooldownShown).
+ * ⚠️ 잠금 판정에는 쓰지 말 것(cooldownOf) — 쓴 차례 안에서는 이 값이 0이어도 잠겨 있다.
+ */
+export function cooldownShownOf(gameState: ClientGameState, team: SideId, animal: Animal): number {
+  return enhanceCooldownShown(gameState, team, animal);
 }
 
 /**

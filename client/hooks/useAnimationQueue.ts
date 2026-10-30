@@ -209,6 +209,9 @@ export interface AnimationState {
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
   decisiveHit: { winner: SideId } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
   rankBanner: RankBanner | null; // 개인전 — 한 사람의 순위가 정해진 순간 "n위 확정!" 알림
+  // 개인전 — 이번 액션에서 순위가 정해졌지만 그 "n위 확정!"이 아직 재생되지 않은 편. 화면은 이 편들의 finish(n위 · 탈락)를 가린다
+  // (lib/individual.ts의 withDisplayedFinish) — 서버 진실을 그대로 그리면 체력이 0으로 내려가는 연출보다 먼저 "탈락"이 붙었다.
+  hiddenFinish: readonly SideId[];
   sweepBanner: SweepBannerInfo | null; // 싹쓸이 — "싹쓸이!" + 보너스 경험치 알림
 }
 
@@ -224,6 +227,7 @@ const EMPTY_SCORE_MAP = new Map<string, number>() as ReadonlyMap<string, number>
 const EMPTY_HP_PULSE_MAP = new Map<SideId, HpPulse>() as ReadonlyMap<SideId, HpPulse>;
 const EMPTY_ID_SET = new Set<number>() as ReadonlySet<number>;
 const EMPTY_DOT_PULSE_MAP = new Map<SideId, DotPulse>() as ReadonlyMap<SideId, DotPulse>;
+const EMPTY_SIDES: readonly SideId[] = [];
 const TICK_DUR = 1000; // 출혈·지속 회복 한 번(서버 room.ts의 TL_TICK_MS와 같은 값)
 
 const EMPTY_GAP = 80;
@@ -332,6 +336,9 @@ export function useAnimationQueue(
   // 지속 효과 묶음(나눗셈 · 출혈 · 지속 회복)도 같은 방식 — 이번 액션 전 값으로 가렸다가, 효과·지속 효과 연출마다 그 이벤트의 status로 바꾸고
   // 타임라인이 끝나면 걷는다(서버 진실 그대로).
   const [statusPatch, setStatusPatch] = useState<EnhanceStatus | null>(null);
+  // 개인전 — 순위가 정해진 편의 finish를 그 "n위 확정!" 연출 순간까지 가린다(체력 가림과 같은 렌더 도중 동기 보정 — 2026-10-31,
+  // "승/패가 선반영된다"). 연출이 하나씩 풀고 타임라인 끝에서 비운다.
+  const [hiddenFinish, setHiddenFinish] = useState<readonly SideId[]>(EMPTY_SIDES);
   const [dotPulse, setDotPulse] = useState<ReadonlyMap<SideId, DotPulse>>(EMPTY_DOT_PULSE_MAP);
   // "화면에 지금 그려야 하는 카드"를 실제 서버 진실(gameState.stacks)과 분리해서 관리한다.
   // 서버는 액션이 끝나는 즉시 최종 상태(수집으로 카드가 사라진 상태)를 보내오지만,
@@ -446,6 +453,9 @@ export function useAnimationQueue(
       hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + (ev.kind === 'bleed' ? -ev.amount : ev.amount);
     });
     setPendingHpCredit(hpCredits);
+    // 이번 액션에서 정해진 순위 — 그 연출 전까지 가린다
+    const rankedSides = lastEvents.flatMap(ev => (ev.type === 'ranked' ? [ev.team] : []));
+    setHiddenFinish(rankedSides.length > 0 ? rankedSides : EMPTY_SIDES);
 
     // 배율·추가 뽑기 — 이번 액션의 기술 효과가 바꾸기 **전** 값을 편마다 되돌려 둔다.
     // · 배율은 이번 액션에서 기술 효과로만 바뀌므로 직전 서버 상태의 값이 곧 "연출 전" 값이다.
@@ -509,6 +519,7 @@ export function useAnimationQueue(
     setTeamPatch({});
     setStatusPatch(null);
     setDotPulse(EMPTY_DOT_PULSE_MAP);
+    setHiddenFinish(EMPTY_SIDES);
     // ⚠️ **좌절 이모티콘(persist)은 여기서도 걷어야 한다.** 그것만 제거 타이머가 없어
     //    저절로 사라지지 않는데, 걷어내는 곳이 아래 레이아웃 이펙트 한 군데뿐이었다 —
     //    그쪽은 이벤트가 있는 갱신에서만 도므로, **이벤트가 비어 있는 갱신**으로 판이
@@ -1260,25 +1271,28 @@ export function useAnimationQueue(
       }
     }
 
-    // ── 개인전: 순위가 정해진 사람마다 "n위 확정!"을 차례로 띄운다(승리가 먼저 기록된다). ────
+    // ── 순위("n위 확정!", 개인전)와 출혈 · 지속 회복(카드 강화)은 **서버가 보낸 순서 그대로** 재생한다(2026-10-31). ────
+    // 둘을 따로 돌리면 순위가 모두 먼저 떠서, 출혈로 체력이 0이 되는 판에서 "탈락"이 체력이 내려가기도 전에 보였다("승/패가 선반영").
+    // 서버는 기술 → (그 기술로 정해진 순위) → 차례를 마칠 때의 출혈 · 회복 → (그것으로 정해진 순위) 순으로 싣는다(turnManager.advanceTurn).
     // 항복·나가기로 정해진 순위는 기술이 없는 갱신에 실려 오므로 위 재생과 무관하게 여기서 바로 돈다.
     {
-      const rankedEvs = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'ranked' }> => e.type === 'ranked');
-      for (const ev of rankedEvs) {
-        const at = cursor;
-        const id = ++floatIdCounter;
-        sched(() => {
-          setRankBanner({ id, team: ev.team, rank: ev.rank, reason: ev.reason });
-          sched(() => setRankBanner(prev => (prev?.id === id ? null : prev)), RANK_BANNER_DUR);
-        }, at);
-        cursor = at + RANK_BANNER_DUR;
-      }
-    }
-
-    // ── 카드 강화: 차례를 마친 편의 출혈 → 지속 회복(enhanceTick). 턴이 넘어가는 순간의 일이라 효과 재생 뒤에 둔다. ────
-    {
-      const ticks = lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'enhanceTick' }> => e.type === 'enhanceTick');
-      for (const ev of ticks) {
+      for (const ev of lastEvents) {
+        if (ev.type === 'ranked') {
+          const at = cursor;
+          const id = ++floatIdCounter;
+          sched(() => {
+            setRankBanner({ id, team: ev.team, rank: ev.rank, reason: ev.reason });
+            // 이제 이 편의 "n위 · 승리/탈락"을 드러낸다(위 hiddenFinish)
+            setHiddenFinish(prev => {
+              const i = prev.indexOf(ev.team);
+              return i < 0 ? prev : [...prev.slice(0, i), ...prev.slice(i + 1)];
+            });
+            sched(() => setRankBanner(prev => (prev?.id === id ? null : prev)), RANK_BANNER_DUR);
+          }, at);
+          cursor = at + RANK_BANNER_DUR;
+          continue;
+        }
+        if (ev.type !== 'enhanceTick') continue;
         const at = cursor;
         const bleed = ev.kind === 'bleed';
         const left = ev.turnsLeft > 0 ? ` (남은 ${ev.turnsLeft}턴)` : '';
@@ -1291,6 +1305,8 @@ export function useAnimationQueue(
           if (ev.amount > 0) {
             pulseHp(ev.team, bleed ? 'loss' : 'gain');
             addFloat(bleed ? `-${ev.amount}` : `+${ev.amount}`, ev.team, bleed ? 'penalty' : 'bonus');
+            // 효과음 — 출혈 bleed.mp3 / 지속 회복 heal.mp3(public/sounds)
+            playRandomSound(bleed ? 'bleed' : 'heal');
           }
           const id = ++floatIdCounter;
           setDotPulse(prev => new Map([...prev, [ev.team, { id, kind: ev.kind }]]));
@@ -1389,6 +1405,7 @@ export function useAnimationQueue(
       setHpPulse(EMPTY_HP_PULSE_MAP);
       setStatusPatch(null);
       setDotPulse(EMPTY_DOT_PULSE_MAP);
+      setHiddenFinish(EMPTY_SIDES);
     }, cursor);
 
     return () => {
@@ -1502,6 +1519,7 @@ export function useAnimationQueue(
     isSettling,
     decisiveHit,
     rankBanner,
+    hiddenFinish,
     sweepBanner,
   };
 }

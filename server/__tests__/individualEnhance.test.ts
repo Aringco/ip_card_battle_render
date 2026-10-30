@@ -106,17 +106,19 @@ describe('개인전 강화 — 순위', () => {
     expect(s.activeTeam).not.toBe(me);
   });
 
-  it('짝 효과(상표토끼)로 승리선에 닿으면 1위로 정해지고 기술 단계 없이 차례가 넘어간다', () => {
+  it('짝(상표토끼)이 맞아도 기술은 발동하지 않는다 — 승리선 바로 아래여도 순위가 정해지지 않고 기술 단계로 간다(2026-10-31 짝 효과 해제)', () => {
     const s = make(3, { targetScore: 25 });
     const me = s.activeTeam;
     s.teams[me].hp = 49;
-    // 오두막은 rng0이면 한 장 · 첫 동물(상표토끼)이 나온다 — 깔린 상표토끼 한 장과 짝이 맞아 Lv.1 효과(+2)가 터진다
+    // 오두막은 rng0이면 한 장 · 첫 동물(상표토끼)이 나온다 — 깔린 상표토끼 한 장과 짝이 맞는다
     s.stacks.rabbit = [{ id: 9001, animal: 'rabbit', num: 1, collectedBy: null }];
+    s.stacks.tiger = [{ id: 9002, animal: 'tiger', num: 1, collectedBy: null }]; // 싹쓸이를 피하는 구경꾼
     const { events } = processPlayerAction(s, 'house', rng0);
-    expect(ofType(events, 'skillApplied')[0]).toMatchObject({ team: me, animal: 'rabbit', pair: true });
-    expect(ofType(events, 'ranked')[0]).toMatchObject({ team: me, rank: 1, reason: 'win' });
-    expect(s.pendingChoice).toBeNull();
-    expect(s.activeTeam).not.toBe(me);
+    expect(ofType(events, 'collect')[0]).toMatchObject({ team: me, animal: 'rabbit' });
+    expect(ofType(events, 'skillApplied')).toEqual([]);
+    expect(ofType(events, 'ranked')).toEqual([]);
+    expect(s.teams[me].hp).toBe(49);
+    expect(s.pendingChoice).toBe(me);
   });
 });
 
