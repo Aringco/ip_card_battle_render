@@ -138,8 +138,10 @@ const TL_TIGER_MS = 500 + 900 + 80;
 const TL_RANK_MS = 1700;
 const TL_FESTIVAL_MS = 900;
 const TL_TICK_MS = 1000; // 카드 강화의 출혈·지속 회복 한 번(useAnimationQueue의 TICK_DUR)
+// 싹쓸이 — "싹쓸이!" 알림 뒤 새 카드 SWEEP_REFILL_COUNT장이 차례로 깔린다(useAnimationQueue의 SWEEP_BANNER_DUR + 장 간격 × 장수 + 여운)
+const TL_SWEEP_MS = 1300 + 3 * 260 + 300;
 
-/** useAnimationQueue의 Pass 1(뽑기) → 1.5(정산) → 1.6(효과) → 순위 → 축제 스케줄을 그대로 따라 센 연출 길이 */
+/** useAnimationQueue의 Pass 1(뽑기) → 1.5(정산) → 싹쓸이 → 1.6(효과) → 순위 → 축제 스케줄을 그대로 따라 센 연출 길이 */
 function settleTimelineMs(events: GameEvent[]): number {
   let cursor = 0;
   let lastDrawEnd = 0;
@@ -176,6 +178,8 @@ function settleTimelineMs(events: GameEvent[]): number {
     if (groups++ > 0) cursor += TL_COLLECT_GROUP_GAP_MS;
     cursor += n * TL_COLLECT_MS;
   }
+  // 싹쓸이는 정산 바로 뒤, 짝 효과보다 먼저 재생된다
+  if (events.some(e => e.type === 'sweep')) cursor += TL_SWEEP_MS;
   for (const ev of events) {
     if (ev.type === 'skillApplied' && ev.level > 0) cursor += ev.animal === 'tiger' ? TL_TIGER_MS : TL_EFFECT_MS;
     else if (ev.type === 'ranked') cursor += TL_RANK_MS;
@@ -199,6 +203,7 @@ function settleEstimateMs(events: GameEvent[]): number {
     else if (ev.type === 'collect') collects++;
     else if (ev.type === 'skillApplied' || ev.type === 'enhanceTick') skills++;
     else if (ev.type === 'festival') festivals++;
+    else if (ev.type === 'sweep') skills += 2; // 알림 + 새 카드 세 장 — 기술 연출 두 번 남짓
   }
 
   const ms =

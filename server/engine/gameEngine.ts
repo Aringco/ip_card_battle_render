@@ -70,7 +70,7 @@ export function processSkillChoice(
 }
 
 /**
- * 카드 강화 판의 기술 선택 — 한 차례에 기술을 skillsPerTurn장까지(15턴마다 하나씩 늘어 최대 3장 — shared/enhance.ts).
+ * 카드 강화 판의 기술 선택 — 한 차례에 기술을 skillsPerTurn장까지(방 규칙의 턴마다 하나씩 늘어 최대 4장 — shared/enhance.ts).
  * 개인전(processIndividualSkill)과 같은 모양이다: 기술마다 승패를 보고, 남은 장수가 있고 쓸 카드가 남았으면
  * **pendingChoice를 세워 둔 채** 기다린다. 쓴 카드는 쿨타임이 서므로 같은 카드를 한 차례에 두 번 쓸 수 없다.
  */

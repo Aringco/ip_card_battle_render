@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Animal, Place, SideId } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -13,6 +13,7 @@ import { PauseMenu } from '@/components/game/PauseMenu';
 import { RotateHint } from '@/components/game/RotateHint';
 import { playBgm } from '@/lib/bgm';
 import { isFinished, mySideOf } from '@/lib/individual';
+import { duelMapOf, duelViewEvents, duelViewState } from '@/lib/duel';
 import { startPreload } from '@/lib/preload';
 import { markEventReturn } from '@/lib/eventSession';
 import { useBefore } from '@/lib/useBefore';
@@ -32,7 +33,16 @@ export default function GamePage() {
   } = useWebSocket();
   const [myTeam, setMyTeam] = useState<SideId | null>(null);
 
-  const animState = useAnimationQueue(lastEvents, gameState);
+  // 개인전 1:1(두 명)은 일반(팀전) 화면으로 그린다 — 편 id만 'A'(나)·'B'(상대)로 바꿔 화면·연출에 넘긴다(lib/duel.ts).
+  // ⚠️ 이벤트는 **lastEvents가 바뀔 때만** 다시 만든다 — 상태만 바뀐 갱신(일시정지 등)에 새 배열을 만들면 연출 큐가
+  //    그것을 새 액션으로 읽어 지난 연출을 다시 재생한다.
+  const duel = gameState ? duelMapOf(gameState, playerId) : null;
+  const duelKey = duel ? `${duel.left}|${duel.right}` : '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const viewState = useMemo(() => (gameState && duel ? duelViewState(gameState, duel) : gameState), [gameState, duelKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const viewEvents = useMemo(() => (duel ? duelViewEvents(lastEvents, duel) : lastEvents), [lastEvents, duelKey]);
+  const animState = useAnimationQueue(viewEvents, viewState);
   // 목표점수 달성하기의 시작 룰렛이 도는 중인가 — 그동안 판은 서버에서 멈춰 있다(ScoreRaceIntro 주석).
   const introActive = useBefore(eventIntroUntil);
 
@@ -74,6 +84,16 @@ export default function GamePage() {
       chooseSkill(animal, target);
     },
     [chooseSkill],
+  );
+
+  // 개인전 1:1 — 팀전 화면은 특허랑이의 대상을 고르지 않는다(상대가 하나다). 서버(개인전)는 대상이 필요하므로 상대 편을 실어 보낸다
+  // (대상이 필요 없는 기술이면 서버가 무시한다).
+  const duelOpponent = duel?.right ?? null;
+  const handleDuelChooseSkill = useCallback(
+    (animal: Animal) => {
+      chooseSkill(animal, duelOpponent ?? undefined);
+    },
+    [chooseSkill, duelOpponent],
   );
 
   const handlePassSkill = useCallback(() => {
@@ -138,11 +158,16 @@ export default function GamePage() {
   const mySide = individual ? mySideOf(gameState, playerId) : null;
   // 순위가 정해진 사람은 판에서 빠진 관전자와 같다 — 일시정지 메뉴에서는 [나가기]만 쓴다.
   const canActInGame = individual ? mySide !== null && !isFinished(gameState, mySide) : myTeam !== null;
+  // 개인전 1:1을 팀전 화면으로 그릴 때의 내 편 — 나는 언제나 왼쪽('A'), 관전자는 null
+  const duelMyTeam: SideId | null = duel && mySide !== null ? 'A' : null;
 
   // 체력이 즉시 10/0에 닿아 게임이 끝난 경우, 그 결정타 연출(체력 구슬 반응 +
   // "결정타!" 강조)이 끝까지 재생된 뒤에야 종료 화면으로 넘어간다 — 승리를 만든
   // 그 행동의 손맛을 화면 전환이 잘라먹지 않도록.
   if (gameState.phase === 'ended' && !animState.isSettling) {
+    if (duel && viewState) {
+      return <GameEndScreen gameState={viewState} myTeam={duelMyTeam} onBack={handleLeave} />;
+    }
     if (individual) {
       return <IndividualEndScreen gameState={gameState} mySide={mySide} onBack={handleLeave} />;
     }
@@ -163,7 +188,22 @@ export default function GamePage() {
 
   return (
     <>
-      {individual ? (
+      {duel && viewState ? (
+        <GameLayout
+          gameState={viewState}
+          turnDeadline={turnDeadline}
+          myTeam={duelMyTeam}
+          playerId={playerId}
+          onPlaceClick={handlePlaceClick}
+          onChooseSkill={handleDuelChooseSkill}
+          onPassSkill={handlePassSkill}
+          onDemoContinue={handleDemoContinue}
+          onDemoScene={handleDemoScene}
+          error={error}
+          animState={animState}
+          paused={gameState.paused}
+        />
+      ) : individual ? (
         <IndividualLayout
           gameState={gameState}
           turnDeadline={turnDeadline}

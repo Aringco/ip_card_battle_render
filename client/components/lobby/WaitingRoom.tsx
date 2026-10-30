@@ -723,7 +723,7 @@ function HostRulesPanel({
 
       {open ? (
         <div className="px-4 pb-4 border-t border-board-line/60 pt-3 flex flex-col gap-3">
-          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} limits={enhance ? ENHANCE_SETTINGS_LIMITS : undefined} />
+          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} limits={enhance ? ENHANCE_SETTINGS_LIMITS : undefined} showSkillGrowth={enhance} />
           <div className="flex gap-2">
             <PlankButton
               onClick={() => onApply(draft)}

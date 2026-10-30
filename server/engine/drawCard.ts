@@ -1,6 +1,6 @@
-import { ANIMALS, SHEEP_SAFETY_CAP, enhancePlaceDrawCount } from 'shared';
-import type { GameEvent, GameState, Place } from 'shared';
-import { drawCardAt, randomPlace } from './places';
+import { ANIMALS, SHEEP_SAFETY_CAP, SWEEP_BONUS_EXP, SWEEP_REFILL_COUNT, enhancePlaceDrawCount } from 'shared';
+import type { Animal, GameEvent, GameState, Place } from 'shared';
+import { dealOpeningSharedCards, drawCardAt, randomPlace } from './places';
 import type { RNG } from './places';
 import { applyEnhancePairEffect } from './skills';
 
@@ -29,9 +29,39 @@ export function drawCard(
   } else {
     events.push(..._drawOne(state, place, rng));
   }
-  events.push(...settleStacks(state, rng));
+  const settled = settleStacks(state, rng);
+  events.push(...settled);
+  events.push(...sweepIfCleared(state, settled, rng));
 
   return events;
+}
+
+/**
+ * 싹쓸이 — 이번 정산으로 짝을 가져가 필드에 미획득 카드가 한 장도 남지 않았으면, 네 동물 각각에 보너스 경험치
+ * (SWEEP_BONUS_EXP 범위, 무작위)를 더하고 빈 필드에 서로 다른 동물 카드 SWEEP_REFILL_COUNT장을 새로 깐다(2026-10-30 요청).
+ * 새 카드는 동물이 모두 달라 그 자리에서 짝이 되지 않는다(시작 공유 카드와 같은 함수 — 카드 강화 판은 숫자 1).
+ *
+ * ⚠️ settleStacks 안이 아니라 여기서 한다 — 시연(server/demo/)은 settleStacks만 따로 불러 대본대로 정산하므로,
+ *    거기에 넣으면 대본에 없는 보너스·카드가 끼어든다. 시연은 drawCard를 부르지 않는다.
+ */
+function sweepIfCleared(state: GameState, settled: GameEvent[], rng: RNG): GameEvent[] {
+  if (!settled.some(e => e.type === 'collect')) return [];
+  if (ANIMALS.some(a => state.stacks[a].some(c => c.collectedBy === null))) return [];
+
+  const team = state.activeTeam;
+  const bonus = {} as Record<Animal, number>;
+  for (const animal of ANIMALS) {
+    const [min, max] = SWEEP_BONUS_EXP[animal];
+    bonus[animal] = min + Math.floor(rng() * (max - min + 1));
+    state.teams[team].exp[animal] += bonus[animal];
+  }
+
+  const cards = dealOpeningSharedCards(rng, SWEEP_REFILL_COUNT);
+  for (const card of cards) {
+    if (state.enhance) card.num = 1;
+    state.stacks[card.animal].push(card);
+  }
+  return [{ type: 'sweep', team, bonus, cards: cards.map(c => ({ ...c })) }];
 }
 
 function consumePendingExtraDraws(state: GameState, rng: RNG): GameEvent[] {

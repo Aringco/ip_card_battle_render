@@ -60,7 +60,7 @@ export function IndividualRoomForm({
       side={
         enhance ? (
           // 같은 자리 같은 컴포넌트라 바꿔도 펼침 상태가 그대로 남는다(규칙을 펼친 채 일반 · 강화를 오가며 비교할 수 있다)
-          <GameRulesFields settings={enhanceSettings} onChange={onEnhanceSettings} mode="individual" limits={ENHANCE_SETTINGS_LIMITS} />
+          <GameRulesFields settings={enhanceSettings} onChange={onEnhanceSettings} mode="individual" limits={ENHANCE_SETTINGS_LIMITS} showSkillGrowth />
         ) : (
           <GameRulesFields settings={settings} onChange={onSettings} mode="individual" />
         )

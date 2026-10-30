@@ -61,13 +61,14 @@ export function makeScriptedCard(animal: Animal, num: CardNum): StackedCard {
  *
  * 동물은 중복 없이 뽑는다 — 같은 동물 두 장이면 시작하자마자 짝이 되어 선 플레이어가
  * 첫 클릭도 하기 전에 정산되어버린다. 숫자는 장소 뽑기와 무관하게 7~13 사이에서 고른다.
+ * count는 싹쓸이 뒤의 새 카드(SWEEP_REFILL_COUNT장 — drawCard.ts)가 바꿔 부른다. 같은 규칙(서로 다른 동물)이라 함께 쓴다.
  */
-export function dealOpeningSharedCards(rng: RNG = Math.random): StackedCard[] {
+export function dealOpeningSharedCards(rng: RNG = Math.random, count: number = OPENING_SHARED_CARD_COUNT): StackedCard[] {
   const pool: Animal[] = [...ANIMALS];
   const numSpan = OPENING_SHARED_CARD_NUM_MAX - OPENING_SHARED_CARD_NUM_MIN + 1;
 
   const cards: StackedCard[] = [];
-  for (let i = 0; i < OPENING_SHARED_CARD_COUNT && pool.length > 0; i++) {
+  for (let i = 0; i < count && pool.length > 0; i++) {
     const [animal] = pool.splice(Math.floor(rng() * pool.length), 1);
     const num = (Math.floor(rng() * numSpan) + OPENING_SHARED_CARD_NUM_MIN) as CardNum;
     cards.push({ id: ++cardIdCounter, animal, num, collectedBy: null });

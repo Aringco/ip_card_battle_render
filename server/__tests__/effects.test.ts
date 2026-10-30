@@ -55,6 +55,7 @@ describe('홀수 잔류', () => {
   it('짝수(2장) 스택 시 즉시 수집 — 경험치만 오르고 체력은 그대로다', () => {
     const state = clearStacks(initGame(['A1'], ['B1'], rng0));
     state.stacks.tiger.push(stackedCard('tiger', 6));
+    state.stacks.sheep.push(stackedCard('sheep', 7)); // 필드를 비우지 않는 구경꾼 한 장 — 비면 싹쓸이 보너스가 더해진다(아래 싹쓸이 절)
     // dock = [mermaid, tiger] — rngLast는 항상 마지막(tiger)을 뽑는다
     drawCard(state, 'dock', rngLast);
     // dock은 2종 장소라 새로 뽑히는 카드 숫자는 5~10 중 rngLast로 고정된 10 → 기존 6 + 새 10 = 16
@@ -68,11 +69,61 @@ describe('홀수 잔류', () => {
     const state = clearStacks(initGame(['A1'], ['B1'], rng0));
     state.festival = true;
     state.stacks.tiger.push(stackedCard('tiger', 6));
+    state.stacks.sheep.push(stackedCard('sheep', 7)); // 싹쓸이를 피하는 구경꾼 한 장
     const events = drawCard(state, 'dock', rngLast); // 6 + 10 = 16, 배가 없음
 
     expect(state.teams['A'].exp.tiger).toBe(16);
     const collectEv = events.find(e => e.type === 'collect');
     expect(collectEv).toMatchObject({ type: 'collect', animal: 'tiger', exp: 16 });
+  });
+});
+
+// ─── 싹쓸이 (필드가 비면 보너스 경험치 + 새 카드 세 장) ──────────────────────────
+describe('싹쓸이', () => {
+  it('정산으로 필드가 비면 네 동물에 보너스 경험치를 더하고, 서로 다른 동물 카드 세 장을 새로 깐다', () => {
+    const state = clearStacks(initGame(['A1'], ['B1'], rng0));
+    state.stacks.tiger.push(stackedCard('tiger', 6));
+    const events = drawCard(state, 'dock', rngLast); // 호랑이 짝 → 필드가 빈다
+
+    const sweep = events.find(e => e.type === 'sweep');
+    expect(sweep).toBeDefined();
+    if (sweep?.type !== 'sweep') return;
+    expect(sweep.team).toBe('A');
+    // rngLast(0.99) — 범위의 끝: 실용신양·상표토끼 5, 디자인어·특허랑이 10
+    expect(sweep.bonus).toEqual({ sheep: 5, rabbit: 5, mermaid: 10, tiger: 10 });
+    expect(state.teams.A.exp).toEqual({ sheep: 5, rabbit: 5, mermaid: 10, tiger: 16 + 10 });
+    // 새 카드는 세 장, 동물이 모두 달라 그 자리에서 짝이 되지 않는다
+    const fresh = ANIMALS.flatMap(a => state.stacks[a].filter(c => c.collectedBy === null));
+    expect(fresh.length).toBe(3);
+    expect(new Set(fresh.map(c => c.animal)).size).toBe(3);
+    expect(sweep.cards.map(c => c.id).sort()).toEqual(fresh.map(c => c.id).sort());
+    // 정산 뒤에 실린다(화면이 카드가 날아간 뒤에 재생한다)
+    expect(events.findIndex(e => e.type === 'sweep')).toBeGreaterThan(events.findIndex(e => e.type === 'collect'));
+    expect(state.teams.A.hp).toBe(INITIAL_HP);
+  });
+
+  it('보너스는 범위 안의 무작위 값이다(실용신양·상표토끼 1~5, 디자인어·특허랑이 5~10)', () => {
+    const state = clearStacks(initGame(['A1'], ['B1'], rng0));
+    state.stacks.tiger.push(stackedCard('tiger', 6));
+    const events = drawCard(state, 'dock', rng0); // 0번째(인어) — 호랑이와 짝이 아니다
+    expect(events.some(e => e.type === 'sweep')).toBe(false);
+    state.stacks = { sheep: [], rabbit: [], mermaid: [], tiger: [stackedCard('tiger', 6)] };
+    const lowEvents = drawCard(state, 'dock', () => 0.6); // 0.6 → 호랑이, 보너스는 범위 가운데
+    const low = lowEvents.find(e => e.type === 'sweep');
+    if (low?.type !== 'sweep') throw new Error('sweep 없음');
+    expect(low.bonus.sheep).toBeGreaterThanOrEqual(1);
+    expect(low.bonus.sheep).toBeLessThanOrEqual(5);
+    expect(low.bonus.tiger).toBeGreaterThanOrEqual(5);
+    expect(low.bonus.tiger).toBeLessThanOrEqual(10);
+  });
+
+  it('짝을 가져갔어도 필드에 카드가 남아 있으면 싹쓸이가 아니다', () => {
+    const state = clearStacks(initGame(['A1'], ['B1'], rng0));
+    state.stacks.tiger.push(stackedCard('tiger', 6));
+    state.stacks.sheep.push(stackedCard('sheep', 7));
+    const events = drawCard(state, 'dock', rngLast);
+    expect(events.some(e => e.type === 'collect')).toBe(true);
+    expect(events.some(e => e.type === 'sweep')).toBe(false);
   });
 });
 

@@ -1639,6 +1639,40 @@ body {
   .festival-start-banner { animation: none; opacity: 0; }
 }
 
+/* ── 싹쓸이 — 필드가 빈 순간 "싹쓸이!" + 네 동물의 보너스 경험치(두 줄, SweepBanner) ──────────────
+   축제 시작 안내와 같은 모양·같은 자리다(둘이 한 액션에 함께 오면 싹쓸이가 먼저 끝난 뒤 축제가 뜬다).
+   길이는 useAnimationQueue의 SWEEP_BANNER_DUR + 새 카드 세 장 + 여운(= 서버 room.ts의 TL_SWEEP_MS)과 같다. */
+.sweep-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  animation: sheepLoadedPop 2380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.sweep-banner-line1 {
+  font-weight: 900;
+  font-size: 2.6rem;
+  color: #fef9c3;
+  -webkit-text-stroke: 2px #713f12;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.sweep-banner-line2 {
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #fffbeb;
+  -webkit-text-stroke: 1.5px #713f12;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sweep-banner { animation: none; opacity: 0; }
+}
+
 /* ── 턴 시작 알림 — "내 차례"/"우리팀 차례"/"상대 차례" ──────────────────────────
    다른 배너들(테두리 없이 두꺼운 글자만 둥둥 떠 있는 스타일)과 달리, 흰 알약 배경
    위에 이중 테두리(border+outline)와 그림자를 얹어 게임판 위에서 확실히 도드라지게
@@ -6689,6 +6723,15 @@ body {
   filter: drop-shadow(0 18px 16px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
   will-change: transform;
 }
+/* 내가 행동을 고르는 단계가 아니면(상대 차례 · 내 장소 선택 · 연출 중 · 관전) **입체 움직임(떠오름·확대·기울기·옆면) 없이 홀로그램(광택 띠)만** — 2026-10-30 요청. HoloCell이 data-flat을 단다(SkillChoiceBar의 interactive).
+   광택은 포인터 높이(--my)를 그대로 따라간다. 카드 밝아짐(.skill-choice-bg)도 그대로 둔다. */
+.holo-cell[data-holo][data-hover][data-flat] {
+  z-index: auto;
+  transform: none;
+  filter: none;
+  will-change: auto;
+}
+.holo-cell[data-holo][data-hover][data-flat] .holo-edge { opacity: 0; }
 /* 레벨은 있지만 지금은 누를 수 없는 카드(상대 차례)에도 효과를 건다. 그때 버튼은 disabled라 마우스 이벤트를
    삼켜 감싸는 칸이 포인터를 못 받는다 — 버튼만 포인터를 통과시켜 칸이 받게 한다(어차피 누를 수 없는 버튼이다). */
 .holo-cell[data-holo] .skill-choice-panel:disabled { pointer-events: none; }

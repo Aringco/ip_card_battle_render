@@ -21,13 +21,13 @@ export function judgeHp(state: GameState): GameEvent[] {
 }
 
 /**
- * 카드 강화 판의 한 차례 기술 장수 — 15턴마다 하나씩 늘어 최대 3장(enhanceSkillsPerTurn). 개인전은 시작 인원 5명 이상이면
- * 처음부터 2장이므로 둘 중 큰 쪽이다(더하면 3장 상한에 너무 일찍 닿는다).
+ * 카드 강화 판의 한 차례 기술 장수 — 방 규칙대로 N턴마다 하나씩 늘어 최대 M장(enhanceSkillsPerTurn — 기본 15턴 · 3장, 끄면 1장).
+ * 개인전은 시작 인원 5명 이상이면 처음부터 2장이므로 둘 중 큰 쪽이다(더하면 상한에 너무 일찍 닿는다).
  */
-export function enhanceSkillsOf(state: GameState): 1 | 2 | 3 {
-  const byTurn = enhanceSkillsPerTurn(state.turn);
+export function enhanceSkillsOf(state: GameState): number {
+  const byTurn = enhanceSkillsPerTurn(state.turn, state.settings);
   const base = state.mode === 'individual' && state.turnOrder.length >= INDIVIDUAL_TWO_SKILLS_FROM ? 2 : 1;
-  return Math.max(byTurn, base) as 1 | 2 | 3;
+  return Math.max(byTurn, base);
 }
 
 /**
@@ -150,7 +150,7 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 한 라운드가 끝난 경우 → 턴 카운터 증가
   if (roundCompleted) {
     state.turn++;
-    // 카드 강화 판 — 15턴마다 한 차례에 쓰는 기술이 하나씩 는다(최대 3장). 턴이 오르는 이 한 곳에서만 정한다.
+    // 카드 강화 판 — 방 규칙의 턴마다 한 차례에 쓰는 기술이 하나씩 는다(기본 15턴 · 최대 3장). 턴이 오르는 이 한 곳에서만 정한다.
     if (state.enhance) state.skillsPerTurn = enhanceSkillsOf(state);
 
     // settings.festivalTurn 도달 시점부터 축제가 시작된다. festivalTurn이 MAX_TURN보다

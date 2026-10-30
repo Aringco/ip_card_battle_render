@@ -53,6 +53,9 @@ export const SETTINGS_LIMITS = {
   // 0이면 그 방에서는 일시정지를 아예 쓸 수 없다(항복·나가기는 그대로 남는다).
   pauseMaxCount: { min: 0, max: 10 },
   pauseMaxMin: { min: 1, max: 30 },
+  // 카드 강화 판의 기술 수 증가 — 몇 턴마다 · 최대 몇 장(기술 카드가 넷이라 4장이 끝이다)
+  skillGrowthTurns: { min: 1, max: 999 },
+  skillGrowthMax: { min: 2, max: 4 },
 } as const;
 
 /** 항목별 입력 범위 — 판에 따라 범위를 바꿔 넘길 때 쓴다(카드 강화 판은 목표 점수 상한이 2500이다 — shared/enhance.ts ENHANCE_SETTINGS_LIMITS). */
@@ -69,6 +72,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   noActionTimeSec: DEFAULT_NO_ACTION_TIME_SEC,
   pauseMaxCount: DEFAULT_PAUSE_MAX_COUNT,
   pauseMaxMin: DEFAULT_PAUSE_MAX_MIN,
+  // 카드 강화 판의 기술 수 증가 기본값 — 15턴마다 +1장, 최대 3장(2026-10-29 규칙 그대로). 일반 판은 읽지 않는다.
+  skillGrowth: true,
+  skillGrowthTurns: 15,
+  skillGrowthMax: 3,
 };
 
 /** 방장 입력값을 SETTINGS_LIMITS 범위로 잘라내고, 정수가 아니면 반올림한다. */
@@ -97,6 +104,9 @@ export function clampSettings(
     noActionTimeSec: clamp('noActionTimeSec'),
     pauseMaxCount: clamp('pauseMaxCount'),
     pauseMaxMin: clamp('pauseMaxMin'),
+    skillGrowth: typeof merged.skillGrowth === 'boolean' ? merged.skillGrowth : DEFAULT_SETTINGS.skillGrowth,
+    skillGrowthTurns: clamp('skillGrowthTurns'),
+    skillGrowthMax: clamp('skillGrowthMax'),
   };
 }
 
@@ -174,6 +184,18 @@ export const OPENING_SHARED_CARD_COUNT = 2;
 // 지나치게 유리하거나 불리하지 않은 값만 나오게 한다.
 export const OPENING_SHARED_CARD_NUM_MIN = 7;
 export const OPENING_SHARED_CARD_NUM_MAX = 13;
+
+// ─── 싹쓸이 ──────────────────────────────────────────────────────────────────
+// 자기 차례의 정산으로 필드의 카드가 한 장도 남지 않으면(모든 동물의 카드가 짝이 되어 가져왔다) 싹쓸이다(2026-10-30 요청).
+// 네 동물 각각에 보너스 경험치를 무작위로(양 끝 포함) 더하고, 빈 필드에 서로 다른 동물 카드 SWEEP_REFILL_COUNT장을 새로 깐다
+// (짝이 되면 안 되므로 한 동물에 한 장씩 — 시작 공유 카드와 같은 방식·같은 숫자 범위, 카드 강화 판은 1). server/engine/drawCard.ts.
+export const SWEEP_BONUS_EXP: Record<'sheep' | 'rabbit' | 'mermaid' | 'tiger', readonly [number, number]> = {
+  sheep: [1, 5],
+  rabbit: [1, 5],
+  mermaid: [5, 10],
+  tiger: [5, 10],
+};
+export const SWEEP_REFILL_COUNT = 3;
 
 export const ANIMALS = ['sheep', 'rabbit', 'mermaid', 'tiger'] as const;
 

@@ -136,6 +136,7 @@ describe('강화 판 짝 효과', () => {
   it('뽑는 카드는 모두 1이고, 짝이 맞으면 모인 장수만큼 경험치 + 그 카드의 기술이 곧바로 발동한다', () => {
     const s = newGame();
     for (const a of ANIMALS) s.stacks[a] = [];
+    s.stacks.tiger.push({ id: 90002, animal: 'tiger', num: 1, collectedBy: null }); // 필드를 비우지 않는 구경꾼(비면 싹쓸이)
     processPlayerAction(s, 'house', rng0); // 오두막 1장 — 0번째 동물(토끼)
     expect(s.stacks.rabbit.map(c => c.num)).toEqual([1]);
     processPass(s);
@@ -155,6 +156,7 @@ describe('강화 판 짝 효과', () => {
     for (const a of ANIMALS) s.stacks[a] = [];
     s.teams.A.exp.rabbit = 9;                // 짝 2장이면 11 → Lv.2
     s.stacks.rabbit.push({ id: 90001, animal: 'rabbit', num: 1, collectedBy: null });
+    s.stacks.tiger.push({ id: 90003, animal: 'tiger', num: 1, collectedBy: null }); // 싹쓸이를 피하는 구경꾼
     processPlayerAction(s, 'house', rng0);   // 토끼 1장 → 2장 짝
     expect(s.teams.A.exp.rabbit).toBe(11);
     expect(s.teams.A.hp).toBe(25 + 4);
@@ -572,7 +574,30 @@ describe('연출 유예 — 컴퓨터의 다음 수가 큰 연쇄 뽑기 연출 
 
 describe('강화 판 한 차례 여러 장', () => {
   it('15턴마다 한 장씩 늘어 최대 3장 — 1~15턴 1장 · 16~30턴 2장 · 31턴부터 3장', () => {
-    expect([1, 15, 16, 30, 31, 45, 46, 200].map(enhanceSkillsPerTurn)).toEqual([1, 1, 2, 2, 3, 3, 3, 3]);
+    expect([1, 15, 16, 30, 31, 45, 46, 200].map(t => enhanceSkillsPerTurn(t))).toEqual([1, 1, 2, 2, 3, 3, 3, 3]);
+  });
+
+  it('방 규칙 — 끄면 언제나 1장, 주기·최대 장수를 바꿀 수 있다(최대 4장)', () => {
+    const off = { skillGrowth: false, skillGrowthTurns: 15, skillGrowthMax: 3 };
+    expect([1, 16, 31, 200].map(t => enhanceSkillsPerTurn(t, off))).toEqual([1, 1, 1, 1]);
+    const fast = { skillGrowth: true, skillGrowthTurns: 5, skillGrowthMax: 4 };
+    expect([1, 5, 6, 11, 16, 100].map(t => enhanceSkillsPerTurn(t, fast))).toEqual([1, 1, 2, 3, 4, 4]);
+    // 범위 밖은 잘린다 — 최대 장수 2~4, 주기 1~999
+    const clamped = clampEnhanceSettings({ skillGrowthMax: 9, skillGrowthTurns: 0 });
+    expect(clamped.skillGrowthMax).toBe(4);
+    expect(clamped.skillGrowthTurns).toBe(1);
+    expect(clampEnhanceSettings({ skillGrowth: 'yes' as unknown as boolean }).skillGrowth).toBe(true);
+  });
+
+  it('끈 판은 턴이 올라도 1장, 켠 판은 정한 주기대로 는다', () => {
+    const off = newGame({ skillGrowth: false });
+    while (off.turn < 40) { toChoice(off); processPass(off); }
+    expect(off.skillsPerTurn).toBe(1);
+    const on = newGame({ skillGrowthTurns: 3, skillGrowthMax: 4 });
+    while (on.turn < 4) { toChoice(on); processPass(on); }
+    expect(on.skillsPerTurn).toBe(2);
+    while (on.turn < 10) { toChoice(on); processPass(on); }
+    expect(on.skillsPerTurn).toBe(4);
   });
 
   it('턴이 16이 되는 순간 판의 skillsPerTurn이 2가 된다', () => {
@@ -710,10 +735,11 @@ describe('방 — 카드 강화 혼자 놀기', () => {
     expect(s.enhance).toBeDefined();
     expect(s.memberIds).toEqual({ A: ['me'], B: ['CPU'] });
     expect(s.teamNames.A).toBe('민트팀');
-    expect(s.settings.targetScore).toBe(200);
-    expect(s.settings.festivalTurn).toBe(6);
-    expect(s.settings.festivalDrawIncreaseInterval).toBe(4);
-    expect(s.teams.A.hp).toBe(200);
+    expect(s.settings.targetScore).toBe(500);
+    expect(s.settings.festivalTurn).toBe(2);
+    expect(s.settings.festivalDrawCount).toBe(1);
+    expect(s.settings.festivalDrawIncreaseInterval).toBe(2);
+    expect(s.teams.A.hp).toBe(500);
     expect(s.settings.drawTimeSec).toBe(15);
     expect(s.pauseUnlimited).toBe(true);
   });

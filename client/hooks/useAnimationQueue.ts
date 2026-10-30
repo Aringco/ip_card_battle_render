@@ -151,6 +151,13 @@ export interface DisplayedTeamPatch {
   pendingExtraDraws: number;
 }
 
+/** 싹쓸이 — 필드가 빈 순간의 알림(SweepBanner). bonus는 네 동물에 더한 보너스 경험치 */
+export interface SweepBannerInfo {
+  id: number;
+  team: SideId;
+  bonus: Record<Animal, number>;
+}
+
 /** 카드 강화 — 지속 효과가 한 번 든 순간(TeamTotalPanel이 id가 바뀔 때마다 파티클을 다시 터뜨린다) */
 export interface DotPulse {
   id: number;
@@ -202,6 +209,7 @@ export interface AnimationState {
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
   decisiveHit: { winner: SideId } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
   rankBanner: RankBanner | null; // 개인전 — 한 사람의 순위가 정해진 순간 "n위 확정!" 알림
+  sweepBanner: SweepBannerInfo | null; // 싹쓸이 — "싹쓸이!" + 보너스 경험치 알림
 }
 
 /** 개인전 — 순위가 정해진 사람과 그 사유(RankedBanner가 그린다). */
@@ -245,6 +253,11 @@ const RABBIT_PRESSURE_DUR = 700;
 const FESTIVAL_BURST_DUR = 2000;
 const FESTIVAL_START_INFO_DUR = 2600; // "이제부터 K턴마다 N회!" 규칙 안내 배너 — 두 줄이라 다른 배너보다 조금 더 오래 보여준다
 const DECISIVE_HIT_DUR = 1800;
+// 싹쓸이 — 카드가 다 날아가 필드가 빈 뒤 "싹쓸이!"가 뜨고(그때 보너스 경험치가 오른다), 이어 새 카드가 한 장씩 깔린다.
+// 서버 room.ts의 TL_SWEEP_MS(= 이 셋의 합)와 같은 값이어야 한다.
+const SWEEP_BANNER_DUR = 1300;
+const SWEEP_CARD_STEP = 260;
+const SWEEP_TAIL = 300;
 const RANK_BANNER_DUR = 1700; // 한 사람의 "n위 확정!" 알림 — 한 기술에서 둘이 정해지면 차례로 하나씩 띄운다
 // ── 결정타를 맞은 팀의 좌절 연출 ───────────────────────────────────────────
 const DESPAIR_LEAD_MS = 300;  // 화면이 흔들린 직후 첫 마리가 뜨기까지
@@ -291,6 +304,7 @@ export function useAnimationQueue(
   const [newCardId, setNewCardId] = useState<number | null>(null);
   const [decisiveHit, setDecisiveHit] = useState<{ winner: SideId } | null>(null);
   const [rankBanner, setRankBanner] = useState<RankBanner | null>(null);
+  const [sweepBanner, setSweepBanner] = useState<SweepBannerInfo | null>(null);
   // 실제 서버 경험치(gameState.teams[t].exp)는 페어가 맞는 즉시 반영되지만, 화면에는 그
   // 페어 카드가 팀 쪽으로 날아가 도착하는 순간에야 숫자가 오르는 게 더 직관적이다.
   //
@@ -399,6 +413,13 @@ export function useAnimationQueue(
       if (ev.type === 'skillApplied' && ev.randomExp) {
         const key = deltaKeyOf(ev.team, ev.randomExp.animal);
         newCredits[key] = (newCredits[key] ?? 0) + ev.randomExp.amount;
+      }
+      // 싹쓸이 보너스 — "싹쓸이!"가 뜨는 순간에 드러낸다(아래 싹쓸이 단계)
+      if (ev.type === 'sweep') {
+        ANIMALS.forEach(a => {
+          const key = deltaKeyOf(ev.team, a);
+          newCredits[key] = (newCredits[key] ?? 0) + ev.bonus[a];
+        });
       }
     });
     setPendingExpCredit(newCredits);
@@ -614,6 +635,7 @@ export function useAnimationQueue(
     setNewCardId(null);
     setDecisiveHit(null);
     setRankBanner(null);
+    setSweepBanner(null);
     // pendingExpCredit는 이제 이 이펙트가 아니라 렌더 도중(위쪽 lastEventsForCreditRef
     // 블록)에 이미 이번 액션의 정답값으로 동기 반영돼 있다 — 여기서 다시 건드리지 않는다.
 
@@ -636,10 +658,11 @@ export function useAnimationQueue(
       });
       setCardCacheVersion(v => v + 1);
 
-      const thisActionDrawIds = new Set(
-        lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'draw' }> => e.type === 'draw')
-          .map(e => e.card.id),
-      );
+      // 싹쓸이로 새로 깔린 카드도 "이번 액션이 드러낼 카드"다 — 아래 (1)이 곧바로 노출하면 짝이 날아가기도 전에 새 카드가 먼저 보인다
+      const thisActionDrawIds = new Set([
+        ...lastEvents.filter((e): e is Extract<ClientGameEvent, { type: 'draw' }> => e.type === 'draw').map(e => e.card.id),
+        ...lastEvents.flatMap(e => (e.type === 'sweep' ? e.cards.map(c => c.id) : [])),
+      ]);
       const thisActionCollectIds = new Set(
         lastEvents
           .filter((e): e is Extract<ClientGameEvent, { type: 'collect' }> => e.type === 'collect')
@@ -704,13 +727,16 @@ export function useAnimationQueue(
     // 장수를 최종값으로 삼는다.
     const drawCountByAnimal: Record<Animal, number> = { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 };
     const collectedCountByAnimal: Partial<Record<Animal, number>> = {};
+    const sweepCountByAnimal: Record<Animal, number> = { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 };
     lastEvents.forEach(e => {
       if (e.type === 'draw') drawCountByAnimal[e.card.animal]++;
       else if (e.type === 'collect') collectedCountByAnimal[e.animal] = e.cardIds.length;
+      else if (e.type === 'sweep') e.cards.forEach(c => sweepCountByAnimal[c.animal]++);
     });
     const stackRunningCount: Record<Animal, number> = { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 };
     ANIMALS.forEach(a => {
-      const finalUncollected = gameState ? gameState.stacks[a].filter(c => c.collectedBy === null).length : 0;
+      // 싹쓸이로 새로 깔린 카드는 이번 뽑기가 쌓은 더미가 아니다 — 빼고 센다
+      const finalUncollected = (gameState ? gameState.stacks[a].filter(c => c.collectedBy === null).length : 0) - sweepCountByAnimal[a];
       const totalAtEnd = collectedCountByAnimal[a] ?? finalUncollected;
       stackRunningCount[a] = totalAtEnd - drawCountByAnimal[a];
     });
@@ -988,10 +1014,13 @@ export function useAnimationQueue(
               cardIds.forEach(id => next.delete(id));
               return next;
             });
+            // 이 페어의 몫만 걷는다 — 같은 칸에 싹쓸이 보너스·무작위 경험치가 함께 가려져 있을 수 있다(그것들은 제 연출 순간에 걷힌다)
             setPendingExpCredit(prev => {
               if (!(flashKey in prev)) return prev;
               const next = { ...prev };
-              delete next[flashKey];
+              const left = next[flashKey] - exp;
+              if (left > 0) next[flashKey] = left;
+              else delete next[flashKey];
               return next;
             });
             setScoreFlash(prev => new Map([...prev, [flashKey, flashId]]));
@@ -1006,6 +1035,55 @@ export function useAnimationQueue(
 
           cursor = flingAt + COLLECT_FLING_DUR + 80;
         }
+      }
+    }
+
+    // ── 싹쓸이: 짝이 다 날아가 필드가 빈 순간 "싹쓸이!" — 보너스 경험치가 이때 오르고, 이어 새 카드가 한 장씩 깔린다. ────
+    // 카드에 관한 일이라 짝 효과(Pass 1.6)보다 먼저 재생한다(서버 room.ts의 settleTimelineMs도 같은 순서로 센다).
+    {
+      const sweepEv = lastEvents.find((e): e is Extract<ClientGameEvent, { type: 'sweep' }> => e.type === 'sweep');
+      if (sweepEv) {
+        const at = cursor;
+        const id = ++floatIdCounter;
+        const { team, bonus, cards } = sweepEv;
+        sched(() => {
+          setSweepBanner({ id, team, bonus });
+          playRandomSound('bomb');
+          setScreenShakeLevel(2);
+          sched(() => setScreenShakeLevel(0), SHAKE_PULSE_DUR);
+          setPendingExpCredit(prev => {
+            const next = { ...prev };
+            ANIMALS.forEach(a => {
+              const key = deltaKeyOf(team, a);
+              const left = (next[key] ?? 0) - bonus[a];
+              if (left > 0) next[key] = left;
+              else delete next[key];
+            });
+            return next;
+          });
+          const flashes = ANIMALS.map(a => [deltaKeyOf(team, a), ++floatIdCounter] as const);
+          setScoreFlash(prev => new Map([...prev, ...flashes]));
+          sched(() => {
+            setScoreFlash(prev => {
+              const next = new Map(prev);
+              flashes.forEach(([key, fid]) => {
+                if (next.get(key) === fid) next.delete(key);
+              });
+              return next;
+            });
+          }, SCORE_FLASH_DUR);
+        }, at);
+        cards.forEach((card, i) => {
+          sched(() => {
+            setNewCardId(card.id);
+            setRevealedCardIds(prev => (prev.has(card.id) ? prev : new Set(prev).add(card.id)));
+            playRandomSound('card');
+            sched(() => setNewCardId(prev => (prev === card.id ? null : prev)), REACTION_DUR);
+          }, at + SWEEP_BANNER_DUR + i * SWEEP_CARD_STEP);
+        });
+        const endsAt = at + SWEEP_BANNER_DUR + cards.length * SWEEP_CARD_STEP + SWEEP_TAIL;
+        sched(() => setSweepBanner(prev => (prev?.id === id ? null : prev)), endsAt);
+        cursor = endsAt;
       }
     }
 
@@ -1396,5 +1474,6 @@ export function useAnimationQueue(
     isSettling,
     decisiveHit,
     rankBanner,
+    sweepBanner,
   };
 }

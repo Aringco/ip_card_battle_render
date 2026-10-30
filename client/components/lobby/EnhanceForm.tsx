@@ -35,7 +35,7 @@ export function EnhanceForm({
     <FormCard
       title="⚒️ 강화 모드"
       description="모든 카드가 Lv.1부터 열려 있어요. 짝을 맞춰 카드를 Lv.Max까지 강화하세요!"
-      side={<GameRulesFields settings={settings} onChange={onSettings} hidePause limits={ENHANCE_SETTINGS_LIMITS} />}
+      side={<GameRulesFields settings={settings} onChange={onSettings} hidePause limits={ENHANCE_SETTINGS_LIMITS} showSkillGrowth />}
       footer={
         <PlankButton onClick={onSubmit} disabled={!canSubmit} block>
           강화 대전 시작

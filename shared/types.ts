@@ -105,6 +105,12 @@ export interface GameSettings {
   // 한 번 멈춘 뒤 이 시간이 지나면 서버가 알아서 풀어준다(상대가 영영 기다리지 않도록).
   pauseMaxCount: number;  // 팀당 일시정지 가능 횟수
   pauseMaxMin: number;    // 한 번의 일시정지 최대 시간(분)
+  // 카드 강화 판에서만 쓰는 "한 차례에 쓰는 기술 수 증가"(2026-10-30 — 방 만들기 옵션). 켜 두면 skillGrowthTurns턴마다
+  // 하나씩 늘어 skillGrowthMax장까지 간다(shared/enhance.ts의 enhanceSkillsPerTurn). 끄면 판 끝까지 1장(개인전 5명+는 2장).
+  // 일반 판은 이 셋을 읽지 않는다.
+  skillGrowth: boolean;
+  skillGrowthTurns: number;
+  skillGrowthMax: number;
 }
 
 export interface GameState {
@@ -136,9 +142,9 @@ export interface GameState {
   // 판 도중에는 바뀌지 않는다. 순위가 정해진 편도 목록에 남고 차례만 건너뛴다.
   turnOrder: SideId[];
   // 한 차례에 쓸 수 있는 기술 수. 개인전은 시작 인원이 5명 이상이면 2, 아니면 1이고 판 도중
-  // 탈락으로 인원이 줄어도 바뀌지 않는다. 팀전은 언제나 1 — **카드 강화 판만 예외**로 15턴마다 하나씩
-  // 늘어 3까지 간다(shared/enhance.ts의 enhanceSkillsPerTurn, advanceTurn이 턴이 오를 때 다시 정한다).
-  skillsPerTurn: 1 | 2 | 3;
+  // 탈락으로 인원이 줄어도 바뀌지 않는다. 팀전은 언제나 1 — **카드 강화 판만 예외**로 settings.skillGrowthTurns턴마다
+  // 하나씩 늘어 skillGrowthMax(최대 4)까지 간다(shared/enhance.ts의 enhanceSkillsPerTurn, advanceTurn이 턴이 오를 때 다시 정한다).
+  skillsPerTurn: number;
   skillsUsedThisTurn: number; // 이번 차례에 지금까지 쓴 기술 수 — 차례가 넘어갈 때 0으로
   ranks: Record<SideId, number>; // 개인전 — 정해진 순위만. 팀전은 {}
 
@@ -223,6 +229,9 @@ export type GameEvent =
     }
   // 카드 강화 — 이 장소를 눌러 이번에 count장이 한꺼번에 나온다(뒤따르는 draw count개가 그 카드들이다). 화면은 겹쳐서 빠르게 띄운다.
   | { type: 'placeDraws'; place: Place; count: number }
+  // 싹쓸이 — 이번 정산으로 필드가 비었다. bonus는 네 동물 각각에 더한 보너스 경험치, cards는 빈 필드에 새로 깐 카드(서로 다른 동물).
+  // 정산(collect·짝 효과) 바로 뒤에 실린다(shared/constants.ts의 SWEEP_*).
+  | { type: 'sweep'; team: SideId; bonus: Record<Animal, number>; cards: StackedCard[] }
   | { type: 'skillPassed'; team: SideId; auto: boolean } // "아무것도 하지 않음"을 선택(auto=true면 고를 수 있는 행동이 없어 화면에 알리지 않고 자동 처리)
   | { type: 'festival' } // FESTIVAL_TURN 도달 — 이때부터 도토리 축제 랜덤 뽑기가 발동한다
   // reason: 'forfeit'은 엔진이 만들지 않는다 — 항복·나가기는 방(Room)에서 일어나는 일이라

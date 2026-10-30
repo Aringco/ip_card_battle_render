@@ -34,12 +34,15 @@ function HoloCell({
   className,
   children,
   shine = true,
+  flat = false,
 }: {
   enabled: boolean;
   className: string;
   children: React.ReactNode;
   /** 사선 반사 띠(광택)를 그릴지 — [턴 마치기]는 기울기(입체 움직임)만 쓴다(2026-10-30 요청) */
   shine?: boolean;
+  /** 입체 움직임(떠오름·확대·기울기·옆면)을 끄고 광택만 남긴다 — 내가 행동을 고르는 단계(interactive)가 아닐 때(2026-10-30 요청 — 처음엔 "상대 차례"였다가 같은 날 "내 행동 선택 페이즈에만"으로 좁혔다. 내 장소 선택 단계도 flat. globals.css의 [data-flat]) */
+  flat?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
@@ -117,6 +120,7 @@ function HoloCell({
       ref={ref}
       className={`holo-cell ${className}`}
       data-holo={enabled || undefined}
+      data-flat={flat || undefined}
       onPointerEnter={onPointerEnter}
       onPointerMove={onPointerMove}
       onPointerLeave={reset}
@@ -332,6 +336,7 @@ export function SkillChoiceBar({
           <HoloCell
             key={animal}
             enabled={eligible && open(animal)}
+            flat={!interactive}
             className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
@@ -453,11 +458,19 @@ export function SkillChoiceBar({
           다듬으려고) overflow-hidden이라 그 안에 두면 잘려 보인다 — 그래서 가이드는
           이 바깥의, 잘리지 않는 래퍼에 그린다(장소 타일에서 겪었던 것과 같은 문제). */}
       {/* 턴 마치기도 기술 카드처럼 가리키면 기운다(2026-10-30 요청) — 기술 카드가 "레벨이 있어 활성인가"로 켜듯, 이 칸은 언제나
-          활성이라 상대 차례에도 켠다(시연은 내내 잠겨 있어 끈다). **입체 움직임만** 준다 — 광택 띠와 강화 판의 Lv.Max 빛(무지개 · 금빛)을
+          활성이라 상대 차례에도 켠다(시연은 내내 잠겨 있어 끈다 — 내 행동 선택 단계가 아니면 flat이라 아무 움직임도 없다). **입체 움직임만** 준다 — 광택 띠와 강화 판의 Lv.Max 빛(무지개 · 금빛)을
           한 번 입혀 봤다가 같은 날 요청으로 걷었다(shine={false}). */}
-      <HoloCell enabled={demoAllowed === null} shine={false} className="relative">
+      <HoloCell enabled={demoAllowed === null} shine={false} flat={!interactive} className="relative">
         <button
-          onClick={() => passable && onPass()}
+          onClick={e => {
+            if (!passable) return;
+            // 카드 강화 판 — 기술 카드처럼 내려놓는다(2026-10-30 요청). 배율이 없는 칸이라 언제나 진도 1(내려찍기만)이다.
+            if (enhance) {
+              const cell = e.currentTarget.closest('.holo-cell');
+              if (cell instanceof HTMLElement) quake.trigger(cell, 1);
+            }
+            onPass();
+          }}
           disabled={!passable}
           className={`play-card-frame skill-choice-panel play-card-cell group relative flex flex-col items-stretch justify-end text-left w-full h-full ${
             passable ? 'skill-choice-glow' : ''

@@ -5,6 +5,7 @@ import type { GameMode, GameSettings, SettingsLimits, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import { ModeToggle } from './ModeToggle';
 
 // 선 플레이어(먼저 시작하는 팀) — 숫자가 아니라 3지선다라 아래 RULE_FIELDS와 따로 그린다.
 // 자리 선택과 같은 그림 버튼을 쓴다(팀 1·팀 2는 아예 같은 그림). 글씨가 그림 안에
@@ -20,14 +21,17 @@ const FIRST_TEAM_OPTIONS: { value: GameSettings['firstTeam']; label: string; img
 //          긴 이름을 쓰면 잘리거나 폼에 스크롤바가 생긴다(LOBBY_REDESIGN.md §12).
 //   title: 대기실(GameRulesInputs)처럼 폭이 넉넉한 곳에서 쓰는 전체 이름. 로비 폼에서는
 //          같은 문자열이 title 속성(툴팁)으로 붙어 축약된 이름의 뜻을 보충한다.
-// firstTeam은 SETTINGS_LIMITS에 min/max가 없는 항목이라 키에서 제외한다.
-const RULE_FIELDS: {
-  key: keyof Omit<GameSettings, 'firstTeam'>;
+// 숫자 항목만 — firstTeam(3지선다)·skillGrowth(켜기/끄기)는 SETTINGS_LIMITS에 min/max가 없어 따로 그린다.
+type NumKey = keyof typeof SETTINGS_LIMITS;
+interface RuleField {
+  key: NumKey;
   label: string;
   title: string;
   suffix: string;
   hint?: string;
-}[] = [
+}
+// 카드 강화 판의 "기술 카드 증가" 두 칸은 켜기/끄기 줄 아래에 따로 그린다(showSkillGrowth일 때만 — GROWTH_FIELDS)
+const RULE_FIELDS: RuleField[] = [
   { key: 'targetScore', label: '목표 점수', title: '목표 점수', suffix: '점' },
   { key: 'festivalTurn', label: '축제 시작', title: '도토리 축제 시작 턴', suffix: '턴' },
   { key: 'festivalDrawCount', label: '도토리 뽑기', title: '도토리 뽑기 횟수', suffix: '회' },
@@ -56,11 +60,25 @@ const RULE_FIELDS: {
   },
 ];
 
+/**
+ * 카드 강화 판 — 한 차례에 쓰는 기술 카드 수 증가(2026-10-30 요청). 켜면 이 턴마다 한 장씩 늘어 최대 장수까지 간다
+ * (shared/enhance.ts의 enhanceSkillsPerTurn — 기술 카드가 넷이라 4장이 끝이다). 끄면 판 끝까지 1장.
+ */
+const GROWTH_FIELDS: RuleField[] = [
+  { key: 'skillGrowthTurns', label: '기술 카드 추가 주기', title: '사용 가능한 기술 카드 추가 — 이 턴마다 한 장씩', suffix: '턴', hint: 'N턴마다 +1장' },
+  { key: 'skillGrowthMax', label: '기술 카드 최대', title: '사용 가능한 기술 카드 최대 개수', suffix: '장', hint: '최대 4장(전부)' },
+];
+const GROWTH_OPTIONS = [
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+] as const;
+const GROWTH_TITLE = '사용 가능한 기술 카드 증가';
+
 // 혼자 놀기에서 감추는 두 항목 — 서버도 같은 이유로 제한을 걸지 않는다(Room.vsComputer).
-const PAUSE_KEYS: (keyof Omit<GameSettings, 'firstTeam'>)[] = ['pauseMaxCount', 'pauseMaxMin'];
+const PAUSE_KEYS: NumKey[] = ['pauseMaxCount', 'pauseMaxMin'];
 
 /** 입력값을 SETTINGS_LIMITS 범위로 자르는 공통 처리 — 두 입력 폼이 같은 규칙을 쓴다. */
-function clampField(key: keyof Omit<GameSettings, 'firstTeam'>, raw: string, limits: SettingsLimits = SETTINGS_LIMITS): number {
+function clampField(key: NumKey, raw: string, limits: SettingsLimits = SETTINGS_LIMITS): number {
   const { min, max } = limits[key];
   return Math.min(max, Math.max(min, Math.round(Number(raw) || DEFAULT_SETTINGS[key])));
 }
@@ -76,6 +94,7 @@ export function GameRulesFields({
   heading = '게임 규칙 (방장이 정해요)',
   extra,
   limits = SETTINGS_LIMITS,
+  showSkillGrowth = false,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
@@ -93,7 +112,35 @@ export function GameRulesFields({
   extra?: React.ReactNode;
   /** 입력 범위 — 카드 강화 판은 목표 점수 상한이 2500이다(ENHANCE_SETTINGS_LIMITS). 서버도 같은 범위로 다시 자른다. */
   limits?: SettingsLimits;
+  /** 카드 강화 판 — "사용 가능한 기술 카드 증가"(켜기/끄기 · 몇 턴마다 · 최대 몇 장)를 보인다 */
+  showSkillGrowth?: boolean;
 }) {
+  const renderRow = ({ key, label, title, suffix, hint }: RuleField) => {
+    const { min, max } = limits[key];
+    return (
+      <div key={key} className="flex flex-col text-xs" title={title}>
+        <div className="flex items-center justify-between gap-1">
+          <label className="text-gray-500 truncate min-w-0">{label}</label>
+          <div className="flex items-center gap-1 shrink-0">
+            <input
+              type="number"
+              min={min}
+              max={max}
+              value={settings[key]}
+              onChange={e => {
+                const v = Number(e.target.value);
+                onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
+              }}
+              onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
+              className="input-base input-compact input-rule-num"
+            />
+            <span className="text-gray-400 min-w-3 whitespace-nowrap">{suffix}</span>
+          </div>
+        </div>
+        {hint && <p className="text-[0.6rem] text-gray-400 text-right leading-tight">{hint}</p>}
+      </div>
+    );
+  };
   const fields = RULE_FIELDS.filter(
     f => !(hidePause && PAUSE_KEYS.includes(f.key)) && !(hideTargetScore && f.key === 'targetScore'),
   );
@@ -159,32 +206,21 @@ export function GameRulesFields({
             넘치는 만큼 스크롤하도록 바뀌어(globals.css의 data-rules-open 절) 더는
             좁은 세로에 억지로 맞출 이유가 없다. 라벨도 잘리지 않는다. */}
         <div className="grid grid-cols-1 gap-y-1.5">
-          {fields.map(({ key, label, title, suffix, hint }) => {
-            const { min, max } = limits[key];
-            return (
-              <div key={key} className="flex flex-col text-xs" title={title}>
-                <div className="flex items-center justify-between gap-1">
-                  <label className="text-gray-500 truncate min-w-0">{label}</label>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <input
-                      type="number"
-                      min={min}
-                      max={max}
-                      value={settings[key]}
-                      onChange={e => {
-                        const v = Number(e.target.value);
-                        onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
-                      }}
-                      onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
-                      className="input-base input-compact input-rule-num"
-                    />
-                    <span className="text-gray-400 w-3">{suffix}</span>
-                  </div>
-                </div>
-                {hint && <p className="text-[0.6rem] text-gray-400 text-right leading-tight">{hint}</p>}
+          {fields.map(renderRow)}
+          {showSkillGrowth && (
+            <>
+              <div className="flex items-center justify-between gap-1 text-xs" title={GROWTH_TITLE}>
+                <label className="text-gray-500 truncate min-w-0">기술 카드 증가</label>
+                <ModeToggle
+                  options={GROWTH_OPTIONS}
+                  value={settings.skillGrowth ? 'on' : 'off'}
+                  onChange={v => onChange({ ...settings, skillGrowth: v === 'on' })}
+                  label={GROWTH_TITLE}
+                />
               </div>
-            );
-          })}
+              {settings.skillGrowth && GROWTH_FIELDS.map(renderRow)}
+            </>
+          )}
           </div>
         </div>
       )}
@@ -204,6 +240,7 @@ export function GameRulesInputs({
   onChange,
   mode = 'team',
   limits = SETTINGS_LIMITS,
+  showSkillGrowth = false,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
@@ -211,7 +248,35 @@ export function GameRulesInputs({
   mode?: GameMode;
   /** 입력 범위 — 개인전 강화 방은 ENHANCE_SETTINGS_LIMITS(목표 점수 상한 2500). 서버도 같은 범위로 다시 자른다. */
   limits?: SettingsLimits;
+  /** 카드 강화 판(개인전 강화 방) — "사용 가능한 기술 카드 증가" 묶음을 보인다 */
+  showSkillGrowth?: boolean;
 }) {
+  const renderRow = ({ key, title, suffix, hint }: RuleField) => {
+    const { min, max } = limits[key];
+    return (
+      <div key={key} className="flex flex-col gap-0.5">
+        <div className="flex items-center gap-2 text-lg">
+          <label className="text-board-muted whitespace-nowrap">{title}</label>
+          {/* 라벨과 입력창 사이를 점선으로 이어 어느 값이 어느 항목인지 눈으로 따라가기 쉽게 한다. */}
+          <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
+          <input
+            type="number"
+            min={min}
+            max={max}
+            value={settings[key]}
+            onChange={e => {
+              const v = Number(e.target.value);
+              onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
+            }}
+            onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
+            className="input-base input-rule"
+          />
+          <span className="text-board-muted min-w-8 shrink-0 whitespace-nowrap">{suffix}</span>
+        </div>
+        {hint && <p className="text-sm text-board-muted text-right">{hint}</p>}
+      </div>
+    );
+  };
   return (
     <div className="flex flex-col gap-3">
       {mode === 'team' && (
@@ -239,32 +304,22 @@ export function GameRulesInputs({
       </div>
       )}
       <div className="flex flex-col gap-3">
-        {RULE_FIELDS.map(({ key, title, suffix, hint }) => {
-          const { min, max } = limits[key];
-          return (
-            <div key={key} className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2 text-lg">
-                <label className="text-board-muted whitespace-nowrap">{title}</label>
-                {/* 라벨과 입력창 사이를 점선으로 이어 어느 값이 어느 항목인지 눈으로 따라가기 쉽게 한다. */}
-                <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
-                <input
-                  type="number"
-                  min={min}
-                  max={max}
-                  value={settings[key]}
-                  onChange={e => {
-                    const v = Number(e.target.value);
-                    onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
-                  }}
-                  onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
-                  className="input-base input-rule"
-                />
-                <span className="text-board-muted w-8 shrink-0">{suffix}</span>
-              </div>
-              {hint && <p className="text-sm text-board-muted text-right">{hint}</p>}
+        {RULE_FIELDS.map(renderRow)}
+        {showSkillGrowth && (
+          <>
+            <div className="flex items-center gap-2 text-lg">
+              <label className="text-board-muted whitespace-nowrap">{GROWTH_TITLE}</label>
+              <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
+              <ModeToggle
+                options={GROWTH_OPTIONS}
+                value={settings.skillGrowth ? 'on' : 'off'}
+                onChange={v => onChange({ ...settings, skillGrowth: v === 'on' })}
+                label={GROWTH_TITLE}
+              />
             </div>
-          );
-        })}
+            {settings.skillGrowth && GROWTH_FIELDS.map(renderRow)}
+          </>
+        )}
       </div>
     </div>
   );
@@ -298,6 +353,12 @@ export function RuleSummary({
       {enhance && (
         <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center font-semibold text-board-ink">
           <span>⚒️ 카드 강화 — 모든 카드가 Lv.1부터 · 턴 제한 없음</span>
+          <span>
+            🃏{' '}
+            {settings.skillGrowth
+              ? `기술 카드 ${settings.skillGrowthTurns}턴마다 +1장 (최대 ${settings.skillGrowthMax}장)`
+              : '기술 카드 증가 없음'}
+          </span>
         </div>
       )}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">

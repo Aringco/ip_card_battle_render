@@ -10,6 +10,7 @@ import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { MainComboBanner } from '@/components/effects/MainComboBanner';
 import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
+import { SweepBanner } from '@/components/effects/SweepBanner';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { DecisiveHitBanner } from '@/components/effects/DecisiveHitBanner';
@@ -248,6 +249,7 @@ export function GameLayout({
               demoAllowed={gameState.demo ? gameState.demo.allowedSkills : null}
               // 한 우물만 파기 — 미리보기하는 편(내 팀)의 잠금. 상대 CPU는 잠금이 없어 null이다.
               wellOpen={oneWellOpen(gameState, skillPreviewTeam)}
+              // 상대 차례·관전에는 카드가 기울지 않고 광택만 — 장소를 고르는 내 차례에는 기운다
               onChoose={onChooseSkill}
               onPass={onPassSkill}
             />
@@ -299,6 +301,7 @@ export function GameLayout({
           잠깐 덮는 배너가 겹쳐 뜨면 그 팝업을 오히려 가렸다.
           축제 **시작** 배너는 남긴다 — 진입 순간 딱 한 번, 방 규칙을 알리는 다른 역할이다. */}
       <FestivalStartBanner info={animState.festivalStartInfo} />
+      <SweepBanner info={animState.sweepBanner} />
 
       {/* 이벤트 판 — 배지·전체 시계·한 우물 잠금 안내. 판 위에 띄우는 오버레이라 액자 배치에 끼어들지 않는다. */}
       {gameState.event && (

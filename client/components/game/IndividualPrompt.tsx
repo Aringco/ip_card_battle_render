@@ -34,7 +34,7 @@ export function IndividualPrompt({
   const activeName = sideName(gameState, displayedActiveTeam);
   const finished = isFinished(gameState, mySide);
   const observer = mySide === null || finished;
-  const twoSkills = gameState.skillsPerTurn === 2;
+  const twoSkills = gameState.skillsPerTurn > 1;
   // 지금 고르는 기술이 몇 장째인지 — 서버가 센 값(skillsUsedThisTurn)에 1을 더한다.
   const nth = Math.min(gameState.skillsUsedThisTurn + 1, gameState.skillsPerTurn);
   const nthNote = twoSkills ? ` (기술 ${nth}/${gameState.skillsPerTurn}장째)` : '';

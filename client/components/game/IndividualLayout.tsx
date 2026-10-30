@@ -11,6 +11,7 @@ import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { MainComboBanner } from '@/components/effects/MainComboBanner';
 import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
+import { SweepBanner } from '@/components/effects/SweepBanner';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
@@ -297,6 +298,7 @@ export function IndividualLayout({
         leftSide={mySide ?? undefined}
       />
       <FestivalStartBanner info={animState.festivalStartInfo} />
+      <SweepBanner info={animState.sweepBanner} />
       <SheepComboLayer combos={animState.sheepCombos} />
       <MainComboBanner combo={animState.mainCombo} />
       <PlayerEmoticonLayer items={bubbleItems} placement="left" />

@@ -86,13 +86,17 @@ export function enhanceCooldown(animal: Animal, level: number): number {
 }
 
 /**
- * 한 차례에 쓸 수 있는 기술 수 — 15턴마다 하나씩 늘어 최대 3장(2026-10-29 요청). 1~15턴 1장 · 16~30턴 2장 · 31턴부터 3장.
- * 같은 카드는 한 차례에 두 번 못 쓴다 — 쓰는 순간 쿨타임이 1 이상으로 서고, 차례가 끝나야 줄어든다(advanceTurn).
+ * 한 차례에 쓸 수 있는 기술 수 — 방 규칙(settings.skillGrowth*)대로 N턴마다 하나씩 늘어 최대 M장(2026-10-30에 방 만들기 옵션이 됐다 —
+ * 기본은 그 전 규칙 그대로 15턴마다 · 최대 3장: 1~15턴 1장 · 16~30턴 2장 · 31턴부터 3장). 끄면 언제나 1장.
+ * 같은 카드는 한 차례에 두 번 못 쓴다 — 쓰는 순간 쿨타임이 1 이상으로 서고, 차례가 끝나야 줄어든다(advanceTurn). 그래서 4장이 끝이다.
  */
-export const ENHANCE_SKILLS_STEP_TURNS = 15;
-export const ENHANCE_SKILLS_MAX = 3;
-export function enhanceSkillsPerTurn(turn: number): 1 | 2 | 3 {
-  return Math.min(ENHANCE_SKILLS_MAX, 1 + Math.floor((Math.max(1, turn) - 1) / ENHANCE_SKILLS_STEP_TURNS)) as 1 | 2 | 3;
+export function enhanceSkillsPerTurn(
+  turn: number,
+  growth: Pick<GameSettings, 'skillGrowth' | 'skillGrowthTurns' | 'skillGrowthMax'> = ENHANCE_SETTINGS,
+): number {
+  if (!growth.skillGrowth) return 1;
+  const every = Math.max(1, growth.skillGrowthTurns);
+  return Math.min(growth.skillGrowthMax, 1 + Math.floor((Math.max(1, turn) - 1) / every));
 }
 
 /**
@@ -218,21 +222,25 @@ export function cloneEnhanceStatus(e: EnhanceStatus): EnhanceStatus {
 }
 
 /**
- * 카드 강화 모드의 기본 규칙(요청 원문, 2026-10-28 2차) — 목표 점수 200(시작 체력 200 · 400이면 승리 · 0이면 패배, 턴 제한 없음) ·
- * 축제 6턴부터 1회 · 4턴마다 증가 · 뽑기 15초 · 행동 10초 · 고를 게 없을 때 3초. 혼자 놀기 폼의 게임 규칙에서 바꿀 수 있다
+ * 카드 강화 모드의 기본 규칙 — 목표 점수 500(시작 체력 500 · 1000이면 승리 · 0이면 패배, 턴 제한 없음) ·
+ * 축제 2턴부터 1회 · 2턴마다 +1회 · 뽑기 15초 · 행동 10초 · 고를 게 없을 때 3초(2026-10-30 요청 — 그 전에는 목표 200 · 축제 6턴 · 4턴마다).
+ * 혼자 놀기 폼의 게임 규칙에서 바꿀 수 있다
  * (clampEnhanceSettings를 거친다 — 목표 점수 상한은 2500).
  */
 export const ENHANCE_SETTINGS: GameSettings = {
   firstTeam: 'A',
-  targetScore: 200,
-  festivalTurn: 6,
+  targetScore: 500,
+  festivalTurn: 2,
   festivalDrawCount: 1,
-  festivalDrawIncreaseInterval: 4,
+  festivalDrawIncreaseInterval: 2,
   drawTimeSec: 15,
   actionTimeSec: 10,
   noActionTimeSec: 3,
   pauseMaxCount: 3,
   pauseMaxMin: 5,
+  skillGrowth: true,
+  skillGrowthTurns: 15,
+  skillGrowthMax: 3,
 };
 
 /**
