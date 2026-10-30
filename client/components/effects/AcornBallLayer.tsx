@@ -3,9 +3,10 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
 import { WOOL_BALL_DUR as ACORN_DUR } from '@/lib/drawTiming';
 import type { AcornBallItem } from '@/hooks/useAnimationQueue';
+import { AcornIcon } from '@/components/ui/AcornIcon';
 
 // 도토리 축제 랜덤 뽑기 — 실용신양의 예약 뽑기(WoolBallLayer, 🐑)와 완전히 같은 방식으로
-// 발동한 그 팀 프로필에서 장소로 도토리(🌰)가 날아가 찍는다.
+// 발동한 그 팀 프로필에서 장소로 도토리(icon_acorn 그림)가 날아가 찍는다.
 export function AcornBallLayer({ items }: { items: AcornBallItem[] }) {
   return (
     <>
@@ -56,7 +57,7 @@ function AcornBall({ item }: { item: AcornBallItem }) {
       className="acorn-ball"
       style={{ position: 'fixed', transform: 'translate(-50%, -50%)', zIndex: 57, ...style }}
     >
-      🌰
+      <AcornIcon />
     </span>
   );
 }

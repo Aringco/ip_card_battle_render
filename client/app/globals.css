@@ -2438,8 +2438,16 @@ body {
   0%, 100% { rotate: -12deg; }
   50%      { rotate: 12deg; }
 }
+/* 도토리 그림(AcornIcon) — 이모지 자리를 그대로 이어받아 높이 1em, 부모 글자 크기를 따른다 */
+.acorn-icon {
+  display: inline-block;
+  height: 1em;
+  width: auto;
+  vertical-align: -0.15em;
+}
 .acorn-ball {
   font-size: 3rem;
+  line-height: 1;
   animation: acornWobble 0.3s ease-in-out infinite;
   filter: drop-shadow(0 0 10px rgba(217, 119, 6, 0.85)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
 }

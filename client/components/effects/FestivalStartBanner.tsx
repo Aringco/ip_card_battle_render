@@ -1,6 +1,7 @@
 'use client';
 
 import type { FestivalStartInfo } from '@/hooks/useAnimationQueue';
+import { AcornIcon } from '@/components/ui/AcornIcon';
 
 // 도토리 축제가 시작되는 순간 — 이 방에 실제로 적용되는 규칙(방장이 정한 뽑기 횟수·
 // 증가 주기)을 화면 중앙에 두 줄로 크게 안내한다. FestivalLoadedBanner(그때그때
@@ -10,7 +11,7 @@ export function FestivalStartBanner({ info }: { info: FestivalStartInfo | null }
 
   return (
     <div key={info.id} className="festival-start-banner" aria-hidden>
-      <span className="festival-start-banner-line1">🌰 도토리 축제 시작!</span>
+      <span className="festival-start-banner-line1"><AcornIcon /> 도토리 축제 시작!</span>
       <span className="festival-start-banner-line2">
         이제부터 {info.increaseInterval}턴마다 추가 랜덤 뽑기 {info.drawCount}회!
       </span>

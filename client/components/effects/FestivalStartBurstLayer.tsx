@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { AcornIcon } from '@/components/ui/AcornIcon';
 
 const BURST_COUNT = 15;
 
@@ -51,7 +52,7 @@ export function FestivalStartBurstLayer({ active }: { active: boolean }) {
             } as CSSProperties
           }
         >
-          🌰
+          <AcornIcon />
         </span>
       ))}
     </>

@@ -4,6 +4,7 @@ import { THRESHOLDS } from 'shared';
 import { SKILL_COLOR } from '@/lib/skillInfo';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { PlankButton } from '@/components/ui/PlankButton';
+import { AcornIcon } from '@/components/ui/AcornIcon';
 import type { Animal } from 'shared';
 
 // ─────────────────────────────────────────────────────────────
@@ -294,7 +295,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <div className="flex items-center gap-2 mt-3 bg-bark-200/50 border-2 border-bark-200 rounded-xl px-3 py-3">
-              <span className="text-2xl shrink-0">🌰</span>
+              <span className="text-2xl shrink-0"><AcornIcon /></span>
               <p className="text-base font-black text-bark-700 leading-snug">
                 도토리 축제가 열리면
                 <br />

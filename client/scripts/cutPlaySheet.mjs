@@ -52,6 +52,9 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  *              한 번 더 fill해 비운다. 안이 비어야 하는 액자에만 쓴다.
  *   holes    … **둘러싸인 흰 칸을 전부 뚫는다**(칸막이가 그려진 통짜 액자용).
  *              true면 넓이 2000px 이상인 흰 덩어리를 칸으로 본다. 숫자를 주면 그 값이 하한.
+ *   clearLight … [x, y, w, h](**출력 좌표** — size로 맞춘 뒤) 안의 흰·밝은 회색만 투명하게 한다. 테두리발 flood fill이 닿지 못하는
+ *              작은 틈(외곽선에 둘러싸인 배경)에 남은 흰색을 지울 때 쓴다(icon_acorn — 꼭지 두 알 사이, 2026-10-30).
+ *              경계의 섞인 화소는 외곽선 색으로 칠하고 밝기만큼 투명하게 해 흰 테가 남지 않게 한다.
  */
 const SHEETS = [
   {
@@ -103,7 +106,7 @@ const SHEETS = [
       { name: 'arrow_wood', at: [1434, 262, 237, 143], size: [362, 221] },
       { name: 'badge_crown', at: [1391, 419, 121, 128], size: [183, 186] },
       { name: 'icon_lock', at: [920, 821, 66, 81], size: [94, 114] },
-      { name: 'icon_acorn', at: [831, 830, 52, 67], size: [75, 100] },
+      { name: 'icon_acorn', at: [831, 830, 52, 67], size: [75, 100], clearLight: [44, 10, 16, 13] },
       { name: 'icon_cog', at: [1126, 830, 69, 71], size: [100, 103] },
 
       // ── 귀퉁이 장식 ──
@@ -424,6 +427,26 @@ for (const { src, pieces, ...sheetOpts } of SHEETS) {
     if (piece.resizeH) { out = out.resize({ height: piece.resizeH }); }
     // 예전 출력 크기에 맞춘다(마스터 시트 v2 — globals.css의 슬라이스 값이 그 크기에 묶여 있다)
     if (piece.size) { out = out.resize({ width: piece.size[0], height: piece.size[1], fit: 'fill', kernel: 'lanczos3' }); }
+
+    if (piece.clearLight) {
+      const { data, info } = await out.raw().toBuffer({ resolveWithObject: true });
+      const [cx, cy, cw, ch] = piece.clearLight;
+      let cleared = 0;
+      for (let y = cy; y < Math.min(info.height, cy + ch); y++) {
+        for (let x = cx; x < Math.min(info.width, cx + cw); x++) {
+          const i = (y * info.width + x) * 4;
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const br = (r + g + b) / 3;
+          if (Math.max(r, g, b) - Math.min(r, g, b) > 70 || br < 90) continue; // 갈색 그림·짙은 외곽선은 그대로
+          const keep = Math.max(0, Math.min(1, (160 - br) / 70));
+          data[i] = 35; data[i + 1] = 22; data[i + 2] = 14;
+          data[i + 3] = Math.round(data[i + 3] * keep);
+          cleared++;
+        }
+      }
+      out = sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } });
+      console.log(`  ${piece.name}: 밝은 화소 ${cleared}개를 지움`);
+    }
 
     const file = path.join(OUT_DIR, `${piece.name}.webp`);
     await out.webp({ quality: 92 }).toFile(file);

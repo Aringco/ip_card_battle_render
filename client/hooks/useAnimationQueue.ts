@@ -1075,8 +1075,10 @@ export function useAnimationQueue(
               return next;
             });
           }
+          // 이모티콘은 **고른** 기술만 — 카드 강화의 짝 효과까지 띄우면 기술을 고른 순간 짝 맞은 카드들의 얼굴이 함께 떠
+          // 무엇을 썼는지 가려진다(2026-10-30 요청 — 내가 사용한 기술카드의 이모티콘만)
           const gs = gameStateRef.current;
-          if (gs) {
+          if (gs && !skillEv.pair) {
             addEmoticon(team, gs.teams[team].playerIndex, emoticonFile(animal, 'happy'), at);
           }
           // 카드 강화 — 무작위 카드 경험치(실용신양 Lv.6+)를 이제야 드러낸다(위 pendingExpCredit)
