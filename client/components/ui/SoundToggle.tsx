@@ -213,7 +213,8 @@ export function SoundToggle() {
         // 아래(로비·결과), 플레이 화면에서만 액자의 오른쪽 나무 기둥으로 옮긴다
         // (globals.css의 `.play-bg:has(...)` 규칙). 전역 컴포넌트라 여기서 좌표를
         // 바꾸면 세 화면이 모두 따라 움직인다.
-        className="settings-fab fixed bottom-3 right-3 z-[90]"
+        // 층 99 — 멈춤 메뉴 막(.pause-dim 95 · 요청 창 97 · 안내 98)보다 위라 멈춘 동안에도 누를 수 있다(펼친 판도 같다).
+        className="settings-fab fixed bottom-3 right-3 z-[99]"
       >
         {/* 톱니바퀴만 있으면 음소거 상태가 안 보이므로 꺼져 있을 때만 작게 겹쳐 표시한다. */}
         {settings.muteAll && (
@@ -229,7 +230,7 @@ export function SoundToggle() {
   return (
     <div
       ref={panelRef}
-      className="settings-fab-panel fixed bottom-3 right-3 z-[90] flex flex-col gap-2 bg-white/90 backdrop-blur px-[1.125rem] py-3.5 rounded-2xl shadow-lg border border-jungle-200"
+      className="settings-fab-panel fixed bottom-3 right-3 z-[99] flex flex-col gap-2 bg-white/90 backdrop-blur px-[1.125rem] py-3.5 rounded-2xl shadow-lg border border-jungle-200"
     >
       <button
         onClick={() => setExpanded(false)}
