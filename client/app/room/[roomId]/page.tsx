@@ -18,6 +18,9 @@ import { startPreload } from '@/lib/preload';
 import { markEventReturn } from '@/lib/eventSession';
 import { useBefore } from '@/lib/useBefore';
 import { ScoreRaceIntro } from '@/components/game/ScoreRaceIntro';
+import { MobileLayout } from '@/components/game/mobile/MobileLayout';
+import { MobileIndividualLayout } from '@/components/game/mobile/MobileIndividualLayout';
+import { useMobileLayout } from '@/lib/mobileLayout';
 
 const STORAGE_TEAM = 'cardBattle_team';
 const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 BGM은 절반 볼륨으로
@@ -48,6 +51,8 @@ export default function GamePage() {
   const animState = useAnimationQueue(viewEvents, viewState);
   // 목표점수 달성하기의 시작 룰렛이 도는 중인가 — 그동안 판은 서버에서 멈춰 있다(ScoreRaceIntro 주석).
   const introActive = useBefore(eventIntroUntil);
+  // 가로로 눕힌 폰 — 혼자 놀기(아래 soloMobile)만 모바일 배치로 그린다(시범)
+  const mobileScreen = useMobileLayout();
 
   // 보통은 로비에서 이미 끝나 있지만, 새로고침·재접속으로 이 페이지에 바로
   // 들어온 경우를 대비해 여기서도 프리로드를 시작한다(이미 시작했으면 무시됨).
@@ -219,9 +224,56 @@ export default function GamePage() {
     );
   }
 
+  // 모바일 배치(시범) — 혼자 놀기(컴퓨터 상대 팀전 · 일반/강화)에만. 서버가 "일시정지 무제한"으로 알려 주는 판이 곧 혼자 놀기다
+  // (이벤트의 컴퓨터 대전은 제외된다 — room.ts의 pause.unlimited). 시연은 대본 자막 · 장면 고르기가 PC 화면에만 있어 뺀다.
+  const soloMobile = mobileScreen && !individual && !duel && gameState.pauseUnlimited && !gameState.demo && !gameState.event;
+  // 개인전도 모바일 배치(2026-10-31) — 1:1은 팀전 화면으로 그리므로(lib/duel.ts) 팀전 모바일 배치를, 3명 이상은 개인전 모바일 배치를 쓴다.
+  const duelMobile = mobileScreen && !!duel && !!viewState;
+  const individualMobile = mobileScreen && individual && !duel;
+
   return (
     <>
-      {duel && viewState ? (
+      {duelMobile && viewState ? (
+        <MobileLayout
+          gameState={viewState}
+          turnDeadline={turnDeadline}
+          myTeam={duelMyTeam}
+          playerId={playerId}
+          onPlaceClick={handlePlaceClick}
+          onChooseSkill={handleDuelChooseSkill}
+          onPassSkill={handlePassSkill}
+          error={error}
+          animState={animState}
+          paused={gameState.paused}
+        />
+      ) : individualMobile ? (
+        <MobileIndividualLayout
+          gameState={gameState}
+          turnDeadline={turnDeadline}
+          mySide={mySide}
+          playerId={playerId}
+          onPlaceClick={handlePlaceClick}
+          onChooseSkill={handleChooseSkill}
+          onPassSkill={handlePassSkill}
+          error={error}
+          animState={animState}
+          paused={gameState.paused}
+          emotes={emotes}
+        />
+      ) : soloMobile ? (
+        <MobileLayout
+          gameState={gameState}
+          turnDeadline={turnDeadline}
+          myTeam={myTeam}
+          playerId={playerId}
+          onPlaceClick={handlePlaceClick}
+          onChooseSkill={handleChooseSkill}
+          onPassSkill={handlePassSkill}
+          error={error}
+          animState={animState}
+          paused={gameState.paused}
+        />
+      ) : duel && viewState ? (
         <GameLayout
           gameState={viewState}
           turnDeadline={turnDeadline}

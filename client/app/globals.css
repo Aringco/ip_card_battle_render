@@ -678,11 +678,11 @@ body {
   z-index: 3;
 }
 
-/* 피어오르는 빛(2026-10-29, 양 팀 공통 — 같은 날 흰 홀로그램 띠에서 바꿨다) — 채워진 액체 안에서 **그 액체와 같은 색의 밝은 기운**이
-   아래에서 위로 천천히 스멀스멀 올라오고, 바닥 쪽이 은은하게 숨 쉰다. 색은 구슬마다 --hp-rise(내 편 연두 · 상대 분홍 · 관전 팀색).
-   · ::before — 흐릿한 빛 덩어리 몇 개. 두 배 높이 층에 **반 높이짜리 무늬를 세로로 반복**하고 반 높이만큼 올려 이음매 없이 돈다.
-   · ::after — 바닥에서 올라오는 옅은 밝음이 천천히 짙어졌다 옅어진다.
-   위로 갈수록 마스크로 흐려져 수면에 닿기 전에 사라진다. 액체(.hp-orb-liquid) 안에 있어 채워진 만큼만 보인다. */
+/* 체력 구슬의 빛 — **홀로그램 그라데이션 띠**(2026-10-31 요청 — 모바일 체력 막대 .m-hp-holo와 같은 무지갯빛: 흰 · 하늘 · 분홍 · 연보라).
+   예전에는 같은 색의 흐릿한 빛 덩어리가 몽글몽글 피어올랐는데(2026-10-29), 그것을 걷고 띠 하나가 아래에서 위로 천천히 훑고 지나가게 했다.
+   · ::before — 사선 무지갯빛 띠. 세로로 2.5배 큰 그림을 아래에서 위로 밀어 올린다(screen으로 액체 색 위에 밝게 얹힌다).
+   · ::after — 바닥에서 올라오는 옅은 밝음이 천천히 짙어졌다 옅어진다(그대로).
+   액체(.hp-orb-liquid) 안에 있어 채워진 만큼만 보인다. --hp-rise는 바닥 밝음의 색이다. */
 .hp-orb-mine { --hp-rise: rgba(236, 252, 203, 0.95); }
 .hp-orb-enemy { --hp-rise: rgba(255, 228, 230, 0.95); }
 .hp-orb-spectator { --hp-rise: color-mix(in srgb, var(--spec-base) 35%, white); }
@@ -691,27 +691,16 @@ body {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.75) 45%, transparent 100%);
-  mask-image: linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.75) 45%, transparent 100%);
 }
 .hp-orb-rise::before {
   content: '';
   position: absolute;
-  left: -10%;
-  right: -10%;
-  top: 0;
-  height: 200%;
-  background-image:
-    radial-gradient(16% 10% at 20% 78%, var(--hp-rise) 0%, transparent 100%),
-    radial-gradient(12% 8% at 58% 46%, var(--hp-rise) 0%, transparent 100%),
-    radial-gradient(18% 11% at 82% 88%, var(--hp-rise) 0%, transparent 100%),
-    radial-gradient(10% 7% at 38% 14%, var(--hp-rise) 0%, transparent 100%),
-    radial-gradient(13% 8% at 74% 26%, var(--hp-rise) 0%, transparent 100%);
-  background-size: 100% 50%;
-  background-repeat: repeat-y;
-  filter: blur(7px);
-  opacity: 0.62;
-  animation: hpOrbRise 11s linear infinite;
+  inset: 0;
+  background-image: linear-gradient(170deg, transparent 0%, transparent 34%, rgba(255, 255, 255, 0.5) 41%, hsla(190, 100%, 82%, 0.45) 46%, hsla(320, 100%, 84%, 0.42) 51%, hsla(260, 100%, 86%, 0.32) 56%, transparent 64%, transparent 100%);
+  background-size: 100% 250%;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  animation: hpOrbRise 4.2s linear infinite;
 }
 .hp-orb-rise::after {
   content: '';
@@ -722,8 +711,8 @@ body {
   animation: hpOrbBreathe 5.5s ease-in-out infinite;
 }
 @keyframes hpOrbRise {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-50%); }
+  from { background-position: 0 0%; }
+  to   { background-position: 0 100%; }
 }
 @keyframes hpOrbBreathe {
   0%, 100% { opacity: 0.12; }
@@ -7865,16 +7854,18 @@ body {
 }
 /* 핏방울 — 둥근 아래 + 뾰족한 위(한 귀퉁이만 각진 사각형을 45도 돌린 모양) */
 .hp-orb-drop {
+  --drop: calc(var(--pf-w, 1200px) * 0.0095);
   position: absolute;
   top: -8%;
-  width: calc(var(--pf-w, 1200px) * 0.0065);
-  height: calc(var(--pf-w, 1200px) * 0.0065);
+  width: var(--drop);
+  height: var(--drop);
   background: radial-gradient(circle at 35% 35%, #fca5a5 0%, #dc2626 45%, #7f1d1d 100%);
   border-radius: 0 50% 50% 50%;
   transform: rotate(45deg);
   box-shadow: 0 0 4px rgba(127, 29, 29, 0.6);
 }
-.hp-orb-bleed .hp-orb-drop { animation: hpDropFall 2.4s cubic-bezier(0.55, 0, 0.9, 0.6) infinite; opacity: 0; }
+/* left %가 방울의 **가운데**가 되게 — 왼쪽 끝 기준이면 무리 전체가 왼쪽으로 쏠린다(TeamTotalPanel의 BLEED_DROPS). 한 번 든 순간의 조각(.hp-orb-dot-burst)은 translate로 따로 가운데를 맞추므로 여기에만 둔다 */
+.hp-orb-bleed .hp-orb-drop { animation: hpDropFall 2.4s cubic-bezier(0.55, 0, 0.9, 0.6) infinite; opacity: 0; margin-left: calc(var(--drop) / -2); }
 /* 흘러내리는 자국 — 방울 뒤에 짧게 남는 붉은 줄 */
 .hp-orb-bleed .hp-orb-drop::after {
   content: '';
@@ -7901,16 +7892,14 @@ body {
   height: calc(var(--pf-w, 1200px) * 0.0085);
   filter: drop-shadow(0 0 3px rgba(22, 163, 74, 0.8));
 }
-.hp-orb-cross::before,
-.hp-orb-cross::after {
+/* 십자는 한 덩어리(clip-path) — 막대 둘에 각자 테두리를 두르면 가운데에 가로선이 비친다(.hp-status-regen 절과 같은 이유) */
+.hp-orb-cross::before {
   content: '';
   position: absolute;
+  inset: 0;
   background: #4ade80;
-  border-radius: 2px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+  clip-path: polygon(34% 0, 66% 0, 66% 34%, 100% 34%, 100% 66%, 66% 66%, 66% 100%, 34% 100%, 34% 66%, 0 66%, 0 34%, 34% 34%);
 }
-.hp-orb-cross::before { left: 34%; right: 34%; top: 0; bottom: 0; }
-.hp-orb-cross::after  { top: 34%; bottom: 34%; left: 0; right: 0; }
 .hp-orb-heal .hp-orb-cross { animation: hpCrossRise 2.6s ease-out infinite; opacity: 0; }
 @keyframes hpCrossRise {
   0%   { opacity: 0; transform: translateY(0) scale(0.6); }
@@ -7970,17 +7959,31 @@ body {
   border: 1.5px solid #fff;
   box-shadow: 0 0 8px rgba(220, 38, 38, 0.9);
 }
-.hp-status-regen .hp-status-icon { filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.95)); }
+/* 십자 — 흰 테두리 십자(아이콘 자신) 위에 초록 십자(::before)를 **한 덩어리씩** 겹친다(clip-path).
+   ⚠️ 예전에는 세로 막대 · 가로 막대를 따로 그리고 각자 흰 테두리를 둘러, 위에 그린 가로 막대의 테두리가 세로 막대를 가로질러
+   가운데에 가로선 두 줄이 보였다(십자가 아니라 막대 둘로 보였다 — 2026-10-31 제보). 빛 번짐은 clip-path에 잘리므로 바깥(.hp-status-regen)에 건다. */
+.hp-status-regen { filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.95)); }
+.hp-status-regen .hp-status-icon,
+.hp-status-healcut .hp-status-icon {
+  --cross-line: 1.5px;
+  background: #fff;
+  clip-path: polygon(30% 0, 70% 0, 70% 30%, 100% 30%, 100% 70%, 70% 70%, 70% 100%, 30% 100%, 30% 70%, 0 70%, 0 30%, 30% 30%);
+}
 .hp-status-regen .hp-status-icon::before,
-.hp-status-regen .hp-status-icon::after {
+.hp-status-healcut .hp-status-icon::before {
   content: '';
   position: absolute;
+  inset: 0;
   background: #22c55e;
-  border: 1.5px solid #fff;
-  border-radius: 3px;
+  clip-path: polygon(
+    calc(30% + var(--cross-line)) var(--cross-line), calc(70% - var(--cross-line)) var(--cross-line),
+    calc(70% - var(--cross-line)) calc(30% + var(--cross-line)), calc(100% - var(--cross-line)) calc(30% + var(--cross-line)),
+    calc(100% - var(--cross-line)) calc(70% - var(--cross-line)), calc(70% - var(--cross-line)) calc(70% - var(--cross-line)),
+    calc(70% - var(--cross-line)) calc(100% - var(--cross-line)), calc(30% + var(--cross-line)) calc(100% - var(--cross-line)),
+    calc(30% + var(--cross-line)) calc(70% - var(--cross-line)), var(--cross-line) calc(70% - var(--cross-line)),
+    var(--cross-line) calc(30% + var(--cross-line)), calc(30% + var(--cross-line)) calc(30% + var(--cross-line))
+  );
 }
-.hp-status-regen .hp-status-icon::before { left: 30%; right: 30%; top: 0; bottom: 0; }
-.hp-status-regen .hp-status-icon::after  { top: 30%; bottom: 30%; left: 0; right: 0; }
 /* 효과 감소(÷N, 상대 디자인어 Lv.9+) — 보라 원 안에 ÷N, 남은 턴은 오른쪽 아래 작은 숫자 */
 .hp-status-divide .hp-status-icon {
   display: flex;
@@ -8001,17 +8004,9 @@ body {
   font-size: 0.8em;
 }
 /* 회복 효율 감소(상대 특허랑이 Lv.6+) — 회색 십자가에 붉은 사선, 깎는 비율은 아래쪽에 작게(−100%는 ✕) */
-.hp-status-healcut .hp-status-icon { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.85)); }
-.hp-status-healcut .hp-status-icon::before,
-.hp-status-healcut .hp-status-icon::after {
-  content: '';
-  position: absolute;
-  background: #9ca3af;
-  border: 1.5px solid #fff;
-  border-radius: 3px;
-}
-.hp-status-healcut .hp-status-icon::before { left: 30%; right: 30%; top: 0; bottom: 0; }
-.hp-status-healcut .hp-status-icon::after  { top: 30%; bottom: 30%; left: 0; right: 0; }
+/* 회색 십자 — 생김새는 지속 회복 십자와 같은 한 덩어리 방식(위 .hp-status-regen 절), 색만 회색 */
+.hp-status-healcut { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.85)); }
+.hp-status-healcut .hp-status-icon::before { background: #9ca3af; }
 .hp-status-healcut::after {
   content: '';
   position: absolute;
@@ -8113,4 +8108,1174 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .quake-puff { animation-duration: 1ms; }
   .quake-haze { animation: none; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   모바일(가로 폰) 게임 화면 — components/game/mobile/ (시범: 혼자 놀기만, lib/mobileLayout.ts가 켠다)
+   ══════════════════════════════════════════════════════════════════════════
+   PC의 그림 액자(play_frame) · 상단 들보를 쓰지 않고 **CSS로만** 그린다(개인전의 .play-frame-css와 같은 방식).
+     ┌ 단계 칩 ──────── 타이머 · 문구 ──────── 진행 안내 ┐   .m-top
+     │ 내 동물 4 │      판 / 기술 카드      │ 상대 동물 4 │   .m-rail · .m-view
+     └──── 내 체력 ◀━━━━━━━┃━━━━━━━▶ 상대 체력 ────┘   .m-bottom
+   ⚠️ 이 블록은 **파일 끝**에 있어야 한다 — 같은 클래스(.play-timer-*, .holo-cell …)를 덮어쓰는 규칙이 앞의 T1·T2 블록보다 뒤에 와야 이긴다.
+   ⚠️ 판 · 카드 컴포넌트(GameBoard · SkillChoiceBar)는 크기를 **무대 비례**(--sp · --sv)로 잡는다. 그 기준인 --stage-w를 이 화면의
+      판 높이에서 다시 정한다(뒤의 둘도 함께 다시 선언해야 한다 — :root에서 이미 계산된 값을 물려받기 때문이다).
+      3.25 = 기술 카드 높이가 PC 1366×768과 같은 비율이 되는 값 — 판 높이 320px(844×390)에서 무대 1040px(--sp 0.81). */
+.m-layout {
+  --m-gutter: max(8px, env(safe-area-inset-left), env(safe-area-inset-right));
+  --m-top-h: 34px;
+  --m-bottom-h: 30px;
+  --m-view-h: calc(100dvh - var(--m-top-h) - var(--m-bottom-h) - 16px);
+  /* 동물 아이콘 지름 — 판 높이를 넷으로 나눈 것에서 간격을 뺀다 */
+  --m-icon: clamp(40px, calc((var(--m-view-h) - 24px) / 4), 66px);
+  --stage-w: calc(var(--m-view-h) * 3.25);
+  --sp: calc(var(--stage-w) / 1286.6);
+  --sv: calc(var(--stage-w) / 167.52);
+  position: relative;
+  height: 100dvh;
+  /* ⚠️ hidden이 아니라 clip — hidden은 손으로는 안 밀려도 **프로그램으로는 스크롤된다**(요소에 초점이 가거나 scrollIntoView).
+     내려가 있는 카드 띠(.m-cards) 만큼 아래에 자리가 있어, 장소를 누르는 순간 판 전체가 위로 밀려 위 띠가 사라졌다. */
+  overflow: clip;
+  display: grid;
+  grid-template-columns: calc(var(--m-icon) + 10px) minmax(0, 1fr) calc(var(--m-icon) + 10px);
+  grid-template-rows: var(--m-top-h) minmax(0, 1fr) var(--m-bottom-h);
+  grid-template-areas:
+    'top top top'
+    'left view right'
+    'bottom bottom bottom';
+  column-gap: 6px;
+  row-gap: 4px;
+  padding: 4px var(--m-gutter) max(4px, env(safe-area-inset-bottom));
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── 위 띠 — [단계 칩 · 내 닉네임] [타이머] [상대 닉네임 · 일시정지 자리] ── */
+/* **좌우 대칭**(2026-10-31 요청): 양 끝 칸이 같은 폭(1fr · 1fr)이라 타이머가 화면 가운데에 오고, 그 칸의 바깥 끝에는 같은 폭(--m-slot)의
+   상자가 하나씩 선다 — 왼쪽은 단계 칩, 오른쪽은 [일시정지] 버튼이 얹히는 빈 상자(.m-pause-slot). 닉네임은 그 안쪽에 마주 본다.
+   진행 안내(축제 · 추가 뽑기)는 이 띠에 두지 않고 바로 아래에 띄운다(.m-notice-float) — 띠에 넣으면 대칭이 깨지고, 예전처럼
+   좁은 폰에서 [일시정지]에 가려 "상…"으로 잘렸다. */
+.m-top {
+  --m-slot: 132px;
+  grid-area: top;
+  position: relative;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+.m-top-side { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-top-right { flex-direction: row-reverse; }
+.m-top-center { position: relative; width: clamp(210px, 34vw, 320px); height: 100%; }
+.m-pause-slot { flex: none; width: var(--m-slot); height: 26px; }
+/* 닉네임 — 아래 체력 막대 옆에서는 잘 안 보여 위로 올렸다. 그 편 색 테두리의 짙은 알약 */
+.m-name {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: rgba(30, 18, 8, 0.72);
+  color: #fff;
+  font-size: calc(12px * var(--font-scale) / 1.12);
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+.m-name[data-tone='mine'] { border-color: #84cc16; color: #ecfccb; }
+.m-name[data-tone='enemy'] { border-color: #f43f5e; color: #ffe4e6; }
+/* 진행 안내 — 위 띠 바로 아래, 판의 오른쪽 위 모서리에 뜬다 */
+.m-notice-float {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: calc(var(--m-icon) + 10px + 6px + 8px);
+  pointer-events: none;
+}
+
+/* 타이머 창 — PC의 ActionPrompt를 그대로 쓰고 크기만 띠에 맞춘다(창 안의 모든 치수가 --timer-h의 배수다) */
+.m-layout .play-timer-window {
+  --timer-h: 28px;
+  top: 0;
+  min-width: 0;
+  max-width: 100%;
+  padding-inline: 12px;
+}
+.m-layout .play-timer-bar { min-width: 48px; }
+.m-layout .play-timer-note { display: none; }
+.m-layout .play-timer-text {
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 단계 칩 — 늘 왼쪽 위에 떠 있다. 크게 뜨는 판(.m-phase-hero)이 날아와 앉는 동안에는 감춰 둔다 */
+.m-phase-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  /* 오른쪽 일시정지 자리(.m-pause-slot)와 같은 폭 — 좌우 대칭 */
+  width: var(--m-slot);
+  overflow: hidden;
+  height: 26px;
+  padding: 0 8px 0 3px;
+  border-radius: 999px;
+  border: 2px solid #f7e6c2;
+  background: #57534e;
+  color: #fff6df;
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.25s ease, background-color 0.3s ease;
+}
+.m-phase-name { flex: 1; text-align: center; }
+.m-phase-chip[data-phase='draw'] { background: #15803d; }
+.m-phase-chip[data-phase='choice'] { background: #b45309; }
+.m-phase-chip[data-arriving] { opacity: 0; }
+.m-phase-turn {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f7e6c2;
+  color: #3f2410;
+  font-size: 0.86em;
+  line-height: 18px;
+}
+
+/* 크게 뜨는 단계 판 — 화면의 50%로(2026-10-31 — 80%에서 줄였다) 떴다가 왼쪽 위(단계 칩 자리)로 날아가며 작아진다.
+   transform-origin이 왼쪽 위라 끝의 translate가 곧 칩의 자리다(가장자리 여백 12px · 위 6px). 애니메이션이 끝나면 MobilePhase가 판을 걷는다(onAnimationEnd). */
+.m-phase-hero {
+  position: fixed;
+  left: 25vw;
+  top: 25vh;
+  width: 50vw;
+  height: 50vh;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6vh;
+  border-radius: 22px;
+  border: 3px solid #f7e6c2;
+  background: radial-gradient(ellipse at 50% 40%, rgba(21, 128, 61, 0.92) 0%, rgba(12, 52, 26, 0.94) 100%);
+  color: #fff6df;
+  text-align: center;
+  pointer-events: none;
+  transform-origin: 0 0;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: mPhaseHero 1.5s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+.m-phase-hero[data-phase='choice'] {
+  background: radial-gradient(ellipse at 50% 40%, rgba(194, 65, 12, 0.92) 0%, rgba(84, 30, 6, 0.94) 100%);
+}
+.m-phase-hero-step {
+  padding: 0.3vh 2.2vh;
+  border-radius: 999px;
+  background: #f7e6c2;
+  color: #3f2410;
+  font-size: max(11px, 3.2vh);
+  font-weight: 800;
+}
+.m-phase-hero-title {
+  font-size: min(10vh, 6.4vw);
+  font-weight: 900;
+  line-height: 1.05;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.m-phase-hero-sub { font-size: max(11px, 3.1vh); font-weight: 700; opacity: 0.92; padding-inline: 4%; }
+@keyframes mPhaseHero {
+  0%   { opacity: 0; transform: translate(4vw, 4vh) scale(0.9); }
+  14%  { opacity: 1; transform: translate(0, 0) scale(1); }
+  58%  { opacity: 1; transform: translate(0, 0) scale(1); }
+  90%  { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(calc(12px - 25vw), calc(6px - 25vh)) scale(0.2); }
+}
+
+/* 오른쪽 위 진행 안내(실용신양 추가 뽑기 · 도토리 축제) */
+.m-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  max-width: 100%;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1.5px solid #1e1206;
+  background: #3f2410;
+  color: #f7e6c2;
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.m-notice > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-notice b { color: #fcd34d; font-weight: 900; }
+.m-notice-sheep { background: #3f6212; }
+.m-notice-icon { height: 16px; width: auto; flex-shrink: 0; }
+.m-notice-quiet { opacity: 0.85; }
+.m-notice-pop { animation: mNoticePop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes mNoticePop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.m-error {
+  position: absolute;
+  top: calc(var(--m-top-h) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+/* [일시정지] · 설정 톱니 — 전역 버튼이라 이 화면에서만 작게 모서리로 붙인다 */
+/* [일시정지]는 위 띠 오른쪽 끝의 빈 상자(.m-pause-slot, 폭 132px) 가운데에 오게 한다 — zoom이 위치 값에도 곱해지므로 0.6으로 나눠 적는다.
+   버튼 폭 약 82px → 상자 오른쪽 끝(가장자리 여백 8px)에서 (132 − 82) / 2 = 25px 안쪽. */
+body:has(.m-layout) .pause-fab {
+  zoom: 0.6;
+  top: max(8.5px, calc(env(safe-area-inset-top) / 0.6));
+  right: calc(max(8px, env(safe-area-inset-right)) / 0.6 + 25px / 0.6);
+}
+body:has(.m-layout) .settings-fab { zoom: 0.72; bottom: max(3px, env(safe-area-inset-bottom)); right: max(3px, env(safe-area-inset-right)); }
+
+/* ── 양옆 동물 아이콘 열 ── */
+.m-rail { position: relative; z-index: 30; min-height: 0; }
+.m-rail-left { grid-area: left; }
+.m-rail-right { grid-area: right; }
+.m-rail-list {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  border-radius: 999px;
+  background: rgba(40, 24, 10, 0.38);
+  box-shadow: inset 0 0 0 1.5px rgba(247, 230, 194, 0.35);
+  transition: box-shadow 0.3s ease;
+}
+/* 지금 차례인 편 — 열 둘레가 그 편 색으로 빛난다(왼쪽 = 나 연두, 오른쪽 = 상대 붉은) */
+.m-rail-list[data-active][data-side='left'] { box-shadow: inset 0 0 0 2px rgba(132, 204, 22, 0.95), 0 0 12px rgba(132, 204, 22, 0.55); }
+.m-rail-list[data-active][data-side='right'] { box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.9), 0 0 12px rgba(244, 63, 94, 0.5); }
+
+.m-rail-item { position: relative; width: var(--m-icon); height: var(--m-icon); }
+.m-icon {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 50%;
+  /* 바탕은 흰색이 아니라 짙은 나무색 — 흰 원 위에 얼굴을 얹으면 숲 배경에서 흰 동그라미만 떠 보였다(2026-10-31 제보).
+     얼굴 그림도 투명 바탕(face_*.webp)이라 이 바탕이 그대로 비친다. */
+  background: radial-gradient(circle at 50% 40%, rgba(255, 238, 200, 0.28) 0%, rgba(58, 36, 16, 0.78) 72%, rgba(40, 24, 10, 0.88) 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+/* 경험치 테두리 — 12시에서 시작해 시계 방향으로 찬다. 초록 = 이번 레벨에서 쌓은 만큼, 흰색 = 모자란 만큼 */
+.m-icon-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; pointer-events: none; }
+.m-icon-ring-track { fill: none; stroke: #ffffff; stroke-width: 9; }
+.m-icon-ring-fill { fill: none; stroke: #22c55e; stroke-width: 9; transition: stroke-dasharray 0.35s ease, stroke 0.2s ease; }
+.m-icon-ring-fill.is-max { stroke: #f59e0b; }
+.m-icon.is-flash .m-icon-ring-fill { stroke: #86efac; filter: drop-shadow(0 0 4px #4ade80); }
+.m-icon-face {
+  position: absolute;
+  left: 11%;
+  top: 11%;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+/* 레벨 0 — 아직 쓸 수 없는 카드는 빛을 죽인다(PC 경험치 표의 "focus" 표정 대신) */
+.m-icon-face[data-lv0] { filter: saturate(0.55) brightness(0.82) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.m-icon[data-cooling] .m-icon-face { filter: grayscale(0.7) brightness(0.75); }
+.m-icon-lv {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  padding: 0 0.45em;
+  border-radius: 999px;
+  border: 1.5px solid #f7e6c2;
+  background: #3f2410;
+  color: #fde68a;
+  font-size: max(9px, calc(var(--m-icon) * 0.2));
+  font-weight: 900;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.m-icon-sticker,
+.m-icon-over {
+  position: absolute;
+  top: -5px;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  border: 1.5px solid #fff;
+  color: #fff;
+  font-size: max(9px, calc(var(--m-icon) * 0.19));
+  font-weight: 900;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.m-icon-sticker { right: -7px; background: #7c3aed; }
+.m-icon-over { left: -7px; background: #ea580c; }
+.m-icon.is-levelup { animation: mIconLevelUp 0.7s ease; }
+@keyframes mIconLevelUp {
+  0%, 100% { transform: scale(1); }
+  30%      { transform: scale(1.22); }
+  60%      { transform: scale(0.94); }
+}
+.m-icon-levelup {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #b45309, 0 1px 2px #000;
+  pointer-events: none;
+  animation: mLevelUpText 0.9s ease-out forwards;
+}
+@keyframes mLevelUpText {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+  25%  { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
+}
+
+/* 상태 창(아코디언) — 아이콘 옆, 판 쪽으로 펼쳐진다. 항상 그려 두고 clip-path로 아이콘 쪽에서부터 열린다 */
+.m-rail-panel {
+  position: absolute;
+  top: 50%;
+  z-index: 36;
+  width: max-content;
+  max-width: min(42vw, 240px);
+  padding: 6px 10px 7px;
+  border-radius: 10px;
+  border: 2px solid #3f2410;
+  background: rgba(255, 248, 232, 0.97);
+  color: #3b2a1a;
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  line-height: 1.35;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: clip-path 0.28s ease, opacity 0.2s ease;
+}
+.m-rail-panel[data-side='left'] { left: calc(100% + 8px); clip-path: inset(0 100% 0 0 round 10px); }
+.m-rail-panel[data-side='right'] { right: calc(100% + 8px); clip-path: inset(0 0 0 100% round 10px); }
+.m-rail-item[data-open] .m-rail-panel { clip-path: inset(0 0 0 0 round 10px); opacity: 1; pointer-events: auto; }
+.m-rail-item[data-open] .m-icon { box-shadow: 0 0 0 2px #fde68a, 0 2px 8px rgba(0, 0, 0, 0.5); }
+.m-rail-panel-title { font-size: 1.12em; font-weight: 900; white-space: nowrap; }
+.m-rail-panel-lv { color: #3f2410; }
+.m-rail-panel-line { font-weight: 700; white-space: nowrap; }
+.m-rail-panel-desc { margin-top: 2px; color: #6b4a2a; white-space: normal; min-width: 150px; }
+
+/* ── 가운데 — 장소 선택 판, 행동 선택이면 판이 어두워지고 기술 카드가 올라온다 ── */
+.m-view { grid-area: view; position: relative; z-index: 10; min-width: 0; min-height: 0; }
+/* 감정 표현(연출 표정 풍선 — PlayerEmoticonLayer, fixed)은 이 층(.m-emotes, 35)에 가둔다. 평소에는 판(10) 위에 뜨지만, 기술 카드 띠가
+   올라와 있는 동안에는 가운데(.m-view)가 40으로 올라가 **카드가 풍선 위**에 온다(2026-10-31 요청). 아이콘 열(30)의 펼침 창은 그동안 어둠 아래로 간다. */
+.m-emotes { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
+.m-layout[data-cards] .m-view { z-index: 40; }
+/* 스와이프로 연 창(기술 카드 띠 · 카드 상세 · 상대 목록)은 **언제나 맨 위**(2026-10-31 요청) — 그동안 가운데를 화면 전역 연출 층(콤보 문구 ·
+   토끼떼 · 축제 배너 …)보다 위로 올린다. 일시정지 막(95)보다는 아래다. 판 안의 연출(뽑기 슬롯 · 자막 · 짝 카드)은 판(.m-board)이 제 층에
+   가두므로 카드 띠 · 어둠 아래에서 돈다. */
+.m-layout[data-panel="cards"] .m-view { z-index: 90; }
+.m-board { z-index: 1; }
+/* 카드 상세 · 상대 목록 창의 층 — 판(.m-view)과 같은 칸에 겹쳐 놓고 언제나 그 위다(카드 띠 · 개인전 상대 고르기(.m-target, 91)보다도 위).
+   창이 닫혀 있으면 누름을 통과시킨다. */
+.m-sheets { grid-area: view; position: relative; z-index: 92; min-width: 0; min-height: 0; pointer-events: none; }
+.m-sheets > [data-open] { pointer-events: auto; }
+.m-board {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 3px solid #5a3a1a;
+  background: linear-gradient(180deg, #f8ead0 0%, #efd9a8 100%);
+  box-shadow: inset 0 0 14px rgba(90, 58, 26, 0.35), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.m-board [data-board-root] { border-radius: 9px; }
+/* 스택 카드의 얼굴 그림을 되살린다 — 작은 무대용 규칙(T1)이 "숫자만 남긴다"며 그림을 지우는데, 카드 강화 판은 숫자도 감춰
+   (data-enhance) 카드가 **빈 흰 종이**로 남았다(2026-10-31 제보). 모바일 판은 카드가 PC 1366 판만 해서 그림과 숫자가 함께 들어간다. */
+.m-layout .stack-card img { display: block; width: 62%; }
+.m-layout .stack-card-num { font-size: max(9px, calc(var(--stack-card-w) * 0.3 * var(--font-scale))); line-height: 1; }
+.m-layout[data-enhance] .stack-card img { width: 80%; }
+.m-board-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 12px;
+  background: rgba(8, 6, 3, 0.66);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.m-layout[data-cards] .m-board-dim { opacity: 1; pointer-events: auto; }
+/* 카드 띠 — 다섯 장(4 + 턴 마치기)이 판 가운데에 선다. 카드 한 장 ≈ 띠 폭의 19.6%, 카드 비율 0.708(PC와 같다) → 띠 비율 약 3.6 */
+.m-cards {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 25;
+  width: min(97%, calc(var(--m-view-h) * 0.86 * 3.6));
+  aspect-ratio: 3.6;
+  --card-side: #5a2a06;
+  --cell-r: 10px;
+  opacity: 0;
+  transform: translate(-50%, 40%);
+  pointer-events: none;
+  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.1), opacity 0.25s ease;
+}
+.m-layout[data-cards] .m-cards { opacity: 1; transform: translate(-50%, -46%); pointer-events: auto; }
+/* 고른 카드 — 1.05배로 떠오르고 손가락이 끄는 곳을 따라 기운다(PC hover의 1.21배 대신, 요청). touch-action으로 끄는 동안 화면이 밀리지 않게 한다 */
+.m-layout .holo-cell { touch-action: none; }
+.m-layout .holo-cell[data-holo][data-hover] {
+  transform: perspective(700px) translateY(-3%) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.05);
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
+}
+
+/* ── 아래 띠 — [내 체력 막대] [지속 효과 아이콘] [상대 체력 막대] ── */
+/* 두 막대는 같은 폭(1fr · 1fr — 좌우 대칭)으로 화면 양 끝까지 뻗는다(2026-10-31 요청). 양 끝은 설정 톱니(.settings-fab, fixed — 오른쪽 아래 약 34px)에
+   가리지 않을 만큼만 같게 비운다. 가운데 지속 효과 묶음(MobileDotHub)은 강화 판에만 있다 — 없으면 막대 사이 틈만 남는다. */
+.m-bottom {
+  grid-area: bottom;
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4px minmax(0, 1fr);
+  column-gap: 4px;
+  align-items: center;
+  padding-inline: 38px;
+}
+.m-bottom[data-hub] { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 6px; }
+.m-bottom:not([data-hub]) > .m-hp[data-side='right'] { grid-column: 3; }
+.m-hp { position: relative; display: flex; align-items: center; height: 100%; min-width: 0; }
+.m-hp-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 2px solid #2a1a0a;
+  background: rgba(30, 20, 10, 0.6);
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.m-hp[data-side='left'] .m-hp-track { border-radius: 999px 4px 4px 999px; }
+.m-hp[data-side='right'] .m-hp-track { border-radius: 4px 999px 999px 4px; }
+.m-hp-fill,
+.m-hp-ghost { position: absolute; top: 0; bottom: 0; transition: width 0.45s ease; }
+.m-hp[data-side='left'] .m-hp-fill,
+.m-hp[data-side='left'] .m-hp-ghost { right: 0; }
+.m-hp[data-side='right'] .m-hp-fill,
+.m-hp[data-side='right'] .m-hp-ghost { left: 0; }
+/* 흰 막대 — 색 막대 바로 뒤. 둘이 같은 목표 폭으로 가되 **먼저 움직이는 쪽이 방향마다 반대**다(MobileHpBar의 data-change):
+     깎임(down): 색 막대가 곧바로 줄고 → 0.6초 뒤 흰 막대가 따라 준다(그 사이 깎인 몫이 하얗게 남는다)
+     오름(up):   흰 막대가 곧바로 늘고 → 0.6초 뒤 색 막대가 따라 찬다(그 사이 오를 몫이 하얗게 먼저 보인다) */
+.m-hp-ghost { background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #cbd5e1 100%); }
+.m-hp[data-change='down'] .m-hp-fill  { transition: width 0.22s ease-out; }
+.m-hp[data-change='down'] .m-hp-ghost { transition: width 0.5s ease-in-out 0.6s; }
+.m-hp[data-change='up'] .m-hp-ghost   { transition: width 0.22s ease-out; }
+.m-hp[data-change='up'] .m-hp-fill    { transition: width 0.5s ease-in-out 0.6s; }
+/* 움직인 양(−N · +N) — 막대 안, 체력 숫자 옆에서 튀어나왔다가 흐려진다 */
+.m-hp-delta {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  font-size: calc(13px * var(--font-scale) / 1.12);
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  animation: mHpDelta 1.5s ease-out forwards;
+}
+.m-hp[data-side='left'] .m-hp-delta { right: 46px; }
+.m-hp[data-side='right'] .m-hp-delta { left: 46px; }
+.m-hp-delta.is-down { color: #fee2e2; text-shadow: 0 0 2px #7f1d1d, 0 0 4px #b91c1c, 0 1px 1px #000; }
+.m-hp-delta.is-up { color: #dcfce7; text-shadow: 0 0 2px #14532d, 0 0 4px #15803d, 0 1px 1px #000; }
+@keyframes mHpDelta {
+  0%   { opacity: 0; transform: translateY(-50%) scale(0.5); }
+  12%  { opacity: 1; transform: translateY(-50%) scale(1.3); }
+  25%  { transform: translateY(-50%) scale(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-50%) scale(1); }
+}
+/* 내 체력이 막대의 20% 아래 — 색 막대가 붉게 밝아졌다 돌아오기를 되풀이한다(MobileHpBar의 data-low) */
+.m-hp[data-low] .m-hp-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #fecaca 0%, #ef4444 50%, #991b1b 100%);
+  animation: mHpLow 0.9s ease-in-out infinite;
+}
+.m-hp[data-low] .m-hp-track { animation: mHpLowRing 0.9s ease-in-out infinite; }
+@keyframes mHpLow {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 0.95; filter: brightness(1.35); }
+}
+@keyframes mHpLowRing {
+  0%, 100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); }
+  50%      { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px 2px rgba(239, 68, 68, 0.85); }
+}
+.m-hp[data-tone='mine'] .m-hp-fill { background: linear-gradient(180deg, #d9f99d 0%, #84cc16 45%, #4d7c0f 100%); }
+.m-hp[data-tone='enemy'] .m-hp-fill { background: linear-gradient(180deg, #fecdd3 0%, #f43f5e 45%, #9f1239 100%); }
+.m-hp-start { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.75); }
+.m-hp-value {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: calc(13px * var(--font-scale) / 1.12);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 1px 2px #000;
+}
+.m-hp[data-side='left'] .m-hp-value { right: 8px; }
+.m-hp[data-side='right'] .m-hp-value { left: 8px; }
+/* ── 체력 막대의 빛 — 홀로그램 · 오라 · 지속 효과의 흐름 · 순간 훑기 ──
+   방향 이름은 **화면 방향**이다: to-left = 오른쪽 → 왼쪽, to-right = 왼쪽 → 오른쪽(MobileHpBar가 막대마다 고른다).
+   가운데에서 바깥으로 = 왼쪽 막대 to-left · 오른쪽 막대 to-right. */
+.m-hp-track { z-index: 1; }
+/* 홀로그램 — 채움 위로 무지갯빛 띠(흰 · 하늘 · 분홍 · 연보라)가 가운데에서 바깥으로 흐르고, 위쪽 광택이 깔린다 */
+.m-hp-holo {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, transparent 0%, transparent 30%, rgba(255, 255, 255, 0.55) 38%, hsla(190, 100%, 82%, 0.5) 43%, hsla(320, 100%, 84%, 0.45) 48%, hsla(260, 100%, 86%, 0.35) 53%, transparent 62%, transparent 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, 0.12) 100%);
+  background-size: 250% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.m-hp[data-side='left'] .m-hp-holo { animation: mHoloToLeft 3.2s linear infinite; }
+.m-hp[data-side='right'] .m-hp-holo { animation: mHoloToRight 3.2s linear infinite; }
+@keyframes mHoloToLeft  { 0% { background-position: 0% 0, 0 0; }   100% { background-position: 100% 0, 0 0; } }
+@keyframes mHoloToRight { 0% { background-position: 100% 0, 0 0; } 100% { background-position: 0% 0, 0 0; } }
+/* 오라 — 막대 뒤에 그 편 색 빛이 안쪽 끝(가운데)에서 번져 나가며 흐려진다. 두 막대가 거울이라 가운데에서 양쪽으로 퍼진다 */
+.m-hp-aura {
+  position: absolute;
+  /* 막대(트랙)보다 위아래로 넓게 — 트랙이 불투명해 그 안쪽에 그리면 빛이 보이지 않는다 */
+  inset: -4px 0;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(4px);
+  opacity: 0;
+  animation: mHpAura 2.6s ease-out infinite;
+}
+.m-hp[data-tone='mine'] .m-hp-aura { background: linear-gradient(var(--aura-dir), rgba(190, 242, 100, 0.95), rgba(132, 204, 22, 0.55) 45%, transparent); }
+.m-hp[data-tone='enemy'] .m-hp-aura { background: linear-gradient(var(--aura-dir), rgba(253, 164, 175, 0.95), rgba(244, 63, 94, 0.55) 45%, transparent); }
+.m-hp[data-side='left'] .m-hp-aura { --aura-dir: 270deg; transform-origin: 100% 50%; }
+.m-hp[data-side='right'] .m-hp-aura { --aura-dir: 90deg; transform-origin: 0% 50%; }
+/* 안쪽 끝에서 막대 높이 그대로 시작해 바깥으로 길어지며 위아래로 부풀고, 다 퍼지면 흐려진다 — 막대보다 커지는 구간에 빛이 보인다 */
+@keyframes mHpAura {
+  0%   { opacity: 0.95; transform: scale(0.2, 1); }
+  55%  { opacity: 0.6; }
+  100% { opacity: 0; transform: scale(1.04, 1.9); }
+}
+
+/* 지속 효과의 빛(MobileHpBar의 .m-hp-dotglow) — 걸려 있는 동안 막대 둘레가 숨 쉬듯 빛난다(2026-10-31 — 막대 위를 흐르던 +/− 기호에서 바꿨다).
+   회복은 초록, 출혈은 붉은색. 둘 다 걸리면 반씩: 막대의 **안쪽 절반(가운데 쪽)이 회복 · 바깥 절반이 출혈**이다(두 막대가 거울).
+   빛은 막대 뒤(z 0)에 깔린 상자의 box-shadow라 막대 모양 그대로 번진다. 한 번 든 순간(.m-hp-dotflash)은 같은 색으로 크게 번쩍인다. */
+.m-hp-dotglow { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: flex; }
+.m-hp[data-side='left'] .m-hp-dotglow { flex-direction: row-reverse; }
+.m-hp-dotglow-part {
+  flex: 1;
+  margin-block: 3px;
+  border-radius: 999px;
+  animation: mDotGlow 1.8s ease-in-out infinite;
+}
+.m-hp-dotglow-part.is-regen { --dot-c: rgba(34, 197, 94, 0.95); --dot-c2: rgba(134, 239, 172, 0.55); background: rgba(34, 197, 94, 0.35); }
+.m-hp-dotglow-part.is-bleed { --dot-c: rgba(220, 38, 38, 0.95); --dot-c2: rgba(252, 165, 165, 0.5); background: rgba(220, 38, 38, 0.35); animation-delay: -0.9s; }
+@keyframes mDotGlow {
+  0%, 100% { box-shadow: 0 0 4px 1px var(--dot-c), 0 0 10px 2px var(--dot-c2); }
+  50%      { box-shadow: 0 0 9px 4px var(--dot-c), 0 0 20px 7px var(--dot-c2); }
+}
+.m-hp-dotflash { position: absolute; inset: 2px 0; z-index: 0; border-radius: 999px; pointer-events: none; animation: mDotFlash 0.9s ease-out forwards; }
+.m-hp-dotflash.is-regen { --dot-c: rgba(74, 222, 128, 1); }
+.m-hp-dotflash.is-bleed { --dot-c: rgba(239, 68, 68, 1); }
+@keyframes mDotFlash {
+  0%   { box-shadow: 0 0 0 0 var(--dot-c); opacity: 1; }
+  35%  { box-shadow: 0 0 14px 8px var(--dot-c); opacity: 1; }
+  100% { box-shadow: 0 0 22px 12px var(--dot-c); opacity: 0; }
+}
+
+/* 순간 훑기 — 체력이 오른 순간(is-gain)은 빛 띠가 가운데에서 바깥으로 한 번 지나가고,
+   깎인 순간(is-loss)은 붉게 번쩍인다 */
+.m-hp-pulse { position: absolute; inset: 0; pointer-events: none; }
+.m-hp-pulse.is-gain {
+  background-size: 45% 100%;
+  background-repeat: no-repeat;
+}
+.m-hp-pulse.is-gain { background-image: linear-gradient(90deg, transparent 0%, rgba(220, 255, 180, 0.9) 50%, transparent 100%); }
+.m-hp-pulse.to-left  { animation: mSweepToLeft 0.75s ease-out forwards; }
+.m-hp-pulse.to-right { animation: mSweepToRight 0.75s ease-out forwards; }
+.m-hp-pulse.is-loss { background: rgba(255, 70, 70, 0.65); animation: mHpFlash 0.6s ease-out forwards; }
+@keyframes mSweepToLeft {
+  0%   { background-position: 160% 0; opacity: 1; }
+  100% { background-position: -60% 0; opacity: 0.4; }
+}
+@keyframes mSweepToRight {
+  0%   { background-position: -60% 0; opacity: 1; }
+  100% { background-position: 160% 0; opacity: 0.4; }
+}
+@keyframes mHpFlash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.m-hp-recoil { animation: mHpRecoil 0.4s ease-out; }
+@keyframes mHpRecoil {
+  0%, 100% { transform: translateY(0); }
+  40%      { transform: translateY(3px); }
+}
+/* 그 밖의 상태(효과 감소 · 회복 효율 감소 · 회피) — 걸렸을 때만, 막대 안쪽 끝 위에 작게 */
+.m-hp-extra { position: absolute; bottom: calc(100% + 3px); display: flex; gap: 4px; font-size: 10px; pointer-events: auto; }
+.m-hp[data-side='left'] .m-hp-extra { right: 4px; }
+.m-hp[data-side='right'] .m-hp-extra { left: 4px; }
+
+/* 지속 효과 아이콘 묶음 — 두 막대 사이. 늘 있고, 꺼진 아이콘은 회색이다. 켜지면 제 색이 돌아오고 가운데에 남은 턴 수가 뜬다.
+   아이콘 생김새(핏방울 · 초록 십자)는 체력 구슬의 .hp-status-*를 그대로 쓴다 — 크기만 font-size로 정한다(그쪽이 em 단위다). */
+.m-dot-hub { display: flex; align-items: center; gap: 6px; height: 100%; }
+.m-dot-pair {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: rgba(30, 18, 8, 0.72);
+  font-size: 10px;
+}
+.m-dot-pair[data-tone='mine'] { border-color: rgba(132, 204, 22, 0.8); }
+.m-dot-pair[data-tone='enemy'] { border-color: rgba(244, 63, 94, 0.75); }
+.m-dot[data-off] { filter: grayscale(1) brightness(0.7); opacity: 0.5; }
+.m-dot[data-off] .hp-status-icon { box-shadow: none; }
+.m-dot:not([data-off]) { animation: mDotOn 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes mDotOn {
+  0%   { transform: scale(0.5); }
+  100% { transform: scale(1); }
+}
+
+/* ── 스와이프 — 브라우저의 손짓(당겨서 새로고침 · 가로 밀어 뒤로가기 · 화면 밀기)을 끄고 이 화면이 받는다(useSwipePanels) ── */
+.m-layout { touch-action: none; }
+html:has(.m-layout),
+body:has(.m-layout) { overscroll-behavior: none; }
+
+/* 판 위에 무엇이 덮여 있으면(카드 띠 · 상세 창) 장소 타일의 안내 손을 감춘다 — 손은 z-index 95라 그 창들 위로 비쳐 나왔다 */
+.m-layout[data-cards] .m-board .place-guide-hand,
+.m-layout[data-panel] .m-board .place-guide-hand { display: none; }
+
+/* ── 카드 상세 창(StatusSheet) — 가로 스와이프로 판 위에 미끄러져 나온다. 내 것은 왼쪽에서, 상대 것은 오른쪽에서 ── */
+.m-sheet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 28;
+  width: min(64%, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid #3f2410;
+  background: rgba(255, 248, 232, 0.97);
+  color: #3b2a1a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease;
+}
+.m-sheet[data-side='left'] { left: 0; transform: translateX(-108%); }
+.m-sheet[data-side='right'] { right: 0; transform: translateX(108%); }
+.m-sheet[data-open] { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.m-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.m-sheet[data-side='right'] .m-sheet-head { flex-direction: row-reverse; }
+.m-sheet-team {
+  padding: 1px 10px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: #3f2410;
+  color: #fff;
+  font-size: calc(12px * var(--font-scale) / 1.12);
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-sheet-team[data-tone='mine'] { border-color: #84cc16; }
+.m-sheet-team[data-tone='enemy'] { border-color: #f43f5e; }
+.m-sheet-hint { font-size: 10px; color: #8a6a48; white-space: nowrap; }
+.m-sheet-list { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 3px; }
+.m-sheet-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(63, 36, 16, 0.07);
+}
+.m-sheet-row[data-cooling] { background: rgba(63, 36, 16, 0.16); }
+.m-sheet-face { flex: none; width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+.m-sheet-face[data-lv0] { filter: saturate(0.55) brightness(0.85); }
+.m-sheet-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: calc(10.5px * var(--font-scale) / 1.12); line-height: 1.3; }
+.m-sheet-title { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 1.1em; }
+.m-sheet-lv { font-weight: 900; color: #3f2410; }
+.m-sheet-exp { margin-left: auto; font-weight: 700; color: #6b4a2a; }
+.m-sheet-bar { display: block; height: 5px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px rgba(63, 36, 16, 0.25); overflow: hidden; }
+.m-sheet-bar > span { display: block; height: 100%; background: #22c55e; border-radius: 999px; }
+.m-sheet-lines { font-weight: 800; color: #7c3aed; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-sheet-desc { color: #6b4a2a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-phase-hero { animation: mPhaseHeroFade 1.5s ease forwards; }
+  .m-cards, .m-board-dim, .m-rail-panel, .m-sheet { transition: none; }
+  .m-hp-holo, .m-hp-aura, .m-hp-dotglow-part { animation: none; }
+}
+@keyframes mPhaseHeroFade {
+  0%, 70% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   게임 밖 화면 — 폰(로비 · 방 설정 폼 · 대기실 · 게임 방법) — MOBILE_RESPONSIVE_PROPOSAL.md
+   ══════════════════════════════════════════════════════════════════════════
+   두 조건은 lib/mobileLayout.ts의 PHONE_LANDSCAPE_QUERY · PHONE_PORTRAIT_QUERY와 **같은 문자열**이다 — 로비에서 가로 폰으로 보이던
+   화면이 게임에 들어가면 모바일 배치가 되도록 함께 고칠 것.
+   ⚠️ 데스크톱 규칙은 하나도 바꾸지 않는다 — 새 규칙은 전부 아래 미디어 쿼리 안에 있다(예외: 스테퍼의 기본 display: none).
+      데스크톱이 그대로인지는 measureLobby.mjs의 1280·1366·1920 줄이 이전 값과 같은지로 확인한다.
+   ⚠️ 조건부 렌더링을 늘리지 않았다 — 로비의 "모두 마운트하고 data-stage만 바꾼다"(CLAUDE.md)를 그대로 두고 CSS만 얹는다.
+      컴포넌트에 더한 것은 표식 클래스(waiting-* · howto-* · lobby-settings-hint)와 규칙 칸의 −/+ 버튼뿐이다. */
+
+/* 규칙 값 버튼(폰에서 숫자 칸 대신 보이는 값 — 누르면 입력 창 RuleEditDialog) — 데스크톱에서는 감춘다 */
+.rule-value-button { display: none; }
+/* 규칙 값 입력 창(RuleEditDialog — body로 portal) — 폰에서만 열린다. 화면을 어둡게 덮고 가운데에 입력 칸 · −/+ · [확인]. */
+.rule-dialog-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(12, 8, 4, 0.66);
+}
+.rule-dialog {
+  width: min(92vw, 340px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 3px solid #5a3a1a;
+  background: linear-gradient(180deg, #fff8e8 0%, #f6e3bd 100%);
+  color: #4a3728;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+.rule-dialog-title { font-size: 16px; font-weight: 900; }
+.rule-dialog-row { display: flex; align-items: center; gap: 8px; }
+.rule-dialog-input { flex: 1; min-width: 0; height: 44px; text-align: center; font-size: 20px; font-weight: 800; }
+.rule-dialog-step {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1.5px solid #b08a5a;
+  background: linear-gradient(180deg, #fff6df 0%, #f2d9a6 100%);
+  color: #4a3728;
+  font-size: 22px;
+  font-weight: 900;
+  touch-action: manipulation;
+}
+.rule-dialog-step:active { transform: scale(0.92); }
+.rule-dialog-suffix { flex: none; font-weight: 800; color: #7d6a55; }
+.rule-dialog-range { font-size: 12px; color: #7d6a55; }
+.rule-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.rule-dialog-cancel { min-height: 44px; padding: 0 16px; font-weight: 800; color: #7d6a55; }
+.rule-dialog-ok { min-height: 44px; padding: 0 22px; font-size: 16px; font-weight: 900; }
+/* 가로 폰은 키보드가 화면 아래 절반을 덮는다 — 창을 위쪽에 붙인다 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .rule-dialog-dim { align-items: flex-start; padding-top: 8px; }
+}
+
+/* ── 폰 공통(가로 · 세로) ── */
+@media (orientation: landscape) and (max-height: 500px), (orientation: portrait) and (max-width: 767px) {
+  /* 터치 대상 — 규칙 숫자 칸은 값만 보이는 버튼으로 바꾸고(누르면 입력 창 — 좁은 열에 −/+와 칸을 함께 넣었더니 글자가 잘리고 버튼이 컸다),
+     입력칸 · 주사위 · 뒤로가기는 손가락 크기로 */
+  .lobby-root .input-rule-num { display: none; }
+  .rule-value-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.4rem;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1.5px solid #b08a5a;
+    background: #fffaf0;
+    box-shadow: inset 0 1px 3px rgba(74, 55, 40, 0.15);
+    color: #4a3728;
+    font-size: 15px;
+    font-weight: 800;
+    touch-action: manipulation;
+  }
+  .rule-value-button:active { transform: scale(0.95); }
+  .lobby-root .stage-form .input-base:not(.input-rule-num) { min-height: 40px; }
+  .lobby-root .dice-button { width: 2.9rem; }
+  .lobby-back > span:first-child { width: 44px; height: 44px; }
+  /* 작은 글자의 바닥 12px — 데스크톱 기준 크기(10.8px)가 폰에서는 읽히지 않았다. 글씨 배수(--font-scale)는 그대로 곱한다 */
+  .lobby-root .text-xs,
+  .lobby-root .text-\[0\.6rem\] { font-size: max(12px, calc(0.75rem * var(--font-scale))); }
+  /* 아래 "글씨 크기/소리는 ⚙️" 안내 — 폰에서는 두 줄로 접혀 톱니와 겹쳤다 */
+  .lobby-settings-hint { display: none; }
+
+  /* 대기실 — 시작 · 준비 버튼을 스크롤 영역 바닥에 붙인다(내용이 길어도 늘 보인다). 작은 버튼은 손가락 크기로 */
+  .waiting-action {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding-block: 10px 6px;
+    background: linear-gradient(180deg, rgba(247, 239, 221, 0) 0%, rgba(247, 239, 221, 0.97) 30%);
+  }
+  .waiting-board button { min-height: 36px; min-width: 36px; }
+
+  /* 게임 방법 — 세로로 긴 포스터 대신 **한 장씩 넘기는 카드**(가로 스와이프, scroll-snap). 다음 장 끝이 살짝 보여 넘길 수 있다는 걸 알린다.
+     2·3단계를 묶은 칸(.howto-pair)은 display: contents로 풀어 한 장씩 따로 넘긴다. */
+  .howto-scroll { display: flex; flex-direction: column; overflow: hidden; padding-top: 0; }
+  .howto-steps {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    padding: 4px 6% 8px;
+    scroll-padding-inline: 6%;
+  }
+  .howto-pair { display: contents; }
+  .howto-steps > section,
+  .howto-pair > section {
+    flex: 0 0 88%;
+    min-height: 0;
+    overflow-y: auto;
+    scroll-snap-align: center;
+    padding-top: 0.75rem;
+  }
+  /* 번호 배지 — 칸 밖에 걸터앉던 것을 칸 안으로(칸이 스크롤하면 바깥 그림이 잘린다) */
+  .howto-steps section > span:first-child {
+    position: static;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    border-width: 3px;
+    margin-bottom: 4px;
+  }
+  .howto-cta { flex: 0 0 70%; align-items: center; scroll-snap-align: center; }
+  .howto-close {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ── 가로 폰 — 폼 · 대기실이 화면 전체를 쓴다 ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* 폼 단계 · 대기실 — 그림 좌표(안전영역)를 버리고 화면 전체. 높이는 지금 보이는 높이(--vvh — 키보드가 올라오면 줄어든다, page.tsx)다.
+     ⚠️ 위치를 px로 바로 적지 못한다 — 안전영역의 부모(.lobby-table)는 화면보다 큰 cover 상자를 transform으로 가운데에 둔 것이라
+        top: 0이 화면 위가 아니다. 그래서 대기실처럼 가운데(50%)에서 시작해 화면 높이의 절반만큼 올린다(= 화면 위 + 6px). */
+  .lobby-safe[data-stage="soloNormal"],
+  .lobby-safe[data-stage="soloEnhance"],
+  .lobby-safe[data-stage="createTeam"],
+  .lobby-safe[data-stage="createIndividual"],
+  .lobby-safe[data-stage="join"],
+  .lobby-safe[data-stage="event"],
+  .lobby-safe[data-stage="waiting"] {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, calc(-50dvh + 6px));
+    height: calc(var(--vvh, 100dvh) - 12px);
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    gap: 0;
+  }
+  /* 폼은 왼쪽에 뒤로가기 자리(52px)를 남긴다 */
+  .lobby-safe[data-stage="soloNormal"],
+  .lobby-safe[data-stage="soloEnhance"],
+  .lobby-safe[data-stage="createTeam"],
+  .lobby-safe[data-stage="createIndividual"],
+  .lobby-safe[data-stage="join"],
+  .lobby-safe[data-stage="event"] {
+    width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)) - 52px);
+    transform: translate(calc(-50% + 26px), calc(-50dvh + 6px));
+  }
+  .lobby-safe[data-stage="waiting"] {
+    width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)));
+  }
+  /* 뒤로가기 — 안전영역 왼쪽 바깥(위 52px 자리)에 원 하나로. 흐름에서 빼 스테이지가 그만큼 높아진다 */
+  .lobby-back { position: absolute; top: 0; left: -52px; z-index: 30; }
+  .lobby-back > span:last-child { display: none; }
+
+  /* 폼 판 — 배율 없이 화면에 꽉. 액자 · 장식은 얇게(세로 폰 규칙과 같은 값) */
+  .lobby-safe .lobby-form-wrap { padding: 4px; }
+  .lobby-safe[data-stage] .lobby-form-board {
+    --form-zoom: 1;
+    --board-edge: 12px;
+    --board-inner-pad: 10px;
+    --orn-size: 64px;
+    --orn-overhang: 3px;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+  }
+  /* 규칙이 있는 폼(혼자 놀기 · 강화 · 방 만들기 · 개인전 · 이벤트 개발자)은 2열 — 왼쪽 제목 · 이름, 오른쪽 규칙(처음부터 펼친다 —
+     GameRulesFields). 열마다 따로 스크롤하고 제출 버튼은 판 아래에 늘 보인다(B1 · B2).
+     ⚠️ 방 만들기의 "접힌 동안 스크롤 잠금"(.stage-form-create .lobby-form-scroll)을 여기서 덮는다 — 가로 폰에서는 접힌 상태도
+        넘쳐 두 번째 팀 이름 · 규칙 버튼에 닿을 수 없었다. */
+  .lobby-safe .stage-form .lobby-form-scroll:has(> .lobby-form-side) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 6px;
+    overflow: hidden;
+  }
+  .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-head { grid-column: 1; grid-row: 1; }
+  .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-fields { grid-column: 1; grid-row: 2; min-height: 0; overflow-y: auto; padding: 4px 6px; }
+  .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-side { grid-column: 2; grid-row: 1 / span 2; min-height: 0; overflow-y: auto; padding: 4px 6px; }
+  /* 규칙이 없는 폼(방 참가 · 이벤트 도전자)도 2열 — 입력칸(닉네임 · 방 코드 · PIN)은 나란히, 나머지(자리 고르기 · 도전 종류 · 버튼 · 안내)는
+     한 줄을 다 쓴다. 한 열로 두면 세로 380px를 17~71px 넘쳐 스크롤했다. 그래도 넘치면(글씨 크기를 키웠을 때) 스크롤한다. */
+  .lobby-safe .stage-form .lobby-form-scroll:not(:has(> .lobby-form-side)) { overflow-y: auto; }
+  .lobby-safe .stage-form .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 8px;
+  }
+  .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields > * { grid-column: 1 / -1; }
+  .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields > :has(input:not([type="hidden"])) { grid-column: auto; }
+  /* 그림 버튼(자리 고르기 · 선 플레이어)은 폭을 따라 커지는 그림이라 한 줄을 다 쓰면 거대해진다(방 참가 폼이 그래서 넘쳤다) — 한 장 9rem까지 */
+  .lobby-safe .stage-form .pick-image-button { flex: 0 1 9rem; }
+
+  /* 대기실 — 판을 얇게, 방 코드는 한 줄(라벨 · 안내 문구는 감춘다)로 줄여 팀 목록 · 채팅이 위로 올라오게 */
+  .lobby-safe .board-frame-split { --board-edge: 12px; --orn-size: 64px; --orn-overhang: 3px; }
+  .waiting-scroll { gap: 12px; }
+  .waiting-code { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; }
+  .waiting-code-label,
+  .waiting-code-hint { display: none; }
+  .waiting-code-id { font-size: 2.1rem; line-height: 1; }
+  .waiting-code-buttons { margin-top: 0; }
+  .waiting-code-buttons .wood-button { font-size: 14px; padding: 6px 12px; }
+}
+
+/* ── 세로 폰 — 폼은 화면 아래에 붙는 시트, 대기실은 게임이 가로라는 것을 미리 알린다 ── */
+@media (orientation: portrait) and (max-width: 767px) {
+  /* 폼 카드를 가운데가 아니라 아래에 붙인다(위 1/3이 비어 카드가 작게 떠 있었다). 규칙을 펼치면 카드가 위로 자란다 */
+  .lobby-safe[data-stage="soloNormal"] .lobby-form-wrap,
+  .lobby-safe[data-stage="soloEnhance"] .lobby-form-wrap,
+  .lobby-safe[data-stage="createTeam"] .lobby-form-wrap,
+  .lobby-safe[data-stage="createIndividual"] .lobby-form-wrap,
+  .lobby-safe[data-stage="join"] .lobby-form-wrap,
+  .lobby-safe[data-stage="event"] .lobby-form-wrap { align-items: flex-end; }
+  /* 게임 화면은 가로 전용(세로는 회전 안내) — 대기실에서 미리 알린다 */
+  .lobby-safe[data-stage="waiting"] .waiting-scroll::before {
+    content: '📱 게임이 시작되면 화면을 가로로 돌려 주세요';
+    display: block;
+    flex: none;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(63, 36, 16, 0.08);
+    color: #4a3728;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+}
+
+/* ── 화면 전체 스크롤바 막기 — 게임 화면 · 로비(2026-10-31 요청) ──────────────────────────────
+   흔들림 연출(.shake-combo — 화면 전체를 transform으로 흔든다)이 그 순간 화면 밖으로 몇 px 밀려나 문서가 넘치면, 브라우저가 전체
+   스크롤바를 그렸다 지웠다 한다(그 폭만큼 화면이 좌우로 덜컹인다). 게임 화면과 로비는 한 화면짜리라 문서가 스크롤할 일이 없다 —
+   스크롤이 필요한 곳(폼 · 대기실 · 채팅 · 상세 창)은 모두 **안쪽 상자**가 스크롤한다. 그래서 그 두 화면에서만 문서 스크롤을 잠근다.
+   결과 화면(.result-bg — 좁은 화면에서 세로로 스크롤한다) · 순위표 · 운영자 화면은 여기에 걸리지 않는다. */
+html:has(.play-bg),
+html:has(.lobby-root),
+body:has(.play-bg),
+body:has(.lobby-root) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* ── 중간 · 작은 창(T1 · T2)의 카드 강화 판 — 스택 카드의 얼굴을 되살린다 ──────────────────────────
+   T1 · T2 블록은 "줄이 이미 그 동물을 말하니 카드에는 숫자만"이라며 얼굴 그림을 지우는데, 카드 강화 판은 숫자를 감춘다([data-enhance]) —
+   둘이 겹쳐 창을 중간 크기로 키우면 카드가 **빈 흰 종이**가 됐다(2026-10-31 제보). 강화 판에서만 그림을 다시 보인다(숫자는 그대로 감춘다).
+   1366×768 이상의 데스크톱은 이 조건에 걸리지 않는다(MOBILE_ROADMAP.md §3-1). */
+@media (max-width: 1105px), (max-height: 626px) {
+  [data-enhance] .stack-card img { display: block; width: 80%; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   개인전 모바일(가로 폰) — components/game/mobile/MobileIndividualLayout.tsx · IndividualPanels.tsx
+   팀전 모바일 배치(.m-*) 위에 "상대가 여럿"인 것만 더한다: 사람마다 고른 색 · 상대 목록 창 · 공격 대상 고르기 창.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 사람 색 — 열 테두리 · 이름 알약 · 체력 막대가 그 사람이 대기실에서 고른 색이다(출혈 · 지속 회복의 빛 색은 그대로) */
+.m-rail-list[data-colored] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rail-color) 85%, transparent), 0 0 8px color-mix(in srgb, var(--rail-color) 40%, transparent); }
+.m-rail-list[data-colored][data-active] { box-shadow: inset 0 0 0 3px var(--rail-color), 0 0 14px color-mix(in srgb, var(--rail-color) 75%, transparent); }
+.m-name[data-colored] { border-color: var(--name-color); color: #fff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--name-color) 40%, transparent), 0 2px 5px rgba(0, 0, 0, 0.4); }
+/* 내가 노려 잠깐 오른쪽에 세운 상대 — 이름 알약이 깜빡여 "지금은 공격한 상대"임을 알린다 */
+.m-name[data-attacked] { animation: mNameAttacked 0.9s ease-in-out infinite; }
+@keyframes mNameAttacked {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--name-color) 40%, transparent), 0 2px 5px rgba(0, 0, 0, 0.4); }
+  50%      { box-shadow: 0 0 0 3px var(--name-color), 0 0 12px var(--name-color); }
+}
+.m-hp[data-color] .m-hp-fill {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--hp-color) 45%, white) 0%,
+    var(--hp-color) 48%,
+    color-mix(in srgb, var(--hp-color) 70%, black) 100%);
+}
+.m-hp[data-color] .m-hp-aura {
+  background: linear-gradient(var(--aura-dir), color-mix(in srgb, var(--hp-color) 85%, white), color-mix(in srgb, var(--hp-color) 55%, transparent) 45%, transparent);
+}
+
+/* ── 상대 목록 창(오른쪽 → 왼쪽 스와이프) — 오른쪽에서 미끄러져 나온다. 한 줄 = 한 사람, 세로로 스크롤 ── */
+.m-opp-list {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(66%, 400px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid #3f2410;
+  background: rgba(255, 248, 232, 0.97);
+  color: #3b2a1a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  transform: translateX(108%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease;
+}
+.m-opp-list[data-open] { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.m-opp-list-title { font-size: 13px; font-weight: 900; }
+.m-opp-list-tip { font-size: 11px; font-weight: 700; color: #8a6a48; }
+.m-opp-rows { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; padding: 2px; touch-action: pan-y; }
+.m-opp-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 8px 6px;
+  border-radius: 10px;
+  border: 2px solid color-mix(in srgb, var(--opp-color) 45%, #d6c3a0);
+  background: #fffaf0;
+  text-align: left;
+  font-size: 12px;
+}
+.m-opp-row[data-active] { border-color: var(--opp-color); }
+.m-opp-row[data-selected] { border-color: var(--opp-color); box-shadow: 0 0 0 2px var(--opp-color), 0 0 10px color-mix(in srgb, var(--opp-color) 60%, transparent); background: #fff; }
+.m-opp-row[data-finished] { opacity: 0.6; }
+.m-opp-row-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-opp-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--opp-color); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, 0.2); }
+.m-opp-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 900; }
+.m-opp-finish { flex: none; padding: 0 6px; border-radius: 999px; background: #3f2410; color: #fde68a; font-size: 10px; font-weight: 800; }
+.m-opp-hp { margin-left: auto; flex: none; font-weight: 900; color: #9f1239; }
+.m-opp-dots { flex: none; display: flex; gap: 2px; font-size: 8px; }
+.m-opp-hpbar { display: block; height: 5px; border-radius: 999px; background: rgba(63, 36, 16, 0.15); overflow: hidden; }
+.m-opp-hpbar > span { display: block; height: 100%; border-radius: 999px; background: var(--opp-color); }
+.m-opp-animals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.m-opp-animal { display: grid; grid-template-columns: 22px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 3px; }
+.m-opp-animal img { grid-row: 1 / span 2; width: 22px; height: 22px; object-fit: contain; }
+.m-opp-animal img[data-lv0] { filter: saturate(0.5) brightness(0.85); }
+.m-opp-animal-lv { font-size: 11px; font-weight: 900; line-height: 1.1; }
+.m-opp-animal-bar { display: block; height: 4px; border-radius: 999px; background: rgba(63, 36, 16, 0.15); overflow: hidden; }
+.m-opp-animal-bar > span { display: block; height: 100%; background: #22c55e; }
+
+/* ── 공격 대상 고르기 — 화면을 어둡게 덮고 상대를 한 줄씩. 카드 띠보다 위, 상세 창(.m-sheets)보다 아래 ── */
+.m-target {
+  position: absolute;
+  inset: 0;
+  z-index: 91;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(10, 6, 2, 0.72);
+}
+.m-target-card {
+  width: min(560px, 92%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 3px solid #5a3a1a;
+  background: linear-gradient(180deg, #fff8e8 0%, #f6e3bd 100%);
+  color: #3b2a1a;
+}
+.m-target-title { font-size: 16px; font-weight: 900; }
+.m-target-sub { font-size: 11.5px; font-weight: 700; color: #7d6a55; }
+.m-target-rows { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px; touch-action: pan-y; }
+.m-target-row {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid color-mix(in srgb, var(--opp-color) 45%, #d6c3a0);
+  background: #fffaf0;
+  font-size: 14px;
+  text-align: left;
+}
+.m-target-row[data-focus] {
+  border-color: var(--opp-color);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--opp-color), 0 0 14px color-mix(in srgb, var(--opp-color) 70%, transparent);
+  transform: scale(1.02);
+}
+.m-target-lethal { flex: none; padding: 1px 7px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; }
+.m-target-hp { margin-left: auto; flex: none; display: flex; align-items: center; gap: 6px; width: 40%; font-weight: 900; color: #9f1239; }
+.m-target-hp .m-opp-hpbar { flex: 1; height: 7px; }
+.m-target-row .m-opp-dots { font-size: 9px; }
+.m-target-cancel { align-self: flex-end; min-height: 40px; padding: 0 14px; font-size: 13px; font-weight: 800; color: #7d6a55; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-opp-list { transition: none; }
+  .m-name[data-attacked] { animation: none; }
 }

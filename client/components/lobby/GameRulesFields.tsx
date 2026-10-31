@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { GameMode, GameSettings, SettingsLimits, Team } from 'shared';
 import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import { PHONE_LANDSCAPE_QUERY } from '@/lib/mobileLayout';
 import { ModeToggle } from './ModeToggle';
 
 // 선 플레이어(먼저 시작하는 팀) — 숫자가 아니라 3지선다라 아래 RULE_FIELDS와 따로 그린다.
@@ -122,6 +124,12 @@ export function GameRulesFields({
         <div className="flex items-center justify-between gap-1">
           <label className="text-gray-500 truncate min-w-0">{label}</label>
           <div className="flex items-center gap-1 shrink-0">
+            {/* 폰 — 값만 보이는 버튼(누르면 어두운 화면 위 입력 창 — RuleEditDialog). 데스크톱은 이 버튼이 display: none이고
+                아래 숫자 칸이 그대로 보인다(globals.css .rule-value-button). 폰에서는 거꾸로 숫자 칸을 감춘다 — 좁은 열에서
+                −/+와 숫자 칸을 한 줄에 넣었더니 글자가 잘리고 버튼이 너무 컸다(2026-10-31 제보). */}
+            <button type="button" className="rule-value-button tabular-nums" onClick={() => setEditing(key)} aria-label={`${title} 바꾸기`}>
+              {settings[key]}
+            </button>
             <input
               type="number"
               min={min}
@@ -144,8 +152,19 @@ export function GameRulesFields({
   const fields = RULE_FIELDS.filter(
     f => !(hidePause && PAUSE_KEYS.includes(f.key)) && !(hideTargetScore && f.key === 'targetScore'),
   );
+  // 폰 — 지금 고치고 있는 항목(값 버튼을 누르면 열리는 입력 창)
+  const [editing, setEditing] = useState<NumKey | null>(null);
+  const editingField = editing ? [...RULE_FIELDS, ...GROWTH_FIELDS].find(f => f.key === editing) ?? null : null;
   const [open, setOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // 가로 폰에서는 처음부터 펼친다 — 폼이 2열(왼쪽 이름 · 오른쪽 규칙)로 놓여 규칙 칸이 늘 자리를 갖고 있다
+  // (globals.css "게임 밖 화면 — 폰" 절). 접힌 채면 오른쪽 열이 버튼 하나만 남아 빈다.
+  // ⚠️ 이렇게 저절로 펼칠 때는 아래 "화면 안으로 끌어오기"를 하지 않는다 — 했더니 오른쪽 열이 규칙 몸통까지 내려가 [게임 규칙] 머리가 가려졌다.
+  const userToggled = useRef(false);
+  useEffect(() => {
+    if (window.matchMedia(PHONE_LANDSCAPE_QUERY).matches) setOpen(true);
+  }, []);
 
   // 펼치는 순간 규칙을 화면 안으로 끌어온다.
   //
@@ -156,7 +175,7 @@ export function GameRulesFields({
   //
   // block: 'nearest'라 이미 보이면 아무것도 하지 않고, 넘칠 때만 필요한 만큼 민다.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !userToggled.current) return;
     bodyRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [open]);
 
@@ -167,7 +186,10 @@ export function GameRulesFields({
     <div className="lobby-rules border border-board-line rounded-lg" data-rules-open={open || undefined}>
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => {
+          userToggled.current = true;
+          setOpen(o => !o);
+        }}
         className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600"
       >
         <span><UiIcon name="iconCog" /> {heading}</span>
@@ -224,7 +246,84 @@ export function GameRulesFields({
           </div>
         </div>
       )}
+      {editing && editingField && (
+        <RuleEditDialog
+          field={editingField}
+          value={settings[editing]}
+          limit={limits[editing]}
+          onCancel={() => setEditing(null)}
+          onConfirm={raw => {
+            onChange({ ...settings, [editing]: clampField(editing, raw, limits) });
+            setEditing(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * 폰에서 규칙 값 하나를 고치는 창 — 화면을 어둡게 덮고 가운데(가로 폰은 키보드에 가리지 않게 위쪽)에 입력 칸 · −/+ · [확인]을 띄운다.
+ * body로 portal한다 — 폼은 transform · zoom이 걸린 상자 안이라 그 안의 fixed는 화면이 아니라 그 상자를 기준으로 잡힌다.
+ * 값은 [확인]을 눌러야 들어가고(범위 밖이면 범위 끝으로 자른다 — clampField), 바깥을 누르거나 [취소]면 그대로다.
+ */
+function RuleEditDialog({
+  field,
+  value,
+  limit,
+  onCancel,
+  onConfirm,
+}: {
+  field: RuleField;
+  value: number;
+  limit: { min: number; max: number };
+  onCancel: () => void;
+  onConfirm: (raw: string) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const step = (d: number) => setDraft(v => String(Math.max(limit.min, Math.min(limit.max, (Number(v) || value) + d))));
+  return createPortal(
+    <div className="rule-dialog-dim" onClick={onCancel}>
+      <div className="rule-dialog" role="dialog" aria-label={field.title} onClick={e => e.stopPropagation()}>
+        <p className="rule-dialog-title">{field.title}</p>
+        <div className="rule-dialog-row">
+          <button type="button" className="rule-dialog-step" aria-label="1 줄이기" onClick={() => step(-1)}>
+            −
+          </button>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={limit.min}
+            max={limit.max}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') onConfirm(draft);
+              if (e.key === 'Escape') onCancel();
+            }}
+            className="input-base rule-dialog-input tabular-nums"
+          />
+          <button type="button" className="rule-dialog-step" aria-label="1 늘리기" onClick={() => step(1)}>
+            +
+          </button>
+          <span className="rule-dialog-suffix">{field.suffix}</span>
+        </div>
+        <p className="rule-dialog-range">
+          {limit.min} ~ {limit.max}
+          {field.suffix}
+          {field.hint ? ` · ${field.hint}` : ''}
+        </p>
+        <div className="rule-dialog-actions">
+          <button type="button" className="rule-dialog-cancel" onClick={onCancel}>
+            취소
+          </button>
+          <button type="button" className="wood-button rule-dialog-ok" onClick={() => onConfirm(draft)}>
+            확인
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

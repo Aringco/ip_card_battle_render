@@ -138,7 +138,9 @@ export function WaitingRoom({
           기본값(flex-shrink: 1)대로 **내용보다 작게 찌그러진다** — 스크롤이 생기는 대신
           채팅창(h-48)이 선 하나로 눌려 사라졌다. 자식이 제 높이를 지켜야 넘치고,
           넘쳐야 이 컨테이너가 스크롤한다. */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 [&>*]:shrink-0">
+      {/* waiting-* 클래스는 폰 배치의 표식이다(globals.css "게임 밖 화면 — 폰" — 방 코드 한 줄로 줄이기 · 시작/준비 버튼 바닥 고정).
+          데스크톱에는 규칙이 없다. */}
+      <div className="waiting-scroll flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 [&>*]:shrink-0">
       <RoomCodeHeader roomId={roomId} />
 
       {individual ? (
@@ -197,7 +199,7 @@ export function WaitingRoom({
       {/* 준비/시작 버튼이 규칙 패널보다 먼저 온다 — 대화창이 생기면서 화면이 길어진 뒤로,
           규칙을 아래에 두지 않으면 정작 가장 자주 누르는 버튼이 스크롤 밖으로 밀려난다. */}
       {isHost ? (
-        <div className="flex flex-col gap-2">
+        <div className="waiting-action flex flex-col gap-2">
           {/* 빈 나무판 위에 글씨를 얹은 팻말 버튼. 시작을 막는 사유가 있으면 바로 아래
               줄이 그것을 글로 알려주고, 팻말 쪽은 .plank-button의 disabled 처리로 드러낸다. */}
           <PlankButton
@@ -214,11 +216,11 @@ export function WaitingRoom({
       ) : iAmSpectator ? (
         // 관전자는 준비할 것이 없다(서버도 항상 준비 완료로 둔다) — 준비 버튼 대신
         // 지금 어떤 상태인지만 알려준다.
-        <p className="text-center text-lg text-purple-500 bg-purple-50 border border-purple-200 rounded-xl py-4">
+        <p className="waiting-action text-center text-lg text-purple-500 bg-purple-50 border border-purple-200 rounded-xl py-4">
           👀 관전자로 참가했어요. 방장이 시작하면 {individual ? '플레이어들의' : '양 팀의'} 대결을 지켜볼 수 있어요.
         </p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="waiting-action flex flex-col gap-2">
           {/* 문구가 상태에 따라 바뀌므로(준비 ↔ 준비 완료) 글씨가 박힌 그림은 못 쓴다 —
               빈 나무판 위에 HTML로 글씨를 얹는 PlankButton이 이 자리에 맞는 이유다.
               준비를 마치면 판을 옅게 눌러 "이미 한 일"로 보이게 한다. */}
@@ -267,10 +269,10 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
   };
 
   return (
-    <div className="text-center">
-      <p className="text-lg text-board-muted">방 코드</p>
-      <p className="text-6xl font-bold text-green-700 tracking-widest">{roomId}</p>
-      <div className="flex flex-wrap gap-2 justify-center mt-3">
+    <div className="waiting-code text-center">
+      <p className="waiting-code-label text-lg text-board-muted">방 코드</p>
+      <p className="waiting-code-id text-6xl font-bold text-green-700 tracking-widest">{roomId}</p>
+      <div className="waiting-code-buttons flex flex-wrap gap-2 justify-center mt-3">
         <button
           onClick={() => copy('link')}
           className="wood-button text-base px-4 py-2"
@@ -284,7 +286,7 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
           📋 방 코드 복사
         </button>
       </div>
-      <p className="text-base text-board-muted mt-2 h-6">
+      <p className="waiting-code-hint text-base text-board-muted mt-2 h-6">
         {copied === 'link'
           ? '초대 링크를 복사했어요! 붙여넣기로 친구에게 보내세요.'
           : copied === 'code'

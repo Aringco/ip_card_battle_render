@@ -174,7 +174,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
           onClick={onClose}
           // 판 **바깥**, 오른쪽 위 어두운 배경에 앉힌다 — 나무테에 걸치면 결 무늬에 섞여
           // 눈에 안 띈다. 팻말이 판 위로 걸치는 만큼(margin-top) 그 자리는 이미 비어 있다.
-          className="absolute -top-8 right-1 z-[2] text-3xl leading-none text-[#f6e6c8]/80 hover:text-[#f6e6c8]
+          className="howto-close absolute -top-8 right-1 z-[2] text-3xl leading-none text-[#f6e6c8]/80 hover:text-[#f6e6c8]
                      drop-shadow-[0_1px_3px_rgba(20,12,4,0.95)]"
           aria-label="닫기"
         >
@@ -183,7 +183,10 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
 
         {/* 머리말은 위 팻말로 올라갔다 — 여기서는 곧바로 네 단계로 들어간다 */}
         <div className="howto-scroll [&>*]:shrink-0">
-        <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch">
+        {/* howto-steps · howto-pair · howto-cta는 폰 배치의 표식이다 — 폰에서는 네 단계가 **한 장씩 넘기는 카드**가 된다
+            (globals.css "게임 밖 화면 — 폰": 가로 scroll-snap, 2·3단계를 묶은 칸은 display: contents로 풀어 따로 넘긴다).
+            데스크톱의 한 장짜리 포스터는 그대로다. */}
+        <div className="howto-steps grid gap-6 lg:grid-cols-3 lg:items-stretch">
           {/* ── 1. 장소를 고른다 ── */}
           <Step no={1} title="장소를 고른다">
             <img
@@ -199,7 +202,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
           </Step>
 
           {/* ── 가운데 열: 2(위) / 3(아래) ── */}
-          <div className="flex flex-col gap-6">
+          <div className="howto-pair flex flex-col gap-6">
             {/* ── 2. 동물을 뽑는다 ── */}
             <Step no={2} title="짝수가 되면 우리 팀 것!">
               <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -306,7 +309,7 @@ export function HowToPlayModal({ onClose }: { onClose: () => void }) {
 
           {/* 로비·대기실의 다른 버튼들과 같은 나무 팻말. 판이 글자 길이를 따라 늘어나므로
               폭을 가운데로 모으고 상한을 둔다 — 3열 전체를 채우면 팻말이 지나치게 길어진다. */}
-          <div className="lg:col-span-3 flex justify-center">
+          <div className="howto-cta lg:col-span-3 flex justify-center">
             <PlankButton onClick={onClose} className="text-xl px-8" style={{ maxWidth: '26rem' }} block>
               이해했어요! 🎮
             </PlankButton>

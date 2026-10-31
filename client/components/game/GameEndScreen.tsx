@@ -434,7 +434,7 @@ export function GameEndScreen({
       </div>
       </div>
 
-      <p className="text-sm result-bg-text text-center pt-4">
+      <p className="lobby-settings-hint text-sm result-bg-text text-center pt-4">
         게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
       </p>
     </div>

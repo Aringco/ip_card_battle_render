@@ -23,6 +23,7 @@ import { LobbyStage, BACK_OF, type Stage } from '@/components/lobby/LobbyStage';
 import type { IndividualKind } from '@/components/lobby/IndividualRoomForm';
 import { BackButton } from '@/components/lobby/BackButton';
 import { WaitingRoom } from '@/components/lobby/WaitingRoom';
+import { PHONE_LANDSCAPE_QUERY, PHONE_PORTRAIT_QUERY } from '@/lib/mobileLayout';
 
 /**
  * 로비 화면.
@@ -43,6 +44,31 @@ export default function LobbyPage() {
   // (게임 도중 그때그때 받으면 첫 효과음이 안 들리거나 카드 이미지가 늦게 뜬다)
   const [assetsReady, setAssetsReady] = useState(false);
   const handleAssetsReady = useCallback(() => setAssetsReady(true), []);
+
+  // 지금 실제로 보이는 높이(--vvh) — 폰에서 키보드가 올라오면 레이아웃 높이는 그대로인 채 보이는 영역만 줄어든다. 폰 배치의 폼 ·
+  // 대기실은 이 높이에 맞춰 줄어들어 초점 받은 입력칸이 키보드 위에 남는다(globals.css "게임 밖 화면 — 폰"). 데스크톱은 이 값을 읽지 않는다.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => document.documentElement.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
+    sync();
+    vv.addEventListener('resize', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      document.documentElement.style.removeProperty('--vvh');
+    };
+  }, []);
+  // 입력칸에 초점이 가면 키보드가 다 올라온 뒤 그 칸을 보이는 자리로 끌어온다(폼 안쪽 스크롤만 — 페이지는 움직이지 않는다)
+  useEffect(() => {
+    const onFocus = (e: FocusEvent) => {
+      const el = e.target;
+      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+      if (!window.matchMedia(`${PHONE_LANDSCAPE_QUERY}, ${PHONE_PORTRAIT_QUERY}`).matches) return;
+      window.setTimeout(() => el.scrollIntoView({ block: 'nearest' }), 350);
+    };
+    document.addEventListener('focusin', onFocus);
+    return () => document.removeEventListener('focusin', onFocus);
+  }, []);
 
   // 로비/대기실 BGM — 입장 즉시부터 게임 시작 전까지 계속 재생
   useEffect(() => {
@@ -490,7 +516,7 @@ export default function LobbyPage() {
       {showHowTo && <HowToPlayModal onClose={() => setShowHowTo(false)} />}
 
       {/* 설정 안내 — 배경이 어두운 펠트라 흰 글씨로 띄운다 */}
-      <p className="fixed bottom-2 left-1/2 -translate-x-1/2 text-xs text-white/70 text-center
+      <p className="lobby-settings-hint fixed bottom-2 left-1/2 -translate-x-1/2 text-xs text-white/70 text-center
                     drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] pointer-events-none select-none">
         게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
       </p>

@@ -12,7 +12,9 @@ import { spectatorTeamVars } from '@/lib/teamColors';
  */
 // 카드 강화의 지속 효과 파티클 — 조각마다 자리·지연·길이를 정해 둔다(렌더마다 무작위면 매번 다른 모양으로 튄다).
 // 출혈은 위에서 아래로 흘러내리는 핏방울, 지속 회복은 아래에서 위로 떠오르는 초록 십자가.
-const BLEED_DROPS = [12, 31, 48, 66, 84].map((left, i) => ({ left, delay: i * 0.55 + (i % 2) * 0.3, dur: 2.1 + (i % 3) * 0.45 }));
+// 핏방울은 가운데를 축으로 좌우 대칭(6~94%) — 예전 다섯 개(12~84%, 왼쪽 끝 기준 배치)는 한쪽으로 쏠려 보였다(2026-10-31 요청 — 크기도 키웠다).
+// 방울은 제 가운데가 이 % 자리에 오도록 CSS가 폭의 절반만큼 당긴다(.hp-orb-drop의 margin-left).
+const BLEED_DROPS = [6, 20.5, 35, 50, 65, 79.5, 94].map((left, i) => ({ left, delay: ((i * 3) % 7) * 0.34, dur: 2.1 + (i % 3) * 0.45 }));
 const HEAL_CROSSES = [16, 36, 55, 74, 88].map((left, i) => ({ left, delay: i * 0.5 + (i % 2) * 0.25, dur: 2.3 + (i % 3) * 0.4 }));
 // 한 번 든 순간(dotPulse)의 크게 터지는 조각 — 가운데에서 퍼진다(출혈은 아래로, 회복은 위로 치우친다)
 const DOT_BURST = Array.from({ length: 10 }, (_, i) => {

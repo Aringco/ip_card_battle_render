@@ -29,8 +29,14 @@ const VIEWPORTS = [
   // 이 줄이 없어서 방 만들기 카드가 768 높이에서 넘치는 것을 오래 놓쳤다.
   { w: 1366, h: 768 },
   { w: 1920, h: 1080 },
-  { w: 390, h: 844 },
+  { w: 390, h: 844, mobile: true },
+  // 가로 폰(2026-10-31 — MOBILE_RESPONSIVE_PROPOSAL.md L0). 이 크기가 없어서 팀전 방 만들기 폼이 가로 폰에서 팀 이름 · 규칙 버튼을
+  // 잘라 먹는 것(B1)을 놓쳤다. 폰은 isMobile · hasTouch로 띄운다(방향 · 터치 조건의 CSS가 실제 폰처럼 걸린다).
+  { w: 844, h: 390, mobile: true },
+  { w: 667, h: 375, mobile: true },
 ];
+// MOBILE_ONLY=1이면 폰 크기만 잰다(데스크톱이 그대로인지는 전체를 돌려 이전 출력과 비교한다)
+if (process.env.MOBILE_ONLY) VIEWPORTS.splice(0, VIEWPORTS.length, ...VIEWPORTS.filter(v => v.mobile));
 
 async function measure(page, label) {
   return page.evaluate(label => {
@@ -70,6 +76,26 @@ async function measure(page, label) {
         return { v: sc.scrollHeight > sc.clientHeight + 1, over: sc.scrollHeight - sc.clientHeight };
       })(),
       pageScroll: document.documentElement.scrollHeight > document.documentElement.clientHeight + 1,
+      // 닿을 수 없는 조작 — 열린 폼 안의 입력칸 · 버튼이 **스크롤되지 않는** 조상(overflow hidden · clip)에 잘려 보이지 않는 개수(B1의 그물).
+      // 스크롤되는 조상에 잘린 것은 내려서 닿을 수 있으니 세지 않는다.
+      unreachable: (() => {
+        if (!openForm) return 0;
+        let n = 0;
+        for (const el of openForm.querySelectorAll('input, button, select, textarea')) {
+          const r = el.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) continue;
+          for (let a = el.parentElement; a && a !== openForm; a = a.parentElement) {
+            const cs = getComputedStyle(a);
+            // 가장 가까운 스크롤 상자 안에 있으면 내려서 닿는다 — 그 바깥의 잠긴 상자(2열 격자 등)는 따지지 않는다
+            if (/(auto|scroll)/.test(cs.overflowY)) break;
+            const clips = /(hidden|clip)/.test(cs.overflowY);
+            if (!clips) continue;
+            const ar = a.getBoundingClientRect();
+            if (r.top >= ar.bottom - 2 || r.bottom > ar.bottom + 2 && r.top + r.height / 2 > ar.bottom) { n++; break; }
+          }
+        }
+        return n;
+      })(),
     };
   }, label);
 }
@@ -169,7 +195,7 @@ const errors = [];
 
 for (const vp of VIEWPORTS) {
   const page = await browser.newPage();
-  await page.setViewport({ width: vp.w, height: vp.h });
+  await page.setViewport({ width: vp.w, height: vp.h, isMobile: !!vp.mobile, hasTouch: !!vp.mobile, isLandscape: !!vp.mobile && vp.w > vp.h });
   page.on('pageerror', e => errors.push(`${vp.w}x${vp.h} PAGEERROR: ${e.message}`));
   page.on('console', m => { if (m.type() === 'error') errors.push(`${vp.w}x${vp.h} ${m.text()}`); });
 
@@ -338,7 +364,7 @@ for (const r of results) {
   const scrollExpected = /\+rules|\+clash|\+spectator/.test(r.label);
   const formScrollBad = !!r.formScroll?.v && !scrollExpected;
   const cardScrollBad = !!r.cardScroll?.v && !scrollExpected;
-  if (formScrollBad || cardScrollBad || r.pageScroll || r.offscreen || r.note) bad++;
+  if (formScrollBad || cardScrollBad || r.pageScroll || r.offscreen || r.note || r.unreachable) bad++;
   console.log(
     r.label.padEnd(23),
     b(r.safe).padEnd(12),
@@ -347,7 +373,7 @@ for (const r of results) {
     (r.cardScroll ? (r.cardScroll.v ? (scrollExpected ? `yes(정상 +${r.cardScroll.over})` : `*** YES +${r.cardScroll.over}`) : 'no') : '-').padEnd(11),
     (r.pageScroll ? '*** YES' : 'no').padEnd(13),
     (r.offscreen ? '*** YES' : 'no').padEnd(8),
-    r.note ?? '',
+    [r.unreachable ? `*** 닿을 수 없는 조작 ${r.unreachable}개` : '', r.note ?? ''].filter(Boolean).join(' '),
   );
 }
 console.log(`\n문제: ${bad === 0 ? '없음' : bad + '건'}`);

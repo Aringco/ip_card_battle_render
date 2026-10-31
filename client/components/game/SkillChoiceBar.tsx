@@ -37,6 +37,8 @@ function HoloCell({
   children,
   shine = true,
   flat = false,
+  tapFocus = false,
+  focused = false,
 }: {
   enabled: boolean;
   className: string;
@@ -45,18 +47,24 @@ function HoloCell({
   shine?: boolean;
   /** 입체 움직임(떠오름·확대·기울기·옆면)을 끄고 광택만 남긴다 — 내가 행동을 고르는 단계(interactive)가 아닐 때(2026-10-30 요청 — 처음엔 "상대 차례"였다가 같은 날 "내 행동 선택 페이즈에만"으로 좁혔다. 내 장소 선택 단계도 flat. globals.css의 [data-flat]) */
   flat?: boolean;
+  /**
+   * 모바일 배치(components/game/mobile/) — 가리키기(hover)가 아니라 **눌러서 고른 카드(focused)** 만 떠오르고 기운다.
+   * 고른 카드는 손가락을 대고 끄는 곳을 따라 기울고 광택이 지나간다(마우스 hover와 같은 효과). 끄면 PC와 똑같다.
+   */
+  tapFocus?: boolean;
+  focused?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
   const point = useRef<{ x: number; y: number } | null>(null);
 
-  const reset = () => {
+  const reset = (keepHover = false) => {
     if (frame.current) cancelAnimationFrame(frame.current);
     frame.current = 0;
     point.current = null;
     const el = ref.current;
     if (!el) return;
-    delete el.dataset.hover;
+    if (!keepHover) delete el.dataset.hover;
     el.style.setProperty('--mx', '50%');
     el.style.setProperty('--my', '50%');
     el.style.setProperty('--rx', '0deg');
@@ -73,15 +81,30 @@ function HoloCell({
     };
   }, [enabled]);
 
+  // 모바일 — 고른 카드만 떠 있다. 고름이 풀리면(다른 카드를 골랐거나 차례가 끝남) 내려놓는다.
+  useEffect(() => {
+    if (!tapFocus) return;
+    if (enabled && focused) {
+      reset(true);
+      ref.current?.setAttribute('data-hover', '');
+    } else {
+      reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapFocus, focused, enabled]);
+
   // ⚠️ "가리키고 있다"는 CSS :hover가 아니라 여기서 다는 data-hover로 판단한다(globals.css .holo-cell 절).
   // 미디어 쿼리((any-)hover)는 브라우저의 기기 판정에 달려 있어, 터치스크린 노트북처럼 판정이 어긋나는 PC에서는
   // 마우스로 가리켜도 효과가 꺼졌다. 포인터의 실제 종류를 보면 그 판정과 무관하고, 터치는 켜지지 않는다.
   // 카드 강화의 내려찍기(SkillQuake — data-slam) 동안에는 다시 떠오르지 않는다 — 커서가 그대로 카드 위에 있어도.
+  // 모바일(tapFocus)은 포인터 종류와 무관하게 **고른 카드만** 반응한다 — 손가락으로 대고 끌어도 마우스처럼 기운다.
   const canHover = (e: React.PointerEvent) =>
-    (e.pointerType === 'mouse' || e.pointerType === 'pen') && !ref.current?.hasAttribute('data-slam');
+    (tapFocus ? focused : e.pointerType === 'mouse' || e.pointerType === 'pen') && !ref.current?.hasAttribute('data-slam');
   const onPointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
     if (enabled && canHover(e)) ref.current?.setAttribute('data-hover', '');
   };
+  // 손을 떼거나 카드 밖으로 나가면 — PC는 내려놓고, 모바일의 고른 카드는 떠 있는 채 기울기만 가운데로 돌린다.
+  const onPointerLeave = () => reset(tapFocus && focused);
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!enabled || !canHover(e)) return;
@@ -125,7 +148,9 @@ function HoloCell({
       data-flat={flat || undefined}
       onPointerEnter={onPointerEnter}
       onPointerMove={onPointerMove}
-      onPointerLeave={reset}
+      onPointerDown={tapFocus ? onPointerMove : undefined}
+      onPointerUp={tapFocus ? onPointerLeave : undefined}
+      onPointerLeave={onPointerLeave}
     >
       {children}
       {/* 사선 반사 띠 층 — 카드 위에 얹히되 클릭은 가로채지 않는다(CSS). */}
@@ -429,6 +454,7 @@ export function SkillChoiceBar({
   demoAllowed = null,
   hideGuide = false,
   wellOpen = null,
+  tapFocus = false,
   onChoose,
   onPass,
 }: {
@@ -461,6 +487,11 @@ export function SkillChoiceBar({
    * 나머지 카드는 레벨이 있어도 🔒로 잠기고 누를 수 없다 — 서버(eligibleAnimals)도 같은 규칙으로 거부한다.
    */
   wellOpen?: readonly Animal[] | null;
+  /**
+   * 모바일 배치 — 카드를 **한 번 누르면 고르고(1.05배로 떠오르고 손가락이 그 카드만 짚는다), 고른 카드를 한 번 더 누르면** 쓴다.
+   * 손가락 가이드는 고른 카드에만 뜬다(PC는 누를 수 있는 카드마다). 끄면 PC와 똑같다.
+   */
+  tapFocus?: boolean;
   onChoose: (animal: Animal) => void;
   onPass: () => void;
 }) {
@@ -486,6 +517,14 @@ export function SkillChoiceBar({
   // 끊기므로(상대 차례가 온다) 아예 잠근다 — 서버도 같은 이유로 무시한다.
   const passable = interactive && demoAllowed === null;
 
+  // 모바일 — 지금 고른(떠 있는) 카드. 내 행동 선택 단계가 끝나면 풀린다.
+  const [focus, setFocus] = useState<Animal | 'pass' | null>(null);
+  useEffect(() => {
+    if (!interactive) setFocus(null);
+  }, [interactive]);
+  // 손가락은 PC에서는 누를 수 있는 카드마다, 모바일에서는 고른 카드에만
+  const guideOn = (key: Animal | 'pass') => !tapFocus || focus === key;
+
   // 행동 선택 단계에만 이 띠가 빛난다. 관전자는 지금 고르는 팀의 색으로(그 팀 색 변수를
   // 함께 심어준다), 플레이어는 우리 팀 차례일 때 연두색으로.
   const glowClass = spectatorGuideTeam
@@ -506,6 +545,8 @@ export function SkillChoiceBar({
       // grid-cols-5로 균등 분할하면 가운데 칸이 나무 구멍과 어긋난다.
       className={`play-cards-grid min-h-0 ${glowClass}`}
       style={spectatorGuideTeam ? spectatorTeamVars(spectatorGuideTeam) : undefined}
+      // 모바일 — 카드 사이 빈 곳을 누르면 고름을 푼다
+      onClick={tapFocus ? e => { if (e.target === e.currentTarget) setFocus(null); } : undefined}
     >
       {ANIMAL_ORDER.map((animal, i) => {
         const preview = previews[i];
@@ -567,11 +608,19 @@ export function SkillChoiceBar({
             key={animal}
             enabled={eligible && open(animal)}
             flat={!interactive}
+            tapFocus={tapFocus}
+            focused={focus === animal}
             className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
               onClick={e => {
                 if (!clickable) return;
+                // 모바일 — 첫 번째 누름은 고르기만, 고른 카드를 다시 누르면 쓴다
+                if (tapFocus && focus !== animal) {
+                  setFocus(animal);
+                  return;
+                }
+                setFocus(null);
                 if (enhance) {
                   const cell = e.currentTarget.closest('.holo-cell');
                   // 그 카드가 실제로 받는 배율 — 디자인어 배율 × Lv.Max 별도 배수
@@ -667,7 +716,7 @@ export function SkillChoiceBar({
 
             {/* 지금 고를 수 있는(레벨이 있는) 행동마다, 내가 행동을 고를 수 있는 턴이면 매번 뜬다.
                 손은 그 칸의 주인 캐릭터 것이라, 어느 칸을 짚고 있는지 손만 봐도 안다. */}
-            {showSkillGuide && eligible && open(animal) && (
+            {showSkillGuide && eligible && open(animal) && guideOn(animal) && (
               <GuideFinger team={spectatorGuideTeam} />
             )}
             {enhance && bursts[i].n > 0 &&
@@ -686,10 +735,15 @@ export function SkillChoiceBar({
       {/* 턴 마치기도 기술 카드처럼 가리키면 기운다(2026-10-30 요청) — 기술 카드가 "레벨이 있어 활성인가"로 켜듯, 이 칸은 언제나
           활성이라 상대 차례에도 켠다(시연은 내내 잠겨 있어 끈다 — 내 행동 선택 단계가 아니면 flat이라 아무 움직임도 없다). **입체 움직임만** 준다 — 광택 띠와 강화 판의 Lv.Max 빛(무지개 · 금빛)을
           한 번 입혀 봤다가 같은 날 요청으로 걷었다(shine={false}). */}
-      <HoloCell enabled={demoAllowed === null} shine={false} flat={!interactive} className="relative">
+      <HoloCell enabled={demoAllowed === null} shine={false} flat={!interactive} tapFocus={tapFocus} focused={focus === 'pass'} className="relative">
         <button
           onClick={e => {
             if (!passable) return;
+            if (tapFocus && focus !== 'pass') {
+              setFocus('pass');
+              return;
+            }
+            setFocus(null);
             // 카드 강화 판 — 기술 카드처럼 내려놓는다(2026-10-30 요청). 배율이 없는 칸이라 언제나 진도 1(내려찍기만)이다.
             if (enhance) {
               const cell = e.currentTarget.closest('.holo-cell');
@@ -715,7 +769,7 @@ export function SkillChoiceBar({
 
         {/* 언제나 누를 수 있는 이 버튼도, 행동 선택 차례마다 손가락으로 짚어준다
             (시연에서는 잠겨 있으므로 짚지 않는다 — 누를 수 없는 곳을 가리키면 안 된다). */}
-        {showSkillGuide && demoAllowed === null && <GuideFinger team={spectatorGuideTeam} />}
+        {showSkillGuide && demoAllowed === null && guideOn('pass') && <GuideFinger team={spectatorGuideTeam} />}
       </HoloCell>
       {quake.layer}
     </div>
