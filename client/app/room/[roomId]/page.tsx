@@ -259,6 +259,7 @@ export default function GamePage() {
           animState={animState}
           paused={gameState.paused}
           emotes={emotes}
+          onEmote={sendEmote}
         />
       ) : soloMobile ? (
         <MobileLayout

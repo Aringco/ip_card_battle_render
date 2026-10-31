@@ -195,11 +195,14 @@ export function GameEndScreen({
     return () => window.removeEventListener('keydown', onKey);
   }, [canReplay, onReplay]);
 
+  const [showStats, setShowStats] = useState(false);
+
   return (
     // 배경은 승패가 정해진 뒤의 탁자 그림(PLAY_ASSETS.resultBackground) — globals.css의
     // `.result-bg`가 그림과 글자를 받쳐 줄 어둠을 함께 깐다.
     <div
-      className="min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative"
+      data-stats={showStats || undefined}
+      className="result-root min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative"
       style={{ ['--result-bg' as string]: `url(${background})` }}
     >
       {/* 아래 콘텐츠 묶음은 그대로 세로 중앙 정렬하고, 그 밖에 화면 맨 밑에 붙는 푸터
@@ -390,7 +393,11 @@ export function GameEndScreen({
       {/* 시연 4장에서는 버튼이 둘이다 — 나머지 결말을 보러 돌아가거나, 여기서 끝내거나.
           ⚠️ 되돌아가기가 **먼저**다. 시연 중에는 그쪽을 훨씬 자주 누르고, [로비로
           돌아가기]를 잘못 누르면 방이 통째로 끝나 1장부터 다시 해야 한다. */}
-      <div className="flex flex-wrap items-center justify-center gap-4">
+      <div className="result-actions flex flex-wrap items-center justify-center gap-4">
+        {/* 통계 보기 — 폰에서만 보인다(globals.css "결과 화면 — 폰"). 누르면 두 판(체력표 · 통계)이 화면 좌우에서 미끄러져 나온다 */}
+        <button type="button" className="wood-button wood-button-lg result-stats-button py-[1.125rem] px-[2.5rem]" onClick={() => setShowStats(true)}>
+          통계 보기
+        </button>
         {canReplay && (
           <button
             onClick={onReplay}
@@ -434,6 +441,13 @@ export function GameEndScreen({
       </div>
       </div>
 
+      {/* 폰 — 통계 판이 열려 있으면 그 밖(어두운 막)을 눌러 닫는다 */}
+      {showStats && <button type="button" className="result-stats-dim" aria-label="통계 닫기" onClick={() => setShowStats(false)} />}
+      {showStats && (
+        <button type="button" className="result-stats-close" aria-label="통계 닫기" onClick={() => setShowStats(false)}>
+          ✕
+        </button>
+      )}
       <p className="lobby-settings-hint text-sm result-bg-text text-center pt-4">
         게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
       </p>

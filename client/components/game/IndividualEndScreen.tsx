@@ -79,6 +79,7 @@ export function IndividualEndScreen({
     ? '남은 사람들의 판은 계속되고 있어요 — 나온 순간까지의 순위표예요'
     : turnLimit ? '제한 턴 종료 — 남은 사람은 체력순으로 순위를 정했어요' : '순위가 모두 정해졌어요';
 
+  const [showStats, setShowStats] = useState(false);
   const [background] = useState(() => RESULT_BACKGROUNDS[Math.floor(Math.random() * RESULT_BACKGROUNDS.length)]);
   const confetti = useMemo(
     () =>
@@ -97,7 +98,8 @@ export function IndividualEndScreen({
 
   return (
     <div
-      className="min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative"
+      data-stats={showStats || undefined}
+      className="result-root min-h-screen result-bg flex flex-col items-center p-8 overflow-hidden relative"
       style={{ ['--result-bg' as string]: `url(${background})` }}
     >
       <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full">
@@ -205,6 +207,11 @@ export function IndividualEndScreen({
           </BoardFrame>
         </div>
 
+        <div className="result-actions flex flex-wrap items-center justify-center gap-4">
+        {/* 통계 보기 — 폰에서만 보인다(globals.css "결과 화면 — 폰"). 누르면 두 판(체력표 · 통계)이 화면 좌우에서 미끄러져 나온다 */}
+        <button type="button" className="wood-button wood-button-lg result-stats-button py-[1.125rem] px-[2.5rem]" onClick={() => setShowStats(true)}>
+          통계 보기
+        </button>
         <button
           onClick={onBack}
           className="wood-button wood-button-lg py-[1.125rem] px-[3.75rem]"
@@ -212,8 +219,16 @@ export function IndividualEndScreen({
         >
           로비로 돌아가기
         </button>
+        </div>
       </div>
 
+      {/* 폰 — 통계 판이 열려 있으면 그 밖(어두운 막)을 눌러 닫는다 */}
+      {showStats && <button type="button" className="result-stats-dim" aria-label="통계 닫기" onClick={() => setShowStats(false)} />}
+      {showStats && (
+        <button type="button" className="result-stats-close" aria-label="통계 닫기" onClick={() => setShowStats(false)}>
+          ✕
+        </button>
+      )}
       <p className="lobby-settings-hint text-sm result-bg-text text-center pt-4">
         게임 중 글씨 크기/소리를 조절하려면 오른쪽 하단(⚙️)을 확인해 주세요.
       </p>

@@ -6,6 +6,7 @@ import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { withDisplayedExp } from '@/lib/skills';
 import { SKILL_COLOR, SKILL_TITLE } from '@/lib/skillInfo';
 import { animalStatus } from './animalStatus';
+import { emphasize } from './emphasize';
 
 /**
  * 카드 상세 상태 창 — 가로 스와이프로 연다(MobileLayout). 왼쪽→오른쪽은 내 카드 넷이 왼쪽에서, 오른쪽→왼쪽은 상대 카드 넷이
@@ -55,7 +56,7 @@ export function StatusSheet({
                   <span style={{ width: `${s.pct * 100}%` }} />
                 </span>
                 {s.lines.length > 0 && <p className="m-sheet-lines tabular-nums">{s.lines.join(' · ')}</p>}
-                <p className="m-sheet-desc">{s.desc}</p>
+                <p className="m-sheet-desc">{emphasize(s.desc)}</p>
               </div>
             </li>
           );

@@ -45,7 +45,14 @@ const MIN_PANEL_W = 220;
  * ⚠️ 창은 `document.body`로 띄운다(portal). 버튼이 앉은 칸(.ind-cell)은 `overflow: hidden`이고, 판 전체에
  *    흔들림(transform)이 걸리는 순간 fixed 자손이 그 판을 기준으로 잘리기 때문이다.
  */
-export function EmotePicker({ onSend }: { onSend: (emoteId: string) => void }) {
+export function EmotePicker({
+  onSend,
+  cellSelector = '.ind-cell',
+}: {
+  onSend: (emoteId: string) => void;
+  /** 고르기 창이 그 폭 그대로 겹칠 칸 — PC는 내 정보창(.ind-cell), 모바일은 판(.m-view)이다(아이콘 열은 창을 펴기엔 좁다) */
+  cellSelector?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<EmoteCategory['id']>('default');
   const [cooling, setCooling] = useState(false);
@@ -61,7 +68,7 @@ export function EmotePicker({ onSend }: { onSend: (emoteId: string) => void }) {
     if (!open) return;
     const place = () => {
       const b = buttonRef.current?.getBoundingClientRect();
-      const cell = buttonRef.current?.closest('.ind-cell')?.getBoundingClientRect();
+      const cell = (buttonRef.current?.closest(cellSelector) ?? document.querySelector(cellSelector))?.getBoundingClientRect();
       if (!b || !cell) return;
       const width = Math.max(cell.width, MIN_PANEL_W);
       const left = Math.max(VIEW_MARGIN, Math.min(cell.left, window.innerWidth - width - VIEW_MARGIN));
@@ -71,7 +78,7 @@ export function EmotePicker({ onSend }: { onSend: (emoteId: string) => void }) {
     place();
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
-  }, [open]);
+  }, [open, cellSelector]);
 
   const pick = (id: string) => {
     if (cooling) return;

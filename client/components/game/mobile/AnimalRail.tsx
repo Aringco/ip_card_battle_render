@@ -7,6 +7,7 @@ import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { withDisplayedExp } from '@/lib/skills';
 import { SKILL_COLOR, SKILL_TITLE } from '@/lib/skillInfo';
 import { animalStatus } from './animalStatus';
+import { emphasize } from './emphasize';
 
 // 테두리 원 — viewBox 100 기준. 둘레가 곧 그 레벨에서 채워야 할 경험치(실용신양·상표토끼 10, 디자인어·특허랑이 20 — 강화 판도 같다)다.
 const RING_R = 45;
@@ -148,7 +149,7 @@ function RailIcon({
             {l}
           </p>
         ))}
-        <p className="m-rail-panel-desc">{s.desc}</p>
+        <p className="m-rail-panel-desc">{emphasize(s.desc)}</p>
       </div>
     </div>
   );

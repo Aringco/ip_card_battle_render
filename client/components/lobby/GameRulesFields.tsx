@@ -162,8 +162,15 @@ export function GameRulesFields({
   // (globals.css "게임 밖 화면 — 폰" 절). 접힌 채면 오른쪽 열이 버튼 하나만 남아 빈다.
   // ⚠️ 이렇게 저절로 펼칠 때는 아래 "화면 안으로 끌어오기"를 하지 않는다 — 했더니 오른쪽 열이 규칙 몸통까지 내려가 [게임 규칙] 머리가 가려졌다.
   const userToggled = useRef(false);
+  // 창 크기가 바뀌어 가로 폰 배치가 되는 순간에도 연다(폼은 늘 마운트돼 있어 처음 한 번만 보면 오른쪽 열이 빈 채로 남았다)
   useEffect(() => {
-    if (window.matchMedia(PHONE_LANDSCAPE_QUERY).matches) setOpen(true);
+    const mq = window.matchMedia(PHONE_LANDSCAPE_QUERY);
+    if (mq.matches) setOpen(true);
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setOpen(true);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
   }, []);
 
   // 펼치는 순간 규칙을 화면 안으로 끌어온다.
@@ -206,7 +213,8 @@ export function GameRulesFields({
           {mode === 'team' && !hideFirstTeam && (
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-gray-500">선 플레이어 (먼저 시작하는 팀)</label>
-            <div className="flex gap-1.5 items-center">
+            {/* 가운데 정렬 — 폰에서는 그림 버튼 폭을 9rem으로 묶어 남는 자리가 생긴다(데스크톱은 버튼이 줄을 다 채워 차이가 없다) */}
+            <div className="flex gap-1.5 items-center justify-center">
               {FIRST_TEAM_OPTIONS.map(({ value, label, img }) => (
                 <button
                   key={value}

@@ -31,8 +31,11 @@ const EMOTE_Z = 99;
 export function PlayerEmoticonLayer({
   items,
   placement = 'center',
+  scale = 1,
 }: {
   items: PlayerEmoticon[];
+  /** 'left' 배치의 풍선 크기 배율 — 모바일은 0.7(작은 화면에서 180px 풍선이 판을 덮었다) */
+  scale?: number;
   /**
    * 'center'(팀전, 기본값) — 프로필의 보드 쪽(왼쪽 팀은 오른쪽, 오른쪽 팀은 왼쪽)에 붙인다.
    * 'left'(개인전) — 플레이어 칸의 **왼쪽**에 꼬리 달린 풍선으로 띄운다. 왼쪽이 화면 밖이면(왼쪽 열의 내 칸)
@@ -56,7 +59,7 @@ export function PlayerEmoticonLayer({
     <>
       {items.map(item => (
         placement === 'left'
-          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} count={filled.get(keyOf(item)) ?? 1} />
+          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} count={filled.get(keyOf(item)) ?? 1} scale={scale} />
           : <EmoticonBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
       ))}
     </>
@@ -129,7 +132,7 @@ function bubbleSizeFor(boxEl: Element, boxH: number): number {
  * 개인전의 이모티콘 — 플레이어 칸(`data-rabbit-target`이 달린 패널·상대 칸)의 왼쪽에 꼬리 달린 풍선으로 띄운다.
  * 칸 전체를 기준으로 삼는 이유: 닉네임(앵커) 바로 옆에 두면 180px 풍선이 그 사람의 칸을 덮어 체력·경험치가 가려진다.
  */
-function SideBubble({ item, slot, count }: { item: PlayerEmoticon; slot: number; count: number }) {
+function SideBubble({ item, slot, count, scale = 1 }: { item: PlayerEmoticon; slot: number; count: number; scale?: number }) {
   const [anchor, setAnchor] = useState<{ ay: number; boxLeft: number; boxRight: number; size: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -143,7 +146,7 @@ function SideBubble({ item, slot, count }: { item: PlayerEmoticon; slot: number;
   }, [item.id]);
 
   if (!anchor) return null;
-  const size = anchor.size;
+  const size = Math.round(anchor.size * scale);
   const step = size + 8;
 
   // 왼쪽에 다 들어가면 왼쪽, 아니면(화면 밖으로 나가면) 오른쪽. 어느 쪽이든 꼬리는 플레이어 쪽을 향한다.

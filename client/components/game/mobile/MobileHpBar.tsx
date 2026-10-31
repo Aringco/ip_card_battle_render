@@ -81,13 +81,10 @@ export function MobileHpBar({
     >
       {/* 오라 — 막대 뒤에서 그 편 색 빛이 가운데에서 바깥으로 번져 나간다(두 막대가 함께 양쪽으로 퍼지는 그림) */}
       <span className="m-hp-aura" aria-hidden />
-      {/* 지속 효과의 빛 — 걸려 있는 동안 막대 둘레가 숨 쉬듯 빛난다. 회복은 초록, 출혈은 붉은색, 둘 다면 반씩(안쪽 절반 회복 · 바깥 절반 출혈).
-          한 번 든 순간(dot)에는 같은 색으로 크게 번쩍인다(2026-10-31 — 막대 위를 흐르던 +/− 기호에서 바꿨다) */}
+      {/* 지속 효과의 빛 — 걸려 있는 동안 막대 둘레에 그라데이션 빛이 **막대를 따라 돈다**. 회복은 초록, 출혈은 붉은색, 둘 다면 반반이
+          함께 돈다(2026-10-31 요청 — 반씩 고정이던 빛을 회전으로). 한 번 든 순간(dot)에는 같은 색으로 크게 번쩍인다 */}
       {(healing || bleeding) && (
-        <span className="m-hp-dotglow" data-regen={healing || undefined} data-bleed={bleeding || undefined} aria-hidden>
-          {healing && <span className="m-hp-dotglow-part is-regen" />}
-          {bleeding && <span className="m-hp-dotglow-part is-bleed" />}
-        </span>
+        <span className="m-hp-dotglow" data-regen={healing || undefined} data-bleed={bleeding || undefined} aria-hidden />
       )}
       {dot && <span key={`d${dot.id}`} className={`m-hp-dotflash is-${dot.kind}`} aria-hidden />}
       <div className="m-hp-track">

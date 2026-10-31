@@ -326,7 +326,8 @@ export function MobileLayout({
       <SheepComboLayer combos={animState.sheepCombos} />
       {/* 풍선은 이 층에 가둔다 — 카드 띠가 올라오면 카드가 그 위에 온다(globals.css .m-emotes) */}
       <div className="m-emotes">
-        <PlayerEmoticonLayer items={animState.emoticons} />
+        {/* 꼬리 달린 풍선('left' 배치 — 꼬리가 그 사람의 열을 가리킨다), 크기는 0.7배 */}
+        <PlayerEmoticonLayer items={animState.emoticons} placement="left" scale={0.7} />
       </div>
       <RabbitFlightLayer flights={animState.rabbitFlights} />
       {animState.tigerImpact && <div className="tiger-vignette" />}

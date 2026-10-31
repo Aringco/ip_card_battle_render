@@ -7032,11 +7032,11 @@ body {
   opacity: 0;
   transition: opacity 0.2s ease;
   box-shadow:
-    calc(var(--ex, 0) * 0.2px) calc(var(--ey, 2) * 0.2px) 0 var(--card-side, #c9952e),
-    calc(var(--ex, 0) * 0.4px) calc(var(--ey, 2) * 0.4px) 0 color-mix(in srgb, var(--card-side, #c9952e) 85%, #000),
-    calc(var(--ex, 0) * 0.6px) calc(var(--ey, 2) * 0.6px) 0 color-mix(in srgb, var(--card-side, #c9952e) 72%, #000),
-    calc(var(--ex, 0) * 0.8px) calc(var(--ey, 2) * 0.8px) 0 color-mix(in srgb, var(--card-side, #c9952e) 60%, #000),
-    calc(var(--ex, 0) * 1px) calc(var(--ey, 2) * 1px) 0 color-mix(in srgb, var(--card-side, #c9952e) 50%, #000);
+    calc(var(--ex, 0) * 0.2px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.2px * var(--edge-k, 1)) 0 var(--card-side, #c9952e),
+    calc(var(--ex, 0) * 0.4px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.4px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 85%, #000),
+    calc(var(--ex, 0) * 0.6px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.6px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 72%, #000),
+    calc(var(--ex, 0) * 0.8px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.8px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 60%, #000),
+    calc(var(--ex, 0) * 1px * var(--edge-k, 1)) calc(var(--ey, 2) * 1px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 50%, #000);
 }
 .holo-cell[data-holo][data-hover] .holo-edge { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
@@ -8582,8 +8582,9 @@ body:has(.m-layout) .settings-fab { zoom: 0.72; bottom: max(3px, env(safe-area-i
   overflow: hidden;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
-.m-hp[data-side='left'] .m-hp-track { border-radius: 999px 4px 4px 999px; }
-.m-hp[data-side='right'] .m-hp-track { border-radius: 4px 999px 999px 4px; }
+/* 양 끝 모두 둥글게(2026-10-31 — 가운데 쪽 끝도 둥글게) */
+.m-hp[data-side='left'] .m-hp-track,
+.m-hp[data-side='right'] .m-hp-track { border-radius: 999px; }
 .m-hp-fill,
 .m-hp-ghost { position: absolute; top: 0; bottom: 0; transition: width 0.45s ease; }
 .m-hp[data-side='left'] .m-hp-fill,
@@ -8696,22 +8697,31 @@ body:has(.m-layout) .settings-fab { zoom: 0.72; bottom: max(3px, env(safe-area-i
   100% { opacity: 0; transform: scale(1.04, 1.9); }
 }
 
-/* 지속 효과의 빛(MobileHpBar의 .m-hp-dotglow) — 걸려 있는 동안 막대 둘레가 숨 쉬듯 빛난다(2026-10-31 — 막대 위를 흐르던 +/− 기호에서 바꿨다).
-   회복은 초록, 출혈은 붉은색. 둘 다 걸리면 반씩: 막대의 **안쪽 절반(가운데 쪽)이 회복 · 바깥 절반이 출혈**이다(두 막대가 거울).
-   빛은 막대 뒤(z 0)에 깔린 상자의 box-shadow라 막대 모양 그대로 번진다. 한 번 든 순간(.m-hp-dotflash)은 같은 색으로 크게 번쩍인다. */
-.m-hp-dotglow { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: flex; }
-.m-hp[data-side='left'] .m-hp-dotglow { flex-direction: row-reverse; }
-.m-hp-dotglow-part {
-  flex: 1;
-  margin-block: 3px;
+/* 지속 효과의 빛(MobileHpBar의 .m-hp-dotglow) — 걸려 있는 동안 막대 둘레의 그라데이션 빛이 **막대를 따라 돈다**(2026-10-31 요청).
+   막대보다 조금 큰 상자에 원뿔 그라데이션(conic-gradient)을 깔고 흐리게 번진 채 그 각도(--dot-a)를 돌린다 — 막대(트랙)가 가운데를 덮어
+   둘레로 비어져 나온 빛만 보이고, 가로로 긴 막대라 빛의 경계가 막대를 따라 미끄러져 돈다.
+   회복만이면 초록, 출혈만이면 붉은색(밝은 자리 하나가 돈다), 둘 다면 **반반이 함께** 돈다. 한 번 든 순간(.m-hp-dotflash)은 크게 번쩍인다. */
+@property --dot-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.m-hp-dotglow {
+  position: absolute;
+  inset: -4px -3px;
+  z-index: 0;
   border-radius: 999px;
-  animation: mDotGlow 1.8s ease-in-out infinite;
+  pointer-events: none;
+  filter: blur(5px);
+  animation: mDotSpin 2.6s linear infinite, mDotBreathe 1.8s ease-in-out infinite;
 }
-.m-hp-dotglow-part.is-regen { --dot-c: rgba(34, 197, 94, 0.95); --dot-c2: rgba(134, 239, 172, 0.55); background: rgba(34, 197, 94, 0.35); }
-.m-hp-dotglow-part.is-bleed { --dot-c: rgba(220, 38, 38, 0.95); --dot-c2: rgba(252, 165, 165, 0.5); background: rgba(220, 38, 38, 0.35); animation-delay: -0.9s; }
-@keyframes mDotGlow {
-  0%, 100% { box-shadow: 0 0 4px 1px var(--dot-c), 0 0 10px 2px var(--dot-c2); }
-  50%      { box-shadow: 0 0 9px 4px var(--dot-c), 0 0 20px 7px var(--dot-c2); }
+.m-hp-dotglow[data-regen] { --c1: rgba(34, 197, 94, 1); --c2: rgba(187, 247, 208, 1); background: conic-gradient(from var(--dot-a), var(--c1) 0deg, var(--c2) 60deg, var(--c1) 120deg, var(--c1) 360deg); }
+.m-hp-dotglow[data-bleed] { --c1: rgba(220, 38, 38, 1); --c2: rgba(254, 202, 202, 1); background: conic-gradient(from var(--dot-a), var(--c1) 0deg, var(--c2) 60deg, var(--c1) 120deg, var(--c1) 360deg); }
+.m-hp-dotglow[data-regen][data-bleed] {
+  background: conic-gradient(from var(--dot-a),
+    rgba(34, 197, 94, 1) 0deg, rgba(134, 239, 172, 1) 90deg, rgba(34, 197, 94, 1) 170deg,
+    rgba(220, 38, 38, 1) 190deg, rgba(252, 165, 165, 1) 270deg, rgba(220, 38, 38, 1) 350deg, rgba(34, 197, 94, 1) 360deg);
+}
+@keyframes mDotSpin { to { --dot-a: 360deg; } }
+@keyframes mDotBreathe {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
 }
 .m-hp-dotflash { position: absolute; inset: 2px 0; z-index: 0; border-radius: 999px; pointer-events: none; animation: mDotFlash 0.9s ease-out forwards; }
 .m-hp-dotflash.is-regen { --dot-c: rgba(74, 222, 128, 1); }
@@ -8828,10 +8838,10 @@ body:has(.m-layout) { overscroll-behavior: none; }
 .m-sheet-team[data-tone='mine'] { border-color: #84cc16; }
 .m-sheet-team[data-tone='enemy'] { border-color: #f43f5e; }
 .m-sheet-hint { font-size: 10px; color: #8a6a48; white-space: nowrap; }
-.m-sheet-list { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 3px; }
+/* 설명이 줄바꿈되며 길어지므로(아래 .m-sheet-desc) 목록이 스크롤한다 — 예전에는 네 줄을 높이에 나눠 넣고 설명을 말줄임했다(특허랑이 설명이 잘렸다) */
+.m-sheet-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; touch-action: pan-y; }
 .m-sheet-row {
-  flex: 1;
-  min-height: 0;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -8849,12 +8859,15 @@ body:has(.m-layout) { overscroll-behavior: none; }
 .m-sheet-bar { display: block; height: 5px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px rgba(63, 36, 16, 0.25); overflow: hidden; }
 .m-sheet-bar > span { display: block; height: 100%; background: #22c55e; border-radius: 999px; }
 .m-sheet-lines { font-weight: 800; color: #7c3aed; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.m-sheet-desc { color: #6b4a2a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-sheet-desc { color: #6b4a2a; white-space: normal; }
+/* 핵심 낱말 · 숫자(emphasize.tsx) */
+.m-sheet-desc b,
+.m-rail-panel-desc b { color: #3b2a1a; font-weight: 900; }
 
 @media (prefers-reduced-motion: reduce) {
   .m-phase-hero { animation: mPhaseHeroFade 1.5s ease forwards; }
   .m-cards, .m-board-dim, .m-rail-panel, .m-sheet { transition: none; }
-  .m-hp-holo, .m-hp-aura, .m-hp-dotglow-part { animation: none; }
+  .m-hp-holo, .m-hp-aura, .m-hp-dotglow { animation: none; }
 }
 @keyframes mPhaseHeroFade {
   0%, 70% { opacity: 1; }
@@ -8898,6 +8911,8 @@ body:has(.m-layout) { overscroll-behavior: none; }
 }
 .rule-dialog-title { font-size: 16px; font-weight: 900; }
 .rule-dialog-row { display: flex; align-items: center; gap: 8px; }
+/* −/+ — 기호를 버튼 한가운데에(글꼴의 기준선 때문에 위로 떠 보였다) */
+.rule-dialog-step { display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
 .rule-dialog-input { flex: 1; min-width: 0; height: 44px; text-align: center; font-size: 20px; font-weight: 800; }
 .rule-dialog-step {
   flex: none;
@@ -8917,10 +8932,7 @@ body:has(.m-layout) { overscroll-behavior: none; }
 .rule-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .rule-dialog-cancel { min-height: 44px; padding: 0 16px; font-weight: 800; color: #7d6a55; }
 .rule-dialog-ok { min-height: 44px; padding: 0 22px; font-size: 16px; font-weight: 900; }
-/* 가로 폰은 키보드가 화면 아래 절반을 덮는다 — 창을 위쪽에 붙인다 */
-@media (orientation: landscape) and (max-height: 500px) {
-  .rule-dialog-dim { align-items: flex-start; padding-top: 8px; }
-}
+/* 창은 화면 가운데(2026-10-31 요청 — 한때 가로 폰에서 키보드를 피하려 위쪽에 붙였다) */
 
 /* ── 폰 공통(가로 · 세로) ── */
 @media (orientation: landscape) and (max-height: 500px), (orientation: portrait) and (max-width: 767px) {
@@ -9278,4 +9290,115 @@ body:has(.lobby-root) {
 @media (prefers-reduced-motion: reduce) {
   .m-opp-list { transition: none; }
   .m-name[data-attacked] { animation: none; }
+}
+
+/* ── 모바일 — 기술 카드 두께 1px(2026-10-31 요청, PC는 2px 그대로) · 개인전 감정표현 버튼 ──
+   두께는 SkillChoiceBar의 HOLO_EDGE_PX(2px)로 잡힌 옆면 그림자 길이에 곱하는 배율(--edge-k)로 줄인다. */
+.m-layout { --edge-k: 0.5; }
+/* 개인전 — 감정표현 버튼을 내 동물 열 위에 둔다(PC는 정보창 오른쪽 위에 겹쳐 앉는다). 그만큼 아이콘을 줄인다 */
+.m-layout[data-individual] { --m-icon: clamp(38px, calc((var(--m-view-h) - 64px) / 4), 62px); }
+.m-layout[data-individual] .m-rail-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.m-layout[data-individual] .m-rail-left .emote-button { position: static; flex: none; width: 34px; height: 34px; }
+.m-layout[data-individual] .m-rail-left .m-rail-list { flex: 1; min-height: 0; width: 100%; height: auto; }
+
+/* 지속 효과의 빛이 막대 안쪽(빈 칸)으로 비치지 않게 — 트랙을 불투명하게. 빛은 막대 둘레로만 보인다 */
+.m-hp-track { background: #2b1d0f; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   결과 화면 — 폰(GameEndScreen · IndividualEndScreen, 2026-10-31 요청)
+   ══════════════════════════════════════════════════════════════════════════
+   폰에서는 한 화면에 승패 문구 + [통계 보기] + [로비로 돌아가기]만 둔다. 두 판(체력표 · 순위표 / 행동 통계)은 [통계 보기]를 누르면
+   **화면 왼쪽 · 오른쪽에서 미끄러져 나온다**(어두운 막을 누르면 닫힌다). 데스크톱은 [통계 보기]가 보이지 않고 판이 늘 그 자리에 있다.
+   조건은 lib/mobileLayout.ts의 PHONE_*_QUERY와 같은 문자열이다. */
+.result-stats-button,
+.result-stats-dim,
+.result-stats-close { display: none; }
+
+@media (orientation: landscape) and (max-height: 500px), (orientation: portrait) and (max-width: 767px) {
+  .result-root {
+    height: 100dvh;
+    min-height: 0;
+    padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  html:has(.result-root),
+  body:has(.result-root) { overflow: hidden; overscroll-behavior: none; }
+  .result-root > div:first-child { gap: 12px; min-height: 0; }
+  /* 메달은 화면 높이에 맞춰 — 가로 폰은 높이가 360~430px라 12rem 메달이 문구와 버튼을 밀어냈다 */
+  .result-root .winner-bounce-in img { height: min(30dvh, 9rem) !important; }
+  .result-root .winner-bounce-in { gap: 6px; }
+  .result-root .winner-bounce-in h2 { font-size: clamp(1.4rem, 6dvh, 2rem); }
+  .result-stats-button { display: inline-flex; }
+  .result-actions { gap: 12px; }
+  .result-actions .wood-button-lg { padding: 12px 28px !important; font-size: 17px; }
+
+  /* 두 판 — 평소에는 화면 밖(왼쪽 · 오른쪽)에 대기 */
+  .result-root .result-boards {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: block;
+    max-width: none;
+    margin: 0;
+    transform: none;
+    pointer-events: none;
+  }
+  /* ⚠️ 판에는 등장 애니메이션(bounceIn, fill both)이 걸려 transform · opacity를 덮어쓴다 — 끄고, 미끄러짐은 transform이 아니라 translate로 건다.
+     h-full(높이 100%)도 덮는다(위 · 아래 8px에 맞춘다) */
+  .result-root .result-boards > * {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    height: auto;
+    margin: 0;
+    animation: none;
+    width: min(48vw, 460px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transition: translate 0.36s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.25s ease;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .result-root .result-boards > :first-child { left: 8px; translate: -110% 0; }
+  .result-root .result-boards > :last-child { right: 8px; translate: 110% 0; }
+  .result-root[data-stats] .result-boards > * { translate: 0 0; opacity: 1; pointer-events: auto; }
+  .result-root .result-boards .board-crest { display: none; }
+  /* 귀퉁이 잎 장식은 작게 — 기본 크기(91px)면 좁은 판에서 글자를 덮었다 */
+  .result-root .result-boards .board-frame { --orn-size: 46px; --orn-overhang: 2px; }
+  /* 통계를 열었을 때 오른쪽 위 닫기(✕) — 판 · 막보다 위 */
+  .result-stats-close {
+    position: fixed;
+    top: max(6px, env(safe-area-inset-top));
+    right: max(6px, env(safe-area-inset-right));
+    z-index: 62;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 2px solid #f7e6c2;
+    background: #3f2410;
+    color: #fff6df;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  }
+  .result-stats-dim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    border: 0;
+    background: rgba(10, 6, 2, 0.6);
+  }
+}
+/* 세로 폰은 폭이 좁아 두 판을 위 · 아래 절반씩 */
+@media (orientation: portrait) and (max-width: 767px) {
+  .result-root .result-boards > * { width: auto; left: 8px; right: 8px; }
+  .result-root .result-boards > :first-child { top: 8px; bottom: 50%; }
+  .result-root .result-boards > :last-child { top: 50%; bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result-root .result-boards > * { transition: none; }
 }

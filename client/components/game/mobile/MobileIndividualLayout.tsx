@@ -16,6 +16,7 @@ import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { RankedBanner } from '@/components/effects/RankedBanner';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
+import { EmotePicker } from '../EmotePicker';
 import { GameBoard } from '../GameBoard';
 import { SkillChoiceBar } from '../SkillChoiceBar';
 import { IndividualPrompt } from '../IndividualPrompt';
@@ -68,6 +69,7 @@ export function MobileIndividualLayout({
   animState,
   paused,
   emotes,
+  onEmote,
 }: {
   gameState: ClientGameState;
   turnDeadline: number;
@@ -80,6 +82,7 @@ export function MobileIndividualLayout({
   animState: AnimationState;
   paused: boolean;
   emotes: ReceivedEmote[];
+  onEmote: (emoteId: string) => void;
 }) {
   const gameState = useMemo(() => withDisplayedFinish(serverState, animState.hiddenFinish), [serverState, animState.hiddenFinish]);
   const isShaking = animState.screenShakeLevel > 0;
@@ -338,6 +341,8 @@ export function MobileIndividualLayout({
       {error && <div className="m-error">{error}</div>}
 
       <aside className="m-rail m-rail-left">
+        {/* 감정표현 — 내 동물 열 위. 고르기 창은 판(.m-view) 폭으로 그 위에 겹친다(EmotePicker의 cellSelector) */}
+        {mySide !== null && gameState.phase === 'playing' && <EmotePicker onSend={onEmote} cellSelector=".m-view" />}
         <AnimalRail team={leftSide} side="left" color={leftColor} gameState={viewState} animState={animState} open={openIcon} onToggle={setOpenIcon} />
       </aside>
 
@@ -427,7 +432,8 @@ export function MobileIndividualLayout({
       </aside>
 
       <footer className="m-bottom" data-hub={gameState.enhance && rightSide ? '' : undefined}>
-        <MobileHpBar team={leftSide} side="left" gameState={hpState} animState={animState} mine={!observer} color={leftColor} />
+        {/* 내 체력 막대는 언제나 초록(2026-10-31 요청) — 사람 색은 관전 시점(왼쪽이 남)일 때만 */}
+        <MobileHpBar team={leftSide} side="left" gameState={hpState} animState={animState} mine={!observer} color={mySide === null ? leftColor : undefined} />
         {gameState.enhance && rightSide && <MobileDotHub gameState={hpState} left={leftSide} right={rightSide} />}
         {rightSide && <MobileHpBar team={rightSide} side="right" gameState={hpState} animState={animState} mine={false} color={rightColor} />}
       </footer>
@@ -436,7 +442,7 @@ export function MobileIndividualLayout({
       <SweepBanner info={animState.sweepBanner} />
       <SheepComboLayer combos={animState.sheepCombos} />
       <div className="m-emotes">
-        <PlayerEmoticonLayer items={bubbleItems} />
+        <PlayerEmoticonLayer items={bubbleItems} placement="left" scale={0.7} />
       </div>
       <RabbitFlightLayer flights={animState.rabbitFlights} />
       {animState.tigerImpact && <div className="tiger-vignette" />}
