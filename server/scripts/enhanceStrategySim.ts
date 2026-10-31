@@ -28,6 +28,8 @@ import {
   enhanceHealCutOf,
   enhanceOverMultiplier,
   enhanceValue,
+  enhanceSheepExp,
+  enhanceSheepExpStack,
   opponentsOf,
   THRESHOLDS,
 } from 'shared';
@@ -99,7 +101,7 @@ function pickSkill(strategy: Strategy, state: GameState, side: SideId, rng: () =
       const gain = (a: Animal): number => {
         if (a === 'tiger') return Math.min(valueOf(state, side, a), foeHp);
         if (a === 'rabbit') return valueOf(state, side, a);
-        if (a === 'sheep') return valueOf(state, side, a) * 0.6;
+        if (a === 'sheep') return valueOf(state, side, a) + enhanceSheepExp(levelOf(state, side, a)) * enhanceSheepExpStack(levelOf(state, side, a)); // room.ts와 같다
         return mult === 1 ? 1.5 : 0;
       };
       let best = options[0];

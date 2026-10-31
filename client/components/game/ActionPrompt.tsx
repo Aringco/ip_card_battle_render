@@ -49,7 +49,7 @@ export function ActionPrompt({
   startingTeam: SideId;
   startingTeamReason: 'setting' | 'random';
   teamNames: Record<SideId, string>;
-  /** 한 차례에 쓰는 기술 수 — 카드 강화 판은 15턴마다 늘어난다(2·3장이면 지금 몇 장째인지 문구에 얹는다 — IndividualPrompt와 같다) */
+  /** 한 차례에 쓰는 기술 수 — 카드 강화 판은 방 규칙의 주기마다 늘어난다(기본 12턴, 최대 2장)(2·3장이면 지금 몇 장째인지 문구에 얹는다 — IndividualPrompt와 같다) */
   skillsPerTurn?: number;
   skillsUsedThisTurn?: number;
 }) {

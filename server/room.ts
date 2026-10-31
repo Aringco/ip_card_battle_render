@@ -61,6 +61,8 @@ import {
   enhanceAmount,
   enhanceDivisorOf,
   enhanceOverMultiplier,
+  enhanceSheepExp,
+  enhanceSheepExpStack,
 } from 'shared';
 import type { EventEndReason, EventInfo, EventKind } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
@@ -290,7 +292,9 @@ function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal | null
   const gain = (a: Animal): number => {
     if (a === 'tiger') return Math.min(value(a), foeHp);
     if (a === 'rabbit') return rabbitHeal();
-    if (a === 'sheep') return value(a) * 0.6; // 카드는 곧바로 점수가 아니다
+    // 실용신양 — 추가 뽑기 + 무작위 경험치(키우는 값). 6차 표의 장수(4~14)만 보면 컴퓨터가 실용신양을 거의 고르지 않는다 —
+    // 장수 × 0.6이던 것을 (장수 + 경험치) × 1로 바꿨다(시뮬레이션에서 컴퓨터의 강함은 그대로, ×3이면 오히려 약해진다)
+    if (a === 'sheep') return value(a) + enhanceSheepExp(levelOf(state, side, a)) * enhanceSheepExpStack(levelOf(state, side, a));
     return mult === 1 ? 1.5 : 0;              // 디자인어 — 이미 걸려 있으면 굳이 쓰지 않는다
   };
   let best: Animal = options[0];

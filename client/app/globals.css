@@ -7311,18 +7311,11 @@ body {
    짝 옆의 합계 배지는 **남긴다** — 모든 카드가 1이라 합계가 곧 그 줄에 쌓인 장수다(2026-10-29 요청, 한때 감췄다). */
 [data-enhance] .place-text-img { clip-path: inset(0 0 41% 0); transform: translateY(7%); }
 
-/* ① 밝은 그라데이션 — 레벨이 오를수록 카드 위쪽에서 따뜻한 빛이 번진다(screen이라 그림을 덮지 않고 밝힌다).
-   네 가장자리는 아래 마스크(.enh-light, .enh-rainbow 공통)로 흐려져 층의 사각형 윤곽이 드러나지 않는다. */
-.enh-light {
-  pointer-events: none;
-  background: radial-gradient(120% 85% at 50% 15%,
-    rgba(255, 248, 220, calc(0.04 + var(--enh, 0) * 0.34)) 0%,
-    rgba(255, 236, 190, calc(var(--enh, 0) * 0.16)) 45%,
-    transparent 78%);
-  mix-blend-mode: screen;
-}
+/* 카드의 홀로(빛 효과)는 **등급마다 한 겹뿐이다**(2026-10-31 요청 — 그 전에는 등급이 오를 때마다 한 겹씩 쌓였고, 모든 카드에
+   밝은 그라데이션 .enh-light가 깔려 있었다 — 그 층은 걷었다): 브론즈 빛 반사(.enh-sheen) · 실버 은빛(.enh-silver) · 골드 금빛(.enh-gold) ·
+   무지개(.enh-rainbow). 아래 등급 절 참조. */
 
-/* ② 무지개 홀로 — **Lv.Max 등급에만** 깔린다(2026-10-31 — 그 전에는 모든 레벨에 깔려 레벨을 따라 짙어졌다. 아래 등급 절).
+/* 무지개 홀로 — **Lv.Max 등급에만** 깔린다(2026-10-31 — 그 전에는 모든 레벨에 깔려 레벨을 따라 짙어졌다. 아래 등급 절).
    **한 줄기 사선 띠**가 카드를 가로질러 지나가고(45도), 잠깐 쉬었다 다시 지나간다. 가리키지 않아도 계속 흐른다.
    세기는 --enh(Max면 1)를 따른다. ::after는 띠 한가운데를 따라가는 가는 하얀 반짝임.
 
@@ -7374,7 +7367,6 @@ body {
   animation-name: enhRainbowSweep;
 }
 /* 네 가장자리를 흐린다 — 가로·세로 두 띠의 교집합이라 모서리는 더 일찍 사라진다(둥근 카드 모서리에 층이 걸리지 않는다) */
-.enh-light,
 .enh-rainbow {
   -webkit-mask-image:
     linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
@@ -7394,25 +7386,42 @@ body {
 .enh-rainbow.enh-cooling { opacity: calc((0.12 + var(--enh, 0) * 0.68) * 0.3); }
 .enh-rainbow.enh-cooling::after { animation: none; opacity: 0; }
 
-/* ── 기술 카드의 등급(2026-10-31 요청 — shared의 enhanceCardTier, SkillChoiceBar의 data-enh-tier) ──────────────────────
-   iron    Lv.1 ~ 5   회색(차콜) 쇠 테두리 · 빛 반사 홀로(.enh-light + .enh-sheen)만 — 처음엔 은색이었다가 같은 날 "은보다 쇠의 느낌"으로 바꿨다
-   gold    Lv.6 ~ 10  금색 테두리 · 금빛 홀로(.enh-gold) 추가 · 둘레가 금빛으로 숨 쉰다
-   rainbow Lv.Max     흰빛과 무지개가 어우러진 테두리(흐른다) · 무지개 홀로(.enh-rainbow) 추가 · 둘레가 흰 무지갯빛으로 숨 쉰다
-   테두리는 .play-card-frame의 배경(border-box까지 깔린 그라디언트)을 갈아 끼운다 — 안쪽은 그림 층이 덮어 테두리 6px만 보인다.
-   (그 전에는 모든 카드가 금색 테두리였고, Lv.5부터 금빛이 더해졌다.) */
-/* 쇠 — 회색 바탕에 무딘 강철빛 반사 두 줄. 은처럼 하얗게 번쩍이지 않도록 가장 밝은 곳도 밝은 회색(#c3c8ce)에서 멈춘다.
-   (같은 날 차콜 #2a2d32 ~ #9aa0a8로 했다가 "차콜보다는 회색"으로 한 단계 밝혔다.) */
-.skill-choice-panel[data-enh-tier='iron'] {
+/* ── 기술 카드의 등급(2026-10-31 — shared의 enhanceCardTier, SkillChoiceBar의 data-enh-tier) ──────────────────────
+   bronze  Lv.1 ~ 3   구리 테두리 · 빛 반사 홀로(.enh-sheen)
+   silver  Lv.4 ~ 7   은 테두리 · 은빛 홀로(.enh-silver) · 둘레가 은빛으로 숨 쉰다
+   gold    Lv.8 ~ 10  금색 테두리 · 금빛 홀로(.enh-gold) · 둘레가 금빛으로 숨 쉰다
+   rainbow Lv.Max     흰빛과 무지개가 어우러진 테두리(흐른다) · 무지개 홀로(.enh-rainbow) · 둘레가 흰 무지갯빛으로 숨 쉰다
+   홀로는 등급마다 하나다. 테두리는 .play-card-frame의 배경(border-box까지 깔린 그라디언트)을 갈아 끼운다 — 안쪽은 그림 층이 덮어 테두리 6px만 보인다.
+   (같은 날의 변천: 쇠 Lv.1~5 · 금 Lv.6~10 · 무지개의 3단계에 홀로가 한 겹씩 쌓였다 → 방 만들기에서 4단계를 고를 수 있었다 → 3단계를 걷고 지금의 4단계만.) */
+.skill-choice-panel[data-enh-tier='bronze'] {
   background-image: linear-gradient(
     158deg,
-    #b4b9c0 0%,
-    #868c94 16%,
-    #686e76 34%,
-    #c3c8ce 50%,
-    #7a8088 66%,
-    #5f656d 84%,
-    #959ba3 100%
+    #f0b88a 0%,
+    #b8693a 18%,
+    #7f4220 38%,
+    #e8a26c 54%,
+    #a75a2c 74%,
+    #6a3518 100%
   );
+}
+.skill-choice-panel[data-enh-tier='silver'] {
+  background-image: linear-gradient(
+    158deg,
+    #ffffff 0%,
+    #d7dde5 16%,
+    #9aa4b1 36%,
+    #f8fafc 52%,
+    #b9c2cd 70%,
+    #7c8693 100%
+  );
+  animation: enhSilverGlow 2.4s ease-in-out infinite;
+}
+.skill-choice-panel[data-enh-tier='silver'].skill-choice-glow {
+  animation: skillChoiceGlow 1s ease-in-out infinite;
+}
+@keyframes enhSilverGlow {
+  0%, 100% { box-shadow: inset 0 0 10px 2px rgba(226, 232, 240, 0.5); }
+  50%      { box-shadow: inset 0 0 22px 6px rgba(241, 245, 255, 0.9); }
 }
 .skill-choice-panel[data-enh-tier='gold'] {
   background-image: linear-gradient(
@@ -7467,8 +7476,8 @@ body {
   100% { background-position: 100% 50%; }
 }
 
-/* 빛 반사 홀로 — 모든 등급의 바탕 홀로. 하얀 사선 띠가 무지개와 같은 길·같은 곡선으로 카드를 가로지른다(그 전에는 무지개 층의 ::after였다).
-   레벨이 오를수록(--enh) 또렷하고 자주 지나간다. 가장자리는 .enh-light와 같은 마스크로 흐린다. */
+/* 빛 반사 홀로 — 브론즈(Lv.1~3)의 홀로. 하얀 사선 띠가 무지개와 같은 길·같은 곡선으로 카드를 가로지른다(그 전에는 무지개 층의 ::after였다).
+   레벨이 오를수록(--enh) 또렷하고 자주 지나간다. 가장자리는 .enh-rainbow와 같은 마스크로 흐린다. */
 .enh-sheen {
   pointer-events: none;
   background-image: linear-gradient(
@@ -7528,6 +7537,36 @@ body {
   60%, 100% { background-position: center, 0% 0%; }
 }
 .enh-gold.enh-cooling { opacity: 0.15; animation: none; }
+/* 은빛 홀로 — 실버(Lv.4~7)의 홀로. 금빛(.enh-gold)과 같은 길로 지나가되 차가운 흰빛 · 푸른빛이다.
+   세기는 --silver(0 = Lv.4 … 1 = Lv.7)를 따른다. */
+.enh-silver {
+  pointer-events: none;
+  background-image:
+    radial-gradient(120% 70% at 50% 0%, rgba(226, 236, 255, calc(0.16 + var(--silver, 0) * 0.2)) 0%, transparent 70%),
+    linear-gradient(
+      -45deg,
+      transparent 38%,
+      rgba(186, 206, 236, 0.5) 45%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(186, 206, 236, 0.5) 55%,
+      transparent 62%
+    );
+  background-size: 100% 100%, 300% 300%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, 100% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.42 + var(--silver, 0) * 0.4);
+  animation: enhGoldSweep calc(4.6s - var(--silver, 0) * 1.2s) ease-in-out infinite;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+.enh-silver.enh-cooling { opacity: 0.15; animation: none; }
 
 /* 제목 옆 레벨 — 제목보다 조금 작게, 금색 */
 .enh-title-lv {
@@ -7631,6 +7670,12 @@ body {
     linear-gradient(115deg, #fff4c2 0%, #f7c948 18%, #fffbe6 32%, #e0a526 48%, #ffe9a0 62%, #c98a14 78%, #fff1b8 100%);
   box-shadow: 0 0 26px 10px rgba(255, 206, 84, 0.85);
 }
+.enh-promo[data-tier='silver'] .enh-promo-glow {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.95), rgba(226, 236, 255, 0) 68%),
+    linear-gradient(115deg, #ffffff 0%, #cfd8e3 18%, #ffffff 32%, #9fb0c4 48%, #eef3fa 62%, #8d9aab 78%, #ffffff 100%);
+  box-shadow: 0 0 26px 10px rgba(220, 232, 255, 0.85);
+}
 .enh-promo[data-tier='rainbow'] .enh-promo-glow {
   background-image:
     radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 68%),
@@ -7658,6 +7703,7 @@ body {
   animation: enhPromoEdge 2600ms ease-in-out forwards;
 }
 .enh-promo[data-tier='gold'] .enh-promo-edge { box-shadow: 0 0 12px 4px rgba(255, 214, 102, 0.95), 0 0 26px 8px rgba(255, 180, 40, 0.6); }
+.enh-promo[data-tier='silver'] .enh-promo-edge { box-shadow: 0 0 12px 4px rgba(235, 242, 255, 0.95), 0 0 26px 8px rgba(160, 190, 235, 0.6); }
 .enh-promo[data-tier='rainbow'] .enh-promo-edge {
   background: linear-gradient(90deg, hsl(0 100% 80%), hsl(60 100% 80%), #fff, hsl(180 100% 80%), hsl(280 100% 85%));
   box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.95), 0 0 26px 8px rgba(170, 140, 255, 0.6);
@@ -7709,6 +7755,7 @@ body {
   animation: enhPromoRing 1200ms ease-out forwards;
 }
 .enh-promo[data-tier='gold'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(255, 210, 90, 0.9), inset 0 0 14px 4px rgba(255, 220, 120, 0.8); }
+.enh-promo[data-tier='silver'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(230, 238, 255, 0.9), inset 0 0 14px 4px rgba(200, 216, 240, 0.8); }
 .enh-promo[data-tier='rainbow'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(255, 255, 255, 0.9), 0 0 40px 14px rgba(160, 200, 255, 0.6); }
 @keyframes enhPromoRing {
   0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.2); }
@@ -7748,6 +7795,7 @@ body {
 .enh-promo-title { font-size: clamp(1.2rem, calc(3.4 * var(--sv, 1vh)), 2.3rem); }
 .enh-promo-lv { font-size: clamp(0.9rem, calc(2.2 * var(--sv, 1vh)), 1.5rem); }
 .enh-promo[data-tier='gold'] .enh-promo-text { color: #fde047; }
+.enh-promo[data-tier='silver'] .enh-promo-text { color: #f1f5f9; }
 .enh-promo[data-tier='rainbow'] .enh-promo-text { animation: enhPromoText 2600ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards, enhPromoHue 900ms linear infinite; }
 @keyframes enhPromoText {
   0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.3); }
@@ -7769,7 +7817,8 @@ body {
   .enh-rainbow::after,
   .enh-sheen,
   .skill-choice-panel[data-enh-tier],
-  .enh-gold { animation: none; }
+  .enh-gold,
+  .enh-silver { animation: none; }
   .enh-burst-piece,
   .enh-burst-ring,
   .enh-promo-piece,

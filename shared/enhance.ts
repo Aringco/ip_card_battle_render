@@ -22,18 +22,27 @@ import type { SettingsLimits } from './constants';
 /** 최고 레벨 — Lv.1 ~ Lv.10 다음의 Lv.Max(11) */
 export const ENHANCE_MAX_LEVEL = 11;
 /**
- * 기술 카드의 등급 — 테두리와 홀로가 바뀐다(2026-10-31 요청, 화면 SkillChoiceBar의 data-enh-tier).
- *   iron    Lv.1 ~ 5   회색(차콜) 쇠 테두리 · 빛 반사 홀로만(같은 날 은색에서 바꿨다 — 은보다 쇠의 느낌)
- *   gold    Lv.6 ~ 10  금색 테두리 · 금빛 홀로 추가
- *   rainbow Lv.Max     흰빛과 무지개가 어우러진 테두리 · 무지개 홀로 추가
+ * 기술 카드의 등급 — 테두리와 홀로가 바뀐다(화면 SkillChoiceBar의 data-enh-tier). **카드마다 홀로(빛 효과)는 한 겹뿐이다.**
+ *   bronze  Lv.1 ~ 3   구리 테두리 · 빛 반사 홀로(.enh-sheen)
+ *   silver  Lv.4 ~ 7   은 테두리 · 은빛 홀로(.enh-silver)
+ *   gold    Lv.8 ~ 10  금 테두리 · 금빛 홀로(.enh-gold)
+ *   rainbow Lv.Max     흰빛과 무지개가 어우러진 테두리 · 무지개 홀로(.enh-rainbow)
  * 등급이 바뀌는 것을 [승격]이라 부르고, 그 순간은 레벨업보다 화려한 연출(PromotionBurst)을 띄운다.
+ * (같은 날 세 번 바뀌었다: 쇠 Lv.1~5 · 금 Lv.6~10 · 무지개의 3단계에 홀로가 등급마다 한 겹씩 쌓였다 → 4단계를 방 만들기에서 고르게 했다 →
+ *  2026-10-31 요청으로 **3단계를 걷고 4단계만**, 경계는 Lv.4 · 8 · Max로, 홀로는 등급마다 하나만.)
  */
-export type EnhanceCardTier = 'iron' | 'gold' | 'rainbow';
-/** 금색 등급이 시작되는 레벨(Lv.6 — 그 전에는 Lv.5부터 금빛이었다) */
-export const ENHANCE_GOLD_FROM = 6;
+export type EnhanceCardTier = 'bronze' | 'silver' | 'gold' | 'rainbow';
+export const ENHANCE_SILVER_FROM = 4;
+export const ENHANCE_GOLD_FROM = 8;
 export function enhanceCardTier(level: number): EnhanceCardTier {
-  return level >= ENHANCE_MAX_LEVEL ? 'rainbow' : level >= ENHANCE_GOLD_FROM ? 'gold' : 'iron';
+  if (level >= ENHANCE_MAX_LEVEL) return 'rainbow';
+  return level >= ENHANCE_GOLD_FROM ? 'gold' : level >= ENHANCE_SILVER_FROM ? 'silver' : 'bronze';
 }
+/**
+ * **규칙의 계단** — 쿨타임 +1 · Lv.6+ 부가 효과가 붙는 레벨(Lv.6, 그다음은 Max). 화면의 등급(위)과는 따로 간다 —
+ * 등급의 경계를 옮겨도 이 값은 그대로다(밸런스는 이 계단으로 맞춰 두었다 — ENHANCE_BALANCE_PROPOSAL.md).
+ */
+export const ENHANCE_STEP_LEVEL = 6;
 
 /**
  * 장소를 한 번 눌렀을 때 나오는 장수(최소~최대, 무작위) — 그 장소가 다루는 동물 수로 가른다(일반 판의 숫자 범위 5~10 / 10~15와 같은 기준).
@@ -52,70 +61,87 @@ export function enhancePlaceDrawCount(place: Place, rng: () => number = Math.ran
  * 실용신양 = 다음 턴 추가 뽑기 수 · 상표토끼 = 즉시 회복 · 디자인어 = 배율 · 특허랑이 = 상대 체력 감소.
  * **배율(디자인어 · Lv.Max 별도 배수)을 받는 것은 실용신양의 장수 · 상표토끼의 즉시 회복 · 특허랑이의 공격력 셋뿐이다**(5차 표 규칙) —
  * 나머지(경험치 · 지속 효과 · 쿨타임 · 정화 · 디자인어 자신)는 표의 값 그대로다.
- * (2026-10-30 5차 표 — 4차 표는 Lv.6부터 수치가 지수적으로 커졌다: 실용신양 ~256 · 상표토끼 ~2048 · 디자인어 ×10~×100 · 특허랑이 ~2000)
+ *
+ * **6차 표(2026-10-31, ENHANCE_BALANCE_PROPOSAL.md) — 로그형.** Lv.1부터 쓸 만하고(특허랑이 Lv.1 = 목표 500의 8%) 레벨마다 오르는 폭이
+ * 줄어든다(특허랑이 Lv.1→2 +57% … Lv.9→10 +3%). 큰 계단은 승격(Lv.6 · Max)에만 둔다. 임계값(10 · 20)은 그대로라 상표토끼(10)는
+ * 특허랑이(20)보다 레벨이 두 배 빨리 오른다 — 그래서 상표토끼 Lv.(2k−1)의 회복이 특허랑이 Lv.k 공격의 0.6~0.7배가 되게 맞췄다
+ * (같은 레벨끼리 맞추면 후반에 Max 상표토끼가 Lv.4 특허랑이를 만나 판이 회복으로 굳는다).
+ * (5차 표는 레벨마다 두 배였다: 실용신양 1→32 · Max 64 · 상표토끼 2→64 · Max 128 · 디자인어 ×2~×5 · 특허랑이 10→100 · Max 200)
+ *
+ * **6차 표 2차 조정(같은 날)** — 판 길이 중앙값을 15~16턴으로 당기고(그 전 20~21턴), 디자인어가 레벨마다 달라지게 했다(그 전에는
+ * Lv.1~5 ×2 · Lv.6~Max ×3이라 레벨이 올라도 배율이 그대로였다). 디자인어는 레벨마다 "처음 거는 배율"과 "겹칠 때 더하는 양"이 번갈아
+ * 하나씩 오른다(×2 +1 → ×2 +2 → ×3 +2 → ×3 +3 …). 특허랑이 +2~4 · 상표토끼 −2~3 · 축제 한 번 4회와 함께 맞췄다.
  */
 export const ENHANCE_VALUES: Record<Animal, readonly number[]> = {
-  sheep: [1, 2, 4, 8, 16, 32, 32, 32, 32, 32, 64],
-  rabbit: [2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 128],
-  mermaid: [2, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5],
-  tiger: [10, 20, 40, 60, 80, 100, 100, 100, 100, 100, 200],
+  sheep: [4, 5, 6, 7, 8, 9, 9, 10, 10, 11, 14],
+  rabbit: [25, 35, 42, 47, 50, 53, 55, 57, 58, 60, 73],
+  mermaid: [2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 8],
+  tiger: [44, 68, 82, 92, 100, 106, 111, 115, 119, 122, 146],
 };
 /**
- * 디자인어를 **배율이 이미 걸려 있을 때** 또 쓰면 그 배율을 키우는 양 — Lv.1~5는 더하고(+1 ~ +5),
- * Lv.6부터는 곱한다(×2 · ×3 · ×4 · ×5 · ×10 · Max ×20 — ENHANCE_MERMAID_STACK_MULTIPLY_FROM).
+ * 디자인어를 **배율이 이미 걸려 있을 때** 또 쓰면 그 배율을 키우는 양 — 6차 표는 **모두 더한다**(+1 · +2 · +2 · +3 … Max +8 —
+ * 처음 거는 배율과 번갈아 오른다). ENHANCE_MERMAID_STACK_MULTIPLY_FROM 레벨부터는 곱하는데, 6차 표는 그 레벨을 Max 너머(12)로 두어
+ * 곱하는 레벨이 없다(5차 표는 Lv.6부터 곱해 Max ×20까지 갔다 — 한 방이 체력 풀을 넘는 주된 원인이었다).
  */
-export const ENHANCE_MERMAID_STACK: readonly number[] = [1, 2, 3, 4, 5, 2, 3, 4, 5, 10, 20];
-export const ENHANCE_MERMAID_STACK_MULTIPLY_FROM = 6;
+export const ENHANCE_MERMAID_STACK: readonly number[] = [1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 8];
+export const ENHANCE_MERMAID_STACK_MULTIPLY_FROM = 12;
 /** 디자인어 Lv.6부터 — 상대가 쌓아 둔 배율을 이 수로 나눈다(반올림, ×1 아래로는 안 내려간다). Max의 Infinity는 "배율 제거(×1로)" */
-export const ENHANCE_MERMAID_OPP_DIVIDE: readonly number[] = [1, 1, 1, 1, 1, 2, 3, 4, 5, 10, Infinity];
+export const ENHANCE_MERMAID_OPP_DIVIDE: readonly number[] = [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, Infinity];
 /** 디자인어 Lv.Max — 상대가 고르는 기술의 효과를 이 수로 나눈다(반올림, "반감 효과"). 1이면 나누지 않는다 */
-export const ENHANCE_MERMAID_DIVIDE: readonly number[] = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10];
+export const ENHANCE_MERMAID_DIVIDE: readonly number[] = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2];
 /** 디자인어 Lv.Max — 위 나눗셈이 이어지는 상대 차례 수. 다시 걸리면 턴을 더하고 최대 ENHANCE_DIVISOR_MAX_TURNS */
-export const ENHANCE_MERMAID_DIVIDE_TURNS: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
-/** 효과 감소(÷N, "반감 효과")가 쌓일 수 있는 최대 턴 수(5차 표 — 4차 표는 20) */
-export const ENHANCE_DIVISOR_MAX_TURNS = 5;
+export const ENHANCE_MERMAID_DIVIDE_TURNS: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+/** 효과 감소(÷N, "반감 효과")가 쌓일 수 있는 최대 턴 수(6차 표 — 5차 표는 5, 4차 표는 20) */
+export const ENHANCE_DIVISOR_MAX_TURNS = 3;
 /**
  * 디자인어 Lv.Max — 나를 노리는 상대의 기술(특허랑이 · 디자인어의 배율 나누기 · 효과 ÷10)을 이 확률(%)로 피한다.
  * 쓴 순간부터 **내 다음 차례가 올 때까지** 이어지고(개인전이면 같은 턴의 내 뒤 사람들 · 다음 턴의 내 앞 사람들), 공격마다 따로 굴린다. 0이면 없다.
  */
 export const ENHANCE_MERMAID_EVADE_PCT: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20];
-/** 실용신양 — 내 카드 넷 중 무작위 하나에 더하는 경험치(배율 무관 — 아래 중첩 배수만 곱한다) */
-export const ENHANCE_SHEEP_EXP: readonly number[] = [1, 2, 4, 6, 8, 10, 10, 10, 10, 10, 20];
+/**
+ * 실용신양 — 내 카드 넷 중 무작위 하나에 더하는 경험치(배율 무관 — 아래 중첩 배수만 곱한다).
+ * 6차 표는 초반을 크게 준다(10~18 — 임계값 10인 카드면 대략 한 레벨). 이보다 작으면 공격 한 번을 포기하고 키울 가치가 없다.
+ */
+export const ENHANCE_SHEEP_EXP: readonly number[] = [10, 12, 14, 16, 18, 9, 9, 10, 10, 11, 12];
 /** 실용신양 Lv.6부터 — 위 경험치에 곱하는 "경험치 중첩 배수"(그 한 번의 곱 — 쌓이지 않는다). Lv.1~5는 ×1 */
-export const ENHANCE_SHEEP_EXP_STACK: readonly number[] = [1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 10];
+export const ENHANCE_SHEEP_EXP_STACK: readonly number[] = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3];
 
 // ─── 지속 효과와 그것을 줄이는 효과. **모두 배율(디자인어 · Max 별도 배수)과 무관하다** ───────────
 // 표의 Infinity는 "완전 초기화·정화"다(남은 턴을 통째로 지운다).
 
 /** 실용신양 Lv.6부터 — 내 다른 카드 중 쿨타임이 걸린 무작위 카드의 쿨타임을 이만큼 줄인다(Max는 초기화) */
-export const ENHANCE_SHEEP_COOLDOWN_CUT: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 2, 2, 3, Infinity];
+export const ENHANCE_SHEEP_COOLDOWN_CUT: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 2, Infinity];
 /** 실용신양 Lv.6부터 — 위 쿨타임 감소를 받는 카드 수(Max 두 장) */
 export const ENHANCE_SHEEP_COOLDOWN_CARDS: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2];
 /** 상표토끼 Lv.6부터 — 나에게 걸린 부정한 효과(효과 감소 ÷N · 출혈) 중 무작위 하나의 남은 턴을 이만큼 줄인다(Max는 정화) */
-export const ENHANCE_RABBIT_CLEANSE: readonly number[] = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, Infinity];
+export const ENHANCE_RABBIT_CLEANSE: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 2, 2, 3, Infinity];
 /** 상표토끼 — 지속 회복에 더하는 턴 수(최대 ENHANCE_REGEN_MAX_TURNS) */
-export const ENHANCE_RABBIT_REGEN_TURNS: readonly number[] = [1, 2, 3, 4, 5, 5, 5, 5, 5, 5, 10];
-/** 상표토끼 Lv.6부터 — "체력 회복 중첩"에 더하는 수(쓸 때마다 쌓여 최대 ENHANCE_STACK_MAX). 지속 회복 한 턴의 양 = 32 × 중첩 */
-export const ENHANCE_RABBIT_REGEN_STACK: readonly number[] = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 10];
+export const ENHANCE_RABBIT_REGEN_TURNS: readonly number[] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4];
+/** 상표토끼 Lv.6부터 — "체력 회복 중첩"에 더하는 수(쓸 때마다 쌓여 최대 ENHANCE_STACK_MAX). 지속 회복 한 턴의 양 = 4 × 중첩 */
+export const ENHANCE_RABBIT_REGEN_STACK: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2];
 /** 특허랑이 — 상대에게 쌓는 출혈 턴 수(최대 ENHANCE_BLEED_MAX_TURNS) */
-export const ENHANCE_TIGER_BLEED_TURNS: readonly number[] = [1, 2, 4, 6, 8, 10, 10, 10, 10, 10, 20];
-/** 특허랑이 Lv.6부터 — 상대의 "출혈 누적 계수"에 더하는 수(쌓여 최대 ENHANCE_STACK_MAX). 출혈 한 턴의 양 = 80 × (1 + 0.2 × 계수) */
-export const ENHANCE_TIGER_BLEED_STACK: readonly number[] = [0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 10];
-/** 특허랑이 Lv.6부터 — 상대의 회복 효율을 이만큼(%) 깎는다(상대의 다음 1턴). 100이면 회복 금지 */
-export const ENHANCE_TIGER_HEAL_CUT: readonly number[] = [0, 0, 0, 0, 0, 10, 20, 30, 50, 80, 100];
+export const ENHANCE_TIGER_BLEED_TURNS: readonly number[] = [1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4];
+/** 특허랑이 Lv.6부터 — 상대의 "출혈 누적 계수"에 더하는 수(쌓여 최대 ENHANCE_STACK_MAX). 출혈 한 턴의 양 = 15 × (1 + 0.2 × 계수) */
+export const ENHANCE_TIGER_BLEED_STACK: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2];
+/**
+ * 특허랑이 Lv.6부터 — 상대의 회복 효율을 이만큼(%) 깎는다(상대의 다음 1턴). 100이면 회복 금지.
+ * 6차 표는 Lv.6에서 더 세게(−20%) 시작해 긴 판에서 회복이 공격을 따라잡지 못하게 하되, 상표토끼를 통째로 지우지 않게 Max도 −60%에서 멈춘다.
+ */
+export const ENHANCE_TIGER_HEAL_CUT: readonly number[] = [0, 0, 0, 0, 0, 20, 25, 30, 35, 40, 60];
 /** 회복 효율 감소가 이어지는 상대 차례 수 */
 export const ENHANCE_HEAL_CUT_TURNS = 1;
-/** 지속 회복 · 출혈이 쌓일 수 있는 최대 턴 수 — 넘는 몫은 버린다 */
-export const ENHANCE_REGEN_MAX_TURNS = 20;
-export const ENHANCE_BLEED_MAX_TURNS = 40;
-/** 회복 중첩 · 출혈 누적 계수가 쌓일 수 있는 최대 값 */
-export const ENHANCE_STACK_MAX = 20;
+/** 지속 회복 · 출혈이 쌓일 수 있는 최대 턴 수 — 넘는 몫은 버린다(6차 표 — 5차 표는 20 · 40) */
+export const ENHANCE_REGEN_MAX_TURNS = 8;
+export const ENHANCE_BLEED_MAX_TURNS = 12;
+/** 회복 중첩 · 출혈 누적 계수가 쌓일 수 있는 최대 값(6차 표 — 5차 표는 20) */
+export const ENHANCE_STACK_MAX = 10;
 /**
- * 지속 효과 한 턴의 양 — 중첩(계수)이 없으면 낮은 값(Lv.1 기준: 회복 2 · 출혈 10), 생기면(Lv.6+에 맞았다) 높은 값(Lv.5 기준: 32 · 80)에서 센다.
- * 회복 = 32 × 중첩, 출혈 = 80 + 0.2 × 계수 × 80.
+ * 지속 효과 한 턴의 양 — 중첩(계수)이 없으면 낮은 값(회복 4 · 출혈 12), 생기면(Lv.6+에 맞았다) 높은 값에서 센다.
+ * 회복 = 4 × 중첩(최대 40), 출혈 = 15 × (1 + 0.2 × 계수)(최대 45) — 기술 한 번보다 작게 둔 "보조" 효과다
+ * (5차 표는 회복 32 × 중첩 · 출혈 80 × (1 + 0.2 × 계수)라 최대 640 · 400이 됐다).
  */
-export const ENHANCE_REGEN_TICK = { low: 2, high: 32 } as const;
-export const ENHANCE_BLEED_TICK = { low: 10, high: 80, rate: 0.2 } as const;
+export const ENHANCE_REGEN_TICK = { low: 4, high: 4 } as const;
+export const ENHANCE_BLEED_TICK = { low: 12, high: 15, rate: 0.2 } as const;
 /** 지속 회복 한 턴의 양(중첩 → 양) */
 export function enhanceRegenTick(stack: number): number {
   return stack > 0 ? ENHANCE_REGEN_TICK.high * stack : ENHANCE_REGEN_TICK.low;
@@ -133,19 +159,20 @@ export function enhanceBleedTick(stack: number): number {
 export const ENHANCE_RESERVED_DRAW_CAP = 512;
 
 /**
- * 기본 쿨타임(내 차례 수) — Lv.3부터 +1, Lv.5에서 또 +1, **Lv.Max에서 또 +1**(2026-10-29 요청 — Lv.5~10의 2·3턴이 Max에서 3·4턴).
- * Lv.6~10 사이에서는 늘지 않는다.
+ * 기본 쿨타임(내 차례 수) — **승격 때만** 오른다: 금 등급(Lv.6)에서 +1, 무지개 등급(Lv.Max)에서 또 +1(6차 표 — 2026-10-31).
+ * 실용신양 · 상표토끼 0 / 1 / 2, 디자인어 · 특허랑이 1 / 2 / 3. 효과가 완만하게 오르는 표에서 레벨업과 쿨타임 증가가 겹치면
+ * "레벨이 올랐는데 턴당 효과가 줄어드는 레벨"이 생겨서다(5차 표는 Lv.3 · Lv.5 · Max에서 하나씩 올랐다).
  */
 const ENHANCE_COOLDOWN_BASE: Record<Animal, number> = { sheep: 0, rabbit: 0, mermaid: 1, tiger: 1 };
 
 /** 이 레벨의 카드를 쓴 뒤 못 쓰는 내 차례 수 */
 export function enhanceCooldown(animal: Animal, level: number): number {
-  return ENHANCE_COOLDOWN_BASE[animal] + (level >= 3 ? 1 : 0) + (level >= 5 ? 1 : 0) + (level >= ENHANCE_MAX_LEVEL ? 1 : 0);
+  return ENHANCE_COOLDOWN_BASE[animal] + (level >= ENHANCE_STEP_LEVEL ? 1 : 0) + (level >= ENHANCE_MAX_LEVEL ? 1 : 0);
 }
 
 /**
  * 한 차례에 쓸 수 있는 기술 수 — 방 규칙(settings.skillGrowth*)대로 N턴마다 하나씩 늘어 최대 M장(2026-10-30에 방 만들기 옵션이 됐다 —
- * 기본은 그 전 규칙 그대로 15턴마다 · 최대 3장: 1~15턴 1장 · 16~30턴 2장 · 31턴부터 3장). 끄면 언제나 1장.
+ * 기본은 12턴마다 · 최대 2장: 1~12턴 1장 · 13턴부터 2장(2026-10-31 — 그 전 기본은 15턴마다 · 최대 3장)). 끄면 언제나 1장.
  * 같은 카드는 한 차례에 두 번 못 쓴다 — 쓰는 순간 쿨타임이 1 이상으로 서고, 차례가 끝나야 줄어든다(advanceTurn). 그래서 4장이 끝이다.
  */
 export function enhanceSkillsPerTurn(
@@ -231,9 +258,9 @@ export function enhanceAmount(base: number, mult: number, divisor: number = 1): 
 }
 
 /**
- * 디자인어를 쓴 뒤의 배율. 배율이 걸려 있지 않으면(1) 그 레벨의 배율이 되고, 이미 걸려 있으면 그 위에 증가량을 더하거나(Lv.1~5)
- * 곱한다(Lv.6+ — 누적 시 ×2 … Max ×20). 다만 **새로 거는 것보다 작아지지는 않는다** — ×2가 걸린 채 Lv.4(×5, 겹치면 +4)를 쓰면 ×6,
- * Lv.1(×2, +1)이면 ×3, ×2가 걸린 채 Lv.6(×5, 겹치면 ×2)이면 ×5, ×10이 걸린 채 Lv.7(×5, 겹치면 ×3)이면 ×30이다.
+ * 디자인어를 쓴 뒤의 배율. 배율이 걸려 있지 않으면(1) 그 레벨의 배율이 되고, 이미 걸려 있으면 그 위에 증가량을 더하거나
+ * 곱한다(ENHANCE_MERMAID_STACK_MULTIPLY_FROM부터 — 6차 표는 곱하는 레벨이 없다). 다만 **새로 거는 것보다 작아지지는 않는다** —
+ * ×2가 걸린 채 Lv.1(×2, 겹치면 +1)이면 ×3, ×2가 걸린 채 Lv.6(×3, +1)이면 ×3, ×3이 걸린 채 Max(×3, +2)면 ×5다.
  * Lv.Max의 별도 배수는 디자인어에 걸리지 않는다(5차 표 — 배율을 받는 것은 장수 · 즉시 회복 · 공격력뿐).
  */
 export function enhanceMermaidAfter(pending: number, level: number): number {
@@ -330,24 +357,29 @@ export function cloneEnhanceStatus(e: EnhanceStatus): EnhanceStatus {
 
 /**
  * 카드 강화 모드의 기본 규칙 — 목표 점수 500(시작 체력 500 · 1000이면 승리 · 0이면 패배, 턴 제한 없음) ·
- * 축제 2턴부터 1회 · 2턴마다 +1회 · 뽑기 15초 · 행동 10초 · 고를 게 없을 때 3초(2026-10-30 요청 — 그 전에는 목표 200 · 축제 6턴 · 4턴마다).
- * 혼자 놀기 폼의 게임 규칙에서 바꿀 수 있다
- * (clampEnhanceSettings를 거친다 — 목표 점수 상한은 2500).
+ * 축제 1턴부터 4회 · 4턴마다 +4회 · 기술 12턴마다 +1장(최대 2장) · 뽑기 15초 · 행동 10초 · 고를 게 없을 때 3초
+ * (축제 한 번은 같은 날 3회 → 4회 — 판 길이 중앙값 15~16턴 조정).
+ * 혼자 놀기 폼 · 개인전 강화 폼의 게임 규칙에서 바꿀 수 있다(clampEnhanceSettings를 거친다 — 목표 점수 상한은 2500).
+ *
+ * 축제 · 기술 장수는 6차 표와 짝이다(2026-10-31, ENHANCE_BALANCE_PROPOSAL.md §5). 임계값을 그대로 두므로 초반 레벨업을 앞당길 손잡이는
+ * 경험치 수입(축제)뿐이라 축제를 1턴부터 크게 열고 늘어나는 주기는 늦췄다(후반 수입이 가파르게 늘면 다시 지수형이 된다). 로그형 표는
+ * 숫자가 폭발하지 않아 판을 끝낼 힘이 모자라므로 그 몫은 "한 차례 기술 2장"을 12턴부터 주어 메우고, 셋째 장은 두지 않는다.
+ * (그 전: 축제 2턴부터 1회 · 2턴마다 · 기술 15턴마다 최대 3장 — 2026-10-30, 그보다 전에는 목표 200 · 축제 6턴 · 4턴마다)
  */
 export const ENHANCE_SETTINGS: GameSettings = {
   firstTeam: 'A',
   targetScore: 500,
-  festivalTurn: 2,
-  festivalDrawCount: 1,
-  festivalDrawIncreaseInterval: 2,
+  festivalTurn: 1,
+  festivalDrawCount: 4,
+  festivalDrawIncreaseInterval: 4,
   drawTimeSec: 15,
   actionTimeSec: 10,
   noActionTimeSec: 3,
   pauseMaxCount: 3,
   pauseMaxMin: 5,
   skillGrowth: true,
-  skillGrowthTurns: 15,
-  skillGrowthMax: 3,
+  skillGrowthTurns: 12,
+  skillGrowthMax: 2,
 };
 
 /**

@@ -17,6 +17,8 @@ import {
   PLACES,
   PLACE_ANIMALS,
   enhanceValue,
+  enhanceSheepExp,
+  enhanceSheepExpStack,
   opponentsOf,
 } from 'shared';
 import type { Animal, GameState, Place, SideId } from 'shared';
@@ -57,7 +59,7 @@ function pickSkill(state: GameState, side: SideId, rng: () => number): Animal | 
   const gain = (a: Animal): number => {
     if (a === 'tiger') return Math.min(value(a), foeHp);
     if (a === 'rabbit') return value(a);
-    if (a === 'sheep') return value(a) * 0.6;
+    if (a === 'sheep') return value(a) + enhanceSheepExp(levelOf(state, side, a)) * enhanceSheepExpStack(levelOf(state, side, a)); // room.ts와 같다
     return mult === 1 ? 1.5 : 0;
   };
   let best = options[0];

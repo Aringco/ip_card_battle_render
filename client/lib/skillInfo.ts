@@ -89,24 +89,26 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
       return { ...base, effect: `즉시 내 체력 +${v},\n지속 회복 +${regen}턴(턴당 +${ENHANCE_REGEN_TICK.low})\n${cdLine}` };
     }
     case 'mermaid': {
-      const stack = ENHANCE_MERMAID_STACK[level - 1];
-      const multiplies = level >= ENHANCE_MERMAID_STACK_MULTIPLY_FROM;
-      if (!multiplies) return { ...base, effect: `다음 기술의 효과 ×${v}\n(겹쳐 쓰면 +${stack})\n${cdLine}` };
+      const stackText = mermaidStackText(level);
+      // 상대 배율 나누기가 붙는 레벨(Lv.6+)부터 둘째 줄에 상대에게 거는 것을 쓴다 — "곱하기가 시작되는 레벨"과는 따로 본다(6차 표는 곱하는 레벨이 없다)
+      if (enhanceMermaidOppDivide(level) <= 1) return { ...base, effect: `다음 기술의 효과 ×${v}\n(겹쳐 쓰면 ${stackText})\n${cdLine}` };
       const divide = enhanceMermaidDivide(level);
       const evade = enhanceMermaidEvadePct(level);
       if (divide > 1) {
         return {
           ...base,
-          effect: `다음 기술 ×${v} (겹치면 ×${stack}), ${oppMultiplierText(level)},\n상대 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴), 회피 ${evade}%\n${cdLine}`,
+          effect: `다음 기술 ×${v} (겹치면 ${stackText}), ${oppMultiplierText(level)},\n상대 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴), 회피 ${evade}%\n${cdLine}`,
         };
       }
-      return { ...base, effect: `다음 기술 ×${v} (겹치면 ×${stack}),\n${oppMultiplierText(level)}(1턴)\n${cdLine}` };
+      return { ...base, effect: `다음 기술 ×${v} (겹치면 ${stackText}),\n${oppMultiplierText(level)}(1턴)\n${cdLine}` };
     }
     case 'tiger': {
       const bleed = enhanceTigerBleedTurns(level);
       const stack = enhanceTigerBleedStack(level);
       const cut = enhanceTigerHealCut(level);
-      if (enhanceTigerPurges(level)) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack}, 회복 금지,\n상대의 이로운 효과 모두 제거\n${cdLine}` };
+      if (enhanceTigerPurges(level)) {
+        return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack}, ${cut >= 100 ? '회복 금지' : `회복 −${cut}%`},\n상대의 이로운 효과 모두 제거\n${cdLine}` };
+      }
       if (cut > 0) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack},\n상대 회복 −${cut}%(1턴)\n${cdLine}` };
       return { ...base, effect: `상대 체력 −${v},\n출혈 +${bleed}턴(턴당 −${ENHANCE_BLEED_TICK.low})\n${cdLine}` };
     }
@@ -122,6 +124,12 @@ function cutText(turns: number, all: string): string {
 function cooldownCutText(level: number): string {
   const cards = enhanceSheepCooldownCards(level);
   return `${cutText(enhanceSheepCooldownCut(level), '초기화')}${cards > 1 ? `(${cards}장)` : ''}`;
+}
+
+/** 디자인어를 겹쳐 쓸 때 배율이 커지는 양 — "+N"(더하기) · "×N"(ENHANCE_MERMAID_STACK_MULTIPLY_FROM부터 곱하기) */
+function mermaidStackText(level: number): string {
+  const stack = ENHANCE_MERMAID_STACK[level - 1];
+  return `${level >= ENHANCE_MERMAID_STACK_MULTIPLY_FROM ? '×' : '+'}${stack}`;
 }
 
 /** 디자인어 Lv.6+의 상대 배율 문구 — "상대 배율 ÷N" · Max "상대 배율 제거" */
@@ -149,11 +157,9 @@ export function describeEnhanceSkillShort(animal: Animal, level: number): string
       return `체력이 ${v}만큼 오릅니다, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(${tick}, 최대 ${ENHANCE_REGEN_MAX_TURNS}턴)${stack > 0 ? `, 회복 중첩 +${stack}(최대 ${ENHANCE_STACK_MAX})` : ''}${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
     }
     case 'mermaid': {
-      const stack = ENHANCE_MERMAID_STACK[level - 1];
-      const multiplies = level >= ENHANCE_MERMAID_STACK_MULTIPLY_FROM;
       const divide = enhanceMermaidDivide(level);
       const evade = enhanceMermaidEvadePct(level);
-      return `다음 기술의 효과가 ${v}배가 됩니다(겹쳐 쓰면 ${multiplies ? '×' : '+'}${stack})${multiplies ? `, ${oppMultiplierText(level)}` : ''}${divide > 1 ? `, 상대 기술 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴, 최대 ${ENHANCE_DIVISOR_MAX_TURNS}턴)` : ''}${evade > 0 ? `, 내 다음 차례까지 상대 기술을 ${evade}% 확률로 회피` : ''}.${cdText}`;
+      return `다음 기술의 효과가 ${v}배가 됩니다(겹쳐 쓰면 ${mermaidStackText(level)})${enhanceMermaidOppDivide(level) > 1 ? `, ${oppMultiplierText(level)}` : ''}${divide > 1 ? `, 상대 기술 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴, 최대 ${ENHANCE_DIVISOR_MAX_TURNS}턴)` : ''}${evade > 0 ? `, 내 다음 차례까지 상대 기술을 ${evade}% 확률로 회피` : ''}.${cdText}`;
     }
     case 'tiger': {
       const stack = enhanceTigerBleedStack(level);

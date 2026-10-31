@@ -57,28 +57,28 @@ describe('개인전 강화 — 대상', () => {
     expect(needsTarget({ mode: 'team', enhance: s.enhance }, 'mermaid', 11)).toBe(false);
 
     const me = toChoice(s);
-    setLevel(s, me, 'mermaid', 9); // 상대 배율 ÷5
+    setLevel(s, me, 'mermaid', 9); // 상대 배율 ÷3
     const [foe, other] = s.turnOrder.filter(x => x !== me);
-    s.teams[foe].pendingMultiplier = 5;
-    s.teams[other].pendingMultiplier = 5;
+    s.teams[foe].pendingMultiplier = 6;
+    s.teams[other].pendingMultiplier = 6;
     expect(processSkillChoice(s, 'mermaid').events).toEqual([]);
 
     const ev = processSkillChoice(s, 'mermaid', foe).events[0];
     expect(ev).toMatchObject({ type: 'skillApplied', target: foe, oppMultiplierCut: 4 });
-    expect(ev).not.toHaveProperty('oppDivisor'); // 효과 ÷10은 Lv.Max만
-    expect(s.teams[foe].pendingMultiplier).toBe(1);
+    expect(ev).not.toHaveProperty('oppDivisor'); // 효과 감소(÷N)는 Lv.Max만
+    expect(s.teams[foe].pendingMultiplier).toBe(2);
     expect(s.enhance!.divisors[foe]).toBe(1);
     // 고르지 않은 사람에게는 아무 일도 없다
-    expect(s.teams[other].pendingMultiplier).toBe(5);
+    expect(s.teams[other].pendingMultiplier).toBe(6);
   });
 
   it('특허랑이의 출혈은 고른 사람에게만 걸리고, 그 사람의 차례가 끝날 때 든다', () => {
     const s = make(3);
     const me = toChoice(s);
-    setLevel(s, me, 'tiger', 1); // −10 · 출혈 1턴(턴당 10)
+    setLevel(s, me, 'tiger', 1); // −42 · 출혈 1턴(턴당 12)
     const foe = s.turnOrder.find(x => x !== me)!;
     processSkillChoice(s, 'tiger', foe);
-    expect(s.enhance!.bleed[foe]).toMatchObject({ turns: 1, amount: 10 });
+    expect(s.enhance!.bleed[foe]).toMatchObject({ turns: 1, amount: 12 });
     const hpBefore = s.teams[foe].hp;
     // 차례가 foe에게 올 때까지 넘긴다 — foe의 차례가 끝나는 순간 한 번
     while (s.activeTeam !== foe) {
@@ -88,8 +88,8 @@ describe('개인전 강화 — 대상', () => {
     expect(s.teams[foe].hp).toBe(hpBefore);
     toChoice(s);
     const tick = ofType(processPass(s).events, 'enhanceTick');
-    expect(tick).toEqual([expect.objectContaining({ team: foe, kind: 'bleed', amount: 10 })]);
-    expect(s.teams[foe].hp).toBe(hpBefore - 10);
+    expect(tick).toEqual([expect.objectContaining({ team: foe, kind: 'bleed', amount: 12 })]);
+    expect(s.teams[foe].hp).toBe(hpBefore - 12);
   });
 });
 

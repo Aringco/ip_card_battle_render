@@ -206,10 +206,11 @@ export const PLAY_ASSETS = {
 /**
  * 기술 카드 그림 — 카드 강화의 등급마다 한 벌이다(2026-10-31). 원본은 `assets-src/skills/<벌>/`, 다시 만들려면
  *   cd client && node scripts/makeSkillArt.mjs
- * 쇠(Lv.1~5)와 일반 판(등급 없음 = null)은 v1, 금(Lv.6~10)은 v2, 무지개(Max)는 vmax — **승격하는 순간 그림이 바뀐다**
- * (SkillChoiceBar가 승격 연출의 빛이 카드를 다 덮을 때까지 옛 그림을 붙들고 있다가 바꾼다).
+ * 브론즈(Lv.1~3)와 일반 판(등급 없음 = null)은 v1, 실버 · 골드(Lv.4~10)는 v2, 무지개(Max)는 vmax — **승격하는 순간 그림이 바뀐다**
+ * (SkillChoiceBar가 승격 연출의 빛이 카드를 다 덮을 때까지 옛 그림을 붙들고 있다가 바꾼다). 그림은 세 벌인데 등급이 넷이라 실버 · 골드가 v2를 함께 쓴다
+ * (v2는 처음 "Lv.5~10, 승격 시 변경"으로 받은 그림이다 — 첫 승격(Lv.4)에서 바뀌는 쪽이 그 뜻에 가깝다).
  */
-const SKILL_ART_SET: Record<EnhanceCardTier, string> = { iron: 'v1', gold: 'v2', rainbow: 'vmax' };
+const SKILL_ART_SET: Record<EnhanceCardTier, string> = { bronze: 'v1', silver: 'v2', gold: 'v2', rainbow: 'vmax' };
 export function skillArtSrc(animal: Animal, tier: EnhanceCardTier | null): string {
   return `/skills/${tier ? SKILL_ART_SET[tier] : 'v1'}/${animal}_skill.webp`;
 }

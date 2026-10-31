@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, EnhanceCardTier, SideId } from 'shared';
-import { ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL, enhanceCardTier, enhanceLevelLabel } from 'shared';
+import { ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL, ENHANCE_SILVER_FROM, enhanceCardTier, enhanceLevelLabel } from 'shared';
 import { cooldownOf, cooldownShownOf, finishingMove, previewSkill } from '@/lib/skills';
 import { SKILL_TITLE, SKILL_COLOR, describeEnhanceSkill, describeSkill } from '@/lib/skillInfo';
 import { useGuideEnabled } from '@/lib/guideSettings';
@@ -185,7 +185,7 @@ function LevelUpBurst({ level }: { level: number }) {
   );
 }
 
-// [승격] — 등급(쇠 → 금 → 무지개, shared의 enhanceCardTier)이 바뀐 순간의 폭죽. 레벨업(22조각)보다 조각이 훨씬 많고 카드 밖으로 멀리 퍼진다.
+// [승격] — 등급(브론즈 → 실버 → 골드 → 무지개, shared의 enhanceCardTier)이 바뀐 순간의 폭죽. 레벨업(22조각)보다 조각이 훨씬 많고 카드 밖으로 멀리 퍼진다.
 // 가운데에서 크게 한 번 터진 뒤, 카드 위쪽 세 곳에서 작은 폭죽이 이어 터진다(--ox/--oy가 터지는 자리). 모양은 레벨업과 같이 미리 정해 둔다.
 const PROMO_PIECES = [
   ...Array.from({ length: 44 }, (_, i) => {
@@ -206,12 +206,16 @@ const PROMO_PIECES = [
   ),
 ];
 
+/** 등급마다 깔리는 홀로 한 겹(globals.css) */
+const TIER_HOLO: Record<EnhanceCardTier, string> = { bronze: 'enh-sheen', silver: 'enh-silver', gold: 'enh-gold', rainbow: 'enh-rainbow' };
+
 /** 승격 연출 한 번의 길이 — globals.css의 .enh-promo-* 애니메이션(2600ms)과 같은 값 */
 const PROMO_MS = 2600;
 
 // 승격하는 동안 카드 뒤로 번지는 빛 그림자의 색 — 금빛은 금색끼리, 무지개는 색상환을 돌며 바뀐다(키프레임마다 한 칸씩)
 const PROMO_SHADOW: Record<EnhanceCardTier, string[]> = {
-  iron: ['rgba(200, 205, 212, 0.9)'],
+  bronze: ['rgba(214, 140, 80, 0.9)'],
+  silver: ['rgba(226, 232, 240, 0.95)', 'rgba(186, 214, 255, 0.9)', 'rgba(255, 255, 255, 0.95)'],
   gold: ['rgba(255, 200, 60, 0.95)', 'rgba(255, 228, 130, 0.9)', 'rgba(255, 176, 32, 0.95)'],
   rainbow: ['hsla(0, 100%, 70%, 0.95)', 'hsla(48, 100%, 65%, 0.95)', 'hsla(140, 90%, 62%, 0.95)', 'hsla(200, 100%, 68%, 0.95)', 'hsla(275, 100%, 72%, 0.95)'],
 };
@@ -231,10 +235,14 @@ const PROMO_SPARKS = Array.from({ length: 26 }, (_, i) => {
   };
 });
 
-// 승격 폭죽 조각의 색 — 금빛 승격은 금 · 흰빛 다섯 가지를 돌고, 무지개 승격은 색상환을 돈다(k는 조각마다 정해 둔 번호)
+// 승격 폭죽 조각의 색 — 금빛 승격은 금 · 흰빛 다섯 가지, 은빛 승격은 은 · 푸른 흰빛 다섯 가지를 돌고,
+// 무지개 승격은 색상환을 돈다(k는 조각마다 정해 둔 번호)
 const PROMO_GOLD_COLORS = ['#ffd54a', '#fff3b0', '#ffb300', '#ffffff', '#ffe082'];
+const PROMO_SILVER_COLORS = ['#e5e7eb', '#ffffff', '#cbd5e1', '#dbeafe', '#f1f5f9'];
 function promoPieceColor(tier: EnhanceCardTier, k: number): string {
-  return tier === 'rainbow' ? `hsl(${(k * 37) % 360} 100% 72%)` : PROMO_GOLD_COLORS[k % PROMO_GOLD_COLORS.length];
+  if (tier === 'rainbow') return `hsl(${(k * 37) % 360} 100% 72%)`;
+  const colors = tier === 'silver' ? PROMO_SILVER_COLORS : PROMO_GOLD_COLORS;
+  return colors[k % colors.length];
 }
 
 /**
@@ -349,7 +357,7 @@ const PROMO_HOLD_MS = Math.round(PROMO_MS * 0.16);
 
 /**
  * 카드 강화 판 — 레벨이 오른 카드마다 파티클 번호를 하나씩 올린다(그 번호가 LevelUpBurst · PromotionBurst의 key).
- * 등급이 바뀌었으면(Lv.5 → 6 · Lv.10 → Max — 한 번에 여러 단계를 건너 쇠 → 무지개로 가도) 레벨업 대신 승격 연출이다.
+ * 등급이 바뀌었으면(Lv.3 → 4 · Lv.7 → 8 · Lv.10 → Max — 한 번에 여러 단계를 건너도) 레벨업 대신 승격 연출이다.
  * 보는 편이 바뀌면(관전자 화면의 차례 교대) 비교하지 않고 기준만 새로 잡는다 — 남의 레벨을 "올랐다"고 터뜨리지 않게.
  * 레벨은 화면상 경험치(withDisplayedExp)로 계산된 값이라, 카드가 내 칸에 도착한 뒤에 터진다.
  */
@@ -398,9 +406,9 @@ function titleEmVar(title: string, level: number, over: number): React.CSSProper
   return { ['--title-em' as string]: (maxLineEm(`[${title}]`) + maxLineEm(tail) * 0.82).toFixed(2) };
 }
 
-/** 금색 등급 안에서의 세기 — 0 = Lv.6 … 1 = Max(쇠 등급은 0). .enh-gold의 짙기 · 속도가 이 값을 따른다. */
-function enhanceGoldStep(level: number): number {
-  return Math.max(0, (level - ENHANCE_GOLD_FROM) / (ENHANCE_MAX_LEVEL - ENHANCE_GOLD_FROM));
+/** 등급 안에서의 세기 — 0 = 그 등급의 첫 레벨 … 1 = 마지막 레벨. 금빛(--gold, Lv.8~10) · 은빛(--silver, Lv.4~7) 홀로의 짙기 · 속도가 이 값을 따른다. */
+function tierStep(level: number, from: number, to: number): number {
+  return Math.min(1, Math.max(0, (level - from) / (to - from)));
 }
 
 // 줄바꿈은 여기서 정해진 그대로 그려진다(CSS가 `white-space: pre`) — 길면 접히는 게
@@ -586,7 +594,8 @@ export function SkillChoiceBar({
                 enhance
                   ? ({
                       ['--enh' as string]: enhStep.toFixed(3),
-                      ['--gold' as string]: enhanceGoldStep(preview.level).toFixed(3),
+                      ['--gold' as string]: tierStep(preview.level, ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL - 1).toFixed(3),
+                      ['--silver' as string]: tierStep(preview.level, ENHANCE_SILVER_FROM, ENHANCE_GOLD_FROM - 1).toFixed(3),
                     } as React.CSSProperties)
                   : undefined
               }
@@ -601,22 +610,13 @@ export function SkillChoiceBar({
                   레벨이 모자란 것이 아니라 "지금은 아닌" 것이라 "레벨 부족"이 아니다. */}
               <div
                 className={`skill-choice-bg play-frame-inset absolute ${eligible && open(animal) ? '' : 'skill-choice-bg-disabled'}`}
-                // 그림은 등급마다 한 벌(쇠 · 일반 판 v1 / 금 v2 / 무지개 vmax — lib/playAssets.ts의 skillArtSrc)
+                // 그림은 등급마다 한 벌(브론즈 · 일반 판 v1 / 실버 · 골드 v2 / 무지개 vmax — lib/playAssets.ts의 skillArtSrc)
                 style={{ backgroundImage: `url(${skillArtSrc(animal, tier)})` }}
               />
-              {/* 카드 강화 — 등급(tier)마다 홀로가 한 겹씩 더해진다(쿨타임 중엔 옅게, globals.css의 .enh-*):
-                  쇠(Lv.1~5) 밝은 빛 + 빛 반사 띠 → 금(Lv.6~10) 금빛 광채 추가 → 무지개(Max) 무지개 띠 추가 */}
+              {/* 카드 강화 — 홀로(빛 효과)는 등급마다 **한 겹뿐이다**(쿨타임 중엔 옅게, globals.css의 .enh-*):
+                  브론즈(Lv.1~3) 빛 반사 · 실버(Lv.4~7) 은빛 · 골드(Lv.8~10) 금빛 · 무지개(Max) 무지개빛 */}
               {tier && (
-                <>
-                  <div className={`enh-light play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
-                  <div className={`enh-sheen play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
-                  {tier !== 'iron' && (
-                    <div className={`enh-gold play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
-                  )}
-                  {tier === 'rainbow' && (
-                    <div className={`enh-rainbow play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
-                  )}
-                </>
+                <div className={`${TIER_HOLO[tier]} play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
               )}
               <div className="skill-choice-dim play-frame-inset absolute" />
               {/* 레벨이 있을 때는(활성) 이 자리에 "레벨 N 소모" 대신 실제 효과(카드 추가
