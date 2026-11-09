@@ -255,13 +255,29 @@ export function WaitingRoom({
 // ─── 방 코드 / 초대 링크 ──────────────────────────────────────────────────────
 
 function RoomCodeHeader({ roomId }: { roomId: string }) {
-  const [copied, setCopied] = useState<'code' | 'link' | 'fail' | null>(null);
+  const [copied, setCopied] = useState<'code' | 'link' | 'shared' | 'fail' | null>(null);
+  // 폰 — OS 공유 창(카카오톡 · 문자 · 메신저 …)으로 초대 링크를 보낸다(2026-11-02). navigator.share는 HTTPS(보안 컨텍스트)와
+  // 공유 창이 있는 기기에서만 있다 — 없으면(PC · http 접속) 지금처럼 복사한다. 서버 렌더와 어긋나지 않게 마운트 뒤에 판단한다.
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => {
+    setCanShare(typeof navigator.share === 'function' && window.matchMedia('(pointer: coarse)').matches);
+  }, []);
 
   useEffect(() => {
     if (copied === null) return;
     const t = setTimeout(() => setCopied(null), 2000);
     return () => clearTimeout(t);
   }, [copied]);
+
+  const shareLink = async () => {
+    try {
+      await navigator.share({ title: 'TUPD 초대', text: `TUPD 방에 초대합니다! 방 코드 ${roomId}`, url: inviteUrl(roomId) });
+      setCopied('shared');
+    } catch (e) {
+      // 공유 창을 닫은 것(AbortError)은 실패가 아니다. 그 밖의 실패는 복사로 대신한다.
+      if ((e as Error)?.name !== 'AbortError') void copy('link');
+    }
+  };
 
   const copy = async (what: 'code' | 'link') => {
     const ok = await copyText(what === 'code' ? roomId : inviteUrl(roomId));
@@ -274,10 +290,10 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
       <p className="waiting-code-id text-6xl font-bold text-green-700 tracking-widest">{roomId}</p>
       <div className="waiting-code-buttons flex flex-wrap gap-2 justify-center mt-3">
         <button
-          onClick={() => copy('link')}
+          onClick={() => (canShare ? void shareLink() : void copy('link'))}
           className="wood-button text-base px-4 py-2"
         >
-          🔗 초대 링크 복사
+          {canShare ? '🔗 초대 링크 보내기' : '🔗 초대 링크 복사'}
         </button>
         <button
           onClick={() => copy('code')}
@@ -289,7 +305,9 @@ function RoomCodeHeader({ roomId }: { roomId: string }) {
       <p className="waiting-code-hint text-base text-board-muted mt-2 h-6">
         {copied === 'link'
           ? '초대 링크를 복사했어요! 붙여넣기로 친구에게 보내세요.'
-          : copied === 'code'
+          : copied === 'shared'
+            ? '초대 링크를 보냈어요!'
+            : copied === 'code'
             ? '방 코드를 복사했어요!'
             : copied === 'fail'
               ? '복사에 실패했어요. 위 코드를 직접 알려주세요.'

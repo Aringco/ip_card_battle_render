@@ -82,7 +82,12 @@ export const PANEL_AREA: Record<string, string> = {
  * 팀전의 창 규칙 — 아래 → 위: 기술 카드 띠를 연다(위 → 아래로 닫는다) · 왼 → 오: 내 카드 상세(상대 상세가 열려 있으면 닫는다) ·
  * 오 → 왼: 상대 카드 상세(내 상세가 열려 있으면 닫는다) · 창이 열린 채 그 밖을 누르면 닫는다.
  */
-export function useSwipePanels(panel: SwipePanel | null, setPanel: (next: SwipePanel | null) => void) {
+export function useSwipePanels(
+  panel: SwipePanel | null,
+  setPanel: (next: SwipePanel | null) => void,
+  /** 상세 창에서 같은 쪽으로 한 번 더 민 손짓(카드 강화 — 그 편의 도토리 카드를 연다) */
+  onMore?: (panel: 'mine' | 'opp') => void,
+) {
   return useSwipeGestures({
     onSwipe: dir => {
       if (dir === 'up') {
@@ -91,9 +96,11 @@ export function useSwipePanels(panel: SwipePanel | null, setPanel: (next: SwipeP
         if (panel === 'cards') setPanel(null);
       } else if (dir === 'right') {
         if (panel === 'opp') setPanel(null);
+        else if (panel === 'mine') onMore?.('mine');
         else if (panel === null) setPanel('mine');
       } else {
         if (panel === 'mine') setPanel(null);
+        else if (panel === 'opp') onMore?.('opp');
         else if (panel === null) setPanel('opp');
       }
     },

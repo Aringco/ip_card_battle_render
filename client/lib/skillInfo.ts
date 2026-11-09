@@ -2,26 +2,22 @@
 import type { Animal } from 'shared';
 import {
   ENHANCE_BLEED_MAX_TURNS,
-  ENHANCE_BLEED_TICK,
   ENHANCE_DIVISOR_MAX_TURNS,
   ENHANCE_MERMAID_STACK,
   ENHANCE_MERMAID_STACK_MULTIPLY_FROM,
   ENHANCE_REGEN_MAX_TURNS,
-  ENHANCE_REGEN_TICK,
-  ENHANCE_STACK_MAX,
   enhanceCooldown,
+  enhanceDotTick,
   enhanceMermaidDivide,
   enhanceMermaidDivideTurns,
   enhanceMermaidEvadePct,
   enhanceMermaidOppDivide,
   enhanceRabbitCleanse,
-  enhanceRabbitRegenStack,
   enhanceRabbitRegenTurns,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
   enhanceSheepExpStack,
-  enhanceTigerBleedStack,
   enhanceTigerBleedTurns,
   enhanceTigerHealCut,
   enhanceTigerPurges,
@@ -82,11 +78,10 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
     }
     case 'rabbit': {
       const regen = enhanceRabbitRegenTurns(level);
-      const stack = enhanceRabbitRegenStack(level);
-      if (stack > 0) {
-        return { ...base, effect: `체력 +${v}, 지속 회복 +${regen}턴, 중첩 +${stack},\n부정 효과 ${cutText(enhanceRabbitCleanse(level), '정화')}\n${cdLine}` };
+      if (enhanceRabbitCleanse(level) > 0) {
+        return { ...base, effect: `체력 +${v}, 지속 회복 +${regen}턴(턴당 +${enhanceDotTick(v)}),\n부정 효과 ${cutText(enhanceRabbitCleanse(level), '정화')}\n${cdLine}` };
       }
-      return { ...base, effect: `즉시 내 체력 +${v},\n지속 회복 +${regen}턴(턴당 +${ENHANCE_REGEN_TICK.low})\n${cdLine}` };
+      return { ...base, effect: `즉시 내 체력 +${v},\n지속 회복 +${regen}턴(턴당 +${enhanceDotTick(v)})\n${cdLine}` };
     }
     case 'mermaid': {
       const stackText = mermaidStackText(level);
@@ -104,13 +99,13 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
     }
     case 'tiger': {
       const bleed = enhanceTigerBleedTurns(level);
-      const stack = enhanceTigerBleedStack(level);
+      const tick = enhanceDotTick(v);
       const cut = enhanceTigerHealCut(level);
       if (enhanceTigerPurges(level)) {
-        return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack}, ${cut >= 100 ? '회복 금지' : `회복 −${cut}%`},\n상대의 이로운 효과 모두 제거\n${cdLine}` };
+        return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴(턴당 −${tick}), ${cut >= 100 ? '회복 금지' : `회복 −${cut}%`},\n상대의 이로운 효과 모두 제거\n${cdLine}` };
       }
-      if (cut > 0) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴, 계수 +${stack},\n상대 회복 −${cut}%(1턴)\n${cdLine}` };
-      return { ...base, effect: `상대 체력 −${v},\n출혈 +${bleed}턴(턴당 −${ENHANCE_BLEED_TICK.low})\n${cdLine}` };
+      if (cut > 0) return { ...base, effect: `상대 −${v}, 출혈 +${bleed}턴(턴당 −${tick}),\n상대 회복 −${cut}%(1턴)\n${cdLine}` };
+      return { ...base, effect: `상대 체력 −${v},\n출혈 +${bleed}턴(턴당 −${tick})\n${cdLine}` };
     }
   }
 }
@@ -151,10 +146,8 @@ export function describeEnhanceSkillShort(animal: Animal, level: number): string
       return `다음 턴에 카드를 ${v}장 더 뽑습니다(배율은 장수에만), 무작위 카드 경험치 +${exp}${stack > 1 ? `(중첩 ×${stack})` : ''}${cdCut}.${cdText}`;
     }
     case 'rabbit': {
-      const stack = enhanceRabbitRegenStack(level);
       const cleanse = enhanceRabbitCleanse(level);
-      const tick = stack > 0 ? `턴당 ${ENHANCE_REGEN_TICK.high} × 중첩` : `턴당 +${ENHANCE_REGEN_TICK.low}`;
-      return `체력이 ${v}만큼 오릅니다, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(${tick}, 최대 ${ENHANCE_REGEN_MAX_TURNS}턴)${stack > 0 ? `, 회복 중첩 +${stack}(최대 ${ENHANCE_STACK_MAX})` : ''}${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
+      return `체력이 ${v}만큼 오릅니다, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(턴당 즉시 회복의 50%, 최대 ${ENHANCE_REGEN_MAX_TURNS}턴)${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
     }
     case 'mermaid': {
       const divide = enhanceMermaidDivide(level);
@@ -162,10 +155,8 @@ export function describeEnhanceSkillShort(animal: Animal, level: number): string
       return `다음 기술의 효과가 ${v}배가 됩니다(겹쳐 쓰면 ${mermaidStackText(level)})${enhanceMermaidOppDivide(level) > 1 ? `, ${oppMultiplierText(level)}` : ''}${divide > 1 ? `, 상대 기술 효과 ÷${divide}(${enhanceMermaidDivideTurns(level)}턴, 최대 ${ENHANCE_DIVISOR_MAX_TURNS}턴)` : ''}${evade > 0 ? `, 내 다음 차례까지 상대 기술을 ${evade}% 확률로 회피` : ''}.${cdText}`;
     }
     case 'tiger': {
-      const stack = enhanceTigerBleedStack(level);
       const cut = enhanceTigerHealCut(level);
-      const tick = stack > 0 ? `턴당 −${ENHANCE_BLEED_TICK.high} × (1 + ${ENHANCE_BLEED_TICK.rate} × 계수)` : `턴당 −${ENHANCE_BLEED_TICK.low}`;
-      return `상대 체력을 ${v}만큼 깎습니다, 출혈 +${enhanceTigerBleedTurns(level)}턴(${tick}, 최대 ${ENHANCE_BLEED_MAX_TURNS}턴)${stack > 0 ? `, 출혈 계수 +${stack}(최대 ${ENHANCE_STACK_MAX})` : ''}${cut > 0 ? `, 상대 회복 효율 −${cut}%(다음 1턴)` : ''}${enhanceTigerPurges(level) ? ', 상대의 이로운 효과 모두 제거' : ''}.${cdText}`;
+      return `상대 체력을 ${v}만큼 깎습니다, 출혈 +${enhanceTigerBleedTurns(level)}턴(턴당 공격력의 50%, 최대 ${ENHANCE_BLEED_MAX_TURNS}턴)${cut > 0 ? `, 상대 회복 효율 −${cut}%(다음 1턴)` : ''}${enhanceTigerPurges(level) ? ', 상대의 이로운 효과 모두 제거' : ''}.${cdText}`;
     }
   }
 }

@@ -68,7 +68,7 @@ function SlotDraw({ item }: { item: DrawSlotItem }) {
       className={`draw-slot ${phase === 'spin' ? 'draw-slot-spin' : ''}`}
       style={{ position: 'fixed', transform: 'translate(-50%, -50%)', zIndex: 58, ...style }}
     >
-      <img src={`/emoticon/default/${displayAnimal}_focus.png`} alt={displayAnimal} className="w-16 h-16 object-contain" />
+      <img src={`/howto/face_${displayAnimal}.webp`} alt={displayAnimal} className="w-16 h-16 object-contain" />
       <span className="draw-slot-num text-2xl font-black text-jungle-900">{displayNum}</span>
     </span>
   );

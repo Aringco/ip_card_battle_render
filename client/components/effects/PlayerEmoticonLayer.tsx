@@ -32,8 +32,12 @@ export function PlayerEmoticonLayer({
   items,
   placement = 'center',
   scale = 1,
+  fit,
 }: {
   items: PlayerEmoticon[];
+  /** 'left' 배치 — 한 사람에게 한꺼번에 보일 최대 개수. 주면 그 수가 화면 높이에 겹치지 않고 들어가게 풍선을 줄이고, 넘는 것은
+   *  오래된 것부터 감춘다(모바일 4 — 2026-11-07, 결정타의 좌절 얼굴 넷이 가로 폰 높이를 넘어 겹쳤다) */
+  fit?: number;
   /** 'left' 배치의 풍선 크기 배율 — 모바일은 0.7(작은 화면에서 180px 풍선이 판을 덮었다) */
   scale?: number;
   /**
@@ -48,6 +52,15 @@ export function PlayerEmoticonLayer({
   const keyOf = (it: PlayerEmoticon) => `${it.team}:${it.playerIndex}`;
   const slotOf = new Map<number, number>();
   const filled = new Map<string, number>();
+  if (fit) {
+    // 사람마다 가장 최근 fit개만
+    const seen = new Map<string, number>();
+    items = [...items].reverse().filter(it => {
+      const n = (seen.get(keyOf(it)) ?? 0) + 1;
+      seen.set(keyOf(it), n);
+      return n <= fit;
+    }).reverse();
+  }
   for (const it of items) {
     const key = keyOf(it);
     const slot = filled.get(key) ?? 0;
@@ -59,7 +72,7 @@ export function PlayerEmoticonLayer({
     <>
       {items.map(item => (
         placement === 'left'
-          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} count={filled.get(keyOf(item)) ?? 1} scale={scale} />
+          ? <SideBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} count={filled.get(keyOf(item)) ?? 1} scale={scale} fit={fit} />
           : <EmoticonBubble key={item.id} item={item} slot={slotOf.get(item.id) ?? 0} />
       ))}
     </>
@@ -132,7 +145,7 @@ function bubbleSizeFor(boxEl: Element, boxH: number): number {
  * 개인전의 이모티콘 — 플레이어 칸(`data-rabbit-target`이 달린 패널·상대 칸)의 왼쪽에 꼬리 달린 풍선으로 띄운다.
  * 칸 전체를 기준으로 삼는 이유: 닉네임(앵커) 바로 옆에 두면 180px 풍선이 그 사람의 칸을 덮어 체력·경험치가 가려진다.
  */
-function SideBubble({ item, slot, count, scale = 1 }: { item: PlayerEmoticon; slot: number; count: number; scale?: number }) {
+function SideBubble({ item, slot, count, scale = 1, fit }: { item: PlayerEmoticon; slot: number; count: number; scale?: number; fit?: number }) {
   const [anchor, setAnchor] = useState<{ ay: number; boxLeft: number; boxRight: number; size: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -146,7 +159,10 @@ function SideBubble({ item, slot, count, scale = 1 }: { item: PlayerEmoticon; sl
   }, [item.id]);
 
   if (!anchor) return null;
-  const size = Math.round(anchor.size * scale);
+  const viewH = typeof window === 'undefined' ? 1080 : window.innerHeight;
+  // fit개가 화면 높이(여백 · 사이 틈 8 포함)에 겹치지 않고 들어가는 크기를 넘지 않는다
+  const fitMax = fit ? Math.floor((viewH - 2 * VIEW_MARGIN - (fit - 1) * 8) / fit) : Infinity;
+  const size = Math.min(Math.round(anchor.size * scale), fitMax);
   const step = size + 8;
 
   // 왼쪽에 다 들어가면 왼쪽, 아니면(화면 밖으로 나가면) 오른쪽. 어느 쪽이든 꼬리는 플레이어 쪽을 향한다.
@@ -156,7 +172,7 @@ function SideBubble({ item, slot, count, scale = 1 }: { item: PlayerEmoticon; sl
   // 화면 끝에 붙이면 아래쪽 풍선들이 한자리에 겹친다. 꼬리는 그래도 플레이어 높이를 가리킨다.
   const half = size / 2;
   const minY = VIEW_MARGIN + half;
-  const maxY = (typeof window === 'undefined' ? 1080 : window.innerHeight) - VIEW_MARGIN - half;
+  const maxY = viewH - VIEW_MARGIN - half;
   const firstY = Math.max(minY, Math.min(anchor.ay, maxY - (count - 1) * step));
   const y = Math.min(Math.max(firstY + slot * step, minY), maxY);
   const tailY = Math.min(Math.max(anchor.ay - y, -(half - TAIL_EDGE)), half - TAIL_EDGE);

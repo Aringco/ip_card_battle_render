@@ -1,5 +1,6 @@
 'use client';
 
+import { openAcornShelf } from '../acorn/AcornLayer';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS, enhanceCardTier, maxTurnOf } from 'shared';
@@ -8,11 +9,13 @@ import { canUseSkill, levelOf, oneWellOpen, withDisplayedExp, withDisplayedHp, w
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SweepBanner } from '@/components/effects/SweepBanner';
+import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { DecisiveHitBanner } from '@/components/effects/DecisiveHitBanner';
+import { FinisherLayer } from '@/components/effects/FinisherLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { GameBoard } from '../GameBoard';
 import { SkillChoiceBar } from '../SkillChoiceBar';
@@ -188,7 +191,7 @@ export function MobileLayout({
   // ── 스와이프로 여는 창(2026-10-31 요청) — 'cards' 기술 카드 띠(아래→위로 열고 위→아래로 닫는다) · 'mine' 내 카드 상세(왼→오) ·
   //    'opp' 상대 카드 상세(오→왼). 상세 창은 반대 방향으로 밀면 닫히고, 셋 다 다른 곳을 누르면 닫힌다(그 누름은 판에 전하지 않는다).
   const [panel, setPanel] = useState<SwipePanel | null>(null);
-  const swipe = useSwipePanels(panel, setPanel);
+  const swipe = useSwipePanels(panel, setPanel, gameState.enhance?.acorn ? p => openAcornShelf(p === 'mine' ? 'A' : 'B') : undefined);
 
   const cardsUp = myTeamChoosing || linger || fxOpen || panel === 'cards';
 
@@ -274,6 +277,7 @@ export function MobileLayout({
             captions={animState.captions}
             placeFocusBursts={animState.placeFocusBursts}
             drawSlots={animState.drawSlots}
+            bigSlams={animState.bigSlams}
             woolBalls={animState.woolBalls}
             acornBalls={animState.acornBalls}
             collectingCardIds={animState.collectingCardIds}
@@ -323,15 +327,17 @@ export function MobileLayout({
       {/* 연출 층 — PC와 같은 것을 띄운다(진행 문구 · 축제 시작 안내는 오른쪽 위 MobileNotice가 대신한다) */}
       <EffectLayer leafParticleCount={animState.leafParticleCount} floatingTexts={animState.floatingTexts} />
       <SweepBanner info={animState.sweepBanner} />
+      <FestivalStartBanner info={animState.festivalStartInfo} />
       <SheepComboLayer combos={animState.sheepCombos} />
       {/* 풍선은 이 층에 가둔다 — 카드 띠가 올라오면 카드가 그 위에 온다(globals.css .m-emotes) */}
       <div className="m-emotes">
         {/* 꼬리 달린 풍선('left' 배치 — 꼬리가 그 사람의 열을 가리킨다), 크기는 0.7배 */}
-        <PlayerEmoticonLayer items={animState.emoticons} placement="left" scale={0.7} />
+        <PlayerEmoticonLayer items={animState.emoticons} placement="left" scale={0.7} fit={4} />
       </div>
       <RabbitFlightLayer flights={animState.rabbitFlights} />
       {animState.tigerImpact && <div className="tiger-vignette" />}
       <TigerClawLayer active={animState.tigerImpact} />
+      <FinisherLayer finisher={animState.finisher} />
       <DecisiveHitBanner hit={animState.decisiveHit} />
       <SettingsHintPopup turn={gameState.turn} />
     </div>

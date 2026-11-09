@@ -6,12 +6,15 @@ import {
   processSkillChoice,
   processPass,
   processTimeout,
+  processAcornPick,
+  processAcornReroll,
   processForfeit,
   initGame,
   initIndividualGame,
   initEnhanceGame,
 } from './engine/gameEngine';
 import { eligibleAnimals, levelOf } from './engine/skills';
+import { acornOfferOpen } from './engine/acorn';
 import type { GameEvent, GameSettings, GameState, LobbyChatMessage } from 'shared';
 import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
@@ -19,6 +22,9 @@ import {
   PLACES,
   PLACE_DRAW_STEP_MS,
   rollDrawStep,
+  ENHANCE_SLAM_FROM,
+  enhanceSlamLandMs,
+  enhanceSlamMs,
   randomNickname,
   randomTeamName,
   NICKNAME_MAX_LEN,
@@ -65,6 +71,7 @@ import {
   enhanceSheepExpStack,
 } from 'shared';
 import type { EventEndReason, EventInfo, EventKind } from 'shared';
+import { ACORN_PICK_SEC, finisherLeadMs, finisherTargets } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
 import { isDemoRequest } from './demo/trigger';
 import { DemoDirector } from './demo/director';
@@ -125,8 +132,8 @@ const SETTLE_GRACE_MAX_MS = 60000;
  * ⚠️ 이 값이 연출보다 짧으면 컴퓨터의 다음 수가 연출 도중에 도착해 화면이 진행 중이던 연출을 걷어낸다 — 뽑기 도중에 판이
  *    "초기화"되는 것처럼 보인다(2026-10-29, 예약 100장에서 예전의 15초 상한에 걸렸다).
  */
-export function settleGraceMs(events: GameEvent[]): number {
-  return Math.min(SETTLE_GRACE_MAX_MS, Math.max(settleEstimateMs(events), settleTimelineMs(events)));
+export function settleGraceMs(events: GameEvent[], enhance = false): number {
+  return Math.min(SETTLE_GRACE_MAX_MS, Math.max(settleEstimateMs(events), settleTimelineMs(events, enhance)));
 }
 
 // 화면(useAnimationQueue)의 연출 시각 — 그쪽 상수와 같은 값이다(SLOT_TOTAL_DUR · WOOL_BALL_DUR · EMPTY_GAP · SHAKE_CHECK_DUR ·
@@ -141,12 +148,15 @@ const TL_EFFECT_MS = 1200;
 const TL_TIGER_MS = 500 + 900 + 80;
 const TL_RANK_MS = 1700;
 const TL_FESTIVAL_MS = 900;
+const TL_ACORN_START_MS = 2600; // 첫 도토리 고르기 앞의 "도토리 축제 시작!" 안내(useAnimationQueue의 FESTIVAL_START_INFO_DUR)
 const TL_TICK_MS = 1000; // 카드 강화의 출혈·지속 회복 한 번(useAnimationQueue의 TICK_DUR)
+// 도토리 카드 — 고르기가 닫힌 뒤 마지막으로 고른 사람의 "카드가 자리에 들어오는" 연출(화면 AcornShelf의 ACORN_GET_MS)
+const TL_ACORN_GET_MS = 4400; // 화면 AcornLayer — 얻기 연출(ACORN_GET_MS 4초) 끝무렵(ACORN_FLY_AT 3.5초)에 빛이 배지로 날아가 앉는다(ACORN_FLY_MS 0.8초) + 여운
 // 싹쓸이 — "싹쓸이!" 알림 뒤 새 카드 SWEEP_REFILL_COUNT장이 차례로 깔린다(useAnimationQueue의 SWEEP_BANNER_DUR + 장 간격 × 장수 + 여운)
 const TL_SWEEP_MS = 1300 + 3 * 260 + 300;
 
 /** useAnimationQueue의 Pass 1(뽑기) → 1.5(정산) → 싹쓸이 → 1.6(효과) → 순위 → 축제 스케줄을 그대로 따라 센 연출 길이 */
-function settleTimelineMs(events: GameEvent[]): number {
+function settleTimelineMs(events: GameEvent[], enhance: boolean): number {
   let cursor = 0;
   let lastDrawEnd = 0;
   let rollRemaining = 0;
@@ -164,13 +174,15 @@ function settleTimelineMs(events: GameEvent[]): number {
       const inPlace = !inRoll && placeRemaining > 0;
       if (inPlace) placeRemaining--;
       const triggerAt = cursor;
-      const drawEnd = (inRoll ? triggerAt + TL_ROLL_ENTER_MS : triggerAt) + TL_SLOT_MS;
+      let drawEnd = (inRoll ? triggerAt + TL_ROLL_ENTER_MS : triggerAt) + TL_SLOT_MS;
+      // 카드 강화의 배수 카드(×5~) — 카드가 나올 자리에서 쿵 떨어지는 연출이 붙고, 다음 장은 그 카드가 닿은 뒤에 나온다(화면과 같은 식)
+      const slam = enhance && ev.card.num >= ENHANCE_SLAM_FROM;
+      if (slam) drawEnd = drawEnd - 120 + enhanceSlamMs(ev.card.num);
       lastDrawEnd = Math.max(lastDrawEnd, drawEnd);
-      cursor = inRoll
-        ? triggerAt + rollDrawStep(rollTotal)
-        : inPlace && placeRemaining > 0
-          ? triggerAt + PLACE_DRAW_STEP_MS
-          : drawEnd + TL_GAP_MS;
+      const step = inRoll ? rollDrawStep(rollTotal) : inPlace && placeRemaining > 0 ? PLACE_DRAW_STEP_MS : null;
+      cursor = step === null
+        ? drawEnd + TL_GAP_MS
+        : triggerAt + (slam ? Math.max(step, enhanceSlamLandMs(ev.card.num)) : step);
     }
   }
   cursor = Math.max(cursor, lastDrawEnd + TL_GAP_MS);
@@ -189,7 +201,11 @@ function settleTimelineMs(events: GameEvent[]): number {
     else if (ev.type === 'ranked') cursor += TL_RANK_MS;
   }
   cursor += events.filter(e => e.type === 'enhanceTick').length * TL_TICK_MS;
-  if (events.some(e => e.type === 'festival')) cursor += TL_FESTIVAL_MS;
+  // 마무리 연출(승패를 정한 체력 변화 앞 — shared finisherTargets) 동안은 판이 흐르지 않는다. 500 = 화면 TIGER_RECOIL_DUR
+  for (const i of finisherTargets(events).keys()) cursor += finisherLeadMs(events[i], 500);
+  if (events.some(e => e.type === 'acornOffer' && e.no === 1)) cursor += TL_ACORN_START_MS;
+  else if (events.some(e => e.type === 'festival')) cursor += TL_FESTIVAL_MS;
+  if (events.some(e => e.type === 'acornPicked' && e.closed)) cursor += TL_ACORN_GET_MS;
   return cursor;
 }
 
@@ -400,8 +416,13 @@ interface PlayerConnection {
   color?: PlayerColorId;
 }
 
+/** 대기실에서 연결이 끊긴 사람의 자리를 붙들어 두는 시간 — 다른 앱(카카오톡 등)에 다녀올 만큼 */
+export const LOBBY_RECONNECT_GRACE_MS = 90_000;
+
 export class Room {
   private players = new Map<string, PlayerConnection>();  // playerId → PlayerConnection
+  // 대기실에서 연결이 끊긴 사람을 바로 지우지 않고 기다리는 타이머(LOBBY_RECONNECT_GRACE_MS) — playerId → timer
+  private lobbyDropTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // 자리별 playerId 목록. A/B는 그대로 게임의 팀 순번(activePlayerIndex)이 되고,
   // spectator 칸은 게임에 전혀 쓰이지 않는다(직렬화할 때도 A/B만 넘긴다).
   private teamPlayerIds: Record<Seat, string[]> = { A: [], B: [], [PLAYER_SEAT]: [], [SPECTATOR]: [] };
@@ -1186,6 +1207,8 @@ export class Room {
    * reason은 채팅창 안내 문구만 가른다 — 'left'는 자진 퇴장·연결 끊김, 'kicked'는 추방.
    */
   private removePlayer(playerId: string, reason: 'left' | 'kicked'): void {
+    clearTimeout(this.lobbyDropTimers.get(playerId));
+    this.lobbyDropTimers.delete(playerId);
     const p = this.players.get(playerId);
     if (!p) return;
     this.players.delete(playerId);
@@ -1382,6 +1405,51 @@ export class Room {
     return true;
   }
 
+  /** 도토리 카드를 고르는 동안은 장소 · 기술 · 턴 마치기를 받지 않는다(판이 멈춰 있다) */
+  private rejectIfAcorn(playerId: string): boolean {
+    if (!this.state || !acornOfferOpen(this.state)) return false;
+    this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '도토리 카드를 고르는 중입니다.' });
+    return true;
+  }
+
+  /**
+   * 도토리 축제 — 후보 셋 중 하나를 고른다. 판에 남은 사람이 저마다 고르고, 모두 고르면 판이 다시 흐른다.
+   * 고르기가 아직 열려 있으면 타이머(15초 — resetTimer)는 그대로 둔다. 닫히면 다음 차례의 타이머를 새로 건다.
+   */
+  handlePickAcorn(playerId: string, id: string): void {
+    if (this.rejectIfSpectator(playerId)) return;
+    if (this.rejectIfPaused(playerId)) return;
+    const p = this.players.get(playerId);
+    if (!this.state || !p || !acornOfferOpen(this.state)) return;
+    const side = this.state.mode === 'individual' ? this.playerSide.get(playerId) : (p.team === 'A' || p.team === 'B' ? p.team : undefined);
+    if (side === undefined) return;
+    const { state, events } = processAcornPick(this.state, side, id);
+    if (events.length === 0) {
+      this.sendTo(playerId, { type: 'error', code: 'CARD_NOT_AVAILABLE', message: '고를 수 없는 도토리 카드입니다.' });
+      return;
+    }
+    this.state = state;
+    if (!acornOfferOpen(this.state)) this.resetTimer(events);
+    this.broadcastResult(events);
+    if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
+  }
+
+  /** 도토리 카드 리롤 — 그 칸의 후보를 다시 뽑는다. 타이머는 건드리지 않는다(고르는 15초 안에서 쓴다). */
+  handleRerollAcorn(playerId: string, slot: number): void {
+    if (this.rejectIfSpectator(playerId)) return;
+    if (this.rejectIfPaused(playerId)) return;
+    const p = this.players.get(playerId);
+    if (!this.state || !p || !acornOfferOpen(this.state)) return;
+    const side = this.state.mode === 'individual' ? this.playerSide.get(playerId) : (p.team === 'A' || p.team === 'B' ? p.team : undefined);
+    if (side === undefined) return;
+    const { events } = processAcornReroll(this.state, side, slot);
+    if (events.length === 0) {
+      this.sendTo(playerId, { type: 'error', code: 'CARD_NOT_AVAILABLE', message: '이 카드는 더 리롤할 수 없습니다.' });
+      return;
+    }
+    this.broadcastResult(events);
+  }
+
   handleDrawCard(playerId: string, place: Place): void {
     if (this.rejectIfSpectator(playerId)) return;
     if (this.rejectIfPaused(playerId)) return;
@@ -1394,6 +1462,7 @@ export class Room {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례입니다.' });
       return;
     }
+    if (this.rejectIfAcorn(playerId)) return;
 
     const expectedId = this.expectedPlayerId(this.state.activeTeam);
     if (playerId !== expectedId) {
@@ -1454,6 +1523,7 @@ export class Room {
   handleChooseSkill(playerId: string, animal: Animal, target?: SideId): void {
     if (this.rejectIfSpectator(playerId)) return;
     if (this.rejectIfPaused(playerId)) return;
+    if (this.rejectIfAcorn(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례가 아닙니다.' });
       return;
@@ -1492,6 +1562,7 @@ export class Room {
   handlePassSkill(playerId: string): void {
     if (this.rejectIfSpectator(playerId)) return;
     if (this.rejectIfPaused(playerId)) return;
+    if (this.rejectIfAcorn(playerId)) return;
     if (!this.state || this.state.phase !== 'playing' || this.state.pendingChoice === null) {
       this.sendTo(playerId, { type: 'error', code: 'NO_PENDING_CHOICE', message: '지금은 스킬을 선택할 차례가 아닙니다.' });
       return;
@@ -1528,9 +1599,17 @@ export class Room {
     //    막아 둔다 — 여기서 CPU가 한 수라도 두면 대본이 어긋난다.
     if (this.demo) return;
     if (!this.vsComputer || !this.state || this.state.phase !== 'playing') return;
+    if (this.computerTimer !== null) return;
+    // 도토리 카드 고르기 — 컴퓨터는 고르기 창이 뜬 뒤(직전 연출이 끝난 뒤) 잠시 생각하고 고른다
+    const offer = this.state.enhance?.acorn?.offer;
+    if (offer) {
+      if (offer.picked.B !== null || !('B' in offer.picked)) return;
+      const graceMs = lastActionEvents ? settleGraceMs(lastActionEvents, true) : 0;
+      this.startComputerTimer(graceMs + CPU_SKILL_THINK_MIN_MS + Math.floor(Math.random() * (CPU_THINK_MAX_MS - CPU_SKILL_THINK_MIN_MS)));
+      return;
+    }
     const waitingTeam = this.state.pendingChoice ?? this.state.activeTeam;
     if (waitingTeam !== 'B') return;
-    if (this.computerTimer !== null) return;
 
     // 행동 선택은 자기가 방금 뽑은 카드의 연출이 끝난 뒤부터 시간을 센다. 장소 선택은
     // 직전 액션이 이미 상대 턴에 끝나 있으므로 기존대로 처리 시각부터 그대로 센다.
@@ -1538,7 +1617,7 @@ export class Room {
     const [minMs, maxMs] = isSkillChoice
       ? [CPU_SKILL_THINK_MIN_MS, CPU_SKILL_THINK_MAX_MS]
       : [CPU_THINK_MIN_MS, CPU_THINK_MAX_MS];
-    const graceMs = isSkillChoice && lastActionEvents ? settleGraceMs(lastActionEvents) : 0;
+    const graceMs = isSkillChoice && lastActionEvents ? settleGraceMs(lastActionEvents, !!this.state.enhance) : 0;
 
     const delay = graceMs + minMs + Math.floor(Math.random() * (maxMs - minMs));
     this.startComputerTimer(delay);
@@ -1557,6 +1636,18 @@ export class Room {
     if (!this.state || this.state.phase !== 'playing') return;
 
     let result: { state: GameState; events: ReturnType<typeof processPlayerAction>['events'] };
+    const offer = this.state.enhance?.acorn?.offer;
+    if (offer) {
+      // 도토리 카드 — 컴퓨터는 후보 중 무작위 하나. 고르기가 닫히지 않았으면(사람이 아직) 타이머는 그대로 둔다
+      const opts = offer.options.B;
+      if (!opts || offer.picked.B !== null) return;
+      result = processAcornPick(this.state, 'B', opts[Math.floor(Math.random() * opts.length)]);
+      this.state = result.state;
+      if (!acornOfferOpen(this.state)) this.resetTimer(result.events);
+      this.broadcastResult(result.events);
+      if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(result.events);
+      return;
+    }
     if (this.state.pendingChoice === 'B') {
       if (this.state.enhance) {
         const animal = pickEnhanceComputerSkill(this.state, 'B');
@@ -1654,11 +1745,14 @@ export class Room {
       eligibleAnimals(this.state, this.state.pendingChoice).length === 0;
 
     const baseSec = this.state.pendingChoice != null ? settings.actionTimeSec : settings.drawTimeSec;
-    const totalMs = noEligibleChoice
+    // 도토리 카드 고르기 — 15초(ACORN_PICK_SEC). 지나면 handleTimeout → processTimeout이 남은 사람 몫을 대신 고른다
+    const totalMs = acornOfferOpen(this.state)
+      ? ACORN_PICK_SEC * 1000
+      : noEligibleChoice
       ? settings.noActionTimeSec * 1000
       : (baseSec + SHEEP_EXTRA_TIME_PER_DRAW_SEC * timerDraws) * 1000;
     // 목표 룰렛이 도는 동안은 시계를 세지 않는다 — 그만큼 유예로 얹는다(화면 게이지는 turnTotalMs로 잘려 가득 찬 채 기다린다).
-    const durationMs = totalMs + settleGraceMs(events) + SETTLE_GRACE_MARGIN_MS + this.introGraceMs();
+    const durationMs = totalMs + settleGraceMs(events, !!this.state?.enhance) + SETTLE_GRACE_MARGIN_MS + this.introGraceMs();
 
     this.turnTotalMs = totalMs;
     this.turnDeadline = Date.now() + durationMs;
@@ -2126,8 +2220,17 @@ export class Room {
     p.connected = false;
 
     if (this.state === null) {
-      // 로비에서 나가면 플레이어 제거(방장이었다면 남은 사람에게 넘긴다)
-      this.removePlayer(playerId, 'left');
+      // 대기실 — 곧바로 지우지 않고 LOBBY_RECONNECT_GRACE_MS 동안 자리를 붙든다(2026-11-06). 폰에서 초대 링크를 보내려고 카카오톡에
+      // 다녀오면 브라우저가 백그라운드에서 연결을 끊는데, 예전에는 그 순간 방에서 빠져(방장이면 방장이 넘어가고, 혼자면 방이 사라졌다)
+      // 돌아와도 복귀할 자리가 없었다. 그동안 목록에는 "연결 끊김"으로 보이고, 돌아오면(handleReconnect) 그대로 이어진다.
+      // 시간이 다 되도록 안 돌아오면 예전처럼 나간 것으로 처리한다(방장이었다면 남은 사람에게 넘긴다).
+      this.broadcastLobbyState();
+      clearTimeout(this.lobbyDropTimers.get(playerId));
+      this.lobbyDropTimers.set(playerId, setTimeout(() => {
+        this.lobbyDropTimers.delete(playerId);
+        const q = this.players.get(playerId);
+        if (q && !q.connected && this.state === null) this.removePlayer(playerId, 'left');
+      }, LOBBY_RECONNECT_GRACE_MS));
       return;
     }
     // 게임 중 이탈: 차례가 오면 타이머 만료로 자동 강제진행
@@ -2149,6 +2252,8 @@ export class Room {
 
     p.ws = ws;
     p.connected = true;
+    clearTimeout(this.lobbyDropTimers.get(playerId));
+    this.lobbyDropTimers.delete(playerId);
 
     if (this.state === null) {
       // 대기실 화면이 "내가 누구인지"(memberId)와 방장 여부를 다시 알 수 있도록,

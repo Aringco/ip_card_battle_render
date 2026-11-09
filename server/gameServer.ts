@@ -241,6 +241,18 @@ export function createConnectionHandler(roomManager: RoomManager, eventHub: Even
           break;
         }
 
+        case 'pickAcorn': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.handlePickAcorn(currentPlayerId, msg.id);
+          break;
+        }
+
+        case 'rerollAcorn': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.handleRerollAcorn(currentPlayerId, msg.slot);
+          break;
+        }
+
         case 'passSkill': {
           if (!currentRoomId || !currentPlayerId) return;
           roomManager.getRoom(currentRoomId)?.handlePassSkill(currentPlayerId);

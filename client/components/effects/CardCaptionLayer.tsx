@@ -64,7 +64,7 @@ function AnchoredCaption({ caption }: { caption: CaptionItem }) {
     // pair는 짝을 이룬 카드 중 가장 마지막(가장 오른쪽) 카드 바로 위에 앵커링한다 —
     // 그 카드를 못 찾으면(연출 타이밍 어긋남 등) 동물 스택 영역 전체를 대체 앵커로 쓴다.
     const cardEl = caption.anchorCardId != null
-      ? document.querySelector(`[data-stack-card-id="${caption.anchorCardId}"]`)
+      ? document.querySelector(`[data-stack-card-id="${caption.anchorCardId}"], [data-stack-card-ids~="${caption.anchorCardId}"]`)
       : null;
     if (cardEl) {
       const r = cardEl.getBoundingClientRect();

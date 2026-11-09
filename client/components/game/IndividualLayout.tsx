@@ -17,6 +17,7 @@ import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { IndividualTurnBanner } from '@/components/effects/IndividualTurnBanner';
 import { RankedBanner } from '@/components/effects/RankedBanner';
+import { FinisherLayer } from '@/components/effects/FinisherLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { IndividualHeader } from './IndividualHeader';
 import { IndividualPrompt } from './IndividualPrompt';
@@ -188,7 +189,7 @@ export function IndividualLayout({
 
   return (
     <div
-      className={`h-screen play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
+      className={`h-[var(--app-h,100dvh)] play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
       // 개인전 '강화' 방 — 카드·장소 라벨·짝 합계의 숫자를 감춘다(모든 카드가 1이다 — globals.css의 [data-enhance], 팀전 GameLayout과 같다)
       data-enhance={gameState.enhance ? '' : undefined}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
@@ -234,6 +235,7 @@ export function IndividualLayout({
                 captions={animState.captions}
                 placeFocusBursts={animState.placeFocusBursts}
                 drawSlots={animState.drawSlots}
+                bigSlams={animState.bigSlams}
                 woolBalls={animState.woolBalls}
                 acornBalls={animState.acornBalls}
                 collectingCardIds={animState.collectingCardIds}
@@ -316,6 +318,7 @@ export function IndividualLayout({
       {animState.tigerImpact && <div className="tiger-vignette" />}
       <TigerClawLayer active={animState.tigerImpact} />
       <IndividualTurnBanner gameState={gameState} activeTeam={activeSide} mySide={mySide} />
+      <FinisherLayer finisher={animState.finisher} />
       <RankedBanner banner={animState.rankBanner} gameState={gameState} />
       <SettingsHintPopup turn={gameState.turn} />
 

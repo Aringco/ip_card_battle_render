@@ -13,7 +13,9 @@ export function FestivalStartBanner({ info }: { info: FestivalStartInfo | null }
     <div key={info.id} className="festival-start-banner" aria-hidden>
       <span className="festival-start-banner-line1"><AcornIcon /> 도토리 축제 시작!</span>
       <span className="festival-start-banner-line2">
-        이제부터 {info.increaseInterval}턴마다 추가 랜덤 뽑기 {info.drawCount}회!
+        {info.enhance
+          ? `${info.increaseInterval}턴마다 도토리 카드를 한 장씩 골라요!`
+          : `이제부터 ${info.increaseInterval}턴마다 추가 랜덤 뽑기 ${info.drawCount}회!`}
       </span>
     </div>
   );

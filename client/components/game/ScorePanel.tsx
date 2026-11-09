@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
 import { ANIMALS, ENHANCE_MAX_LEVEL, expProgressFor, skillMultiplier } from 'shared';
 import { SKILL_TITLE, describeEnhanceSkillShort, describeSkillShort } from '@/lib/skillInfo';
+import { cooldownOf, cooldownShownOf } from '@/lib/skills';
 
 // ── 동물별 표 — 왼쪽팀은 [얼굴|경험치 현황|레벨], 오른쪽팀은 [레벨|경험치 현황|얼굴]로
 // 좌우 대칭 배치한다. 마우스를 올리면 해당 동물 행동의 한 줄 요약을 미리 보여준다.
@@ -40,6 +41,9 @@ function AnimalTable({
   const wellOpen = (animal === 'rabbit' || animal === 'tiger') && well?.side === team && (well.locked === null || well.locked === animal);
   const wellMultiplier = wellOpen ? skillMultiplier(gameState, team, animal) : 1;
   const showWellSticker = wellMultiplier !== multiplier && wellMultiplier > 1;
+  // 카드 강화 — 쿨타임 중인 카드는 얼굴을 흑백으로(모바일 AnimalRail의 data-cooling과 같다). 남은 턴은 얼굴 위 작은 숫자
+  const cooling = enhance ? cooldownOf(gameState, team, animal) : 0;
+  const coolShown = cooling > 0 ? cooldownShownOf(gameState, team, animal) : 0;
 
   // 팀 패널이 overflow-y-auto라 absolute 툴팁은 스크롤 영역에 잘려 보이지 않는다.
   // 마우스를 올린 카드의 위치를 직접 측정해 position:fixed로 화면 위에 그린다.
@@ -65,7 +69,8 @@ function AnimalTable({
 
   const face = (
     // 크기는 칸 폭에서 뽑는다(.exp-row-face) — 고정 px면 좁은 칸에서 숫자를 덮는다
-    <div className="exp-row-face shrink-0 flex items-center justify-center">
+    <div className="exp-row-face shrink-0 flex items-center justify-center relative" data-cooling={cooling > 0 || undefined}>
+      {coolShown > 0 && <span className="exp-row-cool tabular-nums" title={`쿨타임 ${coolShown}턴`}>{coolShown}</span>}
       <img
         src={`/emoticon/default/${animal}_${level > 0 ? 'happy' : 'focus'}.png`}
         alt={animal}

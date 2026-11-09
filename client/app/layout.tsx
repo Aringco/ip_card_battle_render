@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { SoundToggle } from "@/components/ui/SoundToggle";
+import { FullscreenManager } from "@/components/ui/FullscreenManager";
 import "./globals.css";
 
 /**
@@ -51,8 +52,16 @@ const cafe24 = localFont({
 });
 
 export const metadata: Metadata = {
-  title: '한국특허정보원 카드배틀',
+  title: 'TUPD',
   description: '🐑🐰🧜‍♀️🐯 실용신양·상표토끼·디자인어·특허랑이 팀 대전 카드 게임',
+  // 홈 화면에 추가해 열면 사파리 바 없이 앱처럼 뜬다(iOS). 안드로이드는 app/manifest.ts가 맡는다.
+  appleWebApp: {
+    capable: true,
+    title: 'TUPD',
+    statusBarStyle: 'black-translucent',
+  },
+  // Next 16은 `mobile-web-app-capable`만 넣는다 — 그것을 모르는 옛 iOS를 위해 애플 이름도 함께 둔다.
+  other: { 'apple-mobile-web-app-capable': 'yes' },
 };
 
 /**
@@ -72,6 +81,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#2e1d10',
 };
 
 export default function RootLayout({
@@ -100,8 +110,18 @@ export default function RootLayout({
             __html: `try{var s=[0.94,1,1.06,1.12,1.18,1.24,1.3][(+localStorage.getItem('cardBattle_fontStep')||4)-1];if(s)document.documentElement.style.setProperty('--font-scale',s)}catch(e){}`,
           }}
         />
+        {/* 지금 보이는 화면 높이(--app-h)를 첫 페인트 전에 적는다 — 폰 브라우저의 100vh는 바가 숨었을 때
+            높이라 화면 아래가 하단 바 밑으로 들어간다(lib/fullscreen.ts). 이후 갱신은 FullscreenManager. */}
+        {/* ⚠️ 이 문자열을 lib/fullscreen.ts('use client')에서 import하지 말 것 — 서버 컴포넌트에서는 문자열이 아니라
+            클라이언트 참조로 바뀐다. 그쪽 syncAppHeight와 같은 일을 한다. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{document.documentElement.style.setProperty('--app-h',window.innerHeight+'px')}catch(e){}`,
+          }}
+        />
         {children}
         <SoundToggle />
+        <FullscreenManager />
       </body>
     </html>
   );

@@ -1,3 +1,4 @@
+import { AcornFestivalBadge } from './acorn/AcornBadges';
 import type { ClientGameState, SideId } from 'shared';
 import { festivalDrawInfoAt, maxTurnOf } from 'shared';
 import { SPECTATOR_TEAM_PALETTE } from '@/lib/teamColors';
@@ -134,13 +135,15 @@ export function GameHeader({
           <FlowArrow />
           <StepPill label="행동 선택" active={isChoicePhase} />
         </div>
+        <AcornFestivalBadge gameState={gameState} />
         {gameState.festival && (
           <span className="festival-running font-bold whitespace-nowrap">
             {/* 도토리는 이모지가 아니라 에셋 한 장 — 주변 나무 띠들과 같은 그림체로 맞춘다 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={PLAY_ASSETS.iconAcorn} alt="" className="festival-running-icon" />
             <span className="festival-header-badge">
-              도토리 축제! 랜덤 뽑기 +{festivalInfo.count}회
+              {/* 카드 강화 판의 축제는 누른 장소의 장수 범위를 ×(1 + n)으로 넓힌다(shared enhanceFestivalMultiplier) */}
+              {gameState.enhance ? `도토리 축제! 장소 카드 ×${1 + festivalInfo.count}` : `도토리 축제! 랜덤 뽑기 +${festivalInfo.count}회`}
             </span>
             {/* 강화 주기가 남은 턴보다 커서 다시 오를 일이 없으면 예고 자체를 감춘다. */}
             {festivalInfo.turnsToNextStage !== null && (
@@ -150,7 +153,9 @@ export function GameHeader({
               <span className="festival-next-badge inline-flex items-baseline gap-1 rounded-full border border-amber-300/70 bg-amber-900 font-bold text-amber-100 opacity-50 align-middle">
                 <span className="tabular-nums">{festivalInfo.turnsToNextStage}턴 후</span>
                 <span className="tabular-nums">
-                  +{festivalInfo.count} → +{festivalInfo.nextCount}
+                  {gameState.enhance
+                    ? `×${1 + festivalInfo.count} → ×${1 + (festivalInfo.nextCount ?? festivalInfo.count)}`
+                    : `+${festivalInfo.count} → +${festivalInfo.nextCount}`}
                 </span>
               </span>
             )}

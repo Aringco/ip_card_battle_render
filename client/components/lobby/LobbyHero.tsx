@@ -16,7 +16,7 @@ const HOW_TO_ICON_PX = 51;
 export function LobbyHero({ onHowTo }: { onHowTo: () => void }) {
   return (
     <div className="relative w-full h-full flex items-end justify-center">
-      <h1 className="sr-only">떱카드 T.U.P.D. — 한국특허정보원 카드배틀</h1>
+      <h1 className="sr-only">TUPD — 떱카드 T.U.P.D.</h1>
 
       <img
         src={LOBBY_ASSETS.logo}

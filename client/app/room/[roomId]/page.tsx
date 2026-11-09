@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Animal, Place, SideId } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAnimationQueue } from '@/hooks/useAnimationQueue';
+import { AcornLayer } from '@/components/game/acorn/AcornLayer';
 import { GameLayout } from '@/components/game/GameLayout';
 import { IndividualLayout } from '@/components/game/IndividualLayout';
 import { GameEndScreen } from '@/components/game/GameEndScreen';
@@ -28,7 +29,7 @@ const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 B
 export default function GamePage() {
   const router = useRouter();
   const {
-    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, demoContinue, demoScene,
+    gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, pickAcorn, rerollAcorn, demoContinue, demoScene,
     error, connected, playerId,
     pauseRequest, pauseWaitingUntil, resumeVoteUntil, pauseUntil, pauseNotice, clearPauseNotice,
     requestPause, respondPause, resumeGame, surrender, leaveGame, eventIntroUntil,
@@ -72,17 +73,20 @@ export default function GamePage() {
   // 그 갱신이 도착하는 즉시 'ended'라, 그대로 따르면 결과가 연출보다 먼저 음악으로 새어 나왔다(2026-10-31 "승/패 선반영").
   // 결과 화면이 뜨는 조건(아래 phase === 'ended' && !isSettling)과 같다.
   const endedShown = gameState?.phase === 'ended' && !animState.isSettling;
+  // 카드 강화 — 도토리 축제(카드 고르기)가 처음 열린 순간부터 축제 음악(2026-11-07)
+  const festivalOn = !!gameState?.festival || (gameState?.enhance?.acorn?.festivals ?? 0) > 0;
   useEffect(() => {
     if (!gameState) return;
     if (endedShown) {
       playBgm('/sounds/bgm_opening.mp3', 0.6);
-    } else if (gameState.festival) {
+    } else if (festivalOn) {
       playBgm('/sounds/bgm_game2.mp3', GAME_BGM_VOLUME);
     } else {
       playBgm('/sounds/bgm_game1.mp3', GAME_BGM_VOLUME);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endedShown, gameState?.festival]);
+  // !!gameState — 방 화면이 상태보다 먼저 뜨므로, 상태가 처음 도착한 순간에도 다시 돌아야 game1이 시작된다
+  }, [!!gameState, endedShown, festivalOn]);
 
   const handlePlaceClick = useCallback(
     (place: Place) => {
@@ -363,6 +367,19 @@ export default function GamePage() {
           until={eventIntroUntil}
           maxTurn={gameState.scoreRace.maxTurn}
           range={gameState.event?.targetRange}
+        />
+      )}
+      {/* 도토리 축제 — 카드 고르기 · 얻는 연출 · 카드 보기(PC · 모바일 · 팀전 · 개인전 공용). 1:1 개인전은 화면 편(A/B)으로 본다 */}
+      {gameState.enhance?.acorn && (
+        <AcornLayer
+          state={duel && viewState ? viewState : gameState}
+          me={duel ? (canActInGame ? duelMyTeam : null) : individual ? (canActInGame ? mySide : null) : myTeam}
+          events={viewEvents}
+          turnDeadline={turnDeadline}
+          settling={animState.isSettling}
+          paused={gameState.paused}
+          onPick={pickAcorn}
+          onReroll={rerollAcorn}
         />
       )}
       <RotateHint />

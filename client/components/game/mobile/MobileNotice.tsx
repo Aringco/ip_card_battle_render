@@ -1,5 +1,6 @@
 'use client';
 
+import { AcornFestivalBadge } from '../acorn/AcornBadges';
 import type { ClientGameState, SideId } from 'shared';
 import { festivalDrawInfoAt, maxTurnOf } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
@@ -42,7 +43,7 @@ export function MobileNotice({
       <div className="m-notice m-notice-acorn" role="status">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={PLAY_ASSETS.iconAcorn} alt="" className="m-notice-icon" />
-        <span>{mineOf(fest.team)} 축제 뽑기</span>
+        <span>{fest.multiplier ? `${mineOf(fest.team)} 축제 ×${fest.multiplier}` : `${mineOf(fest.team)} 축제 뽑기`}</span>
         <b className="tabular-nums">
           {fest.current} / {fest.total}
         </b>
@@ -55,10 +56,16 @@ export function MobileNotice({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={PLAY_ASSETS.iconAcorn} alt="" className="m-notice-icon" />
         <span>
-          도토리 축제 시작! {start.increaseInterval}턴마다 +{start.drawCount}회
+          {start.enhance
+            ? `도토리 축제 시작! ${start.increaseInterval}턴마다 카드 고르기`
+            : `도토리 축제 시작! ${start.increaseInterval}턴마다 +${start.drawCount}회`}
         </span>
       </div>
     );
+  }
+  if (gameState.enhance?.acorn) {
+    // 카드 강화 — 도토리 축제는 카드 고르기다(다음 축제까지 남은 턴)
+    return <AcornFestivalBadge gameState={gameState} className="m-notice m-notice-acorn m-notice-quiet" iconClass="m-notice-icon" />;
   }
   if (gameState.festival) {
     const info = festivalDrawInfoAt(gameState.turn, gameState.settings, maxTurnOf(gameState));
@@ -66,7 +73,7 @@ export function MobileNotice({
       <div className="m-notice m-notice-acorn m-notice-quiet">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={PLAY_ASSETS.iconAcorn} alt="" className="m-notice-icon" />
-        <span>도토리 축제 +{info.count}회</span>
+        <span>{gameState.enhance ? `도토리 축제 ×${1 + info.count}` : `도토리 축제 +${info.count}회`}</span>
       </div>
     );
   }

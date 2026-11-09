@@ -7,6 +7,7 @@
  * 실행: cd server && npx ts-node scripts/individualEnhanceSim.ts [판수=200] [targetScore=200]
  */
 import { initIndividualGame } from '../engine/turnManager';
+import { autoPickAcorns } from '../engine/acorn';
 import { processPlayerAction, processSkillChoice, processPass } from '../engine/gameEngine';
 import { eligibleAnimals, levelOf } from '../engine/skills';
 import { ENHANCE_SETTINGS, PLACES, PLAYER_COLORS, needsTarget, opponentsOf } from 'shared';
@@ -29,6 +30,7 @@ function runGame(n: number, seed: number, targetScore: number): { turn: number; 
 
   while (state.phase === 'playing') {
     if (state.turn > TURN_GUARD) throw new Error(`${TURN_GUARD}턴을 넘겼다 (n=${n}, seed=${seed})`);
+    autoPickAcorns(state, rng); // 도토리 축제 — 후보 중 무작위
     const options = PLACES.filter(p => p !== state.lastPlace);
     processPlayerAction(state, options[Math.floor(rng() * options.length)], rng);
     let guard = 0;

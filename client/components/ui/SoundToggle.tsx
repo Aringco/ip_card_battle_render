@@ -16,6 +16,17 @@ import {
 } from '@/lib/uiSettings';
 import { useGuideEnabled, setGuideEnabled } from '@/lib/guideSettings';
 import { IconButton } from '@/components/ui/UiIcon';
+import {
+  chromeIntentUrl,
+  enterFullscreen,
+  exitFullscreen,
+  fullscreenSupported,
+  inAppBrowserName,
+  isAndroid,
+  isIosPhone,
+  lockLandscape,
+  useIsFullscreen,
+} from '@/lib/fullscreen';
 
 function ToggleButton({
   label,
@@ -170,6 +181,69 @@ function GuideToggleRow() {
 }
 
 /**
+ * 전체화면 버튼 — 첫 터치 때 저절로 들어갔다가 사용자가 빠져나온 뒤(뒤로가기 · 쓸어올리기) **다시 켜는 곳**이다.
+ * 이 버튼으로 켜면 화면을 **가로로 돌려 고정**한다(안드로이드만 — lockLandscape). 첫 터치 자동 전체화면은 돌리지 않는다
+ * (아무 데나 처음 누른 순간 화면이 돌면 놀란다).
+ * 패널 맨 위에 크게, **언제나** 둔다(2026-11-01 요청). ⚠️ "홈 화면 앱이면 숨김"을 되살리지 말 것 — 전체화면 API로
+ * 들어간 순간 브라우저가 `(display-mode: fullscreen)`도 참으로 돌려, 가로로 돌자마자 버튼이 사라졌다. 홈 화면 앱에서도
+ * 이 버튼의 가로 고정은 쓸모가 있다.
+ * 전체화면이 안 되는 곳(아이폰 · 앱 안 브라우저가 거절)에서는 누르면 대안을 보여 준다.
+ */
+function FullscreenRow() {
+  const on = useIsFullscreen();
+  const [failed, setFailed] = useState(false);
+
+  const toggle = async () => {
+    if (on) {
+      await exitFullscreen();
+      return;
+    }
+    const ok = fullscreenSupported() && (await enterFullscreen());
+    setFailed(!ok);
+    // 전체화면이 되면 가로로 돌린다(플레이 화면이 가로) — 안 되는 기기(아이폰 등)는 조용히 넘어간다
+    if (ok) void lockLandscape();
+  };
+
+  const inApp = inAppBrowserName();
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        aria-pressed={on}
+        className={`w-full py-2 rounded-md text-xs font-bold transition-colors ${
+          on ? 'bg-gray-200 text-gray-600' : 'bg-jungle-600 text-white'
+        }`}
+      >
+        {on ? '⤡ 전체화면 끄기' : '⛶ 전체화면 + 가로 보기'}
+      </button>
+      {failed && !on && (
+        <p className="text-2xs leading-snug text-gray-500">
+          {isIosPhone() ? (
+            <>
+              아이폰은 전체화면을 지원하지 않아요. 사파리 <b>공유 → 홈 화면에 추가</b>로 열면 바 없이 즐길 수 있어요.
+            </>
+          ) : inApp ? (
+            <>
+              {inApp} 안에서는 전체화면이 막혀 있어요.{' '}
+              {isAndroid() ? (
+                <a href={chromeIntentUrl()} className="font-bold text-jungle-700 underline">
+                  크롬으로 열기
+                </a>
+              ) : (
+                '브라우저에서 열어 주세요.'
+              )}
+            </>
+          ) : (
+            <>이 브라우저는 전체화면을 허락하지 않아요. 메뉴의 <b>홈 화면에 추가</b>로 열어 보세요.</>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * 설정 버튼(톱니바퀴)의 한 변(px).
  *
  * 예전 흰 원판은 `w-10 h-10`이었는데, 이 프로젝트는 `html { font-size: 80% }`이라
@@ -228,6 +302,9 @@ export function SoundToggle() {
   // 그대로 반영해야 한다 — 안 그러면 전체를 꺼도 나머지 버튼은 계속 켜진 것처럼
   // 보여서 "안 꺼졌다"고 오해하게 된다. 전체가 꺼진 동안은 개별 토글/슬라이더도 잠가둔다.
   return (
+    // ⚠️ 판은 오른쪽 아래에 붙어 위로 자란다 — 가로로 눕힌 폰(높이 ~390px)에서는 판이 화면보다 커져 맨 위의 [전체화면]이
+    //    화면 밖으로 밀려났다. 그래서 판의 높이를 보이는 높이로 자르고(globals.css의 .settings-fab-panel), 머리줄 ·
+    //    [전체화면]은 고정한 채 아래 항목만 판 안에서 스크롤한다.
     <div
       ref={panelRef}
       className="settings-fab-panel fixed bottom-3 right-3 z-[99] flex flex-col gap-2 bg-white/90 backdrop-blur px-[1.125rem] py-3.5 rounded-2xl shadow-lg border border-jungle-200"
@@ -240,6 +317,8 @@ export function SoundToggle() {
         <span className="text-sm">{settings.muteAll ? '🔇' : '🔊'}</span>
         <span className="text-2xs font-semibold text-gray-400">설정</span>
       </button>
+      <FullscreenRow />
+      <div className="settings-fab-scroll flex flex-col gap-2 min-h-0 overflow-y-auto">
       <VolumeRow
         label="전체"
         active={!settings.muteAll}
@@ -266,6 +345,7 @@ export function SoundToggle() {
       <div className="h-px bg-jungle-100 my-0.5" />
       <FontSizeRow />
       <GuideToggleRow />
+      </div>
     </div>
   );
 }

@@ -50,6 +50,8 @@ export type ClientMessage =
   // 개인전 대기실에서 자기 색을 고른다(12색, 중복 불가 — 남이 쓰는 색이면 COLOR_TAKEN).
   | { type: 'selectColor'; color: PlayerColorId }
   | { type: 'passSkill' } // 턴 종료 시 "아무것도 하지 않음" 선택
+  | { type: 'pickAcorn'; id: string } // 도토리 축제 — 후보 셋 중 하나를 고른다(shared/acorn.ts)
+  | { type: 'rerollAcorn'; slot: number } // 도토리 축제 — 그 칸의 후보를 다시 뽑는다(칸마다 축제에 한 번)
   | { type: 'reconnect'; roomId: string; playerId: string }
   // ─ 게임 중 메뉴(⏸) ─
   // 일시정지 요청. 상대 팀에 사람이 한 명도 없으면(싱글 모드·전원 접속 끊김) 곧바로

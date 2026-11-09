@@ -1,6 +1,7 @@
 import type { Animal, GameSettings, Place, SideId } from './types';
 import { PLACE_ANIMALS } from './types';
 import { SETTINGS_LIMITS, THRESHOLDS, clampSettings } from './constants';
+import type { AcornState } from './acorn';
 import type { SettingsLimits } from './constants';
 
 // ─── 카드 강화 모드 — '혼자 놀기'의 두 번째 판 ─────────────────────────────────────
@@ -14,7 +15,7 @@ import type { SettingsLimits } from './constants';
 // 3. 기술마다 **쿨타임**이 있다(쓴 뒤 그 수만큼 내 차례에 못 쓴다). 레벨이 오를수록 효과도 쿨타임도 커진다.
 // 4. **턴 제한이 없다** — 목표 체력에 닿거나 상대 체력이 0이 되어야 끝난다(shared/sides.ts의 maxTurnOf가 Infinity).
 // 5. (짝이 맞으면 그 카드의 기술이 저절로 발동하던 "짝 효과"는 2026-10-31에 걷었다 — 직관적이지 않았다. 짝은 경험치만 올린다.)
-// 6. **장소를 누르면 여러 장이 나온다** — 동물 2종 장소(오두막·부둣가) 1~3장, 3종 장소(숲길·강가) 3~5장(ENHANCE_PLACE_DRAWS).
+// 6. **장소를 누르면 여러 장이 나온다** — 동물 2종 장소(오두막·부둣가) 1~3장, 3종 장소(숲길·강가) 4~6장(ENHANCE_PLACE_DRAWS).
 //
 // 엔진·화면은 혼자 놀기 그대로다 — 나(A) 대 컴퓨터(B)의 팀전 1:1 판에 이 규칙을 얹은 것이다(화면은 GameLayout).
 // 이 판인지는 `GameState.enhance`가 있느냐로 가른다.
@@ -48,12 +49,72 @@ export const ENHANCE_STEP_LEVEL = 6;
  * 장소를 한 번 눌렀을 때 나오는 장수(최소~최대, 무작위) — 그 장소가 다루는 동물 수로 가른다(일반 판의 숫자 범위 5~10 / 10~15와 같은 기준).
  * 각 장은 그 장소의 동물 중 무작위다. 실용신양·도토리 축제의 예약 뽑기는 지금처럼 한 번에 한 장이다(장수가 곧 "카드 +N장"이다).
  */
-export const ENHANCE_PLACE_DRAWS: Record<2 | 3, readonly [number, number]> = { 2: [1, 3], 3: [3, 5] };
+export const ENHANCE_PLACE_DRAWS: Record<2 | 3, readonly [number, number]> = { 2: [1, 3], 3: [4, 6] };
+
+/**
+ * 도토리 축제의 배율(2026-11-02 요청) — 카드 강화 판의 축제는 무작위 장소에서 따로 뽑지 않고, **누른 장소의 장수 범위를 넓힌다.**
+ * 장수는 3장 단위의 단계다(×1 = 1~3장, ×2 = 4~6장, ×3 = 7~9장 …). 동물 2종 장소(오두막 · 부둣가)는 ×1, 3종 장소(숲길 · 강가)는 한 단계 위(4~6장)에서
+ * 시작하고, 축제 한 번(festivalDrawInfoAt의 count = c)마다 c단계 올라간다 — 축제 ×2면 오두막 4~6장 · 숲길 7~9장(2026-11-02 정정).
+ * 기본 규칙(축제 한 번 1)이면 1턴 ×2 · 4턴마다 ×3 · ×4 …
+ * (그 전에는 축제 한 번이 무작위 장소 4회였다 — 어느 장소에서 무엇이 나왔는지 알 수 없어 직관적이지 않았다.)
+ */
+export function enhanceFestivalMultiplier(festivalCount: number): number {
+  return 1 + Math.max(0, festivalCount);
+}
+
+/** 이 장소의 장수 범위 — 축제가 걸려 있으면(festivalCount > 0) 넓어진다 */
+export function enhancePlaceDrawRange(place: Place, festivalCount: number = 0): readonly [number, number] {
+  const [min, max] = ENHANCE_PLACE_DRAWS[PLACE_ANIMALS[place].length >= 3 ? 3 : 2];
+  const c = Math.max(0, festivalCount);
+  return [min + 3 * c, max + 3 * c];
+}
 
 /** 이 장소에서 이번에 나올 장수 */
-export function enhancePlaceDrawCount(place: Place, rng: () => number = Math.random): number {
-  const [min, max] = ENHANCE_PLACE_DRAWS[PLACE_ANIMALS[place].length >= 3 ? 3 : 2];
+export function enhancePlaceDrawCount(place: Place, rng: () => number = Math.random, festivalCount: number = 0): number {
+  const [min, max] = enhancePlaceDrawRange(place, festivalCount);
   return min + Math.floor(rng() * (max - min + 1));
+}
+
+/** 턴이 지날수록 장소에서 더 나오는 장수(2026-11-07) — drawGrowthTurns턴마다 +1(1턴은 0). 0이면 끈다 */
+export function enhanceTurnDrawBonus(turn: number, settings: Pick<GameSettings, 'drawGrowthTurns'>): number {
+  const every = settings.drawGrowthTurns ?? 0;
+  return every > 0 ? Math.floor((Math.max(1, turn) - 1) / every) : 0;
+}
+
+/** 기술을 쓸 때마다 그 카드에 붙는 경험치(2026-11-07) */
+export const ENHANCE_USE_EXP: Record<Animal, number> = { sheep: 1, rabbit: 1, mermaid: 2, tiger: 2 };
+
+/**
+ * 배수 카드(2026-11-02 요청) — 카드 강화 판은 한 번에 나온 장수를 그대로 늘어놓지 않고 **큰 단위의 카드로 묶어** 내놓는다.
+ * 128장이면 ×100 한 장 · ×10 두 장 · ×5 한 장 · 1 세 장. 카드의 num이 곧 그 카드가 뜻하는 장수다(짝 · 경험치 모두 num으로 센다 —
+ * engine/drawCard.ts의 settleStacks). 수백 장이 한꺼번에 깔려 화면이 버벅이던 것을 없앤다.
+ * 화면: ×5 구리 · ×10 은 · ×100 금 · ×1000 무지개, ×5부터 "쿵" 하고 떨어진다(BigCardSlam).
+ */
+export const ENHANCE_CARD_DENOMS = [1000, 100, 10, 5, 1] as const;
+/** n장을 배수 카드 묶음으로 — **작은 것부터** 돌려준다(큰 카드가 마지막에 떨어져 줄의 끝에 선다) */
+export function splitEnhanceCount(n: number): number[] {
+  const out: number[] = [];
+  let rest = Math.max(0, Math.floor(n));
+  for (const d of ENHANCE_CARD_DENOMS) {
+    while (rest >= d) {
+      out.push(d);
+      rest -= d;
+    }
+  }
+  return out.reverse();
+}
+/** 화면에서 "쿵" 하고 떨어지는 카드인가 — ×5부터 */
+export const ENHANCE_SLAM_FROM = 5;
+/**
+ * 큰 카드 하나의 연출 길이(ms) — 화면 가운데로 커지며 떠올랐다가 제자리에 쿵 떨어진다(화면 BigCardSlam · CSS .big-card-slam).
+ * 다음 장은 앞 장이 닿은 뒤(enhanceSlamLandMs)에 떠오른다. 서버의 연출 유예(room.ts settleTimelineMs)도 이 값을 쓴다.
+ */
+export function enhanceSlamMs(num: number): number {
+  return num >= 1000 ? 900 : num >= 100 ? 780 : num >= 10 ? 680 : 600;
+}
+/** 큰 카드가 제자리에 닿는 순간(연출 시작부터 ms) — 그때 카드가 줄에 나타나고 흙먼지 · 충격파가 퍼진다. 다음 큰 카드는 이때 떠오른다. */
+export function enhanceSlamLandMs(num: number): number {
+  return Math.round(enhanceSlamMs(num) * 0.8);
 }
 
 /**
@@ -117,12 +178,8 @@ export const ENHANCE_SHEEP_COOLDOWN_CARDS: readonly number[] = [0, 0, 0, 0, 0, 1
 export const ENHANCE_RABBIT_CLEANSE: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 2, 2, 3, Infinity];
 /** 상표토끼 — 지속 회복에 더하는 턴 수(최대 ENHANCE_REGEN_MAX_TURNS) */
 export const ENHANCE_RABBIT_REGEN_TURNS: readonly number[] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4];
-/** 상표토끼 Lv.6부터 — "체력 회복 중첩"에 더하는 수(쓸 때마다 쌓여 최대 ENHANCE_STACK_MAX). 지속 회복 한 턴의 양 = 4 × 중첩 */
-export const ENHANCE_RABBIT_REGEN_STACK: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2];
 /** 특허랑이 — 상대에게 쌓는 출혈 턴 수(최대 ENHANCE_BLEED_MAX_TURNS) */
 export const ENHANCE_TIGER_BLEED_TURNS: readonly number[] = [1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4];
-/** 특허랑이 Lv.6부터 — 상대의 "출혈 누적 계수"에 더하는 수(쌓여 최대 ENHANCE_STACK_MAX). 출혈 한 턴의 양 = 15 × (1 + 0.2 × 계수) */
-export const ENHANCE_TIGER_BLEED_STACK: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2];
 /**
  * 특허랑이 Lv.6부터 — 상대의 회복 효율을 이만큼(%) 깎는다(상대의 다음 1턴). 100이면 회복 금지.
  * 6차 표는 Lv.6에서 더 세게(−20%) 시작해 긴 판에서 회복이 공격을 따라잡지 못하게 하되, 상표토끼를 통째로 지우지 않게 Max도 −60%에서 멈춘다.
@@ -133,23 +190,13 @@ export const ENHANCE_HEAL_CUT_TURNS = 1;
 /** 지속 회복 · 출혈이 쌓일 수 있는 최대 턴 수 — 넘는 몫은 버린다(6차 표 — 5차 표는 20 · 40) */
 export const ENHANCE_REGEN_MAX_TURNS = 8;
 export const ENHANCE_BLEED_MAX_TURNS = 12;
-/** 회복 중첩 · 출혈 누적 계수가 쌓일 수 있는 최대 값(6차 표 — 5차 표는 20) */
-export const ENHANCE_STACK_MAX = 10;
 /**
- * 지속 효과 한 턴의 양 — 중첩(계수)이 없으면 낮은 값(회복 4 · 출혈 12), 생기면(Lv.6+에 맞았다) 높은 값에서 센다.
- * 회복 = 4 × 중첩(최대 40), 출혈 = 15 × (1 + 0.2 × 계수)(최대 45) — 기술 한 번보다 작게 둔 "보조" 효과다
- * (5차 표는 회복 32 × 중첩 · 출혈 80 × (1 + 0.2 × 계수)라 최대 640 · 400이 됐다).
+ * 지속 효과 한 턴의 양 = 그 기술 카드 수치(상표토끼 즉시 회복 · 특허랑이 공격력 — 배율 · 도토리 %까지 든 값)의 50%, 반올림(2026-11-07).
+ * 중첩 · 출혈 계수는 없다 — 다시 걸리면 턴은 더하고 한 턴의 양은 새로 건 값으로 바뀐다.
  */
-export const ENHANCE_REGEN_TICK = { low: 4, high: 4 } as const;
-export const ENHANCE_BLEED_TICK = { low: 12, high: 15, rate: 0.2 } as const;
-/** 지속 회복 한 턴의 양(중첩 → 양) */
-export function enhanceRegenTick(stack: number): number {
-  return stack > 0 ? ENHANCE_REGEN_TICK.high * stack : ENHANCE_REGEN_TICK.low;
-}
-/** 출혈 한 턴의 양(계수 → 양, 반올림) */
-export function enhanceBleedTick(stack: number): number {
-  const t = ENHANCE_BLEED_TICK;
-  return stack > 0 ? Math.round(t.high * (1 + t.rate * stack)) : t.low;
+export const ENHANCE_DOT_RATE = 0.5;
+export function enhanceDotTick(cardValue: number): number {
+  return Math.round(cardValue * ENHANCE_DOT_RATE);
 }
 /**
  * 카드 강화 판의 예약 뽑기(실용신양 · 도토리 축제) 한 번의 상한 — 넘는 몫은 버린다(2026-10-30).
@@ -192,6 +239,14 @@ export function enhanceLevel(animal: Animal, exp: number): number {
   return Math.min(ENHANCE_MAX_LEVEL, 1 + Math.floor(exp / THRESHOLDS[animal]));
 }
 
+/**
+ * 승격 전(브론즈 Lv.1~3) 카드는 짝 · 싹쓸이로 얻는 경험치가 N배다(방 규칙 expGainMult, 2026-11-08 요청 — 초반 레벨업 · 승격을 앞당긴다).
+ * 카드에 숫자가 적힌 경험치(실용신양 무작위 경험치 · 도토리 카드 · 기술 사용 경험치)는 적힌 대로 준다.
+ */
+export function enhanceExpGain(animal: Animal, currentExp: number, amount: number, mult: number): number {
+  return enhanceLevel(animal, currentExp) < ENHANCE_SILVER_FROM ? amount * mult : amount;
+}
+
 /** 화면에 쓰는 레벨 이름 — 마지막 단계는 "Max" */
 export function enhanceLevelLabel(level: number): string {
   return level >= ENHANCE_MAX_LEVEL ? 'Max' : String(level);
@@ -212,11 +267,9 @@ export const enhanceMermaidDivideTurns = byLevel(ENHANCE_MERMAID_DIVIDE_TURNS);
 export const enhanceMermaidEvadePct = byLevel(ENHANCE_MERMAID_EVADE_PCT);
 export const enhanceRabbitCleanse = byLevel(ENHANCE_RABBIT_CLEANSE);
 export const enhanceRabbitRegenTurns = byLevel(ENHANCE_RABBIT_REGEN_TURNS);
-export const enhanceRabbitRegenStack = byLevel(ENHANCE_RABBIT_REGEN_STACK);
 export const enhanceTigerBleedTurns = byLevel(ENHANCE_TIGER_BLEED_TURNS);
-export const enhanceTigerBleedStack = byLevel(ENHANCE_TIGER_BLEED_STACK);
 export const enhanceTigerHealCut = byLevel(ENHANCE_TIGER_HEAL_CUT);
-/** 특허랑이 Lv.Max — 상대의 이로운 효과(지속 회복과 그 중첩 · 쌓아 둔 배율 · 다음 턴 추가 뽑기 · 기술 회피)를 모두 걷어 낸다 */
+/** 특허랑이 Lv.Max — 상대의 이로운 효과(지속 회복 · 쌓아 둔 배율 · 다음 턴 추가 뽑기 · 기술 회피)를 모두 걷어 낸다 */
 export function enhanceTigerPurges(level: number): boolean {
   return clampLevel(level) >= ENHANCE_MAX_LEVEL;
 }
@@ -289,6 +342,8 @@ export interface EnhanceState extends EnhanceStatus {
    * "2턴 남음"이 두 번째 기술을 고르자 "1턴 남음"으로 줄어드는 것처럼 보였다(2026-10-31). 화면은 enhanceCooldownShown으로 뺀다.
    */
   usedThisTurn?: Animal[];
+  /** 도토리 카드(증강 — shared/acorn.ts). 도토리 축제가 이것을 연다(2026-11-06 — 그 전의 "장소 배율" 축제를 갈았다) */
+  acorn?: AcornState;
 }
 
 /**
@@ -300,11 +355,9 @@ export interface EnhanceDot {
   turns: number;
   amount: number;
   fresh?: number;
-  /**
-   * 회복 중첩(상표토끼 Lv.6+) · 출혈 누적 계수(특허랑이 Lv.6+) — 걸릴 때마다 쌓여 최대 ENHANCE_STACK_MAX, 효과가 끝나면 0으로.
-   * 한 턴의 양(amount)은 이 값에서 나온다(enhanceRegenTick · enhanceBleedTick). 없으면 0.
-   */
-  stack?: number;
+  /** 출혈만 — 건 쪽의 도토리 카드가 더한 피해 %와 고정 피해(다시 걸리면 큰 쪽). 한 턴의 양(amount)에 이미 들어 있다 */
+  bonusPct?: number;
+  flat?: number;
 }
 
 /** 회복 효율 감소(상대 특허랑이 Lv.6+) — 남은 그 편의 차례 수와 깎는 비율(%) */
@@ -328,7 +381,7 @@ export interface EnhanceStatus {
    */
   divisors: Record<SideId, number>;
   divisorTurns: Record<SideId, number>;
-  /** 출혈(상대 특허랑이 — 최대 40턴) · 지속 회복(내 상표토끼 — 최대 20턴). 다시 걸리면 턴은 더하고, 중첩(계수)도 더한다(최대 20). */
+  /** 출혈(상대 특허랑이 — 최대 40턴) · 지속 회복(내 상표토끼 — 최대 20턴). 다시 걸리면 턴은 더하고 한 턴의 양은 새로 건 값(enhanceDotTick). */
   bleed: Record<SideId, EnhanceDot>;
   regen: Record<SideId, EnhanceDot>;
   /** 회복 효율 감소(상대 특허랑이 Lv.6+ — 그 편의 다음 1턴). 그동안 그 편의 모든 회복(기술 · 지속 회복)이 줄어든다. */
@@ -339,6 +392,8 @@ export interface EnhanceStatus {
    * 배율 나누기 · 효과 ÷10)이 하나도 들지 않는다. 0이면 없다. 예전 판의 상태에는 없을 수 있다.
    */
   evade?: Record<SideId, number>;
+  /** 보호막(도토리 카드 — 시작 체력의 20%까지). 공격 · 출혈 피해를 먼저 막는다. 예전 판의 상태에는 없을 수 있다 */
+  shield?: Record<SideId, number>;
 }
 
 /** 지속 효과 묶음의 복사본 — 직렬화와 이벤트의 `status`가 쓴다(엔진 상태를 그대로 실으면 뒤의 변경이 따라 들어간다). */
@@ -352,6 +407,7 @@ export function cloneEnhanceStatus(e: EnhanceStatus): EnhanceStatus {
     regen: copy(e.regen),
     healCut: copy(e.healCut),
     evade: { ...(e.evade ?? {}) },
+    shield: { ...(e.shield ?? {}) },
   };
 }
 
@@ -366,11 +422,16 @@ export function cloneEnhanceStatus(e: EnhanceStatus): EnhanceStatus {
  * 숫자가 폭발하지 않아 판을 끝낼 힘이 모자라므로 그 몫은 "한 차례 기술 2장"을 12턴부터 주어 메우고, 셋째 장은 두지 않는다.
  * (그 전: 축제 2턴부터 1회 · 2턴마다 · 기술 15턴마다 최대 3장 — 2026-10-30, 그보다 전에는 목표 200 · 축제 6턴 · 4턴마다)
  */
+// 2026-11-07 — 판 길이 15~17 → 10~12턴(enhanceBalance 1000판 중앙값 11): 목표 500 → 400 · 축제 4 → 3턴부터(4턴마다 — 3 · 7 · 11 …) ·
+// 장소 장수 매 턴 +1(drawGrowthTurns) · 기술을 쓰면 그 카드 경험치(ENHANCE_USE_EXP) · 도토리 카드 공격 · 성장 수치 ×2(ACORN_POWER)
 export const ENHANCE_SETTINGS: GameSettings = {
   firstTeam: 'A',
-  targetScore: 500,
-  festivalTurn: 1,
-  festivalDrawCount: 4,
+  // 1600 — 판 길이 평균 15~17턴(2026-11-08 요청, enhanceBalance 6000판 평균 16.0턴). 400이면 7.5턴
+  targetScore: 1600,
+  // 카드 강화 판의 도토리 축제 = 도토리 카드 고르기(2026-11-06 — shared/acorn.ts). 축제 시작 턴부터 festivalDrawIncreaseInterval턴마다 열린다
+  // (기본 3 · 7 · 11 · 15턴). festivalDrawCount는 이 판에서 쓰지 않는다. (그 전: 1턴부터 장소 배율 ×2, 4턴마다 +1)
+  festivalTurn: 3,
+  festivalDrawCount: 1,
   festivalDrawIncreaseInterval: 4,
   drawTimeSec: 15,
   actionTimeSec: 10,
@@ -380,6 +441,8 @@ export const ENHANCE_SETTINGS: GameSettings = {
   skillGrowth: true,
   skillGrowthTurns: 12,
   skillGrowthMax: 2,
+  drawGrowthTurns: 1,
+  expGainMult: 2,
 };
 
 /**

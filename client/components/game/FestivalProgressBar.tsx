@@ -22,7 +22,7 @@ export function FestivalProgressBar({
     // 자리는 오른쪽 — 들보의 "도토리 축제! 랜덤 뽑기" 배지 **바로 밑**이다(요청).
     // 실용신양 진행도(가운데)와 나란히 서도 서로 겹치지 않는다.
     <div className="play-acorn-bar play-progress-top play-progress-right fixed z-40 flex items-center gap-2 font-bold pointer-events-none">
-      <span>{teamLabel} 도토리 축제 추가 뽑기</span>
+      <span>{progress.multiplier ? `${teamLabel} 도토리 축제 ×${progress.multiplier} — 장소 카드` : `${teamLabel} 도토리 축제 추가 뽑기`}</span>
       <span className="tabular-nums text-amber-200">
         {progress.current} / {progress.total}
       </span>

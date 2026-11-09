@@ -27,7 +27,7 @@ export function duelMapOf(state: ClientGameState, playerId: string | null): Duel
 
 // 편 id가 값으로 들어가는 칸(shared/types.ts · protocol.ts) — turnOrder는 그 배열이다
 const VALUE_KEYS = new Set([
-  'team', 'side', 'target', 'winner', 'activeTeam', 'pendingChoice', 'startingTeam', 'forfeitedBy', 'collectedBy', 'turnOrder',
+  'team', 'side', 'target', 'winner', 'purged', 'activeTeam', 'pendingChoice', 'startingTeam', 'forfeitedBy', 'collectedBy', 'turnOrder',
 ]);
 
 function rename(value: unknown, names: ReadonlyMap<string, string>, isSideValue: boolean): unknown {

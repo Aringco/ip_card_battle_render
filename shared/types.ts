@@ -1,5 +1,6 @@
 import type { PlayerColorId } from './constants';
 import type { EnhanceState, EnhanceStatus } from './enhance';
+import type { AcornTier } from './acorn';
 
 export type Animal = 'sheep' | 'rabbit' | 'mermaid' | 'tiger';
 export type Team = 'A' | 'B';
@@ -44,7 +45,8 @@ export function isTeamSeat(seat: Seat): seat is Team {
   return seat === 'A' || seat === 'B';
 }
 // 1은 카드 강화 모드에서만 나온다(모든 카드가 1 — shared/enhance.ts).
-export type CardNum = 1 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
+// 100 · 1000은 카드 강화 판의 배수 카드(shared/enhance.ts의 ENHANCE_CARD_DENOMS — 5 · 10도 그 판에서는 배수 카드다)
+export type CardNum = 1 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 100 | 1000;
 export type GamePhase = 'lobby' | 'playing' | 'ended';
 
 // 맵 네 모서리의 장소 — 각 장소를 클릭하면 괄호 안 동물 중 하나가 무작위로 나온다.
@@ -110,7 +112,11 @@ export interface GameSettings {
   // 일반 판은 이 셋을 읽지 않는다.
   skillGrowth: boolean;
   skillGrowthTurns: number;
+  // 카드 강화 판 — 이 턴마다 장소에서 나오는 장수 +1(2026-11-07, 실용신양 예약 뽑기와 별개). 0이면 끈다. 일반 판은 읽지 않는다
+  drawGrowthTurns: number;
   skillGrowthMax: number;
+  // 카드 강화 판 — 승격 전(Lv.1~3) 카드가 짝 · 싹쓸이로 얻는 경험치 N배(2026-11-08, 1 = 그대로). 일반 판은 읽지 않는다
+  expGainMult: number;
 }
 
 export interface GameState {
@@ -165,6 +171,23 @@ export interface GameState {
   enhance?: EnhanceState;
 }
 
+/** 도토리 카드 — 쓰러짐 방지(survive) · 위기 회복(lowHeal)이 든 편과 회복량 */
+export interface AcornRescue {
+  side: SideId;
+  kind: 'survive' | 'lowHeal';
+  amount: number;
+}
+/** 도토리 카드를 고른 순간 바로 든 것 */
+export interface AcornGains {
+  exp?: Partial<Record<Animal, number>>;
+  cd?: Array<{ animal: Animal; before: number; after: number }>;
+  heal?: number;
+  shield?: number;
+  cleansed?: string[];
+  purged?: SideId[];
+  draws?: number;
+}
+
 // 게임 이벤트 (클라이언트 연출 및 시뮬레이션 로그용)
 export type GameEvent =
   | { type: 'draw'; place: Place; card: StackedCard }
@@ -175,7 +198,7 @@ export type GameEvent =
       exp: number;      // 카드 숫자 합 — 이 페어를 정산해 실제로 더해진 경험치
       cardIds: number[];
     }
-  | { type: 'bonusDraws'; team: SideId; count: number } // 실용신양 스킬로 예약해둔 추가 뽑기를 이번 턴에 소모
+  | { type: 'bonusDraws'; team: SideId; count: number; total?: number } // 실용신양 스킬로 예약해둔 추가 뽑기를 이번 턴에 소모(카드 강화 판: count = 배수 카드 장수, total = 뜻하는 장수)
   | { type: 'festivalDraws'; team: SideId; count: number } // 도토리 축제로 예약해둔 추가 뽑기를 이번 턴에 소모(실용신양과 동일한 방식)
   | {
       type: 'skillApplied';
@@ -211,9 +234,9 @@ export type GameEvent =
       cooldownCuts?: Array<{ animal: Animal; before: number; after: number }>;
       // 카드 강화 — 상표토끼 Lv.6+: 남은 턴을 줄인 내 부정한 효과(after 0이면 사라졌다)
       cleanse?: { kind: 'bleed' | 'divisor'; before: number; after: number };
-      // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈(상대에게): 더한 턴 수와 한 턴의 양, Lv.6+가 더한 중첩(계수)과 더한 뒤의 값
-      regenAdded?: { turns: number; amount: number; stackAdded?: number; stack?: number };
-      bleedAdded?: { turns: number; amount: number; stackAdded?: number; stack?: number };
+      // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈(상대에게): 더한 턴 수와 한 턴의 양(카드 수치의 50%)
+      regenAdded?: { turns: number; amount: number };
+      bleedAdded?: { turns: number; amount: number };
       // 카드 강화 — 이번 효과의 회복이 상대 특허랑이의 "회복 효율 −N%"로 줄었다(N)
       healCutUsed?: number;
       // 카드 강화 — 특허랑이 Lv.6+: 상대에게 건 회복 효율 감소(N%, 상대의 다음 1턴)
@@ -226,6 +249,18 @@ export type GameEvent =
       evaded?: true;
       // 카드 강화 — 이 효과를 적용한 직후의 지속 효과 묶음(화면이 연출 순간에 이 값으로 체력창 아이콘을 바꾼다)
       status?: EnhanceStatus;
+      // 도토리 카드 — 대상의 보호막이 막은 피해 · 대상이 쓴 "다음 공격 피해 −%" · 반사로 내가 잃은 체력 · 추가 발동으로 더한 양 ·
+      // 즉시 회복에서 생긴 내 보호막 · 그 카드의 경험치 발동 · 쿨타임 발동 · 쓰러짐 방지/위기 회복(그 회복은 hpAfter에 이미 들어 있다)
+      shieldAbsorbed?: number;
+      wardUsed?: number;
+      reflected?: number;
+      acornProc?: number;
+      shieldAdded?: number;
+      expProc?: number;
+      /** 카드 강화 — 기술을 쓴 그 카드에 붙은 경험치(ENHANCE_USE_EXP) */
+      useExp?: number;
+      cdProc?: true;
+      rescue?: AcornRescue[];
     }
   // 카드 강화 — 차례를 마친 편의 지속 효과가 한 번 들었다(출혈 → 회복 순). amount는 실제로 바뀐 체력(출혈은 깎인 양, 양수).
   | {
@@ -238,9 +273,34 @@ export type GameEvent =
       healCutUsed?: number;
       hpAfter: Record<SideId, number>;
       status: EnhanceStatus;
+      // 도토리 카드 — 출혈을 보호막이 막은 양 · 출혈 무효로 막았다 · 지속 회복에서 생긴 보호막 · 쓰러짐 방지/위기 회복
+      shieldAbsorbed?: number;
+      blocked?: true;
+      shieldAdded?: number;
+      rescue?: AcornRescue[];
     }
+  // 도토리 축제 — 도토리 카드 고르기가 열렸다(모든 사람이 같은 단계 · 사람마다 후보 셋 — state.enhance.acorn.offer)
+  | { type: 'acornOffer'; no: number; tier: AcornTier }
+  // 도토리 카드 하나를 골랐다(auto = 시간초과로 대신 골랐다 · closed = 이 고르기로 모두 끝나 판이 다시 흐른다)
+  | {
+      type: 'acornPicked';
+      team: SideId;
+      id: string;
+      tier: AcornTier;
+      auto?: true;
+      closed?: true;
+      gains: AcornGains;
+      hpAfter: Record<SideId, number>;
+      status?: EnhanceStatus;
+    }
+  // 도토리 카드 리롤 — 그 편의 slot번째 후보가 id로 바뀌었다(칸마다 축제에 한 번)
+  | { type: 'acornReroll'; team: SideId; slot: number; id: string }
+  // 도토리 카드의 턴마다 효과(턴이 오를 때)
+  | { type: 'acornRound'; team: SideId; id: string; kind: 'exp' | 'cleanse'; animal?: Animal; amount?: number; cleansed?: string }
   // 카드 강화 — 이 장소를 눌러 이번에 count장이 한꺼번에 나온다(뒤따르는 draw count개가 그 카드들이다). 화면은 겹쳐서 빠르게 띄운다.
-  | { type: 'placeDraws'; place: Place; count: number }
+  // 카드 강화 판은 장수(total)를 배수 카드(splitEnhanceCount)로 묶어 내므로 count는 실제로 나오는 카드 장수, total은 그 카드들이 뜻하는 장수다.
+  // festival은 이번 뽑기에 걸린 도토리 축제 배율(×N — 없으면 빠진다).
+  | { type: 'placeDraws'; place: Place; count: number; total?: number; festival?: number; team?: SideId }
   // 싹쓸이 — 이번 정산으로 필드가 비었다. bonus는 네 동물 각각에 더한 보너스 경험치, cards는 빈 필드에 새로 깐 카드(서로 다른 동물).
   // 정산(collect·짝 효과) 바로 뒤에 실린다(shared/constants.ts의 SWEEP_*).
   | { type: 'sweep'; team: SideId; bonus: Record<Animal, number>; cards: StackedCard[] }

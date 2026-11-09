@@ -1,0 +1,142 @@
+# syntax=docker/dockerfile:1.7
+# ─────────────────────────────────────────────────────────────
+# 카드배틀 — nginx 리버스 프록시(HTTP + HTTPS) + WS 서버 + Next.js 클라이언트를 컨테이너 하나에
+#
+#   브라우저 ──▶ :3000 (HTTP)  ┐
+#            └─▶ :443  (HTTPS) ┴─ nginx ─┬─ /ws  ──▶ 127.0.0.1:8080  WS 게임 서버 (server/index.ts)
+#                                        └─ /    ──▶ 127.0.0.1:3001  Next.js     (next start)
+#
+# 프로덕션 빌드의 클라이언트는 WS 주소를 "지금 페이지와 같은 호스트의 /ws"로 잡으므로
+# (useWebSocket.ts의 resolveWsUrl) 도메인·IP를 빌드에 넣을 필요가 없다 — https로 열리면 wss로 붙는다.
+#
+# HTTPS: 인증서는 이미지에 넣지 않는다. 호스트의 Let's Encrypt 폴더를 /etc/letsencrypt에 붙이고
+#   DOMAIN을 주면, 그 도메인의 인증서가 있을 때만 443을 켠다(없으면 HTTP만 — 그래서 인증서를
+#   받기 전에도 컨테이너가 뜬다). 인증서 발급 · 갱신은 certbot 컨테이너가 /var/www/certbot
+#   (HTTP의 /.well-known/acme-challenge/)로 한다. 절차는 DEPLOYMENT.md.
+#
+# 빌드 : docker build -f Dockerfile.nginx -t card-battle-nginx .
+# 실행 : docker run -d --name card-battle \
+#          -p 80:3000 -p 3000:3000 -p 443:443 \
+#          -e DOMAIN=tupd.site -e HTTPS_REDIRECT=1 \
+#          -v /home/ch_user/card-battle/letsencrypt:/etc/letsencrypt:ro \
+#          -v /home/ch_user/card-battle/certbot-www:/var/www/certbot:ro \
+#          --restart unless-stopped card-battle-nginx
+#
+# 환경변수
+#   DOMAIN          인증서 도메인(비우면 HTTP만)
+#   HTTPS_REDIRECT  1이면 인증서가 있을 때 HTTP 요청을 https://로 보낸다(기본 1)
+#   TEST_DOMAIN · TEST_UPSTREAM  운영 컨테이너가 테스트 서버로 넘길 이름 · 주소(deploy/gen-nginx-conf)
+#
+# ※ 루트의 `Dockerfile`(nginx 없이 server.ts 한 프로세스)은 Render 배포(render.yaml)가
+#   쓰고 있으므로 그대로 둔다. 운영 절차는 DEPLOYMENT.md 참고.
+# ─────────────────────────────────────────────────────────────
+
+ARG NODE_IMAGE=node:22-alpine
+ARG NGINX_IMAGE=nginx:1.27-alpine
+
+########## 1) 의존성 설치 ##########
+FROM ${NODE_IMAGE} AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY client/package.json client/
+COPY server/package.json server/
+COPY shared/package.json shared/
+RUN npm ci --no-audit --no-fund
+
+########## 2) 클라이언트 빌드 ##########
+FROM ${NODE_IMAGE} AS build
+WORKDIR /app
+# 비워 두면 클라이언트가 자기 호스트의 /ws로 붙는다 — nginx 구성에서는 비워 둘 것.
+ARG NEXT_PUBLIC_WS_URL=
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build --workspace=client && rm -rf client/.next/cache
+
+########## 3) 런타임: nginx 이미지 + node 바이너리 ##########
+FROM ${NODE_IMAGE} AS node-bin
+FROM ${NGINX_IMAGE} AS runner
+
+# node는 빌드에 쓴 것과 같은 버전을 그대로 옮겨 온다(둘 다 alpine/musl).
+RUN apk add --no-cache libstdc++ libgcc
+COPY --from=node-bin /usr/local/bin/node /usr/local/bin/node
+
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    DOMAIN= \
+    HTTPS_REDIRECT=1
+
+COPY --from=build /app /app
+
+# nginx 기본 사이트(:80)를 걷는다. 사이트 설정은 시작할 때 gen-nginx-conf가 만든다.
+RUN rm -f /etc/nginx/conf.d/default.conf && mkdir -p /etc/nginx/snippets /var/www/certbot
+
+# 두 서버(HTTP · HTTPS)가 함께 쓰는 프록시 규칙
+COPY <<'EOF' /etc/nginx/snippets/card-battle-proxy.conf
+# WebSocket 게임 서버
+location /ws {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # 한 판이 길어도 연결이 끊기지 않게(기본 60초면 조용한 대기실에서 끊긴다)
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+
+# Next.js 클라이언트
+location / {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+EOF
+
+# 사이트 설정 만들기 — deploy/gen-nginx-conf(테스트 도메인 넘기기 포함, 환경변수는 그 파일 머리말)
+COPY --chmod=755 deploy/gen-nginx-conf /usr/local/bin/gen-nginx-conf
+
+# 세 프로세스를 띄우고, 하나라도 죽으면 컨테이너를 끝낸다(→ restart 정책이 다시 띄움).
+COPY --chmod=755 <<'EOF' /usr/local/bin/start.sh
+#!/bin/sh
+gen-nginx-conf || exit 1
+
+cd /app/server
+PORT=8080 node /app/node_modules/ts-node/dist/bin.js --transpile-only index.ts &
+WS_PID=$!
+
+cd /app/client
+node /app/node_modules/next/dist/bin/next start -p 3001 -H 127.0.0.1 &
+WEB_PID=$!
+
+nginx -g 'daemon off;' &
+NGINX_PID=$!
+
+stop_all() {
+  kill -TERM "$WS_PID" "$WEB_PID" "$NGINX_PID" 2>/dev/null
+  wait
+}
+trap 'echo "[start.sh] 종료 신호 — 정리 중"; stop_all; exit 0' TERM INT
+
+while kill -0 "$WS_PID" 2>/dev/null && kill -0 "$WEB_PID" 2>/dev/null && kill -0 "$NGINX_PID" 2>/dev/null; do
+  sleep 2
+done
+echo "[start.sh] 프로세스 하나가 멈췄습니다(ws=$WS_PID web=$WEB_PID nginx=$NGINX_PID) — 컨테이너를 종료합니다"
+stop_all
+exit 1
+EOF
+
+EXPOSE 3000 443
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/healthz && wget -q -O /dev/null http://127.0.0.1:3001/ || exit 1
+
+STOPSIGNAL SIGTERM
+ENTRYPOINT []
+CMD ["/usr/local/bin/start.sh"]

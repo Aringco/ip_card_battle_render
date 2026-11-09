@@ -16,6 +16,8 @@ import type { GameEvent, GameSettings, GameState, PlayerColorId, SettingsLimits,
 import { dealOpeningSharedCards, initStacks } from './places';
 import type { RNG } from './places';
 import { rankByHpAndEnd, resolveRanks } from './ranking';
+import { acornBleed, acornRoundStart, addShield, attachAcorn, openAcornFestivalIfDue } from './acorn';
+import { acornSideOf, acornStatsOf } from 'shared';
 
 /** 체력이 움직인 뒤의 승패 판정 — 팀전은 즉시 승패(checkKnockout), 개인전은 순위(resolveRanks). */
 export function judgeHp(state: GameState): GameEvent[] {
@@ -79,10 +81,10 @@ export function checkKnockout(state: GameState): GameEvent[] {
  * 턴 종료 공통 경로 — 행동 선택(또는 패스) 직후 반드시 이걸 거친다.
  * 즉시 승패가 났으면 턴을 넘기지 않고 그대로 게임을 끝낸다.
  */
-export function finishTurn(state: GameState): GameEvent[] {
+export function finishTurn(state: GameState, rng: RNG = Math.random): GameEvent[] {
   const ko = checkKnockout(state);
   if (ko.length > 0) return ko;
-  return advanceTurn(state);
+  return advanceTurn(state, rng);
 }
 
 /**
@@ -109,7 +111,7 @@ export function finishTurn(state: GameState): GameEvent[] {
  *    차례 팀(A/B 구분 없이)에게 도토리 축제 랜덤 뽑기 예약
  * 5. MAX_TURN 초과 시 체력 비교로 게임 종료
  */
-export function advanceTurn(state: GameState): GameEvent[] {
+export function advanceTurn(state: GameState, rng: RNG = Math.random): GameEvent[] {
   if (state.phase !== 'playing') return [];
 
   const events: GameEvent[] = [];
@@ -168,7 +170,12 @@ export function advanceTurn(state: GameState): GameEvent[] {
     // 그 자체로 취급한다 — 마지막 턴에라도 축제가 열리게 하는 것이다.
     // (턴 상한은 평소 MAX_TURN, 목표점수 달성하기는 그 판의 maxTurn — maxTurnOf)
     const effectiveFestivalTurn = Math.min(state.settings.festivalTurn, maxTurnOf(state));
-    if (!state.festival && state.turn >= effectiveFestivalTurn) {
+    // 카드 강화 판의 축제는 도토리 카드 고르기다(shared/acorn.ts) — 턴이 오를 때 턴마다 도는 도토리 효과를 먼저 들이고, 축제 턴이면 고르기를 연다.
+    // 고르는 동안 판은 멈춘다(gameEngine이 장소 · 기술을 받지 않는다). 옛 축제(festival 이벤트 · 예약 뽑기)는 이 판에 없다.
+    if (state.enhance) {
+      events.push(...acornRoundStart(state, rng));
+      events.push(...openAcornFestivalIfDue(state, rng));
+    } else if (!state.festival && state.turn >= effectiveFestivalTurn) {
       state.festival = true;
       events.push({ type: 'festival' });
     }
@@ -178,7 +185,7 @@ export function advanceTurn(state: GameState): GameEvent[] {
   // 팀(nextTeam)의 pendingFestivalDraws에 예약해둔다. 실제 뽑기는 그 팀이 다음 장소를 클릭할 때
   // (server/engine/drawCard.ts) 실행된다. 축제 시작 이후로는 A/B 어느 팀 차례든 매 턴 계속
   // 예약된다 — "라운드당 한 번"이 아니라 "누구든 자기 턴이 오면 무조건" 받는 보너스다.
-  if (state.festival) {
+  if (state.festival && !state.enhance) {
     const drawCount = festivalDrawInfoAt(state.turn, state.settings, maxTurnOf(state)).count;
     if (drawCount > 0) {
       state.teams[nextTeam].pendingFestivalDraws += drawCount;
@@ -215,7 +222,7 @@ export function advanceTurn(state: GameState): GameEvent[] {
 /**
  * 카드 강화 — 차례를 마친 편의 출혈(상대 특허랑이)과 지속 회복(내 상표토끼)을 한 번씩 적용하고 남은 턴을 하나 줄인다.
  * **출혈이 먼저다**(요청 원문 "출혈 > 회복 순") — 출혈로 체력이 0이 되면 회복은 들지 않고 그대로 진다(advanceTurn의 judgeHp).
- * 양은 중첩(계수)으로 정해 둔 한 턴의 양 그대로다(배율 무관 — enhanceRegenTick · enhanceBleedTick). 끝나면 중첩도 0으로 돌아간다. 지속 회복은 그 편에 걸린 회복 효율 감소(상대 특허랑이 Lv.6+)를 거친다.
+ * 양은 걸 때 정해 둔 한 턴의 양 그대로다(enhanceDotTick). 지속 회복은 그 편에 걸린 회복 효율 감소(상대 특허랑이 Lv.6+)를 거친다.
  * **발동한 차례에는 들지 않는다**(4차 표 "모든 지속 효과의 적용은 발동 턴의 다음 턴") — 이번 차례에 스스로 건 몫(fresh)은 빼고 센다.
  * 상대가 건 출혈은 상대 차례에 걸리므로 fresh가 없다(그 편의 다음 차례 = 바로 이번 차례 끝에 든다).
  */
@@ -227,12 +234,18 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
 
   const bleed = enh.bleed[side];
   if (bleed && bleed.turns - (bleed.fresh ?? 0) > 0) {
-    const amount = Math.min(bleed.amount, Math.max(0, team.hp));
-    team.hp -= amount;
+    // 도토리 — 출혈 무효 · 받는 출혈 감소 · 보호막 · 쓰러짐 방지(engine/acorn.ts의 acornBleed)
+    const hit = acornBleed(state, side, bleed.amount);
+    const amount = hit.lost;
     bleed.turns -= 1;
-    if (bleed.turns === 0) Object.assign(bleed, { amount: 0, stack: 0 });
+    if (bleed.turns === 0) Object.assign(bleed, { amount: 0, bonusPct: 0, flat: 0 });
     bleed.fresh = 0;
-    events.push({ type: 'enhanceTick', team: side, kind: 'bleed', amount, turnsLeft: bleed.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh) });
+    events.push({
+      type: 'enhanceTick', team: side, kind: 'bleed', amount, turnsLeft: bleed.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh),
+      ...(hit.absorbed > 0 ? { shieldAbsorbed: hit.absorbed } : {}),
+      ...(hit.blocked ? { blocked: true as const } : {}),
+      ...(hit.rescue.length > 0 ? { rescue: hit.rescue } : {}),
+    });
     if (team.hp <= LOSE_HP) return events;
   }
   if (bleed) bleed.fresh = 0;
@@ -243,11 +256,15 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
     const amount = enhanceHealAfterCut(regen.amount, cut);
     team.hp += amount;
     regen.turns -= 1;
-    if (regen.turns === 0) Object.assign(regen, { amount: 0, stack: 0 });
+    if (regen.turns === 0) regen.amount = 0;
     regen.fresh = 0;
+    // 도토리 — 지속 회복량의 일부를 보호막으로
+    const regenShield = acornStatsOf(acornSideOf(state, side)).regenShield;
+    const shieldAdded = regenShield > 0 ? addShield(state, side, Math.round((amount * regenShield) / 100)) : 0;
     events.push({
       type: 'enhanceTick', team: side, kind: 'regen', amount, turnsLeft: regen.turns, hpAfter: hpAfter(), status: cloneEnhanceStatus(enh),
       ...(cut > 0 ? { healCutUsed: cut } : {}),
+      ...(shieldAdded > 0 ? { shieldAdded } : {}),
     });
   }
   if (regen) regen.fresh = 0;
@@ -387,6 +404,7 @@ export function initIndividualGame(
   if (enhance) {
     attachEnhance(state);
     state.skillsPerTurn = enhanceSkillsOf(state);
+    openAcornFestivalIfDue(state, rng);
   }
   return state;
 }
@@ -406,6 +424,8 @@ export function initEnhanceGame(
 ): GameState {
   const state = initGame(teamAMembers, teamBMembers, rng, settings, ENHANCE_SETTINGS_LIMITS);
   attachEnhance(state);
+  // 축제 시작 턴이 1이면 첫 차례 전에 고르기가 열린다
+  openAcornFestivalIfDue(state, rng);
   return state;
 }
 
@@ -429,4 +449,5 @@ function attachEnhance(state: GameState): void {
     evade: each(() => 0),
     usedThisTurn: [],
   };
+  attachAcorn(state);
 }

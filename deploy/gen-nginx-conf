@@ -1,0 +1,140 @@
+#!/bin/sh
+# 사이트 설정 만들기 — 컨테이너가 시작할 때 한 번, 인증서를 받은 뒤 한 번 더 부른다
+#   docker exec card-battle sh -c 'gen-nginx-conf && nginx -s reload'
+#
+# 환경변수
+#   DOMAIN          인증서 도메인(비우면 HTTP만)
+#   HTTPS_REDIRECT  1이면 인증서가 있을 때 HTTP 요청을 https://로 보낸다
+#   TEST_DOMAIN     (운영 컨테이너만) 이 이름으로 온 요청을 테스트 서버로 넘긴다 — 예: test.tupd.site
+#   TEST_UPSTREAM   테스트 서버 주소(기본 http://card-battle-test:3000 — Docker 네트워크 tupd의 이름)
+#
+# 이미지 안(/usr/local/bin)에 들어가고, 운영 컨테이너는 호스트 사본을 그 자리에 붙인다
+# (deploy/promote.sh) — 그래서 이 파일이 없던 옛 이미지로 되돌려도 테스트 도메인이 살아 있다.
+set -e
+CONF=/etc/nginx/conf.d/card-battle.conf
+CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
+TEST_UPSTREAM="${TEST_UPSTREAM:-http://card-battle-test:3000}"
+HTTPS=0
+if [ -n "$DOMAIN" ] && [ -f "$CERT_DIR/fullchain.pem" ] && [ -f "$CERT_DIR/privkey.pem" ]; then
+  HTTPS=1
+fi
+
+# 테스트 서버로 넘기는 규칙. 주소를 변수로 두고 resolver를 걸어야 테스트 컨테이너가 꺼져 있어도
+# nginx가 뜬다(이름을 그대로 쓰면 시작할 때 못 찾아 운영까지 멈춘다) — 꺼져 있으면 test만 502.
+test_proxy() {
+  cat <<CONF
+    location / {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set \$test_upstream $TEST_UPSTREAM;
+        proxy_pass \$test_upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+CONF
+}
+
+{
+  cat <<'CONF'
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 3000;
+    server_name _;
+    client_max_body_size 2m;
+
+    # Let's Encrypt 확인 파일(인증서 발급 · 갱신) — https로 보내지 않고 여기서 바로 준다
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # 헬스체크 — https로 보내지 않는다
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+CONF
+  if [ "$HTTPS" = 1 ] && [ "$HTTPS_REDIRECT" = 1 ]; then
+    # 이동 대상은 들어온 주소($host)가 아니라 인증서의 도메인이다 — 옛 주소(tupd.kro.kr)나 IP로 들어와도 인증서 경고 없이 열린다
+    echo "    location / { return 301 https://$DOMAIN\$request_uri; }"
+  else
+    echo '    include /etc/nginx/snippets/card-battle-proxy.conf;'
+  fi
+  echo '}'
+
+  if [ -n "$TEST_DOMAIN" ]; then
+    # 80으로 온 테스트 주소 — 확인 파일은 운영과 같은 webroot에서 주고(인증서 하나에 함께 담는다), 나머지는 https 테스트로
+    cat <<CONF
+
+server {
+    listen 3000;
+    server_name $TEST_DOMAIN;
+    client_max_body_size 2m;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+CONF
+    if [ "$HTTPS" = 1 ] && [ "$HTTPS_REDIRECT" = 1 ]; then
+      echo "    location / { return 301 https://$TEST_DOMAIN\$request_uri; }"
+    else
+      test_proxy
+    fi
+    echo '}'
+  fi
+
+  if [ "$HTTPS" = 1 ]; then
+    cat <<CONF
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name $DOMAIN;
+    client_max_body_size 2m;
+
+    ssl_certificate     $CERT_DIR/fullchain.pem;
+    ssl_certificate_key $CERT_DIR/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    include /etc/nginx/snippets/card-battle-proxy.conf;
+}
+CONF
+    if [ -n "$TEST_DOMAIN" ]; then
+      cat <<CONF
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name $TEST_DOMAIN;
+    client_max_body_size 2m;
+
+    ssl_certificate     $CERT_DIR/fullchain.pem;
+    ssl_certificate_key $CERT_DIR/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+CONF
+      test_proxy
+      echo '}'
+    fi
+  fi
+} > "$CONF"
+
+if [ "$HTTPS" = 1 ]; then
+  echo "[nginx] HTTPS 켜짐 — $DOMAIN (HTTP→HTTPS 이동: $HTTPS_REDIRECT)${TEST_DOMAIN:+ · 테스트 $TEST_DOMAIN → $TEST_UPSTREAM}"
+elif [ -n "$DOMAIN" ]; then
+  echo "[nginx] $CERT_DIR 에 인증서가 없어 HTTP만 켭니다 — DEPLOYMENT.md의 인증서 발급 절차 참고"
+else
+  echo "[nginx] DOMAIN이 비어 있어 HTTP만 켭니다"
+fi

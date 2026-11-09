@@ -14,10 +14,14 @@ import { SweepBanner } from '@/components/effects/SweepBanner';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { DecisiveHitBanner } from '@/components/effects/DecisiveHitBanner';
+import { FinisherLayer } from '@/components/effects/FinisherLayer';
 import { TurnAnnounceBanner } from '@/components/effects/TurnAnnounceBanner';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { GameHeader } from './GameHeader';
+import { EnhanceHeader } from './EnhanceHeader';
+import { MobileDotHub } from './mobile/MobileHpBar';
+import { AcornBadges } from './acorn/AcornBadges';
 import { TeamPanel } from './TeamPanel';
 import { GameBoard } from './GameBoard';
 import { SheepProgressBar } from './SheepProgressBar';
@@ -132,6 +136,9 @@ export function GameLayout({
   // 그래야 "카드 도착 → 경험치 반영 → 레벨업"이라는 순서가 화면에서도 지켜진다.
   // 배율·추가 뽑기는 연출 전 값으로(기술 효과가 재생되는 순간에 바뀐다 — useAnimationQueue의 displayedTeamPatch)
   const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedStatus);
+  // PC 카드 강화 판 — CSS 띠 · CSS 판 · 타이머 양옆 체력 막대(2026-11-07)
+  const enhPc = !!gameState.enhance;
+  const hpState = withDisplayedHp(viewState, animState.displayedHp);
   const skillPreviewGameState = withDisplayedExp(viewState, skillPreviewTeam, animState.displayedExp[skillPreviewTeam]);
 
   // 게임 템포가 늘어지지 않도록, 고를 수 있는 행동이 하나도 없으면 방에서 정한
@@ -154,12 +161,14 @@ export function GameLayout({
 
   return (
     <div
+      // ⚠️ 높이는 `--app-h`(지금 보이는 높이, px — layout.tsx · lib/fullscreen.ts)다(2026-11-01). dvh도 문서 스크롤을
+      //    잠근 화면에서는 네이버 앱 등 하단 바가 있는 앱 브라우저에서 아래가 바 밑으로 들어갔다. 아래는 그 전의 설명.
       // ⚠️ `h-screen`(100vh)이 아니라 `h-dvh`다 — 모바일에서 100vh는 주소창이 숨은
       //    상태를 기준으로 잡혀, 주소창이 보이는 동안 화면 아래가 잘린다. dvh는 "지금
       //    실제로 보이는 높이"라 항상 화면에 꼭 맞는다.
       //    무대(--stage-w)는 반대로 **가장 작은** 높이(svh)를 기준으로 잡는다 —
       //    주소창이 나타났다 사라져도 무대 크기가 출렁이지 않게 하기 위해서다.
-      className={`h-dvh play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
+      className={`h-[var(--app-h,100dvh)] play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
       // 혼자 놀기 '카드 강화' — 카드·장소 라벨·짝 합계의 숫자를 감춘다(모든 카드가 1이다 — globals.css의 [data-enhance])
       data-enhance={gameState.enhance ? '' : undefined}
       style={isShaking ? ({ '--shake-scale': shakeScale(animState.screenShakeLevel) } as React.CSSProperties) : undefined}
@@ -171,13 +180,24 @@ export function GameLayout({
       <LeafDecoration position="bl" />
       <LeafDecoration position="br" />
 
-      <GameHeader
-        gameState={gameState}
-        myTeam={myTeam}
-        displayedActiveTeam={animState.displayedActiveTeam}
-        displayedActivePlayerIndex={animState.displayedActivePlayerIndex}
-        isSettling={animState.isSettling}
-      />
+      {/* 카드 강화 판은 그림 들보 대신 CSS 띠(2026-11-07 — tmp_prompt/20261107/v2.txt) */}
+      {enhPc ? (
+        <EnhanceHeader
+          gameState={gameState}
+          myTeam={myTeam}
+          displayedActiveTeam={animState.displayedActiveTeam}
+          displayedActivePlayerIndex={animState.displayedActivePlayerIndex}
+          isSettling={animState.isSettling}
+        />
+      ) : (
+        <GameHeader
+          gameState={gameState}
+          myTeam={myTeam}
+          displayedActiveTeam={animState.displayedActiveTeam}
+          displayedActivePlayerIndex={animState.displayedActivePlayerIndex}
+          isSettling={animState.isSettling}
+        />
+      )}
 
       {/* ⚠️ 흐름에 끼우지 않고 **띄운다.** 액자는 "100vh − 상단 바"로 제 높이를 잡는데,
           여기서 한 줄이라도 자리를 차지하면 그만큼 액자가 화면 밖으로 밀린다. */}
@@ -195,7 +215,9 @@ export function GameLayout({
           ⚠️ 칸 좌표를 컴포넌트에 흩어 두지 말 것 — 그림을 갈아끼우면 한 번에 고쳐야
           하므로 globals.css 한 곳에 모아 둔다. */}
       <main className="flex-1 min-h-0 relative flex items-center">
-        <div className="play-frame">
+        {/* 카드 강화 판은 그림 액자 대신 CSS 판(.play-frame-css.enh-frame — 위: 내 정보 · 카드 필드 · 상대 정보,
+            가운데: 도토리 카드 · 상태 이상 · 타이머, 아래: 체력 구슬 · 기술 카드 · 체력 구슬). 일반 판은 그대로다. */}
+        <div className={enhPc ? 'play-frame-css enh-frame' : 'play-frame'}>
           {/* ── 윗줄 왼쪽 · 오른쪽 — 팀별 동물 경험치 현황(요청 1) */}
           <div className="play-cell play-cell-exp-a">
             <TeamPanel team="A" myTeam={myTeam} gameState={viewState} animState={animState} />
@@ -211,6 +233,7 @@ export function GameLayout({
               captions={animState.captions}
               placeFocusBursts={animState.placeFocusBursts}
               drawSlots={animState.drawSlots}
+              bigSlams={animState.bigSlams}
               woolBalls={animState.woolBalls}
               acornBalls={animState.acornBalls}
               collectingCardIds={animState.collectingCardIds}
@@ -231,10 +254,10 @@ export function GameLayout({
             <TeamPanel team="B" myTeam={myTeam} gameState={viewState} animState={animState} />
           </div>
 
-          {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3) */}
+          {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3). 카드 강화 판은 기술 카드 띠의 좌 · 우(도토리는 가운데 줄 .enh-mid) */}
           <div className="play-cell play-cell-hp-a">
             {/* 체력은 화면상 값으로 — 카드 강화의 짝 효과는 그 연출 순간에야 구슬이 움직인다(useAnimationQueue의 displayedHp) */}
-            <TeamTotalPanel team="A" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} dotPulse={animState.dotPulse.get('A') ?? null} />
+            <TeamTotalPanel team="A" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} dotPulse={animState.dotPulse.get('A') ?? null} acorns={!enhPc} />
           </div>
 
           {/* ── 아랫줄 가운데 다섯 칸 — 기술 카드 4장 + 턴 마치기(요청 4) */}
@@ -256,8 +279,16 @@ export function GameLayout({
           </div>
 
           <div className="play-cell play-cell-hp-b">
-            <TeamTotalPanel team="B" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} dotPulse={animState.dotPulse.get('B') ?? null} />
+            <TeamTotalPanel team="B" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} dotPulse={animState.dotPulse.get('B') ?? null} acorns={!enhPc} />
           </div>
+          {/* 카드 강화 판의 가운데 줄 — 내 도토리 카드 | 상태 이상 | (타이머) | 상태 이상 | 상대 도토리 카드(2026-11-08 요청) */}
+          {enhPc && (
+            <div className="enh-mid">
+              <div className="enh-acorn-bar" data-side="left"><AcornBadges gameState={hpState} side="A" /></div>
+              <div className="enh-acorn-bar" data-side="right"><AcornBadges gameState={hpState} side="B" /></div>
+              <div className="enh-dots"><MobileDotHub gameState={hpState} left="A" right="B" /></div>
+            </div>
+          )}
           {/* 모래시계·남은 시간·차례 안내 — 해설판(채팅로그)을 걷어냈으므로(요청 5)
               그 안에 얹혀 있던 이 오버레이만 따로 살려 보드 아래쪽에 띄운다.
               타이머는 없어지면 안 되는 기능이라 "로그 제거"에 딸려 보낼 수 없다. */}
@@ -337,6 +368,7 @@ export function GameLayout({
       <TigerClawLayer active={animState.tigerImpact} />
 
       {/* 체력 즉시 승패 — 결정타! 강조 */}
+      <FinisherLayer finisher={animState.finisher} />
       <DecisiveHitBanner hit={animState.decisiveHit} />
       <TurnAnnounceBanner
         activeTeam={animState.displayedActiveTeam}

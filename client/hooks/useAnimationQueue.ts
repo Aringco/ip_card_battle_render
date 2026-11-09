@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Animal, ClientGameEvent, ClientGameState, EnhanceStatus, FinishReason, Place, StackedCard, SideId } from 'shared';
-import { ANIMALS, cloneEnhanceStatus } from 'shared';
+import { ANIMALS, ENHANCE_SLAM_FROM, FINISHER_BURST_MS, FINISHER_GATHER_MS, cloneEnhanceStatus, enhanceSlamLandMs, enhanceSlamMs, finisherLeadMs, finisherTargets } from 'shared';
 import { ANIMAL_INFO } from '@/lib/animals';
 import { SKILL_TITLE } from '@/lib/skillInfo';
 import { playRandomSound, playRandomSoundSequence } from '@/lib/sounds';
@@ -56,6 +56,19 @@ export interface FestivalProgress {
   team: SideId;
   current: number; // 지금까지 소모한 도토리 축제 예약 뽑기 수
   total: number;   // 이번에 소모해야 할 전체 도토리 축제 예약 뽑기 수
+  // 카드 강화 판 — 축제는 따로 뽑지 않고 누른 장소의 장수를 넓힌다(×N). 그때 current/total은 그 장소에서 나온 장수다.
+  multiplier?: number;
+}
+
+/** 카드 강화의 배수 카드(×5 이상) — 화면 가운데로 커지며 떠올랐다가 제자리에 쿵 떨어진다(BigCardSlamLayer) */
+export interface BigSlamItem {
+  id: number;
+  cardId: number;
+  animal: Animal;
+  num: number;
+  place: Place;
+  dur: number;  // 전체 길이(ms)
+  land: number; // 제자리에 닿는 시각(ms, 시작부터)
 }
 
 export interface RabbitFlight {
@@ -122,6 +135,7 @@ export interface FestivalStartInfo {
   id: number;
   drawCount: number;       // settings.festivalDrawCount(n) — 이 방의 실제 설정값
   increaseInterval: number; // settings.festivalDrawIncreaseInterval(k)
+  enhance?: boolean;        // 카드 강화 판 — 축제가 "누른 장소의 장수 ×(1 + n)"이다(문구가 다르다)
 }
 
 export interface ShakingPile {
@@ -197,6 +211,7 @@ export interface AnimationState {
   emoticons: PlayerEmoticon[];
   placeFocusBursts: PlaceFocusItem[];
   drawSlots: DrawSlotItem[];
+  bigSlams: BigSlamItem[];
   woolBalls: WoolBallItem[];
   acornBalls: AcornBallItem[]; // 도토리 축제 랜덤 뽑기 — 보드 중앙에서 장소로 날아가는 도토리
   festivalLoaded: FestivalLoaded | null; // "도토리 축제 효과! 랜덤 뽑기 N회!" 예고 배너
@@ -208,6 +223,7 @@ export interface AnimationState {
   displayedActivePlayerIndex: number;
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
   decisiveHit: { winner: SideId } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
+  finisher: { id: number; side: SideId } | null; // 판을 끝낼 체력 변화 직전 — 그 체력 막대가 커지고 빛이 모였다 터진다(FinisherLayer)
   rankBanner: RankBanner | null; // 개인전 — 한 사람의 순위가 정해진 순간 "n위 확정!" 알림
   // 개인전 — 이번 액션에서 순위가 정해졌지만 그 "n위 확정!"이 아직 재생되지 않은 편. 화면은 이 편들의 finish(n위 · 탈락)를 가린다
   // (lib/individual.ts의 withDisplayedFinish) — 서버 진실을 그대로 그리면 체력이 0으로 내려가는 연출보다 먼저 "탈락"이 붙었다.
@@ -257,6 +273,9 @@ const RABBIT_PRESSURE_DUR = 700;
 const FESTIVAL_BURST_DUR = 2000;
 const FESTIVAL_START_INFO_DUR = 2600; // "이제부터 K턴마다 N회!" 규칙 안내 배너 — 두 줄이라 다른 배너보다 조금 더 오래 보여준다
 const DECISIVE_HIT_DUR = 1800;
+// 마무리 연출 — 빛이 모이는 동안(화면이 느려진다) · 터진 뒤 여운(shared/finisher.ts — 서버 유예와 같은 값)
+export const FINISHER_GATHER_DUR = FINISHER_GATHER_MS;
+export const FINISHER_BURST_DUR = FINISHER_BURST_MS;
 // 싹쓸이 — 카드가 다 날아가 필드가 빈 뒤 "싹쓸이!"가 뜨고(그때 보너스 경험치가 오른다), 이어 새 카드가 한 장씩 깔린다.
 // 서버 room.ts의 TL_SWEEP_MS(= 이 셋의 합)와 같은 값이어야 한다.
 const SWEEP_BANNER_DUR = 1300;
@@ -300,6 +319,7 @@ export function useAnimationQueue(
   const [emoticons, setEmoticons] = useState<PlayerEmoticon[]>([]);
   const [placeFocusBursts, setPlaceFocusBursts] = useState<PlaceFocusItem[]>([]);
   const [drawSlots, setDrawSlots] = useState<DrawSlotItem[]>([]);
+  const [bigSlams, setBigSlams] = useState<BigSlamItem[]>([]);
   const [woolBalls, setWoolBalls] = useState<WoolBallItem[]>([]);
   const [acornBalls, setAcornBalls] = useState<AcornBallItem[]>([]);
   const [festivalLoaded, setFestivalLoaded] = useState<FestivalLoaded | null>(null);
@@ -307,6 +327,7 @@ export function useAnimationQueue(
   const [shakingPile, setShakingPile] = useState<ShakingPile | null>(null);
   const [newCardId, setNewCardId] = useState<number | null>(null);
   const [decisiveHit, setDecisiveHit] = useState<{ winner: SideId } | null>(null);
+  const [finisher, setFinisher] = useState<{ id: number; side: SideId } | null>(null);
   const [rankBanner, setRankBanner] = useState<RankBanner | null>(null);
   const [sweepBanner, setSweepBanner] = useState<SweepBannerInfo | null>(null);
   // 실제 서버 경험치(gameState.teams[t].exp)는 페어가 맞는 즉시 반영되지만, 화면에는 그
@@ -421,6 +442,11 @@ export function useAnimationQueue(
         const key = deltaKeyOf(ev.team, ev.randomExp.animal);
         newCredits[key] = (newCredits[key] ?? 0) + ev.randomExp.amount;
       }
+      // 도토리 카드 — 기술을 쓸 때 그 카드에 붙은 경험치도 효과 연출 순간에
+      if (ev.type === 'skillApplied' && (ev.expProc || ev.useExp)) {
+        const key = deltaKeyOf(ev.team, ev.animal);
+        newCredits[key] = (newCredits[key] ?? 0) + (ev.expProc ?? 0) + (ev.useExp ?? 0);
+      }
       // 카드 강화 — Lv.Max 별도 배수는 쓰면 ×1로 돌아간다(서버가 그 몫의 경험치를 깎아 expSpent로 싣는다). 깎인 것도 효과 연출 순간까지
       // 가린다(음수 가림 — 그동안 깎이기 전 값이 보인다). 일반 판의 expSpent(레벨 소모)는 예전처럼 클릭 즉시 보이므로 강화 판만(overMultiplier)
       if (ev.type === 'skillApplied' && ev.overMultiplier && ev.expSpent > 0) {
@@ -444,13 +470,16 @@ export function useAnimationQueue(
     lastEvents.forEach(ev => {
       if (ev.type !== 'skillApplied' || ev.level <= 0) return;
       const opp = ev.target ?? Object.keys(ev.hpAfter).find(s => s !== ev.team);
-      hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + ev.myHpDelta;
+      hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + ev.myHpDelta - (ev.reflected ?? 0);
       if (opp !== undefined) hpCredits[opp] = (hpCredits[opp] ?? 0) + ev.oppHpDelta;
+      // 도토리 카드의 쓰러짐 방지 · 위기 회복도 같은 순간에
+      for (const r of ev.rescue ?? []) hpCredits[r.side] = (hpCredits[r.side] ?? 0) + r.amount;
     });
     // 카드 강화 — 차례를 마칠 때 든 출혈·지속 회복도 그 연출 순간에 드러낸다(효과 재생 뒤의 지속 효과 단계)
     lastEvents.forEach(ev => {
       if (ev.type !== 'enhanceTick') return;
       hpCredits[ev.team] = (hpCredits[ev.team] ?? 0) + (ev.kind === 'bleed' ? -ev.amount : ev.amount);
+      for (const r of ev.rescue ?? []) hpCredits[r.side] = (hpCredits[r.side] ?? 0) + r.amount;
     });
     setPendingHpCredit(hpCredits);
     // 이번 액션에서 정해진 순위 — 그 연출 전까지 가린다
@@ -635,6 +664,7 @@ export function useAnimationQueue(
     setMainCombo(null);
     setSheepProgress(null);
     setFestivalProgress(null);
+    setBigSlams([]);
     setRabbitFlights([]);
     setRabbitPressure(null);
     setTigerSlash(null);
@@ -653,6 +683,7 @@ export function useAnimationQueue(
     setShakingPile(null);
     setNewCardId(null);
     setDecisiveHit(null);
+    setFinisher(null);
     setRankBanner(null);
     setSweepBanner(null);
     // pendingExpCredit는 이제 이 이펙트가 아니라 렌더 도중(위쪽 lastEventsForCreditRef
@@ -725,6 +756,24 @@ export function useAnimationQueue(
     // 소모)으로 동작한다(server/engine/drawCard.ts) — 한 액션 안에서 bonusDraws(실용신양)가
     // 먼저, 그 다음 festivalDraws(도토리 축제)가 소모되므로 두 롤이 동시에 진행 중일 수는 없다.
     let cursor = 0;
+    // ── 마무리 연출: 한 사람의 승패(팀전 판 끝 · 개인전 순위 — 체력 0 · 승리선)를 정한 체력 변화 바로 앞에서, 그 사람의 체력 막대 ·
+    // 정보창이 커지고 화면이 느려지며 빛이 모였다가 터지는 순간 체력이 움직인다(2026-11-07). 어느 이벤트 앞에 누구에게인지는
+    // shared finisherTargets — 서버 settleTimelineMs가 같은 함수로 그 길이를 판의 유예에 얹는다(그동안 판이 흐르지 않는다).
+    const finTargets = finisherTargets(lastEvents);
+    const playFinisherBefore = (ev: ClientGameEvent) => {
+      const side = finTargets.get(lastEvents.indexOf(ev));
+      if (side === undefined) return;
+      const at = cursor;
+      const id = ++floatIdCounter;
+      sched(() => setFinisher({ id, side }), at);
+      sched(() => {
+        setScreenShakeLevel(3);
+        playRandomSound('bomb');
+        sched(() => setScreenShakeLevel(0), SHAKE_PULSE_DUR);
+      }, at + FINISHER_GATHER_DUR);
+      sched(() => setFinisher(prev => (prev?.id === id ? null : prev)), at + FINISHER_GATHER_DUR + FINISHER_BURST_DUR);
+      cursor = at + finisherLeadMs(ev, TIGER_RECOIL_DUR);
+    };
     let bonusRollTeam: SideId | null = null;
     let bonusRollRemaining = 0;
     let bonusRollIdx = 0;
@@ -737,6 +786,11 @@ export function useAnimationQueue(
     let lastDrawEndCursor = 0;
     // 카드 강화 — 누른 장소에서 한꺼번에 나오는 장수(placeDraws). 그 장들은 겹쳐서, 칸 안의 무작위 자리에서 튀어나온다.
     let placeRollRemaining = 0;
+    // 카드 강화 — 배수 카드(num = 그 카드가 뜻하는 장수)라 진행 숫자는 장수의 합으로 센다. 축제(×N)가 걸린 장소 뽑기는 축제 진행 배지에 보인다.
+    const enhance = !!gameState?.enhance;
+    let bonusRollPieces = 0;
+    let bonusRollPieceTotal = 0;
+    let placeFestival: { team: SideId; multiplier: number; total: number; current: number } | null = null;
 
     // ── 카드가 쌓일 때마다(뽑기 종류·롤 여부와 무관하게) 화면을 흔들기 위한 준비 ──
     // 이번 액션에서 각 동물 스택이 몇 장째가 되는지 실시간으로 추적한다. 시작값(baseline)은
@@ -838,18 +892,43 @@ export function useAnimationQueue(
         const soundEvery = inRoll ? Math.max(1, Math.ceil(60 / rollDrawStep(inFestivalRoll ? festivalRollTotal : bonusRollTotal))) : 1;
         if ((rollIdx - 1) % soundEvery === 0) sched(() => playRandomSound('card', pitch), slotAt + 300);
 
+        // 카드 강화의 배수 카드(×5~) — 카드가 나올 순간 화면 가운데로 커지며 떠올랐다가 제자리에 쿵 떨어진다. 줄의 카드는 닿는 순간 나타난다.
+        // 다음 장은 이 카드가 닿은 뒤에 나온다(아래 cursor — 서버 room.ts settleTimelineMs와 같은 식).
+        const slam = enhance && card.num >= ENHANCE_SLAM_FROM;
+        const appearAt = drawEndsAt - 120;
+        const slamLand = slam ? enhanceSlamLandMs(card.num) : 0;
+        if (slam) {
+          const slamId = ++floatIdCounter;
+          const item: BigSlamItem = { id: slamId, cardId: card.id, animal: card.animal, num: card.num, place, dur: enhanceSlamMs(card.num), land: slamLand };
+          sched(() => {
+            setBigSlams(prev => [...prev, item]);
+            sched(() => setBigSlams(prev => prev.filter(b => b.id !== slamId)), item.dur + 900);
+          }, appearAt);
+        }
         sched(() => {
           setNewCardId(card.id);
           setRevealedCardIds(prev => (prev.has(card.id) ? prev : new Set(prev).add(card.id)));
           sched(() => setNewCardId(prev => (prev === card.id ? null : prev)), REACTION_DUR);
-        }, drawEndsAt - 120);
+        }, appearAt + slamLand);
+        const cardDoneAt = slam ? appearAt + enhanceSlamMs(card.num) : drawEndsAt;
+        if (placeFestival && inPlaceRoll) {
+          const pf = placeFestival;
+          pf.current += card.num;
+          const snap = { team: pf.team, current: pf.current, total: pf.total, multiplier: pf.multiplier };
+          sched(() => setFestivalProgress(snap), appearAt + slamLand);
+          if (placeRollRemaining === 0) {
+            sched(() => setFestivalProgress(prev => (prev?.multiplier ? null : prev)), cardDoneAt + 900);
+            placeFestival = null;
+          }
+        }
 
         if (inRoll) {
           const combo = ++comboCounter;
           const comboId = ++floatIdCounter;
           const progressTeam = inFestivalRoll ? festivalRollTeam : bonusRollTeam;
-          const progressCurrent = inFestivalRoll ? festivalRollIdx : bonusRollIdx;
-          const progressTotal = inFestivalRoll ? festivalRollTotal : bonusRollTotal;
+          if (inSheepRoll) bonusRollPieces += card.num;
+          const progressCurrent = inFestivalRoll ? festivalRollIdx : enhance ? bonusRollPieces : bonusRollIdx;
+          const progressTotal = inFestivalRoll ? festivalRollTotal : enhance ? bonusRollPieceTotal : bonusRollTotal;
           sched(() => {
             setSheepCombos(prev => [...prev, { id: comboId, place, combo }]);
             sched(() => setSheepCombos(prev => prev.filter(c => c.id !== comboId)), SHEEP_COMBO_DUR);
@@ -873,17 +952,31 @@ export function useAnimationQueue(
           }
         }
 
-        lastDrawEndCursor = Math.max(lastDrawEndCursor, drawEndsAt);
-        cursor = inRoll
-          ? triggerAt + rollDrawStep(inFestivalRoll ? festivalRollTotal : bonusRollTotal)
+        lastDrawEndCursor = Math.max(lastDrawEndCursor, cardDoneAt);
+        const step = inRoll
+          ? rollDrawStep(inFestivalRoll ? festivalRollTotal : bonusRollTotal)
           : inPlaceRoll && placeRollRemaining > 0
-            ? triggerAt + PLACE_DRAW_STEP
-            : drawEndsAt + EMPTY_GAP;
+            ? PLACE_DRAW_STEP
+            : null;
+        cursor = step === null ? cardDoneAt + EMPTY_GAP : triggerAt + (slam ? Math.max(step, slamLand) : step);
         continue;
       }
 
       if (ev.type === 'placeDraws') {
         placeRollRemaining = ev.count;
+        // 카드 강화 — 도토리 축제(×N)가 걸린 뽑기: 축제 진행 배지에 "×N · 지금까지 나온 장수 / 전체"를 띄운다
+        placeFestival = ev.festival && gameState
+          ? { team: ev.team ?? gameState.activeTeam, multiplier: ev.festival, total: ev.total ?? ev.count, current: 0 }
+          : null;
+        if (placeFestival) {
+          const snap = { team: placeFestival.team, current: 0, total: placeFestival.total, multiplier: placeFestival.multiplier };
+          sched(() => {
+            setSheepProgress(null);
+            setFestivalProgress(snap);
+            setScreenShakeLevel(SCREEN_SHAKE_WEAK);
+            sched(() => setScreenShakeLevel(0), SHAKE_PULSE_DUR);
+          }, cursor);
+        }
         continue;
       }
 
@@ -892,6 +985,8 @@ export function useAnimationQueue(
         bonusRollRemaining = ev.count;
         bonusRollIdx = 0;
         bonusRollTotal = ev.count;
+        bonusRollPieces = 0;
+        bonusRollPieceTotal = ev.total ?? ev.count;
 
         // 예약 뽑기 롤에 처음 진입하는 순간 화면을 약하게 한 번 흔든다 — 뽑을 때마다
         // 점점 세게 흔들던 이전 방식은 타이밍이 애매하다는 피드백으로 폐지하고,
@@ -913,7 +1008,7 @@ export function useAnimationQueue(
         {
           const loadedId = ++floatIdCounter;
           const team = ev.team;
-          const count = ev.count;
+          const count = ev.total ?? ev.count;
           sched(() => {
             setSheepLoaded({ id: loadedId, team, count });
             schedPersistent(() => {
@@ -1122,6 +1217,7 @@ export function useAnimationQueue(
         // 특허랑이의 대상은 서버가 알려준 값을 그대로 쓴다(개인전). 팀전 이벤트에는 target이 없으니
         // 이벤트가 알려주는 편 중 나 아닌 쪽이 상대다 — 화면이 "반대편"을 스스로 뒤집어 구하지 않는다.
         const opp: SideId = skillEv.target ?? Object.keys(skillEv.hpAfter).find(s => s !== team) ?? team;
+        playFinisherBefore(skillEv);
         const at = cursor;
 
         // 큰 캡션은 이제 캐치프레이즈("실용신양의 힘!" 류) 대신, 스킬 선택 패널
@@ -1147,9 +1243,7 @@ export function useAnimationQueue(
           effectParts.push(`${c.kind === 'bleed' ? '출혈' : '효과 감소'} ${c.after === 0 ? '정화' : `-${c.before - c.after}턴`}`);
         }
         if (skillEv.regenAdded?.turns) effectParts.push(`지속 회복 +${skillEv.regenAdded.turns}턴`);
-        if (skillEv.regenAdded?.stackAdded) effectParts.push(`회복 중첩 +${skillEv.regenAdded.stackAdded}`);
         if (skillEv.bleedAdded?.turns) effectParts.push(`출혈 +${skillEv.bleedAdded.turns}턴`);
-        if (skillEv.bleedAdded?.stackAdded) effectParts.push(`출혈 계수 +${skillEv.bleedAdded.stackAdded}`);
         if (skillEv.evadeAdded) effectParts.push(`회피 ${skillEv.evadeAdded}%`);
         // 상대가 디자인어 Lv.Max의 회피로 피했다 — 상대에게 거는 것은 하나도 들지 않았다
         if (skillEv.evaded) effectParts.push('상대가 피했다!');
@@ -1203,6 +1297,21 @@ export function useAnimationQueue(
             const key = deltaKeyOf(team, bonus.animal);
             setPendingExpCredit(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) - bonus.amount) }));
             addFloat(`${SKILL_TITLE[bonus.animal]} +${bonus.amount}`, team, 'bonus');
+          }
+          // 기술을 쓴 카드에 붙는 경험치(useExp · 도토리 expProc) — 실용신양 · 싹쓸이처럼 이 순간 떠오르고 그 칸이 번쩍인다(2026-11-07)
+          const useGain = (skillEv.useExp ?? 0) + (skillEv.expProc ?? 0);
+          if (useGain > 0) {
+            const key = deltaKeyOf(team, animal);
+            setPendingExpCredit(prev => ({ ...prev, [key]: Math.max(0, (prev[key] ?? 0) - useGain) }));
+            addFloat(`${SKILL_TITLE[animal]} +${useGain}`, team, 'bonus');
+            const fid = ++floatIdCounter;
+            setScoreFlash(prev => new Map(prev).set(key, fid));
+            sched(() => setScoreFlash(prev => {
+              if (prev.get(key) !== fid) return prev;
+              const next = new Map(prev);
+              next.delete(key);
+              return next;
+            }), SCORE_FLASH_DUR);
           }
           // 이 효과의 체력 변화를 이제야 드러낸다(위 pendingHpCredit) — 특허랑이는 발톱이 닿는 순간(아래)
           const revealHp = () =>
@@ -1293,6 +1402,7 @@ export function useAnimationQueue(
           continue;
         }
         if (ev.type !== 'enhanceTick') continue;
+        playFinisherBefore(ev);
         const at = cursor;
         const bleed = ev.kind === 'bleed';
         const left = ev.turnsLeft > 0 ? ` (남은 ${ev.turnsLeft}턴)` : '';
@@ -1322,7 +1432,9 @@ export function useAnimationQueue(
     }
 
     // ── festival은 턴 전환 이벤트라 위 재생이 모두 끝난 뒤에 이어 재생한다. ────
-    const festivalEv = lastEvents.find(e => e.type === 'festival');
+    // 카드 강화 판은 첫 도토리 카드 고르기가 열리는 순간이 축제 시작이다 — 고르기 창은 이 안내가 끝난 뒤에 뜬다(isSettling)
+    const acornStart = lastEvents.some(e => e.type === 'acornOffer' && e.no === 1);
+    const festivalEv = acornStart || lastEvents.some(e => e.type === 'festival');
     if (festivalEv) {
       const at = cursor;
       sched(() => {
@@ -1340,11 +1452,12 @@ export function useAnimationQueue(
             id: infoId,
             drawCount: gameState.settings.festivalDrawCount,
             increaseInterval: gameState.settings.festivalDrawIncreaseInterval,
+            enhance: !!gameState.enhance,
           });
           sched(() => setFestivalStartInfo(prev => (prev?.id === infoId ? null : prev)), FESTIVAL_START_INFO_DUR);
         }
       }, at);
-      cursor = at + 900;
+      cursor = at + (acornStart ? FESTIVAL_START_INFO_DUR : 900);
     }
 
     // ── 체력 즉시 승패(gameEnd, reason=knockout)는 마지막에 "결정타!" 강조와 함께 재생한다. ──
@@ -1507,6 +1620,7 @@ export function useAnimationQueue(
     emoticons,
     placeFocusBursts,
     drawSlots,
+    bigSlams,
     woolBalls,
     acornBalls,
     festivalLoaded,
@@ -1518,6 +1632,7 @@ export function useAnimationQueue(
     displayedActivePlayerIndex,
     isSettling,
     decisiveHit,
+    finisher,
     rankBanner,
     hiddenFinish,
     sweepBanner,

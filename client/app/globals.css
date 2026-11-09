@@ -21,10 +21,12 @@
   /* ⚠️ 높이 단위가 **svh**다(vh가 아니다). 모바일 브라우저의 `vh`는 주소창이 숨은
      상태를 기준으로 잡혀, 주소창이 보이는 동안에는 무대가 화면보다 커져 아래가 잘린다.
      `svh`는 "주소창이 보이는, 가장 작은 화면"이라 어느 순간에도 잘리지 않는다.
+     → 2026-11-01부터 `--app-h`(innerHeight를 JS가 px로 적은 값 — lib/fullscreen.ts)가 우선이고 svh는 그 값이
+       없을 때의 대체다. 문서 스크롤을 잠근 화면에서는 바가 영영 안 숨어 svh조차 앱 브라우저의 하단 바만큼 넘쳤다.
      데스크톱에서는 vh = svh = dvh라 값이 그대로다(C1).
      ⚠️ 이 단위를 바꾸면 `.play-progress-top`의 `--frame-top`도 **함께** 바꿔야 한다 —
      그쪽이 같은 식을 따로 계산하기 때문이다(fixed 요소라 이 변수를 물려받지 못한다). */
-  --stage-w: min(calc(100vw - var(--stage-pad) * 2), calc(98svh / 0.585));
+  --stage-w: min(calc(100vw - var(--stage-pad) * 2), calc(var(--app-h, 100svh) * 0.98 / 0.585));
   /* 상단 바와 액자 사이 숨통 — 0이면 두 나무가 맞닿아 한 덩어리로 보인다 */
   --stage-gap: 0.8vh;
   /* ══ 무대 픽셀 `--sp` — "데스크톱을 안 바꾸고 작은 화면에서만 줄이는" 장치 ══════
@@ -641,6 +643,7 @@ body {
   border-radius: 50%;
   animation: hpOrbWave 2.4s ease-in-out infinite;
 }
+.hp-orb-start { display: none; }
 .hp-orb-segments {
   position: absolute;
   inset: 0;
@@ -1766,6 +1769,11 @@ body {
   bottom: max(0.75rem, env(safe-area-inset-bottom));
   right: max(0.75rem, env(safe-area-inset-right));
 }
+/* 펼친 판은 보이는 높이를 넘지 않는다 — 넘치면 위쪽(머리줄 · [전체화면] 버튼)이 화면 밖으로 밀려났다(가로 폰).
+   머리줄 · [전체화면]은 고정, 나머지(.settings-fab-scroll)만 판 안에서 스크롤한다(SoundToggle.tsx). */
+.settings-fab-panel {
+  max-height: calc(var(--app-h, 100dvh) - 2 * max(0.75rem, env(safe-area-inset-bottom)));
+}
 .settings-hint-arrow {
   position: absolute;
   bottom: -7px;
@@ -2347,6 +2355,49 @@ body {
 }
 .stack-card-bundle-10 .stack-card-bundle-count { color: #4b5563; }
 .stack-card-bundle-100 .stack-card-bundle-count { color: #92400e; }
+
+/* 카드 강화의 배수 카드(2026-11-02 — shared/enhance.ts의 ENHANCE_CARD_DENOMS) — 한 장이 ×N장을 뜻한다.
+   ×5 구리 · ×10 은 · ×100 금 · ×1000 무지개(테두리가 돈다). 배수는 겹쳐도 남는 왼쪽 위에 쓴다(묶음 표시와 같은 자리).
+   ⚠️ 낱장 숫자(.stack-card-num)를 감추는 [data-enhance] 규칙과 클래스가 다르다 — 배수는 감추지 않는다. */
+.stack-card-denom { border-width: max(2px, calc(var(--stack-card-w) * 4 / 88)); }
+.stack-card-denom-5 { border-color: #b87333; background: linear-gradient(160deg, #fff7ef 0%, #f3d2b3 100%); box-shadow: 0 0 0 1px #7a4419 inset; }
+.stack-card-denom-10 { border-color: #aeb6c2; background: linear-gradient(160deg, #ffffff 0%, #dfe4ec 100%); box-shadow: 0 0 6px rgba(200, 210, 225, 0.9); }
+.stack-card-denom-100 { border-color: #e0a800; background: linear-gradient(160deg, #fffbe6 0%, #fbe08a 100%); box-shadow: 0 0 10px rgba(255, 200, 40, 0.85); }
+.stack-card-denom-1000 {
+  border-color: transparent;
+  background:
+    linear-gradient(160deg, #ffffff 0%, #f6f0ff 100%) padding-box,
+    conic-gradient(from var(--denom-a, 0deg), #ff4d4d, #ffb84d, #fff04d, #5dff7a, #4dd2ff, #7a5dff, #ff4dd8, #ff4d4d) border-box;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.95), 0 0 22px rgba(170, 120, 255, 0.7);
+  animation: denomSpin 2.4s linear infinite;
+}
+@property --denom-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes denomSpin { to { --denom-a: 360deg; } }
+.stack-card-denom-count {
+  position: absolute;
+  left: 6%;
+  top: 4%;
+  font-size: calc(var(--stack-card-w) * 0.2 * var(--font-scale));
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-shadow: 0 0 3px #fff, 0 0 2px #fff;
+}
+.stack-card-denom-5 .stack-card-denom-count { color: #7a3b0c; }
+.stack-card-denom-10 .stack-card-denom-count { color: #374151; }
+.stack-card-denom-100 .stack-card-denom-count { color: #8a4b00; }
+.stack-card-denom-1000 .stack-card-denom-count {
+  background: linear-gradient(90deg, #ff3b3b, #ff9f1a, #d4b800, #19c24a, #1aa3ff, #7a3bff, #e63bc7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 2px #fff);
+}
+/* 날아가는 사본(BigCardSlamLayer) — body에 portal된다. 크기는 줄의 카드를 잰 값(--slam-w)이다. */
+.big-slam { position: fixed; z-index: 96; pointer-events: none; will-change: translate, scale; }
+.big-slam .stack-card { --stack-card-w: var(--slam-w, 60px); width: 100%; height: 100%; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+.big-slam .stack-card-denom-1000 { box-shadow: 0 0 18px #fff, 0 0 40px rgba(170, 120, 255, 0.9), 0 10px 30px rgba(0, 0, 0, 0.45); }
+.big-slam .stack-card img { width: 80%; }
 @keyframes stackCardPop {
   0%   { transform: scale(0.4) translateY(-10px); opacity: 0; }
   60%  { transform: scale(1.12) translateY(0); opacity: 1; }
@@ -2865,7 +2916,7 @@ body {
    좌표값은 실제 이미지에 맞춰 여기서만 조정하면 된다(public/lobby/README.md). */
 .lobby-root {
   position: relative;
-  min-height: 100vh;
+  min-height: var(--app-h, 100vh);
   overflow: hidden;
   background: #241710;   /* 이미지가 닿지 않는 여백 — 테이블 나무색 계열 */
 }
@@ -2890,8 +2941,8 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   /* background-size: cover 와 동일한 계산을 요소 크기로 옮긴 것 */
-  width: max(100vw, calc(100vh * var(--table-w) / var(--table-h)));
-  height: max(100vh, calc(100vw * var(--table-h) / var(--table-w)));
+  width: max(100vw, calc(var(--app-h, 100vh) * var(--table-w) / var(--table-h)));
+  height: max(var(--app-h, 100vh), calc(100vw * var(--table-h) / var(--table-w)));
   background-image: var(--lobby-table-bg);
   background-size: 100% 100%;
   background-position: center;
@@ -2945,7 +2996,7 @@ body {
   /* 세로로 긴 화면에서는 테이블이 cover로 크게 확대돼 안전영역이 화면 밖까지 뻗는다.
      뷰포트 안으로 잘라내고 margin:auto로 다시 가운데 맞춘다. */
   max-width: calc(100vw - 1.5rem);
-  max-height: calc(100vh - 1.5rem);
+  max-height: calc(var(--app-h, 100vh) - 1.5rem);
   margin: auto;
   display: flex;
   flex-direction: column;
@@ -2998,7 +3049,7 @@ body {
   bottom: auto;
   transform: translate(-50%, -50%);
   width: min(56rem, 100vw - 1.5rem);
-  height: calc(100vh - 3rem);
+  height: calc(var(--app-h, 100vh) - 3rem);
   max-width: none;
   max-height: none;
   margin: 0;
@@ -4654,7 +4705,7 @@ body {
   --pf-h: calc(var(--stage-w) * 1000 / 1965);
   /* ⚠️ 높이 단위는 `--stage-w`와 **반드시 같아야 한다**(svh). 한쪽만 vh로 두면 모바일에서
      주소창 높이만큼 어긋나 진행도 띠가 액자에서 떨어진다. */
-  --frame-top: calc(var(--beam-vis) + (100svh - var(--beam-vis) - var(--pf-h)) / 2);
+  --frame-top: calc(var(--beam-vis) + (var(--app-h, 100svh) - var(--beam-vis) - var(--pf-h)) / 2);
   /* 액자 윗변에 **반쯤 걸친다** — 절반은 그 위로 뜬다.
      ⚠️ 더 위로 올리면 단계 판의 알약("행동 선택")을 가린다. 판이 들보를 거의 꽉
      채우게 되면서 판과 액자 사이에 빈 띠가 13px밖에 없기 때문이다 — 그래서 판의
@@ -6709,10 +6760,10 @@ body {
 }
 .holo-cell[data-holo][data-hover] {
   z-index: 30;
-  /* 1.21배로 커지고(1.1배 → 1.32배 → 요청으로 1.1배의 1.1배), 중앙 기준으로 커진 만큼(높이의 (1.21 − 1) / 2 =
-     10.5%) 위로 옮겨 아래 변을 제자리에 둔 뒤 기존 hover처럼 16px 더 떠오른다. translate의 %는 칸 자신의 높이 기준이다.
-     ⚠️ 배율을 바꾸면 10.5%도 함께 고칠 것((배율 − 1) / 2). 기울기는 포인터를 짧은 지연으로 따라간다. */
-  transform: perspective(900px) translateY(calc(-10.5% - 16px)) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.21);
+  /* 1.3배로 **카드 중앙 기준** 커진다(2026-11-01 요청 — 그 전에는 1.21배로 커진 만큼 위로 옮겨 아래 변을 제자리에 두고
+     16px 더 띄웠다 = "아래 기준"). 위아래 · 좌우로 똑같이 15%씩 넘친다(옆 카드 위로 겹치는 것은 z-index 30이 맡는다).
+     기울기는 포인터를 짧은 지연으로 따라간다. */
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.3);
   transition: transform 0.09s linear, filter 0.25s ease;
   /* 아래로 드리우는 그림자 + 흰 빛 번짐(모든 카드 같은 색 — 한때 카드별 색이었다가 흰 빛으로 통일).
      filter라 카드 모양(둥근 모서리)을 따라간다. */
@@ -7220,6 +7271,11 @@ body {
    들면 가로 판이 화면 위쪽 한 줄로만 남아 타이머·카드가 무너졌다(MOBILE_ROADMAP.md "2026-10-16 사용자 제보").
    폭과 높이가 같아지는 순간부터 안내가 뜬다 — 정사각형 창도 세로로 본다. */
 .rotate-hint { display: none; }
+/* 세로 화면에서도 설정을 열 수 있게 — 톱니와 그 창을 회전 안내(z 120)보다 위로 */
+@media (orientation: portrait) {
+  .settings-fab,
+  .settings-fab-panel { z-index: 125; }
+}
 
 @media (orientation: portrait) {
   .rotate-hint {
@@ -7870,7 +7926,8 @@ body {
 .hp-orb-bleed .hp-orb-drop::after {
   content: '';
   position: absolute;
-  left: 30%;
+  /* 방울의 뾰족한 끝 = 돌리기 전 왼쪽 위 모서리 — 자국의 아래 가운데를 그 점에 맞춘다(30%면 윗변 가운데라 돌린 뒤 오른쪽으로 치우쳤다) */
+  left: -20%;
   top: -220%;
   width: 40%;
   height: 220%;
@@ -7921,15 +7978,19 @@ body {
   100% { opacity: 0; translate: calc(-50% + var(--bx)) calc(-50% + var(--by) + var(--lift)); scale: 1.4; }
 }
 
-/* 남은 턴 아이콘 — 체력창 오른쪽 위에 세로로 */
+/* 남은 턴 아이콘 — 체력창 위쪽에 가로로 한 줄(2026-11-02 요청 — 그 전에는 오른쪽 위에 세로로 쌓았다).
+   오른쪽 끝부터 채우고, 칸 폭을 넘으면 다음 줄로 넘긴다(아이콘이 다섯 개 모두 켜질 때). */
 .hp-orb-status {
   position: absolute;
   top: 7%;
+  left: 7%;
   right: 7%;
   z-index: 5;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
   gap: 0.3em;
   font-size: calc(var(--pf-w, 1200px) * 0.011);
   pointer-events: auto;
@@ -8126,14 +8187,14 @@ body {
   --m-gutter: max(8px, env(safe-area-inset-left), env(safe-area-inset-right));
   --m-top-h: 34px;
   --m-bottom-h: 30px;
-  --m-view-h: calc(100dvh - var(--m-top-h) - var(--m-bottom-h) - 16px);
+  --m-view-h: calc(var(--app-h, 100dvh) - var(--m-top-h) - var(--m-bottom-h) - 16px);
   /* 동물 아이콘 지름 — 판 높이를 넷으로 나눈 것에서 간격을 뺀다 */
   --m-icon: clamp(40px, calc((var(--m-view-h) - 24px) / 4), 66px);
   --stage-w: calc(var(--m-view-h) * 3.25);
   --sp: calc(var(--stage-w) / 1286.6);
   --sv: calc(var(--stage-w) / 167.52);
   position: relative;
-  height: 100dvh;
+  height: var(--app-h, 100dvh);
   /* ⚠️ hidden이 아니라 clip — hidden은 손으로는 안 밀려도 **프로그램으로는 스크롤된다**(요소에 초점이 가거나 scrollIntoView).
      내려가 있는 카드 띠(.m-cards) 만큼 아래에 자리가 있어, 장소를 누르는 순간 판 전체가 위로 밀려 위 띠가 사라졌다. */
   overflow: clip;
@@ -8549,10 +8610,11 @@ body:has(.m-layout) .settings-fab { zoom: 0.72; bottom: max(3px, env(safe-area-i
   transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.1), opacity 0.25s ease;
 }
 .m-layout[data-cards] .m-cards { opacity: 1; transform: translate(-50%, -46%); pointer-events: auto; }
-/* 고른 카드 — 1.05배로 떠오르고 손가락이 끄는 곳을 따라 기운다(PC hover의 1.21배 대신, 요청). touch-action으로 끄는 동안 화면이 밀리지 않게 한다 */
+/* 고른 카드 — 1.3배로 **카드 중앙 기준** 커지고(2026-11-01 요청 — 그 전에는 1.05배 + 위로 3%) 손가락이 끄는 곳을 따라 기운다.
+   touch-action으로 끄는 동안 화면이 밀리지 않게 한다 */
 .m-layout .holo-cell { touch-action: none; }
 .m-layout .holo-cell[data-holo][data-hover] {
-  transform: perspective(700px) translateY(-3%) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.05);
+  transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.3);
   filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
 }
 
@@ -9316,7 +9378,7 @@ body:has(.lobby-root) {
 
 @media (orientation: landscape) and (max-height: 500px), (orientation: portrait) and (max-width: 767px) {
   .result-root {
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
     min-height: 0;
     padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
@@ -9401,4 +9463,1090 @@ body:has(.lobby-root) {
 }
 @media (prefers-reduced-motion: reduce) {
   .result-root .result-boards > * { transition: none; }
+}
+
+/* ── PC 기술 카드 설명 툴팁(SkillChoiceBar의 SkillTooltip, 2026-11-02) — body에 portal된다.
+   어두운 칸에 설명 한 줄 + "무엇 · 지금 실제 값 · (배율 풀이)" 줄들. 클릭은 가로채지 않는다(카드를 그대로 누를 수 있다). */
+.skill-tooltip {
+  position: fixed;
+  z-index: 97;
+  width: max-content;
+  max-width: min(380px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 12, 8, 0.93);
+  border: 1px solid rgba(255, 220, 150, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  color: #f5f0e6;
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.45;
+  pointer-events: none;
+  animation: skillTipIn 120ms ease-out;
+}
+@keyframes skillTipIn { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
+.skill-tooltip-head { display: flex; align-items: baseline; gap: 8px; font-size: 1.08em; margin-bottom: 3px; }
+.skill-tooltip-lv { color: #fcd34d; font-weight: 700; font-size: 0.9em; }
+.skill-tooltip-desc { color: #e7e0d2; margin-bottom: 6px; }
+.skill-tooltip-lines { display: flex; flex-direction: column; gap: 3px; border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 6px; }
+.skill-tooltip-lines li { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; }
+.skill-tooltip-label { color: #a8a29e; min-width: 4.8em; }
+.skill-tooltip-value { color: #fde68a; font-weight: 700; }
+.skill-tooltip-note { color: #a8c7fa; font-size: 0.9em; }
+
+/* 모바일 카드 상세 창(StatusSheet)의 실제 수치 줄 — 툴팁과 같은 내용(lib/skillDetail.ts) */
+.m-sheet-detail { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; font-size: 0.86em; line-height: 1.35; }
+.m-sheet-detail li { display: flex; flex-wrap: wrap; column-gap: 5px; }
+.m-sheet-detail .d-label { color: #8a6a4a; }
+.m-sheet-detail .d-value { color: #7c2d12; font-weight: 800; }
+.m-sheet-detail .d-note { color: #1e4fb8; font-size: 0.92em; }
+
+/* ── 카드 강화 — 이번 차례 끝의 예상 체력(lib/hpForecast.ts, 2026-11-02 요청) ──────────────────────────────
+   PC 체력 구슬에 마우스를 올리거나 모바일 체력 막대를 눌러 초점을 두면, 출혈 · 지속 회복으로 움직일 몫을 막대 위에 칠해 **느리게 깜빡인다**.
+   오름은 연두(불투명도 0.7까지), 깎임은 붉은색. 깎임은 사라질 몫(지금 채움의 끝)을 덮고, 오름은 채움 위에 이어 붙인다. */
+@keyframes hpForecastBlink { 0%, 100% { opacity: 0.7; } 50% { opacity: 0.15; } }
+.hp-orb-forecast {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 3px;
+  z-index: 2;
+  pointer-events: none;
+  animation: hpForecastBlink 1.6s ease-in-out infinite;
+}
+.hp-orb-forecast.is-gain,
+.m-hp-forecast.is-gain { background: #a3e635; box-shadow: 0 0 10px rgba(163, 230, 53, 0.8); }
+.hp-orb-forecast.is-loss,
+.m-hp-forecast.is-loss { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.85); }
+.hp-forecast-label,
+.m-hp-forecast-label {
+  position: absolute;
+  z-index: 6;
+  white-space: nowrap;
+  font-weight: 900;
+  pointer-events: none;
+  padding: 0.15em 0.55em;
+  border-radius: 999px;
+  background: rgba(15, 12, 8, 0.82);
+  animation: hpForecastBlink 1.6s ease-in-out infinite;
+  animation-name: hpForecastLabelBlink;
+}
+@keyframes hpForecastLabelBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.hp-forecast-label {
+  left: 50%;
+  bottom: 14%;
+  translate: -50% 0;
+  font-size: calc(var(--pf-w, 1200px) * 0.0125);
+}
+.hp-forecast-label.is-gain,
+.m-hp-forecast-label.is-gain { color: #bef264; }
+.hp-forecast-label.is-loss,
+.m-hp-forecast-label.is-loss { color: #fca5a5; }
+.hp-forecast-label.is-none,
+.m-hp-forecast-label.is-none { color: #e7e5e4; animation: none; }
+.m-hp-forecast { position: absolute; top: 0; bottom: 0; min-width: 2px; z-index: 1; pointer-events: none; animation: hpForecastBlink 1.6s ease-in-out infinite; }
+.m-hp { outline: none; }
+.m-hp-forecast-label { bottom: calc(100% + 4px); font-size: 11px; }
+.m-hp[data-side='left'] .m-hp-forecast-label { right: 8px; }
+.m-hp[data-side='right'] .m-hp-forecast-label { left: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .hp-orb-forecast, .m-hp-forecast, .hp-forecast-label, .m-hp-forecast-label { animation: none; }
+}
+
+
+/* ══ 도토리 카드(증강 — 2026-11-06, shared/acorn.ts · components/game/acorn/) ═══════════════════════════════════════
+   카드 앞면 .acorn-card — 테두리는 기술 카드와 같은 등급 그라디언트(작은 = 브론즈 · 은빛 = 실버 · 황금 = 골드 · 무지개빛 = 무지개), 다이아(공통)는 시안.
+   홀로는 기술 카드의 층(.enh-sheen · .enh-silver · .enh-gold · .enh-rainbow)을 그대로 얹고 다이아만 .acorn-diamond-holo.
+   글자 크기는 카드 폭(cqw)을 따라간다 — 고르기 창 · 카드 자리 · 폰에서 같은 카드가 크기만 바뀐다. */
+.acorn-card {
+  container-type: inline-size;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  /* ⚠️ 카드 자신의 크기에는 cqw를 쓰지 않는다 — 컨테이너 단위는 자기 자신이 아니라 바깥 컨테이너를 따라 테두리가 통째로 부풀었다 */
+  border-radius: 9% / 6.4%;
+  padding: 3.4%;
+  overflow: hidden;
+  /* 카드마다 쌓임 맥락 — 안쪽 몸통(z-index 1)이 카드 밖으로 새면, 겹친 줄에서 앞 카드의 몸통이 뒤 카드의 테두리 · 그림자 위에 그려져
+     카드들이 한 장처럼 이어져 보였다(2026-11-07) */
+  isolation: isolate;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  background-size: 300% 300%;
+}
+.acorn-card[data-skin='bronze'] { background-image: linear-gradient(158deg, #f0b88a 0%, #b8693a 18%, #7f4220 38%, #e8a26c 54%, #a75a2c 74%, #6a3518 100%); }
+.acorn-card[data-skin='silver'] { background-image: linear-gradient(158deg, #ffffff 0%, #d7dde5 16%, #9aa4b1 36%, #f8fafc 52%, #b9c2cd 70%, #7c8693 100%); }
+.acorn-card[data-skin='gold'] { background-image: linear-gradient(158deg, #fff4c0 0%, #f2c443 18%, #b9801c 38%, #ffe58f 54%, #d9a128 74%, #8a5a12 100%); }
+.acorn-card[data-skin='rainbow'] {
+  background-image: linear-gradient(120deg, #fff 0%, hsl(0 100% 78%) 8%, hsl(45 100% 74%) 15%, #fff 22%, hsl(120 85% 72%) 30%, hsl(190 100% 75%) 37%, #fff 44%, hsl(250 100% 80%) 52%, hsl(310 100% 78%) 59%, #fff 66%, hsl(0 100% 78%) 74%, hsl(45 100% 74%) 81%, #fff 88%, hsl(190 100% 75%) 100%);
+  animation: enhBorderFlow 5s linear infinite;
+}
+.acorn-card[data-skin='diamond'] {
+  background-image: linear-gradient(135deg, #e6fdff 0%, #3fe0f0 18%, #0a8fa8 36%, #b8f8ff 52%, #22c7dd 70%, #06687c 100%);
+  animation: enhBorderFlow 4s linear infinite;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 14px rgba(80, 240, 255, 0.55);
+}
+.acorn-card-body {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  border-radius: 6.5cqw;
+  background: radial-gradient(120% 80% at 50% 30%, #4a2e18 0%, #2a1709 70%, #1d0f05 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5cqw 6cqw 4cqw;
+  color: #fdf4e3;
+  text-align: center;
+  overflow: hidden;
+}
+.acorn-card .acorn-card-holo { position: absolute; inset: 2.43% 3.4%; z-index: 2; border-radius: 6.5cqw; pointer-events: none; }
+.acorn-card-kind { font-size: 6.4cqw; font-weight: 700; opacity: 0.8; white-space: nowrap; letter-spacing: -0.02em; }
+.acorn-card-icon {
+  width: 34cqw;
+  height: 34cqw;
+  margin: 4cqw 0 3cqw;
+  padding: 6.5cqw;
+  border-radius: 50%;
+  color: #fff7e6;
+  background: radial-gradient(circle at 40% 35%, rgba(255, 255, 255, 0.22), rgba(0, 0, 0, 0.35));
+  box-shadow: inset 0 0 0 1.4cqw var(--acorn-tone, #c98652), 0 0 6cqw var(--acorn-glow, rgba(255, 190, 120, 0.35));
+  flex-shrink: 0;
+}
+.acorn-card[data-skin='bronze'] { --acorn-tone: #c98652; }
+.acorn-card[data-skin='silver'] { --acorn-tone: #dfe5ee; --acorn-glow: rgba(230, 238, 255, 0.5); }
+.acorn-card[data-skin='gold'] { --acorn-tone: #f2c443; --acorn-glow: rgba(255, 214, 102, 0.55); }
+.acorn-card[data-skin='rainbow'] { --acorn-tone: #e9b6ff; --acorn-glow: rgba(190, 160, 255, 0.6); }
+.acorn-card[data-skin='diamond'] { --acorn-tone: #4ff0ff; --acorn-glow: rgba(80, 240, 255, 0.6); }
+.acorn-card-name { font-size: 9.6cqw; font-weight: 900; line-height: 1.15; word-break: keep-all; }
+.acorn-card-lines {
+  margin-top: 3.5cqw;
+  font-size: 6.6cqw;
+  line-height: 1.32;
+  word-break: keep-all;
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6cqw;
+  color: #fde68a;
+}
+.acorn-card-scope { margin-top: auto; font-size: 5.6cqw; opacity: 0.65; }
+.acorn-card-compact .acorn-card-icon { width: 44cqw; height: 44cqw; margin: 8cqw 0 6cqw; }
+/* 다이아 도토리의 홀로그램 — 시안 · 보라 · 흰빛이 비스듬히 흐른다 */
+.acorn-diamond-holo {
+  background: linear-gradient(115deg, transparent 20%, rgba(120, 250, 255, 0.28) 34%, rgba(255, 255, 255, 0.4) 42%, rgba(190, 150, 255, 0.28) 50%, transparent 64%);
+  background-size: 260% 260%;
+  mix-blend-mode: screen;
+  animation: acornDiamondHolo 3.2s ease-in-out infinite;
+}
+@keyframes acornDiamondHolo {
+  0%, 100% { background-position: 100% 0%; }
+  50%      { background-position: 0% 100%; }
+}
+
+/* 카드 뒷면 — 도토리색 테두리 · 고동색 바탕 · 가운데 도토리가 단계 색으로 빛난다(실루엣 mask를 그 색으로 칠한다) */
+.card-back {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 9%/6.5%;
+  /* 테두리 두께는 카드 폭의 비율(FHD 카드 230px의 5px ≈ 2.2cqw — 2026-11-07). 바깥(.acorn-pick-back)이 컨테이너다 */
+  border: 2.2cqw solid #a8692f;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 6px, transparent 6px 12px),
+    radial-gradient(circle at 50% 45%, #5a3416 0%, #3a1f0c 60%, #24130a 100%);
+  box-shadow: inset 0 0 0 0.9cqw #5c3313, 0 6px 18px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --glow: #e8a26c;
+}
+.card-back[data-glow='silver'] { --glow: #eef2f8; }
+.card-back[data-glow='gold'] { --glow: #ffd666; }
+.card-back[data-glow='rainbow'] { --glow: #e2b8ff; }
+.card-back[data-glow='diamond'] { --glow: #5ff3ff; }
+.card-back-acorn {
+  width: 46%;
+  aspect-ratio: 185 / 256;
+  background: var(--glow);
+  -webkit-mask: url(/play/acorn_mask.webp) center / contain no-repeat;
+  mask: url(/play/acorn_mask.webp) center / contain no-repeat;
+  filter: drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 14px var(--glow));
+  animation: cardBackGlow 1.8s ease-in-out infinite;
+}
+.card-back[data-glow='rainbow'] .card-back-acorn {
+  background: conic-gradient(from 0deg, #ff8a8a, #ffd36a, #8af59a, #7fe0ff, #b49cff, #ff8adf, #ff8a8a);
+}
+@keyframes cardBackGlow {
+  0%, 100% { opacity: 0.75; transform: scale(0.97); }
+  50%      { opacity: 1; transform: scale(1.03); }
+}
+
+/* ── 고르기 창 ── */
+.acorn-picker {
+  position: fixed;
+  inset: 0;
+  /* 판의 무엇보다 앞 — 장소 안내 손(95) · 감정표현 창(110)이 위로 올라오던 것(2026-11-07) */
+  z-index: 115;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: min(1.6vh, 14px);
+  padding: 12px 16px;
+  background: radial-gradient(ellipse at center, rgba(40, 22, 8, 0.82), rgba(0, 0, 0, 0.88));
+  animation: acornFadeIn 0.3s ease-out both;
+  color: #fff7e6;
+  /* 고르기 영역(제목 ~ 시간 막대)이 화면의 60%(2026-11-08 요청) — 카드 세 장 + 간격 ≤ 60vw, 카드 높이(5:7) + 제목 · 리롤 · 막대(≈ 9vh + 125px) ≤ 60vh.
+     가로 폰(높이 ≤ 500px)은 고정 높이(리롤 · 막대)가 커서 그 식이면 카드가 손톱만 해진다 — 예전 크기를 둔다(아래 @media) */
+  --acorn-gap: min(2.4vw, 24px);
+  --acorn-w: min(calc((60vw - var(--acorn-gap) * 2) / 3), calc((51vh - 125px) * 5 / 7));
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .acorn-picker { --acorn-w: min(21vw, 40vh, 230px); }
+  .acorn-shelf-row { --w: min(14vw, 32vh, 170px) !important; }
+}
+@keyframes acornFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.acorn-picker-head { display: flex; align-items: center; gap: 0.4em; font-size: clamp(18px, 3.4vh, 30px); font-weight: 900; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+.acorn-picker-head b[data-tier='1'] { color: #f0b88a; }
+.acorn-picker-head b[data-tier='2'] { color: #e5ebf3; }
+.acorn-picker-head b[data-tier='3'] { color: #ffd666; }
+.acorn-picker-head b[data-tier='4'] { background: linear-gradient(90deg, #ff9a9a, #ffe08a, #9af5a8, #8ae4ff, #c4a8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.acorn-picker-acorn { height: 1.3em; }
+.acorn-picker-sub { font-size: clamp(11px, 1.8vh, 15px); opacity: 0.8; margin: 0; }
+.acorn-picker-row { display: flex; gap: var(--acorn-gap); align-items: center; justify-content: center; }
+.acorn-pick {
+  width: var(--acorn-w);
+  perspective: 900px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.acorn-pick:hover { transform: translateY(-4px); }
+.acorn-pick[data-chosen] { transform: translateY(-10px) scale(1.06); filter: drop-shadow(0 0 14px rgba(255, 220, 140, 0.85)); }
+.acorn-pick:focus-visible { outline: 3px solid #fde68a; outline-offset: 4px; border-radius: 10px; }
+.acorn-pick-flip {
+  position: relative;
+  display: block;
+  transform-style: preserve-3d;
+  animation: acornFlip 0.7s cubic-bezier(0.3, 0.8, 0.3, 1) both;
+  animation-delay: calc(0.25s + var(--i, 0) * 0.18s);
+}
+.acorn-pick-front, .acorn-pick-back { display: block; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.acorn-pick-back { position: absolute; inset: 0; transform: rotateY(180deg); container-type: inline-size; }
+@keyframes acornFlip {
+  0%   { transform: translateY(-30px) rotateY(180deg); opacity: 0; }
+  30%  { transform: translateY(0) rotateY(180deg); opacity: 1; }
+  100% { transform: rotateY(0deg); opacity: 1; }
+}
+.acorn-pick-col { display: flex; flex-direction: column; align-items: center; gap: min(1.2vh, 10px); }
+.acorn-pick[data-fresh] .acorn-pick-flip { animation-delay: 0s; animation-duration: 0.55s; }
+/* 리롤 버튼 — 카드 아래, 칸마다 한 번 */
+.acorn-reroll {
+  /* 1.5배(2026-11-08 요청 — 예전 4px 10px · clamp(11px, 1.7vh, 14px)) */
+  padding: 6px 15px;
+  border-radius: 5px;
+  font-size: clamp(16.5px, 2.55vh, 21px);
+  font-weight: 800;
+  color: #fde68a;
+  background: rgba(58, 31, 12, 0.92);
+  border: 2px solid #a8692f;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.acorn-reroll:not(:disabled):hover { background: #6b3f18; transform: translateY(-1px); }
+.acorn-reroll:disabled { opacity: 0.45; cursor: default; }
+.acorn-reroll { display: inline-flex; align-items: center; gap: 0.3em; }
+.acorn-reroll-icon { width: 1.2em; height: 1.2em; } /* 글자 없이 아이콘만(2026-11-07) — 예전 1em의 1.2배 */
+.acorn-picker-foot { display: flex; align-items: center; gap: 12px; width: calc(var(--acorn-w) * 3 + var(--acorn-gap) * 2); }
+.acorn-timer { position: relative; flex: 1; height: 21px; border-radius: 99px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
+.acorn-timer-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #f59e0b, #fde68a); transition: width 0.2s linear; }
+.acorn-timer-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16.5px; font-weight: 800; color: #3a1f0c; }
+.acorn-picker-ok {
+  padding: 6px 16px;
+  border-radius: 10px;
+  font-weight: 800;
+  background: #f59e0b;
+  color: #3a1f0c;
+  border: 2px solid #fde68a;
+}
+.acorn-picker-ok:disabled { opacity: 0.4; }
+.acorn-waiting {
+  position: fixed;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 115;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 8px 16px;
+  border-radius: 99px;
+  background: rgba(30, 16, 6, 0.9);
+  color: #fde68a;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* ── 카드 자리(얻기 · 보기) — 기술 카드 띠처럼 빈 칸이 늘어서고, 얻은 카드는 아래에서 서서히 올라온다(빛나지 않는다 — [승격]과 다르게) ── */
+.acorn-shelf-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  animation: acornFadeIn 0.25s ease-out both;
+}
+.acorn-shelf-dim:not([data-viewing]) { animation: acornFadeIn 0.25s ease-out both, acornShelfOut 0.35s ease-in 3.6s forwards; } /* 연출 2.6초 + 드러난 카드 1초 — ACORN_GET_MS(4초)와 짝 */
+@keyframes acornShelfOut { to { opacity: 0; } }
+.acorn-shelf {
+  max-width: 100%;
+  padding: 14px 18px 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #4a2c14, #2a170a);
+  border: 3px solid #8a5a2b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  color: #fff7e6;
+}
+.acorn-shelf-head { display: flex; align-items: center; gap: 0.4em; font-weight: 900; font-size: clamp(15px, 2.6vh, 22px); margin-bottom: 10px; }
+.acorn-shelf-head .acorn-icon { height: 1.2em; }
+.acorn-shelf-close { margin-left: 8px; font-size: 18px; padding: 0 6px; color: #fde68a; }
+/* 보기 창의 [카드] · [목록] */
+.acorn-shelf-modes { margin-left: auto; display: inline-flex; border: 1px solid #8a5a2b; border-radius: 8px; overflow: hidden; font-size: 12px; }
+.acorn-shelf-modes button { padding: 3px 10px; color: #fde68a; background: transparent; }
+.acorn-shelf-modes button[aria-pressed='true'] { background: #8a5a2b; color: #fff7e6; }
+/* 빈 자리(음영)는 그리지 않는다 — 얻은 카드만 가운데부터 놓이고(1 · 2 · 3 · 4장은 간격 g로 나란히, 줄 가운데 정렬),
+   다섯 장부터는 네 장 폭(--w × 4 + 간격 × 3) 안에서 겹친다(가로 스크롤 없음 — 2026-11-07).
+   둘째 칸부터의 왼쪽 여백 = min(g, (3w + 3g) / (n − 1) − w) — n ≤ 4이면 g, 늘어날수록 음수(겹침)가 된다. */
+.acorn-shelf-row {
+  /* 얻기 · 보기 창 = 화면 폭의 60%(2026-11-08 요청 — 네 장 폭 + 창 안여백 36px), 높이도 60vh 안(카드 5:7 + 제목 · 여백 ≈ 100px) */
+  --g: min(1.6vw, 14px);
+  --w: min(calc((60vw - 36px - var(--g) * 3) / 4), calc((60vh - 100px) * 5 / 7));
+  display: flex;
+  justify-content: center;
+  width: calc(var(--w) * 4 + var(--g) * 3);
+  max-width: 100%;
+  padding: 10px 0 6px;
+}
+.acorn-slot {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--w);
+  aspect-ratio: 5 / 7;
+  border-radius: 12px;
+  outline: none;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+.acorn-slot + .acorn-slot { margin-left: min(var(--g), calc((var(--w) * 3 + var(--g) * 3) / (var(--n, 4) - 1) - var(--w))); }
+/* 겹친 카드 — 가리키거나(PC) 누르면(폰 — 초점) 앞으로 나와 다 보인다. 새로 얻은 카드는 끝 칸이라 처음부터 맨 앞이다 */
+.acorn-slot[data-filled]:hover,
+.acorn-slot[data-filled]:focus,
+.acorn-slot[data-new] { z-index: 5; }
+.acorn-slot[data-filled]:hover,
+.acorn-slot[data-filled]:focus { transform: translateY(-6%); filter: drop-shadow(0 0 10px rgba(253, 230, 138, 0.6)); }
+.acorn-slot > .acorn-card { position: absolute; inset: 0; }
+/* 겹친 카드는 장소 카드 줄처럼 뒤 카드가 앞 카드의 오른쪽을 덮는다 — 같은 단계끼리는 테두리 색이 같아 이음매가 사라져 한 장처럼
+   이어져 보였으므로(2026-11-07), 뒤 카드의 왼쪽 가장자리에 그림자를 드리워 경계를 세운다 */
+.acorn-slot + .acorn-slot > .acorn-card,
+.acorn-slot + .acorn-slot > .acorn-rise > .acorn-card { box-shadow: -6px 0 10px rgba(0, 0, 0, 0.65), 0 6px 18px rgba(0, 0, 0, 0.45); }
+/* 얻은 카드 — 기술 카드 [승격]처럼(2026-11-07 요청): 아래에서 올라와 1.1배로 커진 채 카드 전체를 단계 색 빛(.enh-promo-glow)이
+   덮었다가 아래부터 걷히며 드러나고, 걷히는 경계선(.enh-promo-edge)을 따라 불꽃이 튄다. 시간표는 승격과 같은 2.6초다. */
+.acorn-rise { position: absolute; inset: 0; --rise-tone: #f0b88a; --card-radius: 9% / 6.4%; animation: acornRiseIn 2600ms ease-in-out both; }
+.acorn-rise > .acorn-card { position: absolute; inset: 0; }
+.acorn-rise[data-skin='silver'] { --rise-tone: #e5ebf3; }
+.acorn-rise[data-skin='gold'] { --rise-tone: #ffd666; }
+.acorn-rise[data-skin='rainbow'] { --rise-tone: #d9a8ff; }
+.acorn-rise[data-skin='diamond'] { --rise-tone: #4ff0ff; }
+@keyframes acornRiseIn {
+  0%   { opacity: 0; transform: translateY(70%) scale(1); filter: drop-shadow(0 0 0 var(--rise-tone)); }
+  14%  { opacity: 1; transform: translateY(0) scale(1.1); filter: drop-shadow(0 0 18px var(--rise-tone)); }
+  86%  { transform: translateY(0) scale(1.1); filter: drop-shadow(0 0 22px var(--rise-tone)); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: drop-shadow(0 0 0 var(--rise-tone)); }
+}
+/* 승격 층에 없는 두 단계(작은 = 브론즈 · 다이아) */
+.enh-promo[data-tier='bronze'] .enh-promo-glow {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(255, 244, 230, 0.95), rgba(240, 184, 138, 0) 68%),
+    linear-gradient(115deg, #ffe3c8 0%, #e8a26c 18%, #fff1e2 32%, #b8693a 48%, #f6c49a 62%, #8a4a22 78%, #ffe3c8 100%);
+  box-shadow: 0 0 26px 10px rgba(232, 162, 108, 0.85);
+}
+.enh-promo[data-tier='diamond'] .enh-promo-glow {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(240, 255, 255, 0.95), rgba(80, 240, 255, 0) 68%),
+    linear-gradient(115deg, #e6fdff 0%, #3fe0f0 18%, #ffffff 32%, #0a8fa8 48%, #b8f8ff 62%, #22c7dd 78%, #e6fdff 100%);
+  box-shadow: 0 0 26px 10px rgba(80, 240, 255, 0.85);
+}
+.enh-promo[data-tier='bronze'] .enh-promo-edge { box-shadow: 0 0 12px 4px rgba(240, 184, 138, 0.95), 0 0 26px 8px rgba(184, 105, 58, 0.6); }
+.enh-promo[data-tier='diamond'] .enh-promo-edge { box-shadow: 0 0 12px 4px rgba(120, 245, 255, 0.95), 0 0 26px 8px rgba(10, 143, 168, 0.6); }
+.enh-promo[data-tier='bronze'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(232, 162, 108, 0.9), inset 0 0 14px 4px rgba(240, 184, 138, 0.8); }
+.enh-promo[data-tier='diamond'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(80, 240, 255, 0.9), inset 0 0 14px 4px rgba(160, 250, 255, 0.8); }
+/* 목록 보기 — 한 줄에 카드 하나(배지 · 이름 · 단계 · 효과) */
+.acorn-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px;
+  width: min(80vw, 640px);
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.acorn-list-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); border-left: 4px solid var(--tone, #c98652); font-size: 13px; }
+.acorn-list-row[data-skin='silver'] { --tone: #e5ebf3; }
+.acorn-list-row[data-skin='gold'] { --tone: #ffd666; }
+.acorn-list-row[data-skin='rainbow'] { --tone: #d9a8ff; }
+.acorn-list-row[data-skin='diamond'] { --tone: #4ff0ff; }
+.acorn-list-badge { flex-shrink: 0; font-size: 15px; cursor: default; }
+.acorn-list-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.acorn-list-text b { font-size: 14px; }
+.acorn-list-tier { font-size: 11px; opacity: 0.7; }
+.acorn-list-lines { flex-basis: 100%; color: #fde68a; line-height: 1.35; }
+.acorn-shelf-empty { margin: 8px 0 0; font-size: 13px; opacity: 0.7; text-align: center; }
+
+/* ── 효과 표시 배지 — 검은 도토리(실루엣) 안에 카드의 아이콘. 둘레 빛은 그 카드의 단계 색 ── */
+.acorn-badges { display: flex; flex-wrap: wrap; gap: 0.25em; align-items: center; }
+.acorn-badge {
+  position: relative;
+  width: 1.75em;
+  height: 2.2em;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  --tone: #c98652;
+  filter: drop-shadow(0 0 1.5px var(--tone)) drop-shadow(0 0 1.5px var(--tone));
+}
+.acorn-badge[data-skin='silver'] { --tone: #e5ebf3; }
+.acorn-badge[data-skin='gold'] { --tone: #ffd666; }
+.acorn-badge[data-skin='rainbow'] { --tone: #d9a8ff; }
+.acorn-badge[data-skin='diamond'] { --tone: #4ff0ff; }
+.acorn-badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #111;
+  -webkit-mask: url(/play/acorn_mask.webp) center / contain no-repeat;
+  mask: url(/play/acorn_mask.webp) center / contain no-repeat;
+}
+.acorn-badge-glyph { position: absolute; left: 22%; right: 22%; top: 34%; height: 46%; color: #fff; }
+.acorn-pop {
+  position: fixed;
+  z-index: 120;
+  transform: translate(-50%, calc(-100% - 8px));
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(20, 12, 5, 0.95);
+  border: 1px solid #8a5a2b;
+  color: #fff7e6;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+.acorn-pop b { font-size: 13px; }
+.acorn-pop-tier { margin-left: 0.4em; font-size: 11px; opacity: 0.7; }
+.acorn-pop ul { margin: 4px 0 6px; padding-left: 1em; color: #fde68a; }
+.acorn-pop-all { font-size: 11px; font-weight: 700; color: #3a1f0c; background: #fde68a; border-radius: 6px; padding: 2px 8px; }
+/* PC — 팀 카드 정보(동물 표)와 체력 구슬 사이의 나무 알약(pill_wood, 양 끝 마구리 · 가운데 늘임 — .play-pill-wood) 안에 배지(2026-11-07).
+   두 칸 사이 들보 위에 가운데를 맞춰 얹는다. --pill-h가 알약 키 · 마구리 두께를 함께 정한다(.play-pill). */
+.hp-orb-wrap { position: relative; width: 100%; height: 100%; }
+/* 체력 칸은 overflow: hidden이라 칸 위로 걸치는 알약이 잘린다 — 도토리 판에서만 연다(구슬 .hp-orb가 제 둥근 모서리로 내용을 자른다).
+   ⚠️ overflow: clip + overflow-clip-margin(calc)은 Chrome이 0px로 계산해 그대로 잘렸다 */
+.play-cell-hp-a:has(.hp-acorn-pill),
+.play-cell-hp-b:has(.hp-acorn-pill) { overflow: visible; }
+.hp-acorn-pill.play-pill {
+  --pill-h: calc(var(--pf-w, 1200px) * 0.03);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + var(--pf-w, 1200px) * 0.0125);
+  transform: translate(-50%, 50%);
+  z-index: 6;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 0.15em;
+  font-size: calc(var(--pill-h) * 0.5);
+}
+.hp-acorn-pill .acorn-badge { flex-shrink: 1; min-width: 0.9em; }
+
+/* ── 보호막 — 체력에 겹치는 반투명 은빛 띠(체력 채움보다 2px 크다) · 빛 반사가 훑는다(2026-11-07) ──
+   --from · --len은 승리선 대비 비율(0~1). 체력 칸의 테두리 2px 안쪽이 채움이라 그만큼 빼고 잰다. */
+.shield-band {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.78), rgba(148, 163, 184, 0.62));
+  box-shadow: 0 0 6px rgba(226, 232, 240, 0.85), inset 0 0 4px rgba(255, 255, 255, 0.7);
+  transition: bottom 0.5s ease, height 0.5s ease, left 0.5s ease, right 0.5s ease, width 0.5s ease;
+}
+/* 빛 반사는 안쪽 층에 가둔다 — 띠 자신을 자르면 바깥에 둔 숫자까지 잘린다 */
+.shield-band-shine { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+.shield-band-shine::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.95) 48%, rgba(255, 255, 255, 0.2) 54%, transparent 62%);
+  animation: shieldShine 2.2s ease-in-out infinite;
+}
+@keyframes shieldShine {
+  0%   { transform: translateX(-60%); }
+  60%, 100% { transform: translateX(60%); }
+}
+.shield-band[data-dir='v'] {
+  left: 0;
+  right: 0;
+  bottom: calc(2px + (100% - 4px) * var(--from));
+  height: max(6px, calc((100% - 4px) * var(--len)));
+}
+.shield-band[data-dir^='h'] {
+  top: 50%;
+  height: 22px;
+  transform: translateY(-50%);
+  width: max(6px, calc((100% - 4px) * var(--len)));
+  border-radius: 999px;
+}
+.shield-band[data-dir='h-left'] { right: calc(2px + (100% - 4px) * var(--from)); }
+.shield-band[data-dir='h-right'] { left: calc(2px + (100% - 4px) * var(--from)); }
+.shield-band-value {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0f172a;
+  text-shadow: 0 0 2px #fff;
+  white-space: nowrap;
+  z-index: 1;
+}
+.shield-band-value { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; border-radius: 99px; background: rgba(241, 245, 249, 0.92); }
+.shield-band-icon { width: 1em; height: 1em; color: #64748b; }
+.shield-band[data-dir='v'] .shield-band-value { bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
+.shield-band[data-dir^='h'] .shield-band-value { bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
+/* PC 쿨타임 — 상대(또는 내)가 쓴 뒤 쿨타임 중인 카드는 동물 표의 얼굴이 흑백(모바일 .m-icon[data-cooling]과 같다) · 남은 턴 숫자 */
+.exp-row-face[data-cooling] img { filter: grayscale(1) brightness(0.8); }
+.exp-row-cool {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  z-index: 1;
+  min-width: 1.3em;
+  padding: 0 0.25em;
+  border-radius: 99px;
+  background: #334155;
+  color: #f8fafc;
+  font-size: calc(var(--exp-w) * 0.075);
+  font-weight: 900;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+/* 폰 — 배지는 막대 안쪽의 바깥 끝(채움이 가운데에서 자라므로 바깥 끝이 비어 있다). 막대 위는 동물 열이 덮는다 */
+.m-hp-acorns { position: absolute; top: 50%; transform: translateY(-50%); font-size: 8px; z-index: 4; flex-wrap: nowrap; }
+.m-hp[data-side='left'] .m-hp-acorns { left: 6px; }
+.m-hp[data-side='right'] .m-hp-acorns { right: 6px; flex-direction: row-reverse; }
+.ind-opp-status-mark.is-acorn { display: inline-flex; align-items: center; gap: 1px; cursor: pointer; }
+.acorn-mini { display: inline-block; width: 0.8em; height: 1em; background: url(/play/icon_acorn.webp) center / contain no-repeat; }
+@media (prefers-reduced-motion: reduce) {
+  .acorn-pick-flip, .acorn-rise, .card-back-acorn { animation-duration: 0.01s; animation-delay: 0s; }
+  .shield-band-shine::after { animation: none; }
+}
+
+/* ── 마무리 연출(FinisherLayer) — 판을 끝낼 체력 변화 직전: 그 체력 막대가 커지고(data-finisher), 둘레가 어두워지며 막대 가운데로
+   빛이 모였다가(--gather) 터진다(--burst). 시간은 useAnimationQueue의 FINISHER_GATHER_DUR · FINISHER_BURST_DUR. 막대는 `scale`
+   속성으로 키운다(transform을 쓰는 흔들림 연출과 겹치지 않게). 층은 도토리 창(115)보다 위다. */
+[data-finisher='panel'] {
+  box-shadow: inset 0 0 0 4px rgba(255, 214, 102, 0.95), inset 0 0 28px 6px rgba(255, 214, 102, 0.55) !important;
+  animation: finisherPanel 0.5s ease-in-out infinite alternate;
+}
+@keyframes finisherPanel { from { filter: brightness(1); } to { filter: brightness(1.25); } }
+[data-finisher='bar'] {
+  scale: 1.35;
+  filter: drop-shadow(0 0 14px rgba(253, 230, 138, 0.9));
+  transition: scale 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.9s ease;
+}
+/* PC 체력 칸(.play-cell)은 overflow: hidden이라 커진 구슬이 잘린다 — 그동안만 열고 이웃 칸 위로 올린다 */
+.play-cell:has(> [data-finisher], > * > [data-finisher]) { overflow: visible; z-index: 50; }
+html[data-finishing] .m-layout .m-cards { opacity: 0; transition: opacity 0.25s ease; }
+.finisher-layer { position: fixed; inset: 0; z-index: 140; pointer-events: none; overflow: hidden; }
+.finisher-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--fx) var(--fy), transparent 0, transparent var(--fr, 90px), rgba(0, 0, 0, 0.72) calc(var(--fr, 90px) + 250px));
+  opacity: 0;
+  animation: finisherFadeIn var(--gather) ease-out forwards, finisherFadeOut 0.3s ease-in var(--gather) forwards;
+}
+.finisher-gather { position: absolute; inset: 0; animation: finisherOff 0.01s linear var(--gather) forwards; }
+.finisher-core {
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff7d1 35%, rgba(253, 200, 80, 0.85) 60%, rgba(253, 200, 80, 0) 72%);
+  box-shadow: 0 0 24px 10px rgba(255, 220, 120, 0.8);
+  animation: finisherCore var(--gather) cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+}
+.finisher-spark {
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #fff6c8;
+  box-shadow: 0 0 10px 3px rgba(255, 214, 102, 0.95);
+  opacity: 0;
+  animation: finisherSpark 700ms ease-in infinite;
+}
+.finisher-ring {
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: 80px;
+  height: 80px;
+  margin: -40px 0 0 -40px;
+  border-radius: 50%;
+  border: 6px solid rgba(255, 236, 170, 0.95);
+  box-shadow: 0 0 30px 10px rgba(255, 200, 80, 0.8), inset 0 0 20px 6px rgba(255, 240, 200, 0.8);
+  opacity: 0;
+  animation: finisherRing var(--burst) cubic-bezier(0.1, 0.7, 0.3, 1) var(--gather) forwards;
+}
+.finisher-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--fx) var(--fy), rgba(255, 255, 255, 0.95) 0, rgba(255, 240, 200, 0.7) 25%, rgba(255, 240, 200, 0) 70%);
+  opacity: 0;
+  animation: finisherFlash var(--burst) ease-out var(--gather) forwards;
+}
+@keyframes finisherFadeIn { to { opacity: 1; } }
+@keyframes finisherFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes finisherOff { to { visibility: hidden; } }
+@keyframes finisherCore {
+  0%   { transform: scale(0.2); opacity: 0.4; }
+  80%  { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(2.6); opacity: 1; }
+}
+@keyframes finisherSpark {
+  0%   { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translate(0, 0) scale(0.3); opacity: 0.9; }
+}
+@keyframes finisherRing {
+  0%   { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(9); opacity: 0; }
+}
+@keyframes finisherFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-finisher='bar'] { scale: 1.15; transition: none; }
+  [data-finisher='panel'] { animation: none; }
+  .finisher-spark, .finisher-ring { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PC 카드 강화 판(2026-11-07, tmp_prompt/20261107/v2.txt) — GameLayout의 enhPc
+   그림 들보 · 그림 액자 · 체력 구슬 대신 CSS 띠(.enh-top) · CSS 판(.play-frame-css.enh-frame — 고동색 판, 정보 칸은 숲 색) ·
+   타이머 양옆 체력 막대(MobileHpBar) · 좌우 끝 도토리 카드 칸 · 녹색 실크 천 위의 기술 카드. 일시정지 버튼(.pause-fab)과 그 메뉴는 그대로다.
+     판 칸:  me(내 정보) · board · opp(상대 정보)        — 위(정보 칸 높이 = 카드 필드)
+             mid: 도토리 | 체력 | 타이머(아래 지속 효과) | 체력 | 도토리   — 판 폭 전체
+             cards(기술 카드 — 실크 천, 카드 다섯 장은 카드 필드 폭)      — 판 폭 전체
+   ⚠️ 판 높이는 팀전 액자와 같은 상자(--pf-h)다 — --stage-w가 "위 띠 + 판"이 세로에 들어가게 정해져 있다.
+   ══════════════════════════════════════════════════════════════════════════ */
+.enh-top {
+  /* 글자 · 안여백은 고정 px가 아니라 띠 높이(--beam-h — 무대 폭 비례)의 비율이다(2026-11-07 요청) */
+  --m-slot: calc(var(--beam-h) * 0.9);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+  box-sizing: border-box;
+  width: var(--stage-w);
+  height: calc(var(--beam-h) * 0.62);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: calc(var(--beam-h) * 0.09);
+}
+.enh-top-side { display: flex; align-items: center; gap: calc(var(--beam-h) * 0.06); min-width: 0; }
+.enh-top-right { flex-direction: row-reverse; }
+.enh-top .m-name { font-size: calc(var(--beam-h) * 0.17 * var(--font-scale) / 1.12); padding: 0.15em 0.8em; max-width: 12em; border-width: max(1.5px, 0.08em); }
+.enh-turn,
+.enh-steps,
+.enh-top-center {
+  border: 1.5px solid #6f9a45;
+  background: linear-gradient(180deg, rgba(36, 64, 28, 0.92), rgba(20, 38, 16, 0.92));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(190, 230, 140, 0.25);
+}
+.enh-turn { padding: 0.15em 0.7em; border-radius: 999px; color: #fde68a; font-weight: 900; font-size: calc(var(--beam-h) * 0.17 * var(--font-scale) / 1.12); white-space: nowrap; }
+.enh-steps { display: inline-flex; align-items: center; gap: 0.25em; padding: 0.18em; border-radius: 999px; white-space: nowrap; font-size: calc(var(--beam-h) * 0.16 * var(--font-scale) / 1.12); }
+.enh-step {
+  padding: 0.12em 0.75em;
+  border-radius: 999px;
+  color: rgba(236, 252, 203, 0.5);
+  font-weight: 800;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+.enh-step[data-on][data-phase='draw'] { background: #15803d; color: #fff; box-shadow: 0 0 12px rgba(74, 222, 128, 0.65); }
+.enh-step[data-on][data-phase='choice'] { background: #b45309; color: #fff; box-shadow: 0 0 12px rgba(251, 191, 36, 0.65); }
+.enh-step-arrow { color: #a3c46a; font-weight: 900; }
+.enh-top-center {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  padding: 0.2em 0.9em;
+  border-radius: 0.6em;
+  color: #ecfccb;
+  font-size: calc(var(--beam-h) * 0.22 * var(--font-scale) / 1.12);
+  white-space: nowrap;
+}
+.enh-top-center[data-tone='mine'] { border-color: #84cc16; box-shadow: 0 0 16px rgba(132, 204, 22, 0.45), 0 2px 6px rgba(0, 0, 0, 0.45); }
+.enh-top-center[data-tone='enemy'] { border-color: #f43f5e; color: #ffe4e6; box-shadow: 0 0 16px rgba(244, 63, 94, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45); }
+.enh-top .festival-running { font-size: calc(var(--beam-h) * 0.17 * var(--font-scale) / 1.12); gap: 0.35em; padding: 0.3em 1em 0.3em 0.45em; }
+.enh-top-nick { font-size: 0.72em; font-weight: 700; opacity: 0.85; }
+
+/* [일시정지] — 상대 이름 오른쪽의 빈 상자(.m-pause-slot) 자리, 위 띠 높이의 가운데(2026-11-08 요청). 나무판의 transform 연출과 겹치지 않게 translate로 올린다 */
+/* 빈 상자 폭 = 버튼 폭(나무판 양 끝 28px씩 + 글자 약 5em) — 무대 비례인 --m-slot만 쓰면 작은 화면에서 버튼이 상대 이름을 덮는다 */
+.enh-top .m-pause-slot { width: calc(56px + 1.04rem * var(--font-scale) * 5.2); }
+body:has(.enh-top) .pause-fab {
+  top: calc(var(--beam-h) * 0.31);
+  right: calc((100vw - var(--stage-w)) / 2);
+  translate: 0 -50%;
+}
+
+/* 판 — 개인전 CSS 판(.play-frame-css)의 틀을 쓰되 폭 · 칸 나눔 · 색만 바꾼다 */
+.play-frame-css.enh-frame {
+  --ind-frame-w: var(--stage-w);
+  --pf-w: var(--stage-w);
+  --enh-timer-w: 30%;
+  --enh-side: calc(var(--pf-w) * 0.15);
+  /* 가운데 줄 한 행 = 타이머 창 높이(도토리 · 지속 효과도 이 높이 — 2026-11-08 요청) */
+  --enh-bar-h: calc(var(--pf-h) * 0.05);
+  width: var(--stage-w);
+  padding: calc(var(--pf-h) * 0.035) calc(var(--pf-w) * 0.016);
+  grid-template-columns: var(--enh-side) minmax(0, 1fr) var(--enh-side);
+  /* 기술 카드 줄을 값으로 정한다 — 카드 폭을 높이에서 계산해야 1:1.258이 어느 해상도에서나 유지된다(2026-11-08 요청) */
+  --enh-cards-h: calc(var(--pf-h) * 0.3576);
+  --enh-card-pad: calc(var(--pf-h) * 0.014);
+  --enh-card-w: calc((var(--enh-cards-h) - var(--enh-card-pad) * 2) / 1.258);
+  grid-template-rows: minmax(0, 1fr) var(--enh-bar-h) var(--enh-cards-h);
+  column-gap: calc(var(--pf-w) * 0.012);
+  row-gap: calc(var(--pf-h) * 0.016);
+  /* 내 정보 · 상대 정보는 카드 필드와 같은 높이(위 줄만 — 2026-11-07 요청). 가운데 줄과 기술 카드 줄은 판 폭 전체다 */
+  grid-template-areas:
+    "me board opp"
+    "mid mid mid"
+    "hpa cards hpb";
+  /* 판 — 고동색 나무(2026-11-07 요청: 판 전체는 갈색 톤) */
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 9px),
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 220, 160, 0.12), transparent 60%),
+    linear-gradient(135deg, #6b4423 0%, #4e2f17 46%, #643e20 100%);
+  box-shadow:
+    inset 0 0 0 var(--fr-line) #2a1708,
+    inset 0 0 0 calc(var(--fr-line) * 2.6) #c79a5e,
+    inset 0 0 0 calc(var(--fr-line) * 3.4) #2a1708,
+    inset 0 0 calc(var(--pf-w) * 0.03) rgba(0, 0, 0, 0.4),
+    0 calc(var(--pf-w) * 0.006) calc(var(--pf-w) * 0.02) rgba(0, 0, 0, 0.45);
+}
+.enh-frame > .play-cell,
+.enh-frame > .play-cards,
+.enh-frame > .play-prompt-strip {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+.enh-frame > .play-cell { border-radius: var(--cell-r); box-shadow: 0 0 0 var(--fr-line) #a7c47a, 0 0 0 calc(var(--fr-line) * 2) #10200c; }
+.enh-frame > .play-cell-exp-a { grid-area: me; --exp-w: calc(var(--pf-w) * 0.15); }
+.enh-frame > .play-cell-exp-b { grid-area: opp; --exp-w: calc(var(--pf-w) * 0.15); }
+.enh-frame > .play-cell-board { grid-area: board; }
+.enh-frame > .play-cell-hp-a { grid-area: hpa; width: 80%; justify-self: start; }
+.enh-frame > .play-cell-hp-b { grid-area: hpb; width: 80%; justify-self: end; }
+/* 체력 — 입체 유리관(2026-11-08 요청): 위쪽 왼편의 광원 · 왼쪽 세로 반사광 · 양옆이 어두운 원통 음영 · 아래 반사. 눈금은 시작 체력 하나(모바일과 같다) */
+.enh-frame .hp-orb {
+  background: linear-gradient(90deg, rgba(214, 232, 238, 0.82), rgba(248, 253, 255, 0.76) 34%, rgba(248, 253, 255, 0.7) 66%, rgba(208, 226, 234, 0.84));
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4), 0 0 14px rgba(190, 230, 255, 0.22);
+}
+/* 액체를 덮어야 하므로 구슬의 box-shadow가 아니라 위층에 그린다(z 1 — 숫자 z 2 아래) */
+.enh-frame .hp-orb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(55% 22% at 32% 9%, rgba(255, 255, 255, 0.85), transparent 72%),
+    radial-gradient(70% 16% at 62% 100%, rgba(255, 255, 255, 0.45), transparent 75%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, transparent 14%, rgba(255, 255, 255, 0.2) 38%, transparent 64%, rgba(0, 0, 0, 0.1) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), inset 0 8px 14px rgba(255, 255, 255, 0.4), inset 0 -8px 14px rgba(0, 0, 0, 0.07);
+}
+.enh-frame .hp-orb-sheen {
+  top: 6%;
+  left: 8%;
+  width: 9%;
+  height: 74%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.12));
+  border-radius: 999px;
+  filter: blur(1.5px);
+}
+.enh-frame .hp-orb-liquid { box-shadow: 0 -2px 10px rgba(255, 255, 255, 0.35); }
+.enh-frame .hp-orb-mine .hp-orb-liquid { background: linear-gradient(180deg, #9bf01a 0%, #3fb80a 100%); }
+.enh-frame .hp-orb-enemy .hp-orb-liquid { background: linear-gradient(180deg, #ff5c7a 0%, #e8083a 100%); }
+.enh-frame .hp-orb-spectator .hp-orb-liquid { filter: saturate(1.5); }
+/* 바닥의 옅은 빛이 진한 색을 씻어 낸다 — 이 판에서는 끄고, 진한 액체 위에서도 숫자가 읽히게 흰 테를 두른다 */
+.enh-frame .hp-orb-rise::after { display: none; }
+.enh-frame .hp-orb-value { text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 8px rgba(255, 255, 255, 0.9); }
+.enh-frame .hp-orb-segments { display: none; }
+.enh-frame .hp-orb-start { display: block; position: absolute; left: 0; right: 0; z-index: 1; height: 2px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1px rgba(60, 80, 90, 0.28); }
+/* 출혈 · 지속 회복은 타이머 양옆(.enh-dots)이 보여 준다 — 구슬에는 그 밖의 상태만 */
+.enh-frame .hp-orb-status > .hp-status-bleed,
+.enh-frame .hp-orb-status > .hp-status-regen { display: none; }
+.enh-frame > .play-cards {
+  grid-area: cards;
+  /* 기술 카드 — 녹색 실크 천 위에 놓인 것처럼(2026-11-07 요청). 양옆 체력 구슬이 80%로 줄어든 만큼 칸보다 넓게 선다(2026-11-08 요청) */
+  margin-inline: calc(var(--enh-side) * -0.2 + var(--pf-w) * 0.001);
+  padding: var(--enh-card-pad) calc(var(--pf-w) * 0.005);
+  border-radius: var(--cell-r);
+  background:
+    linear-gradient(112deg, transparent 18%, rgba(255, 255, 255, 0.16) 30%, transparent 42%, transparent 58%, rgba(255, 255, 255, 0.1) 70%, transparent 82%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 140% at 50% 0%, #2f8a4e 0%, #1c6b3a 45%, #0f4626 100%);
+  box-shadow:
+    inset 0 calc(var(--pf-h) * 0.012) calc(var(--pf-h) * 0.03) rgba(0, 0, 0, 0.35),
+    inset 0 calc(var(--pf-h) * -0.01) calc(var(--pf-h) * 0.02) rgba(150, 230, 170, 0.18),
+    0 0 0 var(--fr-line) #c79a5e,
+    0 0 0 calc(var(--fr-line) * 2) #2a1708;
+}
+/* 다섯 장은 1:1.258 고정 폭으로 천 위에 고르게 벌린다 */
+.enh-frame .play-cards-grid { grid-template-columns: repeat(5, var(--enh-card-w)); justify-content: space-evenly; gap: 0; }
+.enh-frame > .play-prompt-strip { grid-area: mid; justify-self: center; align-self: stretch; width: var(--enh-timer-w); height: auto; }
+/* 타이머 창은 제 칸을 넘지 않는다 — 막대는 30%까지만, 긴 문구(첫 턴 안내)는 한 줄에서 말줄임(양옆 칸을 덮지 않게) */
+.enh-frame .play-timer-window { --timer-h: var(--enh-bar-h); min-width: 0; max-width: 100%; top: 0; }
+.enh-frame .play-timer-bar { flex: 0 1 30%; }
+.enh-frame .play-timer-text { flex: 1 1 0; }
+.enh-frame .play-timer-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 내 정보 · 상대 정보 — 양피지 대신 숲 색(짙은 이끼 바탕 · 연두 빛), 경험치 줄은 옅은 이끼 */
+.enh-frame > .play-cell-exp-a,
+.enh-frame > .play-cell-exp-b { background: #1d3117; }
+.enh-frame .play-panel-body {
+  background-image:
+    linear-gradient(var(--panel-tint, transparent), var(--panel-tint, transparent)),
+    radial-gradient(130% 55% at 50% 0%, rgba(190, 230, 140, 0.24), transparent 70%),
+    linear-gradient(180deg, #36592a 0%, #25411d 58%, #1b3216 100%);
+  background-size: 100% 100%;
+}
+.enh-frame .play-team-head { color: #ecfccb; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.enh-frame .play-panel-body hr { border-color: rgba(190, 230, 140, 0.28); }
+.enh-frame .exp-row { background: rgba(236, 248, 218, 0.92); border-color: #6b8f45; box-shadow: inset 0 -2px 0 rgba(60, 90, 40, 0.18); }
+.enh-frame .exp-row-lv { background: #cfe6b0; }
+
+/* 가운데 줄 — 도토리 카드 · 지속 효과 · (타이머) · 지속 효과 · 도토리 카드. 타이머는 같은 칸의 .play-prompt-strip이 위에 얹힌다 */
+.enh-mid {
+  grid-area: mid;
+  display: grid;
+  /* 도토리 | 상태 | (타이머) | 상태 | 도토리 — 한 행 */
+  grid-template-columns: minmax(0, 1fr) auto var(--enh-timer-w) auto minmax(0, 1fr);
+  grid-template-rows: 100%;
+  column-gap: calc(var(--pf-w) * 0.008);
+  min-width: 0;
+  min-height: 0;
+}
+/* 열만 정하면 DOM 순서대로 자리를 채워 앞 열의 칸이 다음 행으로 밀린다 — 모두 1행에 못박는다 */
+.enh-mid > *,
+.enh-dots .m-dot-pair { grid-row: 1; }
+.enh-acorn-bar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  box-sizing: border-box;
+  justify-content: center;
+  padding: 0 0.6em;
+  border-radius: var(--cell-r);
+  border: 1.5px solid #c79a5e;
+  background: linear-gradient(180deg, rgba(42, 23, 8, 0.85), rgba(26, 14, 5, 0.85));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  /* 배지 키(2.2em) = 창 높이의 72% */
+  font-size: calc(var(--enh-bar-h) * 0.72 / 2.2);
+  overflow: hidden;
+}
+.enh-acorn-bar[data-side='left'] { grid-column: 1; }
+.enh-acorn-bar[data-side='right'] { grid-column: 5; }
+.enh-acorn-bar .acorn-badges { flex-wrap: nowrap; width: 100%; justify-content: flex-start; }
+/* 고른 순서대로 가운데(타이머 쪽)에서 바깥으로 — 좌우 대칭 */
+.enh-acorn-bar[data-side='left'] .acorn-badges { flex-direction: row-reverse; }
+.enh-acorn-bar:empty::before { content: '도토리 카드'; color: rgba(255, 230, 180, 0.35); font-weight: 700; font-size: 1.1em; }
+/* 지속 효과 — 묶음을 풀어(display: contents) 내 쌍은 타이머 왼쪽, 상대 쌍은 오른쪽 칸에 앉힌다 */
+.enh-dots,
+.enh-dots .m-dot-hub { display: contents; }
+/* 창 높이 = 타이머 창, 아이콘(2.2em 상자) = 창 높이의 64%, 나머지는 여백(2026-11-08 요청) */
+.enh-dots .m-dot-pair {
+  box-sizing: border-box;
+  height: var(--enh-bar-h);
+  padding: 0 calc(var(--enh-bar-h) * 0.28);
+  gap: calc(var(--enh-bar-h) * 0.14);
+  font-size: calc(var(--enh-bar-h) * 0.64 / 2.2);
+}
+.enh-dots .m-dot-pair[data-tone='mine'] { grid-column: 2; }
+.enh-dots .m-dot-pair[data-tone='enemy'] { grid-column: 4; }
+
+/* ── 도토리 카드 장착 — 얻은 카드가 그 단계 빛으로 뭉쳐 도토리 카드 줄의 제자리로 날아가 앉는다(AcornLayer fly) ── */
+.acorn-badge[data-pending] { opacity: 0; transform: scale(0.3); }
+.acorn-badge[data-equip] { animation: acornEquip 0.6s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes acornEquip {
+  0% { transform: scale(1.8); filter: brightness(2.2) drop-shadow(0 0 8px #fff); }
+  100% { transform: scale(1); filter: none; }
+}
+.acorn-fly {
+  --tone: #f0b88a;
+  position: fixed;
+  z-index: 130;
+  pointer-events: none;
+  border-radius: 10%;
+  background: radial-gradient(circle, #fff 0%, var(--tone) 45%, transparent 72%);
+  box-shadow: 0 0 34px 14px var(--tone);
+  transform: translate(-50%, -50%);
+  animation: acornFly 800ms cubic-bezier(0.5, 0, 0.2, 1) forwards;
+}
+.acorn-fly[data-skin='silver'] { --tone: #e5ebf3; }
+.acorn-fly[data-skin='gold'] { --tone: #ffd666; }
+.acorn-fly[data-skin='rainbow'] { --tone: #d9a8ff; }
+.acorn-fly[data-skin='diamond'] { --tone: #4ff0ff; }
+@keyframes acornFly {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+  32% { transform: translate(-50%, -50%) scale(0.22); border-radius: 50%; opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(var(--end)); border-radius: 50%; opacity: 1; }
+}
+
+/* ── 체력 막대 — 다 깎였을 때 터짐 · 다 채웠을 때 별빛(MobileHpBar, 모바일 · PC 공용) ── */
+.m-hp-burst { position: absolute; top: 50%; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.m-hp[data-side='left'] .m-hp-burst { right: 8%; }
+.m-hp[data-side='right'] .m-hp-burst { left: 8%; }
+.m-hp-burst::before {
+  content: '';
+  position: absolute;
+  left: -90px;
+  top: -90px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fde68a 20%, rgba(249, 115, 22, 0.9) 38%, rgba(244, 63, 94, 0.7) 52%, transparent 70%);
+  animation: mHpBoom 0.9s ease-out forwards;
+}
+.m-hp-burst i {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  border-radius: 2px;
+  background: linear-gradient(#fde68a, #f97316);
+  box-shadow: 0 0 6px #fb923c;
+  animation: mHpShard 0.85s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+@keyframes mHpBoom { 0% { transform: scale(0.2); opacity: 1; } 55% { opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes mHpShard {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--bx), var(--by)) rotate(var(--br)) scale(0.4); opacity: 0; }
+}
+.m-hp-stars { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.m-hp-stars i {
+  position: absolute;
+  bottom: 35%;
+  left: var(--sx);
+  width: var(--ss);
+  height: var(--ss);
+  background: radial-gradient(circle, #fff 0 22%, #fef08a 45%, rgba(253, 224, 71, 0) 70%);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  opacity: 0;
+  animation: mHpStar var(--sd) ease-out var(--sdl) infinite;
+}
+.m-hp[data-full] .m-hp-track { box-shadow: 0 0 14px 3px rgba(254, 240, 138, 0.75), inset 0 2px 4px rgba(0, 0, 0, 0.5); }
+@keyframes mHpStar {
+  0% { transform: translateY(0) scale(0.4) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: translateY(-28px) scale(1) rotate(90deg); opacity: 1; }
+  100% { transform: translateY(-60px) scale(0.3) rotate(180deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acorn-fly { animation-duration: 0.01s; }
+  .m-hp-stars i { animation: none; opacity: 0.8; }
+}
+
+
+/* ── 쿨타임 기술 카드 — 카드 전체(.holo-cell, 마우스 기울기와 같은 상자)가 3D로 뒷면까지 뒤집히고, 끝나면 앞면으로 되뒤집힌다
+   (2026-11-08 요청 — 그 전에는 버튼 안에서 scale로 접혀 카드 칸 안에서만 뒤집히는 것처럼 보였다). 남은 턴은 뒷면(.skill-cool-back).
+   반 바퀴(90도)에서 뒷면이 켜지고 / 꺼지고 나머지 반을 -90도에서 0도로 돌아 거울상이 비치지 않는다.
+   ⚠️ 0.7초 동안은 이 애니메이션이 transform을 차지해 기울기(hover)가 멈춘다 — 그동안 차례가 아니라 기울기가 꺼져 있는 때다.
+   ⚠️ 클래스가 바뀔 때마다(뒷면 ↔ 앞면) 애니메이션이 한 번씩 돈다 — 같은 클래스로 다시 그려지면 다시 돌지 않는다 ── */
+/* 0.62초 지연 — 카드가 바닥에 다 내려앉은 뒤에 뒤집는다(2026-11-08 요청). SkillQuake의 내려찍기(최대 0.5초) + 잠금 해제 0.12초와 짝이다 */
+.holo-cell.holo-flip-back { animation: skillCoolFlip 0.7s ease-in-out 0.62s; } /* fill 없음 — 끝난 뒤에도 transform을 붙들면 마우스 기울기가 영영 먹지 않는다 */
+.holo-cell.holo-flip-front { animation: skillCoolFlipFront 0.7s ease-in-out; }
+/* 앞면으로 돌아온 카드도 끝낼 수 있으면 빨간 빛 — .holo-flip-front가 클래스 하나 더 구체적이라 .skill-card-lethal의 animation을 덮었다 */
+.holo-cell.holo-flip-front.skill-card-lethal { animation: skillCoolFlipFront 0.7s ease-in-out, lethalPulse 1.4s ease-in-out infinite; }
+/* 뒤집혀 가려질 때까지(지연 + 반 바퀴) 그림은 앞면 밝기 그대로 — 안 그러면 착지하는 동안 먼저 어두워진다 */
+.holo-flip-back .skill-choice-bg-disabled { animation: skillCoolFrontHold 0.97s step-end; }
+@keyframes skillCoolFrontHold { 0% { filter: brightness(0.78); } }
+.skill-cool-back {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  border-radius: inherit;
+  color: #fde68a;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 6px, transparent 6px 12px),
+    radial-gradient(circle at 50% 42%, #5a3416 0%, #3a1f0c 60%, #24130a 100%);
+  box-shadow: inset 0 0 0 4px #5c3313, inset 0 0 0 6px #a8692f;
+  animation: skillCoolBackIn 0.7s step-end 0.62s both;
+}
+.skill-cool-icon { height: calc(var(--deco, 40px) * 1.4); width: auto; filter: drop-shadow(0 0 8px rgba(253, 230, 138, 0.6)); }
+.skill-cool-turns { font-size: calc(var(--deco, 40px) * 0.95); font-weight: 900; line-height: 1; }
+.skill-cool-sub { font-size: calc(var(--deco, 40px) * 0.42); font-weight: 800; opacity: 0.85; }
+@keyframes skillCoolFlip {
+  0%     { transform: perspective(900px) rotateY(0deg) scale(1); }
+  50%    { transform: perspective(900px) rotateY(90deg) scale(1.08); }
+  50.01% { transform: perspective(900px) rotateY(-90deg) scale(1.08); }
+  100%   { transform: perspective(900px) rotateY(0deg) scale(1); }
+}
+@keyframes skillCoolFlipFront {
+  0%     { transform: perspective(900px) rotateY(0deg) scale(1); }
+  50%    { transform: perspective(900px) rotateY(-90deg) scale(1.08); }
+  50.01% { transform: perspective(900px) rotateY(90deg) scale(1.08); }
+  100%   { transform: perspective(900px) rotateY(0deg) scale(1); }
+}
+.skill-cool-back[data-leaving] { animation: skillCoolBackOut 0.7s step-end both; }
+@keyframes skillCoolBackIn { 0% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes skillCoolBackOut { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .holo-cell.holo-flip-back,
+  .holo-cell.holo-flip-front,
+  .holo-cell.holo-flip-front.skill-card-lethal,
+  .holo-flip-back .skill-choice-bg-disabled,
+  .skill-cool-back { animation: none; }
+  .skill-cool-back[data-leaving] { display: none; }
 }

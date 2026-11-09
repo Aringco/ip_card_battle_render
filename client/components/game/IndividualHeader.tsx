@@ -1,3 +1,4 @@
+import { AcornFestivalBadge } from './acorn/AcornBadges';
 import type { ClientGameState, SideId } from 'shared';
 import { festivalDrawInfoAt, maxTurnOf } from 'shared';
 import { PLAY_ASSETS } from '@/lib/playAssets';
@@ -85,6 +86,7 @@ export function IndividualHeader({
           <FlowArrow />
           <StepPill label="행동 선택" active={isChoicePhase} />
         </div>
+        <AcornFestivalBadge gameState={gameState} />
         {gameState.festival && (
           <span className="festival-running font-bold whitespace-nowrap">
             {/* eslint-disable-next-line @next/next/no-img-element */}

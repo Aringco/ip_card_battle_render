@@ -1,5 +1,6 @@
 'use client';
 
+import { openAcornShelf } from '../acorn/AcornLayer';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS, emoteById, enhanceCardTier, maxTurnOf, needsTarget } from 'shared';
@@ -10,11 +11,13 @@ import { isFinished, opponentOrder, sideColor, sideName, withDisplayedFinish } f
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SweepBanner } from '@/components/effects/SweepBanner';
+import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
 import { SheepComboLayer } from '@/components/effects/SheepComboLayer';
 import { PlayerEmoticonLayer } from '@/components/effects/PlayerEmoticonLayer';
 import { RabbitFlightLayer } from '@/components/effects/RabbitFlightLayer';
 import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { RankedBanner } from '@/components/effects/RankedBanner';
+import { FinisherLayer } from '@/components/effects/FinisherLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { EmotePicker } from '../EmotePicker';
 import { GameBoard } from '../GameBoard';
@@ -253,10 +256,13 @@ export function MobileIndividualLayout({
         if (panel === 'mine') setPanel(null);
         else if (picking && pickFocus && panel === null) openDetail(pickFocus);
         else if (panel === 'oppList' && listFocus) openDetail(listFocus);
+        // 상대 상세에서 한 번 더 밀면 그 사람의 도토리 카드(카드 강화)
+        else if (panel === 'oppDetail' && detailSide && gameState.enhance?.acorn) openAcornShelf(detailSide);
         else if (panel === null && !picking) setPanel('oppList');
       } else {
         // 왼쪽 → 오른쪽: 상세 → (목록 또는 대상 고르기로) 한 단계 뒤로, 목록 → 닫기, 아무것도 없으면 내 상세
-        if (panel === 'oppDetail') setPanel(picking ? null : 'oppList');
+        if (panel === 'mine' && gameState.enhance?.acorn) openAcornShelf(leftSide); // 내 상세에서 한 번 더 — 내 도토리 카드
+        else if (panel === 'oppDetail') setPanel(picking ? null : 'oppList');
         else if (panel === 'oppList') setPanel(null);
         else if (panel === null && !picking) setPanel('mine');
       }
@@ -356,6 +362,7 @@ export function MobileIndividualLayout({
             captions={animState.captions}
             placeFocusBursts={animState.placeFocusBursts}
             drawSlots={animState.drawSlots}
+            bigSlams={animState.bigSlams}
             woolBalls={animState.woolBalls}
             acornBalls={animState.acornBalls}
             collectingCardIds={animState.collectingCardIds}
@@ -440,13 +447,15 @@ export function MobileIndividualLayout({
 
       <EffectLayer leafParticleCount={animState.leafParticleCount} floatingTexts={animState.floatingTexts} leftSide={mySide ?? undefined} />
       <SweepBanner info={animState.sweepBanner} />
+      <FestivalStartBanner info={animState.festivalStartInfo} />
       <SheepComboLayer combos={animState.sheepCombos} />
       <div className="m-emotes">
-        <PlayerEmoticonLayer items={bubbleItems} placement="left" scale={0.7} />
+        <PlayerEmoticonLayer items={bubbleItems} placement="left" scale={0.7} fit={4} />
       </div>
       <RabbitFlightLayer flights={animState.rabbitFlights} />
       {animState.tigerImpact && <div className="tiger-vignette" />}
       <TigerClawLayer active={animState.tigerImpact} />
+      <FinisherLayer finisher={animState.finisher} />
       <RankedBanner banner={animState.rankBanner} gameState={gameState} />
       <SettingsHintPopup turn={gameState.turn} />
     </div>

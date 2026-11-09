@@ -1,3 +1,4 @@
+import { openAcornShelf } from './acorn/AcornLayer';
 import type { ClientGameState, SideId } from 'shared';
 import { ANIMALS, ENHANCE_MAX_LEVEL, expProgressFor } from 'shared';
 import type { Animal } from 'shared';
@@ -134,12 +135,20 @@ function StatusMarks({ gameState, side }: { gameState: ClientGameState; side: Si
   }
   const evade = enh.evade?.[side] ?? 0;
   if (evade > 0) marks.push({ key: 'evade', text: `💨${evade}%`, title: `기술 회피 — 그 사람의 다음 차례까지 노리는 기술을 ${evade}% 확률로 피한다` });
-  if (marks.length === 0) return null;
+  const shield = enh.shield?.[side] ?? 0;
+  if (shield > 0) marks.push({ key: 'shield', text: `🛡${shield}`, title: `보호막 ${shield} — 공격 · 출혈 피해를 먼저 막는다` });
+  const acorns = enh.acorn?.sides[side]?.owned.length ?? 0;
+  if (marks.length === 0 && acorns === 0) return null;
   return (
     <span className="ind-opp-status">
       {marks.map(m => (
         <span key={m.key} className={`ind-opp-status-mark is-${m.key}`} title={m.title}>{m.text}</span>
       ))}
+      {acorns > 0 && (
+        <button type="button" className="ind-opp-status-mark is-acorn" title="도토리 카드 보기" onClick={() => openAcornShelf(side)}>
+          <span className="acorn-mini" aria-hidden />{acorns}
+        </button>
+      )}
     </span>
   );
 }

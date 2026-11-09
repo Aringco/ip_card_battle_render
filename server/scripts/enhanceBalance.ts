@@ -5,9 +5,10 @@
  * 봇: 장소는 "짝이 될 확률이 가장 높은 곳"(직전 장소 제외, 동률은 무작위). 기술은 room.ts의 컴퓨터와 같은 생각
  *     (끝낼 수 있으면 그것 → 가끔 디자인어 → 지금 얻는 값이 큰 카드, ×0.7~1.3로 흔든다).
  *
- * 실행: cd server && npx ts-node scripts/enhanceBalance.ts [판수=1000]
+ * 실행: cd server && npx ts-node scripts/enhanceBalance.ts [판수=1000] [목표] [축제 시작 턴] [장소 장수 증가 주기]
  */
 import { initEnhanceGame } from '../engine/turnManager';
+import { autoPickAcorns } from '../engine/acorn';
 import { processPlayerAction, processSkillChoice, processPass } from '../engine/gameEngine';
 import { eligibleAnimals, levelOf } from '../engine/skills';
 import {
@@ -33,7 +34,7 @@ function makeLCG(seed: number): () => number {
 
 function pickPlace(state: GameState, rng: () => number): Place {
   const options = PLACES.filter(p => p !== state.lastPlace);
-  const odd = (a: Animal) => state.stacks[a].filter(c => c.collectedBy === null).length % 2 === 1;
+  const odd = (a: Animal) => state.stacks[a].filter(c => c.collectedBy === null).reduce((n, c) => n + c.num, 0) % 2 === 1;
   let best: Place[] = [];
   let bestP = -1;
   for (const p of options) {
@@ -83,13 +84,14 @@ interface Result {
 
 function runGame(seed: number): Result {
   const rng = makeLCG(seed);
-  const state = initEnhanceGame(['a'], ['b'], rng, ENHANCE_SETTINGS);
+  const state = initEnhanceGame(['a'], ['b'], rng, { ...ENHANCE_SETTINGS, targetScore: TARGET, festivalTurn: FESTIVAL, drawGrowthTurns: DRAW_GROWTH, ...EXTRA });
   const first = state.activeTeam;
   let firstLv3: number | null = null;
   let firstLv6: number | null = null;
   let guard = 0;
   while (state.phase === 'playing') {
     if (guard++ > 10_000) throw new Error(`무한루프 (seed=${seed})`);
+    autoPickAcorns(state, rng); // 도토리 축제 — 후보 중 무작위(컴퓨터와 같다)
     processPlayerAction(state, pickPlace(state, rng), rng);
     for (const side of state.turnOrder) {
       const top = Math.max(...ANIMALS.map(a => levelOf(state, side, a)));
@@ -119,12 +121,21 @@ const pct = (n: number, d: number) => `${((n / d) * 100).toFixed(1)}%`;
 const quantile = (xs: number[], q: number) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * q))]; };
 
 const N = Number(process.argv[2] ?? 1000);
+// 목표 점수(시작 체력) — 기본 500, 둘째 인자로 바꾼다(2500까지)
+const TARGET = Number(process.argv[3] ?? ENHANCE_SETTINGS.targetScore);
+// 도토리 축제 시작 턴 — 셋째 인자(999면 도토리 카드 없이 — 비교용)
+const FESTIVAL = Number(process.argv[4] ?? ENHANCE_SETTINGS.festivalTurn);
+// 장소 장수 증가 주기 — 넷째 인자(0이면 끔)
+const DRAW_GROWTH = Number(process.argv[5] ?? ENHANCE_SETTINGS.drawGrowthTurns ?? 0);
+// 그 밖의 규칙 덮어쓰기 — 환경변수 SETTINGS='{"skillGrowthTurns":8}'
+const EXTRA = JSON.parse(process.env.SETTINGS ?? '{}');
 const rs = Array.from({ length: N }, (_, i) => runGame(1000 + i));
 const turns = rs.map(r => r.turns);
 const lv3 = rs.map(r => r.firstLv3).filter((t): t is number => t !== null);
 const lv6 = rs.map(r => r.firstLv6).filter((t): t is number => t !== null);
 const tops = rs.flatMap(r => r.topLevel);
-console.log(`== 카드 강화 — ${N}판 (목표 ${ENHANCE_SETTINGS.targetScore}, 턴 제한 없음)`);
+console.log(`== 카드 강화 — ${N}판 (목표 ${TARGET}, 턴 제한 없음)`);
+console.log(`  평균 ${(turns.reduce((a, b) => a + b, 0) / N).toFixed(1)}턴`);
 console.log(`  끝난 턴  10% ${quantile(turns, 0.1)} · 중앙값 ${quantile(turns, 0.5)} · 90% ${quantile(turns, 0.9)} · 최대 ${Math.max(...turns)}`);
 console.log(`  20턴을 넘긴 판 ${pct(turns.filter(t => t > 20).length, N)} · 목표 체력으로 끝난 판 ${pct(rs.filter(r => r.byWinLine).length, N)} · 선 승률 ${pct(rs.filter(r => r.firstWon).length, N)}`);
 console.log(`  처음 Lv.3 턴 중앙값 ${lv3.length ? quantile(lv3, 0.5) : '-'}(${pct(lv3.length, N)}) · 처음 Lv.6 턴 중앙값 ${lv6.length ? quantile(lv6, 0.5) : '-'}(${pct(lv6.length, N)})`);

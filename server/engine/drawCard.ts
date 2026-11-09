@@ -1,5 +1,7 @@
-import { ANIMALS, ENHANCE_RESERVED_DRAW_CAP, SHEEP_SAFETY_CAP, SWEEP_BONUS_EXP, SWEEP_REFILL_COUNT, enhancePlaceDrawCount } from 'shared';
-import type { Animal, GameEvent, GameState, Place } from 'shared';
+import { ANIMALS, ENHANCE_RESERVED_DRAW_CAP, enhanceExpGain, SHEEP_SAFETY_CAP, SWEEP_BONUS_EXP, SWEEP_REFILL_COUNT, acornExpBonus, acornSideOf, enhancePlaceDrawCount, enhanceTurnDrawBonus, splitEnhanceCount } from 'shared';
+import { consumeAcornDrawCharges } from './acorn';
+import type { Animal, CardNum, GameEvent, GameState, Place } from 'shared';
+import { PLACE_ANIMALS } from 'shared';
 import { dealOpeningSharedCards, drawCardAt, randomPlace } from './places';
 import type { RNG } from './places';
 
@@ -18,14 +20,18 @@ export function drawCard(
 ): GameEvent[] {
   const events: GameEvent[] = [];
 
-  events.push(...consumePendingExtraDraws(state, rng));
-  events.push(...consumePendingFestivalDraws(state, rng));
+  // 도토리 카드의 "다음 장소 n번 동안 카드 +n장" — 실용신양 예약 뽑기에 얹어 같은 롤로 나온다
+  if (state.enhance) state.teams[state.activeTeam].pendingExtraDraws += consumeAcornDrawCharges(state, state.activeTeam);
+  events.push(...consumePendingExtraDraws(state, rng, place));
   if (state.enhance) {
-    // 카드 강화 — 누른 장소에서 여러 장(1~3 / 3~5, 무작위)이 나온다. 화면이 묶어서 겹쳐 띄우도록 장수를 먼저 알린다.
-    const count = enhancePlaceDrawCount(place, rng);
-    events.push({ type: 'placeDraws', place, count });
-    for (let i = 0; i < count; i++) events.push(..._drawOne(state, place, rng));
+    // 카드 강화 — 누른 장소에서 여러 장(1~3 / 4~6, 무작위)이 나온다. 나온 장수는 동물마다 배수 카드(×1000 · ×100 · ×10 · ×5 · 1)로 묶어 놓는다.
+    // (2026-11-02 ~ 11-06에는 도토리 축제가 이 범위를 배율만큼 넓혔다 — 지금 축제는 도토리 카드 고르기다)
+    const total = enhancePlaceDrawCount(place, rng) + enhanceTurnDrawBonus(state.turn, state.settings);
+    const drawn = rollEnhanceDraws(state, place, total, rng);
+    events.push({ type: 'placeDraws', place, count: drawn.length, total, team: state.activeTeam });
+    events.push(...drawn);
   } else {
+    events.push(...consumePendingFestivalDraws(state, rng));
     events.push(..._drawOne(state, place, rng));
   }
   const settled = settleStacks(state, rng);
@@ -51,7 +57,8 @@ function sweepIfCleared(state: GameState, settled: GameEvent[], rng: RNG): GameE
   const bonus = {} as Record<Animal, number>;
   for (const animal of ANIMALS) {
     const [min, max] = SWEEP_BONUS_EXP[animal];
-    bonus[animal] = min + Math.floor(rng() * (max - min + 1));
+    const rolled = min + Math.floor(rng() * (max - min + 1));
+    bonus[animal] = state.enhance ? enhanceExpGain(animal, state.teams[team].exp[animal], rolled, state.settings.expGainMult) : rolled;
     state.teams[team].exp[animal] += bonus[animal];
   }
 
@@ -63,18 +70,52 @@ function sweepIfCleared(state: GameState, settled: GameEvent[], rng: RNG): GameE
   return [{ type: 'sweep', team, bonus, cards: cards.map(c => ({ ...c })) }];
 }
 
-function consumePendingExtraDraws(state: GameState, rng: RNG): GameEvent[] {
+function consumePendingExtraDraws(state: GameState, rng: RNG, place: Place): GameEvent[] {
   const team = state.activeTeam;
   const teamState = state.teams[team];
   const count = reservedDrawCount(state, teamState.pendingExtraDraws);
   teamState.pendingExtraDraws = 0;
   if (count <= 0) return [];
 
+  // 카드 강화 — 실용신양 예약 뽑기도 **누른 장소에서** 나온다(2026-11-02 요청). +20이면 20장을 한 장씩 굴려 동물마다 센 뒤
+  // 배수 카드로 묶는다 — 오두막에서 토끼 17 · 양 3이면 토끼 ×10 · ×5 · 1 · 1, 양 1 · 1 · 1.
+  if (state.enhance) {
+    const drawn = rollEnhanceDraws(state, place, count, rng);
+    return [{ type: 'bonusDraws', team, count: drawn.length, total: count }, ...drawn];
+  }
   const events: GameEvent[] = [{ type: 'bonusDraws', team, count }];
   for (let i = 0; i < count; i++) {
     events.push(..._drawOne(state, randomPlace(rng), rng));
   }
   return events;
+}
+
+/**
+ * 카드 강화 — total장을 뽑아 (장소, 동물)마다 센 뒤 배수 카드로 묶어 스택에 놓는다.
+ * 한 장씩 뽑는 것과 경험치 · 짝(장수의 홀짝)이 똑같다 — 카드의 num이 그 카드가 뜻하는 장수다.
+ * 작은 카드부터 놓는다(splitEnhanceCount) — 큰 카드가 마지막에 쿵 떨어진다.
+ */
+function rollEnhanceDraws(state: GameState, place: Place, total: number, rng: RNG): GameEvent[] {
+  const tally = new Map<string, { place: Place; animal: Animal; n: number }>();
+  for (let i = 0; i < total; i++) {
+    const options = PLACE_ANIMALS[place];
+    const animal = options[Math.floor(rng() * options.length)];
+    const key = `${place}:${animal}`;
+    const t = tally.get(key) ?? { place, animal, n: 0 };
+    t.n++;
+    tally.set(key, t);
+  }
+  // 작은 카드들을 먼저 모두 놓고 큰 카드는 뒤로 — 동물이 섞여도 쿵 하는 카드가 마지막에 몰린다
+  const cards: { place: Place; animal: Animal; num: number }[] = [];
+  for (const t of tally.values()) for (const num of splitEnhanceCount(t.n)) cards.push({ place: t.place, animal: t.animal, num });
+  cards.sort((a, b) => a.num - b.num);
+  return cards.map(({ place, animal, num }) => {
+    const card = drawCardAt(place, rng);
+    card.animal = animal;
+    card.num = num as CardNum;
+    state.stacks[animal].push(card);
+    return { type: 'draw', place, card } as GameEvent;
+  });
 }
 
 /**
@@ -128,9 +169,14 @@ export function settleStacks(state: GameState, rng: RNG = Math.random): GameEven
 
   for (const animal of ANIMALS) {
     const uncollected = state.stacks[animal].filter(c => c.collectedBy === null);
-    if (uncollected.length === 0 || uncollected.length % 2 !== 0) continue;
+    // 카드 강화 판은 배수 카드(×5 · ×10 …)가 있어 장수가 아니라 **카드가 뜻하는 장수의 합**(= num의 합)으로 홀짝을 센다.
+    const pieces = state.enhance ? uncollected.reduce((sum, c) => sum + c.num, 0) : uncollected.length;
+    if (pieces === 0 || pieces % 2 !== 0) continue;
 
-    const exp = uncollected.reduce((sum, c) => sum + c.num, 0);
+    // 도토리 카드의 "짝 경험치 +%" — 소수점은 이월한다(shared acornExpBonus)
+    const sum = uncollected.reduce((n, c) => n + c.num, 0);
+    const base = state.enhance ? enhanceExpGain(animal, state.teams[team].exp[animal], sum, state.settings.expGainMult) : sum;
+    const exp = base + (state.enhance ? acornExpBonus(acornSideOf(state, team), base) : 0);
 
     uncollected.forEach(c => { c.collectedBy = team; });
     state.teams[team].exp[animal] += exp;

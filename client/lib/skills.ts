@@ -5,8 +5,17 @@ import {
   enhanceCooldownShown,
   enhanceMermaidAfter,
   enhanceAmount,
-  enhanceBleedTick,
+  ACORN_CAPS,
+  acornAttackPct,
+  acornHpPct,
+  acornSideOf,
+  acornBleedAmount,
+  acornDivisor,
+  acornRegenAmount,
+  acornSkillFactor,
+  acornStats,
   enhanceDivisorOf,
+  enhanceDotTick,
   enhanceHealAfterCut,
   enhanceHealCutOf,
   enhanceMermaidDivide,
@@ -15,14 +24,11 @@ import {
   enhanceOverMultiplier,
   enhanceMermaidEvadePct,
   enhanceRabbitCleanse,
-  enhanceRabbitRegenStack,
   enhanceRabbitRegenTurns,
-  enhanceRegenTick,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
   enhanceSheepExpStack,
-  enhanceTigerBleedStack,
   enhanceTigerBleedTurns,
   enhanceTigerHealCut,
   enhanceTigerPurges,
@@ -30,7 +36,6 @@ import {
   ENHANCE_BLEED_MAX_TURNS,
   ENHANCE_DIVISOR_MAX_TURNS,
   ENHANCE_REGEN_MAX_TURNS,
-  ENHANCE_STACK_MAX,
   opponentsOf,
   skillLevelFor,
   skillMultiplier,
@@ -157,10 +162,8 @@ export interface SkillPreview {
   cleanse?: number;
   regenTurns?: number;
   bleedTurns?: number;
-  // 카드 강화 — 상표토끼 회복 중첩 · 특허랑이 출혈 누적 계수(Lv.6+가 더하는 수)와 걸고 난 뒤의 한 턴의 양(상대가 하나뿐이면 이미 걸린 몫을 넣어 센다)
-  regenStack?: number;
+  // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈의 한 턴의 양(그 카드 수치의 50% — 서버 addDot과 같은 계산)
   regenTick?: number;
-  bleedStack?: number;
   bleedTick?: number;
   // 카드 강화 — 디자인어 Lv.Max의 기술 회피(%)
   evadePct?: number;
@@ -170,6 +173,10 @@ export interface SkillPreview {
   purge?: boolean;
   // 카드 강화 — Lv.Max의 별도 배수(1이면 없음). 위 효과량에는 이미 곱해져 있다
   over?: number;
+  /** 도토리 카드 — 내 기술 효과 배수(1 + %) · 특허랑이 공격 피해 % · 덜어 낸 뒤의 효과 감소 */
+  acornFactor?: number;
+  acornAttack?: number;
+  divisorAfter?: number;
 }
 
 /** 카드 강화 — 이 편의 이 카드의 Lv.Max 별도 배수(Max가 아니거나 강화 판이 아니면 1). 서버 applyEnhanceEffect와 같은 함수. */
@@ -210,9 +217,23 @@ export function finishingMove(
     const preview = previewSkill(gameState, team, animal);
     const firstWin = !Object.values(gameState.teams).some(t => t.finish?.reason === 'win');
     if (animal === 'rabbit') return { finishes: firstWin && me.hp + preview.myHpDelta >= winHp, targets: [] };
-    // 대상마다 잘라 보지 않는다 — 상대가 가진 만큼으로 자르기 전의 값(enhanceAmount)과 그 상대의 체력을 견준다
-    const amount = enhanceAmount(enhanceValue(animal, level), me.pendingMultiplier * overMultiplierOf(gameState, team, animal), enhanceDivisorOf(gameState, team));
-    const targets = opponentsOf(gameState, team).filter(foe => (gameState.teams[foe]?.hp ?? 0) <= amount);
+    // 대상마다 서버 acornHit과 같은 순서로 센다 — 도토리 기술 % · 공격 % → 대상의 피해 감소(관통만큼 덜어 냄) · 다음 공격 −% → 보호막.
+    // 이것을 빼면 도토리 공격 카드로 끝낼 수 있는데 빨간 빛이 안 뜨고, 보호막에 막히는데 뜬다(2026-11-07).
+    // shortcut: 추가 발동 · 쓰러짐 방지(확률)는 넣지 않는다, 확률을 화면에 보이게 되면 다시 볼 것.
+    const raw0 = enhanceAmount(enhanceValue(animal, level), me.pendingMultiplier * overMultiplierOf(gameState, team, animal) * acornSkillFactor(gameState, team), acornDivisor(gameState, team, enhanceDivisorOf(gameState, team)));
+    const as = acornStats(gameState, team);
+    const targets = opponentsOf(gameState, team).filter(foe => {
+      const hp = gameState.teams[foe]?.hp ?? 0;
+      const va = acornSideOf(gameState, foe);
+      const vs = acornStats(gameState, foe);
+      let dmg = Math.round(raw0 * (1 + acornAttackPct(gameState, team, foe) / 100));
+      const guard = vs.guard + (va && va.firstHitTurn !== gameState.turn ? vs.guardFirst : 0) + (hp <= acornHpPct(gameState, 30) ? vs.guardLow : 0);
+      dmg = Math.round(dmg * (1 - (Math.min(ACORN_CAPS.guard, guard) * (1 - Math.min(100, as.pierce) / 100)) / 100));
+      if (va && va.ward > 0) dmg = Math.round(dmg * (1 - va.ward / 100));
+      const shield = gameState.enhance?.shield?.[foe] ?? 0;
+      if (shield > 0 && dmg > 0) dmg -= Math.min(shield, Math.round(dmg * (1 - Math.min(100, as.shieldPierce) / 100)));
+      return hp <= dmg;
+    });
     return { finishes: targets.length > 0, targets };
   }
   // 한 우물만 파기의 특허랑이 기본 2배까지 — 서버 엔진과 같은 함수(skillMultiplier)
@@ -252,8 +273,14 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
     // 서버와 같은 계산 — 기본값 × 배율 × Max 별도 배수 ÷ 나눗셈(상대 디자인어 Lv.Max), 반올림. 디자인어 자신은 나누지도 곱하지도 않는다.
     const divisor = animal === 'mermaid' ? 1 : enhanceDivisorOf(gameState, team);
     const over = animal === 'mermaid' ? 1 : overMultiplierOf(gameState, team, animal);
-    const amount = (base: number) => enhanceAmount(base, mult * over, divisor);
-    const value = amount(enhanceValue(animal, level));
+    // 도토리 카드 — 내 기술 효과 %(배율 위에 더하는 몫) · 효과 감소 덜어 내기 · 특허랑이 공격 피해 %(서버 applyEnhanceEffect와 같은 계산)
+    const acornF = animal === 'mermaid' ? 1 : acornSkillFactor(gameState, team);
+    const divEff = animal === 'mermaid' ? 1 : acornDivisor(gameState, team, divisor);
+    const amount = (base: number) => enhanceAmount(base, mult * over * acornF, divEff);
+    const foesA = opponentsOf(gameState, team);
+    const atkPct = animal === 'tiger' ? acornAttackPct(gameState, team, foesA.length === 1 ? foesA[0] : undefined) : 0;
+    const value = Math.round(amount(enhanceValue(animal, level)) * (1 + atkPct / 100));
+    const ac = acornStats(gameState, team);
     // 상대 특허랑이가 나에게 건 회복 효율 감소 — 상표토끼의 회복에만 든다
     const healCut = animal === 'rabbit' ? enhanceHealCutOf(gameState, team) : 0;
     // 상대가 하나뿐이면(혼자 놀기 1:1) 그 상대에게 걸린 것을 빼고 보인다. 여럿이면 대상이 정해지기 전이라 표의 값 그대로다
@@ -268,15 +295,11 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
     } else multiplierAfter = enhanceMermaidAfter(mult, level);
     const sheep = animal === 'sheep';
     const oppDivisor = animal === 'mermaid' ? enhanceMermaidDivide(level) : 1;
-    // 중첩(계수)을 더한 뒤의 한 턴의 양 — 상대가 하나뿐이면 그 상대에게 이미 쌓인 계수를 넣어 센다(서버 addDot과 같은 계산)
-    const regenStack = animal === 'rabbit' ? enhanceRabbitRegenStack(level) : 0;
-    const bleedStack = animal === 'tiger' ? enhanceTigerBleedStack(level) : 0;
     const myRegen = gameState.enhance.regen?.[team];
     const foeBleed = soleFoe !== undefined ? gameState.enhance.bleed?.[soleFoe] : undefined;
-    const stackAfter = (had: { turns: number; stack?: number } | undefined, add: number) =>
-      Math.min(ENHANCE_STACK_MAX, ((had?.turns ?? 0) > 0 ? (had?.stack ?? 0) : 0) + add);
     return {
       animal, level, myHpDelta, oppHpDelta, extraDraws, multiplierAfter, oppHpIsMax, divisor, over,
+      acornFactor: acornF, acornAttack: atkPct, divisorAfter: divEff,
       randomExp: sheep ? enhanceSheepExp(level) * enhanceSheepExpStack(level) : 0,
       randomExpStack: sheep ? enhanceSheepExpStack(level) : 1,
       oppMultiplierDivide: animal === 'mermaid' ? enhanceMermaidOppDivide(level) : 1,
@@ -289,12 +312,10 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
       cooldownCards: sheep ? enhanceSheepCooldownCards(level) : 0,
       cleanse: animal === 'rabbit' ? enhanceRabbitCleanse(level) : 0,
       // 지속 회복은 최대 20턴 · 출혈은 최대 40턴 — 서버처럼 이미 걸린 턴을 빼고 더해질 만큼만(꽉 찼으면 0이라 문구가 빠진다)
-      regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level), myRegen?.turns, ENHANCE_REGEN_MAX_TURNS) : 0,
-      bleedTurns: animal === 'tiger' ? dotRoom(enhanceTigerBleedTurns(level), foeBleed?.turns, ENHANCE_BLEED_MAX_TURNS) : 0,
-      regenStack,
-      regenTick: animal === 'rabbit' ? enhanceRegenTick(stackAfter(myRegen, regenStack)) : 0,
-      bleedStack,
-      bleedTick: animal === 'tiger' ? enhanceBleedTick(stackAfter(foeBleed, bleedStack)) : 0,
+      regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level) + ac.regenTurns, myRegen?.turns, ENHANCE_REGEN_MAX_TURNS + ac.regenCap) : 0,
+      bleedTurns: animal === 'tiger' ? dotRoom(enhanceTigerBleedTurns(level) + ac.bleedTurns, foeBleed?.turns, ENHANCE_BLEED_MAX_TURNS) : 0,
+      regenTick: animal === 'rabbit' ? acornRegenAmount(enhanceDotTick(value), ac) : 0,
+      bleedTick: animal === 'tiger' ? acornBleedAmount(enhanceDotTick(value), ac.bleed, ac.bleedFlat) : 0,
       evadePct: animal === 'mermaid' ? enhanceMermaidEvadePct(level) : 0,
       healCut,
       oppHealCut: animal === 'tiger' ? enhanceTigerHealCut(level) : 0,

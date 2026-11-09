@@ -56,6 +56,10 @@ export const SETTINGS_LIMITS = {
   // 카드 강화 판의 기술 수 증가 — 몇 턴마다 · 최대 몇 장(기술 카드가 넷이라 4장이 끝이다)
   skillGrowthTurns: { min: 1, max: 999 },
   skillGrowthMax: { min: 2, max: 4 },
+  // 카드 강화 판의 장소 장수 증가 — 이 턴마다 +1장(0 = 끔)
+  drawGrowthTurns: { min: 0, max: 999 },
+  // 카드 강화 판의 승격 전 획득 경험치 배율
+  expGainMult: { min: 1, max: 10 },
 } as const;
 
 /** 항목별 입력 범위 — 판에 따라 범위를 바꿔 넘길 때 쓴다(카드 강화 판은 목표 점수 상한이 2500이다 — shared/enhance.ts ENHANCE_SETTINGS_LIMITS). */
@@ -76,6 +80,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   skillGrowth: true,
   skillGrowthTurns: 15,
   skillGrowthMax: 3,
+  drawGrowthTurns: 0,
+  expGainMult: 2,
 };
 
 /** 방장 입력값을 SETTINGS_LIMITS 범위로 잘라내고, 정수가 아니면 반올림한다. */
@@ -107,6 +113,8 @@ export function clampSettings(
     skillGrowth: typeof merged.skillGrowth === 'boolean' ? merged.skillGrowth : DEFAULT_SETTINGS.skillGrowth,
     skillGrowthTurns: clamp('skillGrowthTurns'),
     skillGrowthMax: clamp('skillGrowthMax'),
+    drawGrowthTurns: clamp('drawGrowthTurns'),
+    expGainMult: clamp('expGainMult'),
   };
 }
 

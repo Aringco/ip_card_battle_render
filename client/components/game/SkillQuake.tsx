@@ -44,9 +44,8 @@ const reducedMotion = () =>
  * 기술 카드 띠와 판의 칸은 overflow를 잘라 카드 밖으로 퍼지는 먼지가 보이지 않는다.
  */
 export function useSkillQuake() {
-  const [dusts, setDusts] = useState<Dust[]>([]);
+  const dust = useQuakeDust();
   const timers = useRef<number[]>([]);
-  const idRef = useRef(0);
 
   useEffect(() => {
     const list = timers.current;
@@ -100,9 +99,7 @@ export function useSkillQuake() {
         field.animate(shake, { duration: Math.round(320 + 480 * q), easing: 'ease-out' });
       }
 
-      const dustId = ++idRef.current;
-      setDusts(prev => [...prev, { id: dustId, x: rect.left + rect.width / 2, y: rect.bottom, w: rect.width, q }]);
-      later(() => setDusts(prev => prev.filter(d => d.id !== dustId)), Math.round(400 + 600 * q) + 200);
+      dust.spawn(rect.left + rect.width / 2, rect.bottom, rect.width, q);
 
       if (still) return;
       // 옆의 기술 카드 — 고른 카드에서 멀수록 조금 늦게(충격이 퍼져 나간다). 진도 10이면 제 높이의 절반까지 뛴다.
@@ -119,6 +116,28 @@ export function useSkillQuake() {
         hop(card, card.getBoundingClientRect().height * 0.5 * q, 40 + ((i * 47) % 140), i % 2 ? 1 : -1, q);
       });
     }, dropMs);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { trigger, layer: dust.layer };
+}
+
+/**
+ * 흙먼지 층 — 기술 카드의 내려찍기(useSkillQuake)와 배수 카드의 착지(BigCardSlamLayer)가 함께 쓴다.
+ * spawn(x, y, w, q): (x, y) = 닿은 변의 가운데(뷰포트 px), w = 카드 폭, q = 세기 0~1.
+ */
+export function useQuakeDust() {
+  const [dusts, setDusts] = useState<Dust[]>([]);
+  const timers = useRef<number[]>([]);
+  const idRef = useRef(0);
+  useEffect(() => {
+    const list = timers.current;
+    return () => list.forEach(t => window.clearTimeout(t));
+  }, []);
+  const spawn = useCallback((x: number, y: number, w: number, q: number) => {
+    const dustId = ++idRef.current;
+    setDusts(prev => [...prev, { id: dustId, x, y, w, q }]);
+    timers.current.push(window.setTimeout(() => setDusts(prev => prev.filter(d => d.id !== dustId)), Math.round(400 + 600 * q) + 200));
   }, []);
 
   const layer =
@@ -156,11 +175,11 @@ export function useSkillQuake() {
           document.body,
         );
 
-  return { trigger, layer };
+  return { spawn, layer };
 }
 
 /** 한 요소를 height px만큼 튀어 올렸다가 떨어뜨린다(올라갈 때 감속, 내려올 때 가속 — 던져 올린 것처럼). */
-function hop(el: HTMLElement, height: number, delay: number, tilt: number, q: number) {
+export function hop(el: HTMLElement, height: number, delay: number, tilt: number, q: number) {
   if (height < 1) return;
   const deg = (tilt * (1.5 + 5 * q)).toFixed(1);
   el.animate(

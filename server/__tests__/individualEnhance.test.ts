@@ -11,7 +11,7 @@ const rng0 = () => 0;
 
 function make(n: number, overrides: Partial<typeof ENHANCE_SETTINGS> = {}): GameState {
   const players = Array.from({ length: n }, (_, i) => ({ side: `p${i + 1}`, nickname: `플레이어${i + 1}`, color: PLAYER_COLORS[i].id }));
-  const state = initIndividualGame(players, rng0, { ...ENHANCE_SETTINGS, targetScore: 100, ...overrides }, true);
+  const state = initIndividualGame(players, rng0, { ...ENHANCE_SETTINGS, targetScore: 100, festivalTurn: 999, ...overrides }, true);
   state.stacks = { sheep: [], rabbit: [], mermaid: [], tiger: [] };
   return state;
 }
@@ -75,10 +75,10 @@ describe('개인전 강화 — 대상', () => {
   it('특허랑이의 출혈은 고른 사람에게만 걸리고, 그 사람의 차례가 끝날 때 든다', () => {
     const s = make(3);
     const me = toChoice(s);
-    setLevel(s, me, 'tiger', 1); // −42 · 출혈 1턴(턴당 12)
+    setLevel(s, me, 'tiger', 1); // −44 · 출혈 1턴(턴당 22 = 50%)
     const foe = s.turnOrder.find(x => x !== me)!;
     processSkillChoice(s, 'tiger', foe);
-    expect(s.enhance!.bleed[foe]).toMatchObject({ turns: 1, amount: 12 });
+    expect(s.enhance!.bleed[foe]).toMatchObject({ turns: 1, amount: 22 });
     const hpBefore = s.teams[foe].hp;
     // 차례가 foe에게 올 때까지 넘긴다 — foe의 차례가 끝나는 순간 한 번
     while (s.activeTeam !== foe) {
@@ -88,8 +88,8 @@ describe('개인전 강화 — 대상', () => {
     expect(s.teams[foe].hp).toBe(hpBefore);
     toChoice(s);
     const tick = ofType(processPass(s).events, 'enhanceTick');
-    expect(tick).toEqual([expect.objectContaining({ team: foe, kind: 'bleed', amount: 12 })]);
-    expect(s.teams[foe].hp).toBe(hpBefore - 12);
+    expect(tick).toEqual([expect.objectContaining({ team: foe, kind: 'bleed', amount: 22 })]);
+    expect(s.teams[foe].hp).toBe(hpBefore - 22);
   });
 });
 

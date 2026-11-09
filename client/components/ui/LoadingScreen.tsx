@@ -90,8 +90,10 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
           반투명 판을 까는 것은 배경이 하늘(밝음)과 나무(어두움)로 갈려 맨글씨로는
           어느 쪽에서도 읽히지 않기 때문이다. */}
       <div className="relative w-full max-w-md rounded-2xl bg-black/45 px-6 py-4 text-center shadow-lg backdrop-blur-[2px]">
-        <h1 className="text-3xl animate-pulse">🐑🐰🧜‍♀️🐯</h1>
-        <h2 className="mb-3 text-xl font-black text-[#fdf3dd]">한국특허정보원 카드배틀</h2>
+        {/* 게임 이름 대신 로고(2026-11-06 요청) — 그림이 늦게 와도 자리가 흔들리지 않게 높이를 정해 둔다 */}
+        <h1 className="sr-only">TUPD</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={LOBBY_ASSETS.logo} alt="" className="mx-auto -mt-3 mb-0 h-40 w-auto object-contain" draggable={false} />
 
         <div className="h-3 overflow-hidden rounded-full bg-black/45">
           <div

@@ -10,11 +10,13 @@ import { DrawSlotLayer } from '@/components/effects/DrawSlotLayer';
 import { WoolBallLayer } from '@/components/effects/WoolBallLayer';
 import { AcornBallLayer } from '@/components/effects/AcornBallLayer';
 import { FestivalStartBurstLayer } from '@/components/effects/FestivalStartBurstLayer';
+import { BigCardSlamLayer } from '@/components/effects/BigCardSlamLayer';
 import { MermaidPopup } from './MermaidPopup';
 import { useGuideEnabled } from '@/lib/guideSettings';
 import { spectatorTeamVars } from '@/lib/teamColors';
 import type {
   AcornBallItem,
+  BigSlamItem,
   CaptionItem,
   DrawSlotItem,
   PlaceFocusItem,
@@ -37,6 +39,7 @@ export function GameBoard({
   captions,
   placeFocusBursts,
   drawSlots,
+  bigSlams = [],
   woolBalls,
   acornBalls,
   collectingCardIds,
@@ -64,6 +67,8 @@ export function GameBoard({
   captions: CaptionItem[];
   placeFocusBursts: PlaceFocusItem[];
   drawSlots: DrawSlotItem[];
+  /** 카드 강화의 배수 카드 착지 연출(BigCardSlamLayer) */
+  bigSlams?: BigSlamItem[];
   woolBalls: WoolBallItem[];
   acornBalls: AcornBallItem[];
   collectingCardIds: ReadonlySet<number>;
@@ -167,6 +172,7 @@ export function GameBoard({
         />
       </div>
 
+      <BigCardSlamLayer slams={bigSlams} />
       {festivalFlash && <div className="expand-flash" />}
       {mermaidPopup && (
         <MermaidPopup

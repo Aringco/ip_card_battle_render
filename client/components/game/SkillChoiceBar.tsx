@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Animal, ClientGameState, EnhanceCardTier, SideId } from 'shared';
 import { ENHANCE_GOLD_FROM, ENHANCE_MAX_LEVEL, ENHANCE_SILVER_FROM, enhanceCardTier, enhanceLevelLabel } from 'shared';
 import { cooldownOf, cooldownShownOf, finishingMove, previewSkill } from '@/lib/skills';
-import { SKILL_TITLE, SKILL_COLOR, describeEnhanceSkill, describeSkill } from '@/lib/skillInfo';
+import { SKILL_TITLE, SKILL_COLOR, describeEnhanceSkill, describeEnhanceSkillShort, describeSkill, describeSkillShort } from '@/lib/skillInfo';
+import { skillDetailLines } from '@/lib/skillDetail';
 import { useGuideEnabled } from '@/lib/guideSettings';
-import { skillArtSrc } from '@/lib/playAssets';
+import { PLAY_ASSETS, skillArtSrc } from '@/lib/playAssets';
 import { spectatorTeamVars } from '@/lib/teamColors';
 import { emVar, maxLineEm } from '@/lib/textFit';
 import { playRandomSound } from '@/lib/sounds';
@@ -39,6 +41,7 @@ function HoloCell({
   flat = false,
   tapFocus = false,
   focused = false,
+  onHover,
 }: {
   enabled: boolean;
   className: string;
@@ -53,6 +56,8 @@ function HoloCell({
    */
   tapFocus?: boolean;
   focused?: boolean;
+  /** PC — 마우스 · 펜이 카드 위에 올라오면 그 칸, 나가면 null(설명 툴팁 SkillTooltip). 잠긴 카드 · 차례가 아닐 때도 부른다. 모바일(tapFocus)은 부르지 않는다. */
+  onHover?: (el: HTMLElement | null) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const frame = useRef(0);
@@ -101,10 +106,14 @@ function HoloCell({
   const canHover = (e: React.PointerEvent) =>
     (tapFocus ? focused : e.pointerType === 'mouse' || e.pointerType === 'pen') && !ref.current?.hasAttribute('data-slam');
   const onPointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!tapFocus && onHover && (e.pointerType === 'mouse' || e.pointerType === 'pen')) onHover(ref.current);
     if (enabled && canHover(e)) ref.current?.setAttribute('data-hover', '');
   };
   // 손을 떼거나 카드 밖으로 나가면 — PC는 내려놓고, 모바일의 고른 카드는 떠 있는 채 기울기만 가운데로 돌린다.
-  const onPointerLeave = () => reset(tapFocus && focused);
+  const onPointerLeave = () => {
+    if (!tapFocus) onHover?.(null);
+    reset(tapFocus && focused);
+  };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!enabled || !canHover(e)) return;
@@ -488,7 +497,7 @@ export function SkillChoiceBar({
    */
   wellOpen?: readonly Animal[] | null;
   /**
-   * 모바일 배치 — 카드를 **한 번 누르면 고르고(1.05배로 떠오르고 손가락이 그 카드만 짚는다), 고른 카드를 한 번 더 누르면** 쓴다.
+   * 모바일 배치 — 카드를 **한 번 누르면 고르고(1.3배 · 카드 중앙 기준으로 커지고 손가락이 그 카드만 짚는다), 고른 카드를 한 번 더 누르면** 쓴다.
    * 손가락 가이드는 고른 카드에만 뜬다(PC는 누를 수 있는 카드마다). 끄면 PC와 똑같다.
    */
   tapFocus?: boolean;
@@ -502,6 +511,10 @@ export function SkillChoiceBar({
   const bursts = useLevelUpBursts(enhance, team, previews.map(p => p.level));
   // 고르는 순간의 무게 — 배율이 높을수록 무겁게 내리꽂히고 판이 흔들린다(SkillQuake.tsx)
   const quake = useSkillQuake();
+  // 쿨타임에 들어갔던 카드 — 끝나면 앞면으로 다시 뒤집는다(2026-11-08 요청). 보는 편이 바뀌면(관전 교대) 새로 센다.
+  // 렌더 중에 고치는 ref지만 같은 입력에는 같은 결과라(멱등) 다시 그려도 어긋나지 않는다.
+  const cooled = useRef<{ team: SideId; set: Set<Animal> }>({ team, set: new Set() });
+  if (cooled.current.team !== team) cooled.current = { team, set: new Set() };
 
   // 예전엔 이 팀의 첫 행동이 해금된 그 순간에만(평생 1회) 손가락 가이드를 보여줬는데,
   // 그 순간을 놓치면 다시 볼 방법이 없었다. 이제는 행동을 고를 수 있는 턴마다 매번
@@ -522,6 +535,9 @@ export function SkillChoiceBar({
   useEffect(() => {
     if (!interactive) setFocus(null);
   }, [interactive]);
+  // PC — 가리키거나(마우스) 키보드로 초점을 둔 카드의 설명 툴팁(SkillTooltip). 모바일은 카드 상세 창(StatusSheet)이 같은 내용을 보인다.
+  const [tip, setTip] = useState<{ animal: Animal; el: HTMLElement } | null>(null);
+  const tipFor = (animal: Animal) => (el: HTMLElement | null) => setTip(prev => (el ? { animal, el } : prev?.animal === animal ? null : prev));
   // 손가락은 PC에서는 누를 수 있는 카드마다, 모바일에서는 고른 카드에만
   const guideOn = (key: Animal | 'pass') => !tapFocus || focus === key;
 
@@ -551,6 +567,9 @@ export function SkillChoiceBar({
       {ANIMAL_ORDER.map((animal, i) => {
         const preview = previews[i];
         const cooling = cooldownOf(gameState, team, animal);
+        if (cooling > 0) cooled.current.set.add(animal);
+        // 쿨타임이 끝난 카드 — 앞면으로 되뒤집기(뒷면은 그 절반 동안만 보인다)
+        const uncooled = cooling === 0 && cooled.current.set.has(animal);
         const eligible = preview.level > 0 && cooling === 0;
         const clickable = interactive && eligible && open(animal);
         const desc = enhance ? describeEnhanceSkill(animal, preview.level) : describeSkill(animal, preview.level);
@@ -576,9 +595,7 @@ export function SkillChoiceBar({
         }
         if (preview.cleanse) effectParts.push(Number.isFinite(preview.cleanse) ? `부정 효과 -${preview.cleanse}턴` : '부정 효과 정화');
         if (preview.regenTurns) effectParts.push(`지속 회복 +${preview.regenTurns}턴`);
-        if (preview.regenStack) effectParts.push(`회복 중첩 +${preview.regenStack}`);
         if (preview.bleedTurns) effectParts.push(`출혈 +${preview.bleedTurns}턴`);
-        if (preview.bleedStack) effectParts.push(`출혈 계수 +${preview.bleedStack}`);
         if (preview.evadePct) effectParts.push(`회피 ${preview.evadePct}%`);
         if (preview.oppHealCut) effectParts.push(preview.oppHealCut >= 100 ? '상대 회복 금지' : `상대 회복 -${preview.oppHealCut}%`);
         if (preview.purge) effectParts.push('이로운 효과 제거');
@@ -610,9 +627,12 @@ export function SkillChoiceBar({
             flat={!interactive}
             tapFocus={tapFocus}
             focused={focus === animal}
-            className={`relative h-full ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
+            onHover={tipFor(animal)}
+            className={`relative h-full ${cooling > 0 ? 'holo-flip-back' : uncooled ? 'holo-flip-front' : ''} ${demoAllowed === null && finishingMove(gameState, team, animal).finishes ? 'skill-card-lethal' : ''}`}
           >
             <button
+              onFocus={!tapFocus ? e => { if (e.currentTarget.matches(':focus-visible')) setTip({ animal, el: e.currentTarget.closest('.holo-cell') as HTMLElement }); } : undefined}
+              onBlur={!tapFocus ? () => setTip(prev => (prev?.animal === animal ? null : prev)) : undefined}
               onClick={e => {
                 if (!clickable) return;
                 // 모바일 — 첫 번째 누름은 고르기만, 고른 카드를 다시 누르면 쓴다
@@ -668,6 +688,18 @@ export function SkillChoiceBar({
                 <div className={`${TIER_HOLO[tier]} play-frame-inset absolute ${cooling > 0 ? 'enh-cooling' : ''}`} aria-hidden />
               )}
               <div className="skill-choice-dim play-frame-inset absolute" />
+              {/* 쿨타임 — 카드 전체(.holo-cell)가 뒷면으로 뒤집히고 남은 턴은 뒷면에 쓴다. 끝나면 다시 앞면으로(2026-11-08 요청) */}
+              {(cooling > 0 || uncooled) && (() => {
+                const shown = cooling > 0 ? cooldownShownOf(gameState, team, animal) : 0;
+                return (
+                  <div className="skill-cool-back" data-leaving={uncooled || undefined} aria-hidden>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={PLAY_ASSETS.iconHourglass} alt="" className="skill-cool-icon" />
+                    <b className="skill-cool-turns tabular-nums">{uncooled ? '준비' : shown > 0 ? `${shown}턴` : '사용'}</b>
+                    <span className="skill-cool-sub">{uncooled ? '다시 사용 가능' : shown > 0 ? '쿨타임' : '다음 차례에 다시'}</span>
+                  </div>
+                );
+              })()}
               {/* 레벨이 있을 때는(활성) 이 자리에 "레벨 N 소모" 대신 실제 효과(카드 추가
                   뽑기·체력 강탈 등, 노란색)를 보여준다 — 레벨이 없으면(비활성) 흰색
                   "레벨 부족"으로 돌아간다. 예전엔 효과 문구를 좌상단에 따로 뒀는데, 우상단
@@ -772,6 +804,71 @@ export function SkillChoiceBar({
         {showSkillGuide && demoAllowed === null && guideOn('pass') && <GuideFinger team={spectatorGuideTeam} />}
       </HoloCell>
       {quake.layer}
+      {!tapFocus && tip && (
+        <SkillTooltip anchor={tip.el} gameState={gameState} team={team} animal={tip.animal} />
+      )}
     </div>
+  );
+}
+
+/**
+ * PC 기술 카드 설명 툴팁(2026-11-02 요청) — 카드를 가리키거나(마우스) 키보드로 초점을 두면 카드 위 어두운 칸에 뜬다.
+ * 모바일 카드 상세 창(StatusSheet)과 같은 설명 한 줄(describe…Short) + 지금 고르면 실제로 드는 수치(lib/skillDetail.ts — 괄호 안이 배율 풀이).
+ * body로 portal한다 — 카드 띠와 액자는 overflow를 잘라 카드 밖으로 나가는 칸이 보이지 않는다. 클릭은 가로채지 않는다.
+ */
+function SkillTooltip({ anchor, gameState, team, animal }: { anchor: HTMLElement; gameState: ClientGameState; team: SideId; animal: Animal }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const preview = previewSkill(gameState, team, animal);
+  const level = preview.level;
+  const enhance = !!gameState.enhance;
+  const lines = skillDetailLines(gameState, team, animal);
+  const desc = level <= 0 ? '아직 레벨이 없어 쓸 수 없어요.' : enhance ? describeEnhanceSkillShort(animal, level) : describeSkillShort(animal, level);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const place = () => {
+      const a = anchor.getBoundingClientRect();
+      const t = el.getBoundingClientRect();
+      const margin = 8;
+      // 카드 띠는 화면 아래에 있다 — 위에 띄우고, 자리가 없으면 아래
+      let top = a.top - t.height - 10;
+      if (top < margin) top = Math.min(window.innerHeight - t.height - margin, a.bottom + 10);
+      const left = Math.min(window.innerWidth - t.width - margin, Math.max(margin, a.left + a.width / 2 - t.width / 2));
+      setPos(prev => (prev && prev.left === left && prev.top === top ? prev : { left, top }));
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  });
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      ref={ref}
+      role="tooltip"
+      className="skill-tooltip"
+      style={pos ? { left: pos.left, top: pos.top } : { left: -9999, top: 0, visibility: 'hidden' }}
+    >
+      <p className="skill-tooltip-head">
+        <b style={{ color: SKILL_COLOR[animal] }}>{SKILL_TITLE[animal]}</b>
+        {level > 0 && <span className="skill-tooltip-lv">Lv.{enhance ? enhanceLevelLabel(level) : level}</span>}
+        {(preview.over ?? 1) > 1 && <span className="skill-tooltip-lv">Max 배수 ×{preview.over}</span>}
+      </p>
+      <p className="skill-tooltip-desc">{desc}</p>
+      {lines.length > 0 && (
+        <ul className="skill-tooltip-lines">
+          {lines.map((l, i) => (
+            <li key={i}>
+              <span className="skill-tooltip-label">{l.label}</span>
+              <span className="skill-tooltip-value tabular-nums">{l.value}</span>
+              {l.note && <span className="skill-tooltip-note tabular-nums">{/^\d/.test(l.note) ? `= ${l.note}` : `(${l.note})`}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>,
+    document.body,
   );
 }

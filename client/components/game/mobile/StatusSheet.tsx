@@ -5,6 +5,7 @@ import { ANIMALS } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { withDisplayedExp } from '@/lib/skills';
 import { SKILL_COLOR, SKILL_TITLE } from '@/lib/skillInfo';
+import { skillDetailLines } from '@/lib/skillDetail';
 import { animalStatus } from './animalStatus';
 import { emphasize } from './emphasize';
 
@@ -57,6 +58,16 @@ export function StatusSheet({
                 </span>
                 {s.lines.length > 0 && <p className="m-sheet-lines tabular-nums">{s.lines.join(' · ')}</p>}
                 <p className="m-sheet-desc">{emphasize(s.desc)}</p>
+                {/* 지금 고르면 실제로 드는 수치와 배율 풀이 — PC 기술 카드 툴팁과 같은 내용(lib/skillDetail.ts, 2026-11-02) */}
+                <ul className="m-sheet-detail tabular-nums">
+                  {skillDetailLines(state, team, animal).map((l, i) => (
+                    <li key={i}>
+                      <span className="d-label">{l.label}</span>
+                      <span className="d-value">{l.value}</span>
+                      {l.note && <span className="d-note">{/^\d/.test(l.note) ? `= ${l.note}` : `(${l.note})`}</span>}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </li>
           );

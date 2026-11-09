@@ -14,6 +14,8 @@ const FALLBACK_DXY: Record<'left' | 'right', { dx: string; dy: string }> = {
 export function StackCardView({
   card,
   bundle = null,
+  denom = null,
+  mergedIds,
   index,
   isNew,
   flingDirection,
@@ -22,6 +24,10 @@ export function StackCardView({
   card: StackedCard;
   /** 10장·100장 묶음(AnimalStackArea의 bundleCards) — card는 그 묶음의 첫 장이고, 숫자 대신 "x10"·"x100"을 쓴다 */
   bundle?: 10 | 100 | null;
+  /** 카드 강화의 배수 카드(×5 · ×10 · ×100 · ×1000 — card.num) — 구리 · 은 · 금 · 무지개 테두리에 "×N"을 쓴다 */
+  denom?: number | null;
+  /** 카드 강화 — 이 칸에 합쳐진 카드들의 id(AnimalStackArea의 mergeEnhanceCards). 짝 캡션이 그중 한 장을 찾아 이 칸에 붙는다. 새로 생긴 칸은 튀어오른다 */
+  mergedIds?: number[];
   index: number;
   isNew: boolean;
   flingDirection: 'left' | 'right' | null; // 짝이 맞아 팀 쪽으로 날아가는 중 (셔플/흔들기가 끝난 뒤에만 활성화) — 팀(A/B) 기준 폴백 방향
@@ -64,6 +70,19 @@ export function StackCardView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flingDirection]);
 
+  // 카드 강화 — 합쳐져 새로 생긴 배수 칸은 마운트될 때 한 번 튀어오른다. CSS animation(흔들림 · 등장)과 겹치지 않게 WAAPI의 scale로 건다.
+  useLayoutEffect(() => {
+    if (!mergedIds || flingDirection || !elRef.current) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    elRef.current.animate(
+      // 밝기 필터는 쓰지 않는다 — 카드가 들어올 때마다 줄이 다시 나뉘어 반복되면 얼굴이 하얗게 바래 "그림 없는 카드"처럼 보였다(2026-11-02 제보)
+      [{ scale: '0.7' }, { scale: '1.1', offset: 0.6 }, { scale: '1' }],
+      { duration: 420, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.3)' },
+    );
+    // 마운트 한 번만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const flingClass = flingDirection && flingVars ? 'stack-card-fling' : '';
   const shakeClass = !flingDirection && shakeVariant ? `stack-card-shake-${shakeVariant}` : '';
 
@@ -71,18 +90,21 @@ export function StackCardView({
     <div
       ref={elRef}
       data-stack-card-id={card.id}
-      className={`stack-card card-shadow ${bundle ? `stack-card-bundle stack-card-bundle-${bundle}` : ''} ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
+      data-stack-card-ids={mergedIds ? ` ${mergedIds.join(' ')} ` : undefined}
+      className={`stack-card card-shadow ${bundle ? `stack-card-bundle stack-card-bundle-${bundle}` : ''} ${denom ? `stack-card-denom stack-card-denom-${denom}` : ''} ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
       // ⚠️ 겹침 간격(예전 marginLeft: -46)은 이제 CSS(.stack-card + .stack-card)가 맡는다 —
       //    카드 크기가 무대를 따라 줄어들므로 겹침도 같은 비율로 줄어야 한다.
       style={{ zIndex: index, ...flingVars }}
     >
       <img
-        src={`/emoticon/default/${card.animal}_focus.png`}
+        src={`/howto/face_${card.animal}.webp`}
         alt={card.animal}
         className="w-[68%] h-auto object-contain"
       />
       {/* 글자 크기는 `.stack-card-num`(globals.css)이 카드 폭에서 뽑는다 */}
-      {bundle ? (
+      {denom ? (
+        <span className="stack-card-denom-count font-black tabular-nums">×{denom}</span>
+      ) : bundle ? (
         <span className="stack-card-bundle-count font-black tabular-nums">x{bundle}</span>
       ) : (
         <span className="stack-card-num font-black text-jungle-900 tabular-nums">{card.num}</span>

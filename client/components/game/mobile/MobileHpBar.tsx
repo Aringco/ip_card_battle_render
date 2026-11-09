@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { ClientGameState, SideId } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
+import { hpForecastOf, hpForecastText } from '@/lib/hpForecast';
+import { AcornBadges, ShieldGauge } from '../acorn/AcornBadges';
 
 /**
  * 모바일 배치의 체력 막대 — 화면 아래에서 가운데(지속 효과 아이콘 묶음 MobileDotHub)를 사이에 두고 왼쪽(나)·오른쪽(상대)으로
@@ -14,6 +16,14 @@ import type { AnimationState } from '@/hooks/useAnimationQueue';
  *
  * 연출 표식: 토끼떼가 날아오는 `data-rabbit-target`이 이 막대다(체력이 오르는 곳). 특허랑이에 맞으면 흔들리고, 오르면 초록 빛이 훑는다.
  */
+// 체력이 다 깎인 순간의 파편 · 체력창을 다 채웠을 때 위로 떠오르며 반짝이는 별(2026-11-07). 자리 · 시차는 고정값(렌더마다 같다)
+const BURST = Array.from({ length: 16 }, (_, i) => {
+  const a = (i / 16) * Math.PI * 2;
+  const r = 48 + (i % 3) * 20;
+  return { bx: Math.round(Math.cos(a) * r), by: Math.round(Math.sin(a) * r * 0.8), br: (i * 67) % 360 };
+});
+const STARS = Array.from({ length: 10 }, (_, i) => ({ sx: 6 + i * 9.5, ss: 8 + (i % 3) * 4, sd: 1300 + (i % 4) * 250, sdl: (i * 230) % 1400 }));
+
 export function MobileHpBar({
   team,
   side,
@@ -65,6 +75,12 @@ export function MobileHpBar({
     setPrevHp(hp);
     setChange(c => ({ id: (c?.id ?? 0) + 1, dir: hp > prevHp ? 'up' : 'down', delta: hp - prevHp }));
   }
+  // 카드 강화 — 막대를 누르면(초점) 이번 차례 끝의 지속 효과로 움직일 몫을 깜빡여 보인다(오름 연두 · 깎임 붉은색 — lib/hpForecast.ts).
+  // 다른 곳을 누르면 초점이 빠지며 사라진다. PC 마우스(?ui=mobile)는 올리기만 해도 보인다.
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const forecast = enh && (focused || hovered) ? hpForecastOf(gameState, team) : null;
+  const pctOf = (v: number) => Math.max(0, Math.min(100, (v / winHp) * 100));
   // 내 체력이 막대의 20% 아래면 붉게 깜빡인다(가득 찬 막대 = 승리선)
   const low = mine && hp > 0 && fillPct < 20;
 
@@ -75,9 +91,16 @@ export function MobileHpBar({
       data-tone={mine ? 'mine' : 'enemy'}
       data-change={change?.dir}
       data-low={low || undefined}
+      data-full={hp >= winHp || undefined}
       data-color={color ? '' : undefined}
       data-rabbit-target={team}
+      data-hp-bar={team}
       style={color ? ({ ['--hp-color' as string]: color } as React.CSSProperties) : undefined}
+      tabIndex={enh ? 0 : undefined}
+      onFocus={enh ? () => setFocused(true) : undefined}
+      onBlur={enh ? () => setFocused(false) : undefined}
+      onPointerEnter={enh ? e => { if (e.pointerType === 'mouse') setHovered(true); } : undefined}
+      onPointerLeave={enh ? () => setHovered(false) : undefined}
     >
       {/* 오라 — 막대 뒤에서 그 편 색 빛이 가운데에서 바깥으로 번져 나간다(두 막대가 함께 양쪽으로 퍼지는 그림) */}
       <span className="m-hp-aura" aria-hidden />
@@ -87,6 +110,17 @@ export function MobileHpBar({
         <span className="m-hp-dotglow" data-regen={healing || undefined} data-bleed={bleeding || undefined} aria-hidden />
       )}
       {dot && <span key={`d${dot.id}`} className={`m-hp-dotflash is-${dot.kind}`} aria-hidden />}
+      {/* 다 깎임 — 막대의 안쪽 끝(가운데 쪽)에서 한 번 터진다. 다 채움 — 막대 위로 별빛이 여럿 떠오르며 반짝인다 */}
+      {hp <= 0 && (
+        <span className="m-hp-burst" aria-hidden>
+          {BURST.map((b, i) => <i key={i} style={{ ['--bx' as string]: `${b.bx}px`, ['--by' as string]: `${b.by}px`, ['--br' as string]: `${b.br}deg` } as React.CSSProperties} />)}
+        </span>
+      )}
+      {hp >= winHp && (
+        <span className="m-hp-stars" aria-hidden>
+          {STARS.map((t, i) => <i key={i} style={{ ['--sx' as string]: `${t.sx}%`, ['--ss' as string]: `${t.ss}px`, ['--sd' as string]: `${t.sd}ms`, ['--sdl' as string]: `${t.sdl}ms` } as React.CSSProperties} />)}
+        </span>
+      )}
       <div className="m-hp-track">
         {/* 흰 막대 — 색 막대 뒤에 깔려, 깎일 때는 깎인 몫이 · 오를 때는 오를 몫이 먼저 하얗게 드러난다 */}
         <div className="m-hp-ghost" style={{ width: `${fillPct}%` }} />
@@ -94,6 +128,16 @@ export function MobileHpBar({
           {/* 홀로그램 — 무지갯빛 띠가 채움 위를 가운데에서 바깥으로 흐른다 */}
           <span className="m-hp-holo" aria-hidden />
         </div>
+        {forecast && forecast.delta !== 0 && (
+          <div
+            className={`m-hp-forecast ${forecast.delta > 0 ? 'is-gain' : 'is-loss'}`}
+            style={{
+              [side === 'left' ? 'right' : 'left']: `${pctOf(Math.min(forecast.hp, forecast.after))}%`,
+              width: `${Math.abs(pctOf(forecast.after) - pctOf(forecast.hp))}%`,
+            }}
+            aria-hidden
+          />
+        )}
         {startPct > 0 && startPct < 100 && <span className="m-hp-start" style={{ [side === 'left' ? 'right' : 'left']: `${startPct}%` }} aria-hidden />}
         {/* 체력이 움직인 순간 — 오르면 초록 빛이 가운데에서 바깥으로 훑고, 깎이면 붉게 번쩍인다 */}
         {pulse && <span key={pulse.id} className={`m-hp-pulse is-${pulse.direction} ${outward}`} aria-hidden />}
@@ -105,6 +149,14 @@ export function MobileHpBar({
           </span>
         )}
       </div>
+      {forecast && (
+        <span className={`m-hp-forecast-label ${forecast.delta > 0 ? 'is-gain' : forecast.delta < 0 ? 'is-loss' : 'is-none'} tabular-nums`}>
+          {hpForecastText(forecast)}
+        </span>
+      )}
+      {/* 도토리 카드 — 막대 위 얇은 보호막 게이지(안쪽 끝에서 바깥으로) · 바깥 끝 위의 검은 도토리 배지 */}
+      {enh?.acorn && <ShieldGauge gameState={gameState} side={team} dir={side === 'left' ? 'h-left' : 'h-right'} />}
+      {enh?.acorn && <AcornBadges gameState={gameState} side={team} className="m-hp-acorns" />}
       {hasExtra && (
         <span className="m-hp-extra">
           {divisor > 1 && (

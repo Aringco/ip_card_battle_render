@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import type { ClientGameState, SideId } from 'shared';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { spectatorTeamVars } from '@/lib/teamColors';
+import { hpForecastOf, hpForecastText } from '@/lib/hpForecast';
+import { AcornBadges, ShieldGauge } from './acorn/AcornBadges';
 
 /**
  * 눈금 간격 — 구슬이 가득 차는 값(winHp)이 작으면 1점마다, 커지면 선이 빽빽해져 읽히지 않으므로 넓힌다(모든 판 공통):
@@ -38,6 +40,7 @@ export function TeamTotalPanel({
   myTeam,
   pulse,
   dotPulse = null,
+  acorns = true,
 }: {
   team: SideId;
   gameState: ClientGameState;
@@ -47,6 +50,8 @@ export function TeamTotalPanel({
   pulse?: { id: number; direction: 'gain' | 'loss' } | null;
   // 카드 강화 — 출혈·지속 회복이 방금 한 번 들었다(useAnimationQueue의 dotPulse)
   dotPulse?: { id: number; kind: 'bleed' | 'regen' } | null;
+  // 도토리 배지를 구슬에 붙인다. PC 카드 강화 판(팀전 화면)은 가운데 줄에 따로 둔다 — 둘 다 그리면 얻기 연출의 착지 자리가 겹친다
+  acorns?: boolean;
 }) {
   const hp = gameState.teams[team].hp;
   // 구슬이 가득 차는 점수 — 평소엔 승리선(targetScore × 2), 목표점수 달성하기는 그 판의 목표 점수(가득 차면 달성).
@@ -66,6 +71,11 @@ export function TeamTotalPanel({
   const healCut = (enh?.healCut?.[team]?.turns ?? 0) > 0 ? enh!.healCut[team].pct : 0;
   // 기술 회피(내 디자인어 Lv.Max — 내 다음 차례까지)
   const evade = enh?.evade?.[team] ?? 0;
+
+  // 카드 강화 — 마우스를 올리면 이번 차례 끝의 지속 효과(출혈 → 회복)로 움직일 몫을 깜빡여 보인다(오름 연두 · 깎임 붉은색 — lib/hpForecast.ts)
+  const [hovered, setHovered] = useState(false);
+  const forecast = hovered ? hpForecastOf(gameState, team) : null;
+  const pctOf = (v: number) => Math.max(0, Math.min(100, (v / winHp) * 100));
 
   const [activePulse, setActivePulse] = useState<{ id: number; direction: 'gain' | 'loss' } | null>(null);
   const [shards, setShards] = useState<{ dx: number; dy: number }[]>([]);
@@ -98,12 +108,16 @@ export function TeamTotalPanel({
 
   // 눈금선 — 지금 몇 칸째인지 한눈에 보이도록 반투명한 선을 긋는다(간격은 segmentStepOf).
   const segmentStep = segmentStepOf(winHp);
+  const startPct = gameState.scoreRace ? 0 : (gameState.settings.targetScore / winHp) * 100;
   const segmentLines = Array.from({ length: Math.ceil(winHp / segmentStep) - 1 }, (_, i) => (((i + 1) * segmentStep) / winHp) * 100);
 
-  return (
+  const orb = (
     <div
       className={`hp-orb w-full shrink-0 h-full ${toneClass} ${bleeding ? 'hp-orb-bleeding' : ''} ${healing ? 'hp-orb-healing' : ''}`}
+      data-hp-bar={team}
       style={spectating ? spectatorTeamVars(team) : undefined}
+      onPointerEnter={enh ? e => { if (e.pointerType !== 'touch') setHovered(true); } : undefined}
+      onPointerLeave={enh ? () => setHovered(false) : undefined}
     >
       <LeafDecoration position="tl" size={30} swaying={activePulse !== null} />
       <LeafDecoration position="br" size={30} swaying={activePulse !== null} />
@@ -112,11 +126,23 @@ export function TeamTotalPanel({
         {/* 액체 색의 밝은 기운이 천천히 피어오른다(globals.css .hp-orb-rise — 채워진 만큼만 보인다) */}
         <div className="hp-orb-rise" aria-hidden />
       </div>
+      {forecast && forecast.delta !== 0 && (
+        <div
+          className={`hp-orb-forecast ${forecast.delta > 0 ? 'is-gain' : 'is-loss'}`}
+          style={{
+            bottom: `${pctOf(Math.min(forecast.hp, forecast.after))}%`,
+            height: `${Math.abs(pctOf(forecast.after) - pctOf(forecast.hp))}%`,
+          }}
+          aria-hidden
+        />
+      )}
       <div className="hp-orb-segments" aria-hidden>
         {segmentLines.map(pct => (
           <span key={pct} className="hp-orb-segment-line" style={{ bottom: `${pct}%` }} />
         ))}
       </div>
+      {/* 시작 체력 눈금 — PC 카드 강화 판만 켠다(.enh-frame). 그 판은 위의 촘촘한 눈금을 끈다 */}
+      {startPct > 0 && startPct < 100 && <span className="hp-orb-start" style={{ bottom: `${startPct}%` }} aria-hidden />}
       <div className="hp-orb-sheen" />
       {activePulse?.direction === 'gain' && <div className="hp-orb-surge" />}
       {activePulse?.direction === 'loss' && (
@@ -156,6 +182,11 @@ export function TeamTotalPanel({
         </div>
       )}
       <p className="hp-orb-value tabular-nums">{hp}</p>
+      {forecast && (
+        <p className={`hp-forecast-label ${forecast.delta > 0 ? 'is-gain' : forecast.delta < 0 ? 'is-loss' : 'is-none'} tabular-nums`}>
+          {hpForecastText(forecast)}
+        </p>
+      )}
       {/* 남은 턴 — 핏방울(출혈) · 초록 십자가(지속 회복) 아이콘 안에 숫자. 상대 디자인어의 효과 감소(÷N)도 함께 둔다 */}
       {(bleeding || healing || divisor > 1 || healCut > 0 || evade > 0) && (
         <div className="hp-orb-status">
@@ -191,6 +222,16 @@ export function TeamTotalPanel({
           )}
         </div>
       )}
+    </div>
+  );
+  if (!enh?.acorn) return orb;
+  return (
+    <div className="hp-orb-wrap">
+      {orb}
+      {/* 보호막 — 체력 구슬에 겹쳐(체력 끝에서 보호막만큼 아래로) */}
+      <ShieldGauge gameState={gameState} side={team} dir="v" />
+      {/* 도토리 카드 — 팀 카드 정보와 체력 구슬 사이의 나무 알약(pill_wood) 안에 검은 도토리 배지(누르면 효과) */}
+      {acorns && <AcornBadges gameState={gameState} side={team} className="hp-acorn-pill play-pill play-pill-wood" />}
     </div>
   );
 }

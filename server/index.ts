@@ -27,7 +27,7 @@ wss.on('error', (err: NodeJS.ErrnoException) => {
 // ⚠️ `listening`을 기다렸다 찍는다. 그냥 찍으면 포트가 겹쳐 실패하는 경우에도
 // "서버 시작"이 먼저 나와, 곧바로 이어지는 실패 안내와 모순된 화면이 된다.
 wss.on('listening', () => {
-  console.log(`카드배틀 WebSocket 서버 시작 — ws://localhost:${PORT}`);
+  console.log(`TUPD WebSocket 서버 시작 — ws://localhost:${PORT}`);
 });
 
 wss.on('connection', createConnectionHandler(roomManager));

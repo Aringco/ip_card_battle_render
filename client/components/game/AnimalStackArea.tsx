@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Animal, StackedCard } from 'shared';
-import { ANIMALS } from 'shared';
+import { ANIMALS, splitEnhanceCount } from 'shared';
 import { StackCardView } from './StackCardView';
 import type { ShakingPile } from '@/hooks/useAnimationQueue';
 
@@ -23,29 +23,35 @@ const MIN_STACK_SCALE = 0.35;
 interface StackItem {
   cards: StackedCard[];
   size: 1 | 10 | 100;
+  /** 카드 강화 — 이 칸이 뜻하는 장수(×5 · ×10 …). 1이면 낱장 */
+  denom?: number;
+  key?: string;
 }
 
 /**
- * 카드가 많으면 **오래된 카드부터** 묶는다(2026-10-29 — 예약 뽑기 수십·수백 장이 줄을 넘쳤다). **카드 강화 판에서만** 묶는다(같은 날 요청 —
- * 일반 판은 카드마다 숫자가 달라 묶으면 숫자가 가려진다. 부르는 쪽이 `bundle`로 정한다).
- * 100장을 넘으면 100장씩(금색 x100), 남은 것이 10장을 넘으면 10장씩(은색 x10), 나머지는 낱장 — 11장이면 x10 + 1장, 100장이면 x10 아홉 + 10장,
- * 101장이면 x100 + 1장. 새로 들어온 카드는 언제나 맨 뒤의 낱장이라 등장 연출·짝 캡션(마지막 카드 위)이 그대로 맞는다.
- * 합계 배지는 묶음과 무관하게 모든 카드의 합이다.
+ * 카드 강화 — 한 줄의 카드를 **합쳐서** 배수 카드로 보인다(2026-11-02 정정: 필드에 4장이 있고 6장(×5 + 1)이 오면 ×10 한 장이 된다).
+ * 서버의 카드는 그대로 두고(연출이 id로 따라다닌다) 화면만 합친다 — 합계(num의 합)를 splitEnhanceCount로 다시 나눈다.
+ * 짝이 맞아 날아가는 중인 카드(collecting)는 따로 합친다(그 묶음째 팀 쪽으로 날아간다).
+ * key는 "배수-순번"이라 합계가 바뀌어 새 배수 카드가 생기면 그 칸이 새로 마운트되며 튀어오른다(합쳐지는 순간).
  */
-function bundleCards(cards: StackedCard[]): StackItem[] {
+function mergeEnhanceCards(cards: StackedCard[], collectingIds: ReadonlySet<number>): StackItem[] {
   const items: StackItem[] = [];
-  let i = 0;
-  let rest = cards.length;
-  const take = (size: 10 | 100) => {
-    items.push({ cards: cards.slice(i, i + size), size });
-    i += size;
-    rest -= size;
-  };
-  while (rest > 100) take(100);
-  while (rest > 10) take(10);
-  for (; i < cards.length; i++) items.push({ cards: [cards[i]], size: 1 });
+  const groups: [string, StackedCard[]][] = [
+    ['f', cards.filter(c => !collectingIds.has(c.id))],
+    ['c', cards.filter(c => collectingIds.has(c.id))],
+  ];
+  for (const [tag, group] of groups) {
+    if (group.length === 0) continue;
+    const total = group.reduce((n, c) => n + c.num, 0);
+    const seen: Record<number, number> = {};
+    for (const denom of splitEnhanceCount(total)) {
+      seen[denom] = (seen[denom] ?? 0) + 1;
+      items.push({ cards: group, size: 1, denom, key: `${tag}-${denom}-${seen[denom]}` });
+    }
+  }
   return items;
 }
+
 
 export function AnimalStackArea({
   stackCards,
@@ -56,7 +62,7 @@ export function AnimalStackArea({
   isMyTurn,
 }: {
   stackCards: Record<Animal, StackedCard[]>;
-  /** 10장·100장 묶음으로 그릴지 — 카드 강화 판만(bundleCards) */
+  /** 카드 강화 판 — 한 줄의 카드를 합쳐 배수 카드로 그린다(mergeEnhanceCards) */
   bundle?: boolean;
   collectingIds: ReadonlySet<number>;
   shakingPile: ShakingPile | null;
@@ -111,7 +117,7 @@ function AnimalStackRow({
   // collectedBy는 카드가 아직 스택으로 날아오는 중에 이미 확정돼 있어서, 색이 도착 연출보다
   // 앞서 바뀌며 오히려 어긋나 보인다. 색은 항상 기본색 하나로 둔다.
   const total = cards.reduce((s, c) => s + c.num, 0);
-  const items: StackItem[] = bundle ? bundleCards(cards) : cards.map(c => ({ cards: [c], size: 1 }));
+  const items: StackItem[] = bundle ? mergeEnhanceCards(cards, collectingIds) : cards.map(c => ({ cards: [c], size: 1 }));
 
   // 카드가 너무 많이 쌓여 실제 컨테이너 너비를 넘어서면(예: 실용신양/도토리 축제로
   // 한 번에 여러 장이 쌓였을 때), 넘치는 대신 전체를 좁혀서 영역 안에 다 겹쳐 보이게
@@ -178,11 +184,13 @@ function AnimalStackRow({
               const c = item.cards[0];
               return (
                 <StackCardView
-                  key={c.id}
+                  key={item.key ?? c.id}
                   card={c}
                   bundle={item.size === 1 ? null : item.size}
+                  denom={item.denom !== undefined ? (item.denom >= 5 ? item.denom : null) : null}
+                  mergedIds={item.key ? item.cards.map(x => x.id) : undefined}
                   index={i}
-                  isNew={item.size === 1 && c.id === newCardId}
+                  isNew={item.key ? false : item.size === 1 && c.id === newCardId}
                   flingDirection={
                     item.cards.some(x => collectingIds.has(x.id)) ? (c.collectedBy === 'A' ? 'left' : 'right') : null
                   }

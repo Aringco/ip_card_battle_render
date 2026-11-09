@@ -5,6 +5,7 @@ import { advanceTurn, checkKnockout, finishTurn, initGame, judgeHp } from './tur
 import { forfeitRank, resolveRanks } from './ranking';
 import { applySkillChoice, applyPass, eligibleAnimals, levelOf, randomEligibleSkill } from './skills';
 import { randomPlace } from './places';
+import { acornOfferOpen, autoPickAcorns, dropFromAcornOffer, pickAcorn, rerollAcorn } from './acorn';
 import type { RNG } from './places';
 
 export { initGame, initIndividualGame, initEnhanceGame } from './turnManager';
@@ -26,6 +27,8 @@ export function processPlayerAction(
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice !== null) return { state, events: [] };
   if (place === state.lastPlace) return { state, events: [] };
+  // 도토리 카드를 고르는 동안은 판이 멈춰 있다
+  if (acornOfferOpen(state)) return { state, events: [] };
 
   const events: GameEvent[] = [];
   events.push(...drawCard(state, place, rng));
@@ -54,6 +57,7 @@ export function processSkillChoice(
   target?: SideId,
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice === null) return { state, events: [] };
+  if (acornOfferOpen(state)) return { state, events: [] };
   // 레벨이 0이거나 한 우물만 파기에서 잠긴 카드면 무시한다 — 둘 다 eligibleAnimals 한 곳이 판정한다.
   if (!eligibleAnimals(state, state.pendingChoice).includes(animal)) return { state, events: [] };
   if (state.mode === 'individual') return processIndividualSkill(state, animal, target);
@@ -139,6 +143,8 @@ export function processForfeit(
   if (state.teams[side]?.finish) return { state, events: [] };
 
   const events = forfeitRank(state, side);
+  // 도토리 카드를 고르던 중이면 그 사람을 빼고 센다(남은 사람이 모두 골랐으면 고르기가 닫힌다)
+  dropFromAcornOffer(state, side);
   if (state.phase === 'playing' && state.activeTeam === side) {
     state.pendingChoice = null;
     events.push(...advanceTurn(state));
@@ -157,6 +163,7 @@ export function processPass(
   auto = false,
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice === null) return { state, events: [] };
+  if (acornOfferOpen(state)) return { state, events: [] };
 
   const team = state.pendingChoice;
   const events: GameEvent[] = [applyPass(team, auto)];
@@ -174,6 +181,9 @@ export function processTimeout(
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing') return { state, events: [] };
 
+  // 도토리 카드 고르기의 15초가 지났다 — 아직 고르지 않은 사람은 후보 중 무작위 하나(고른 뒤 들어오는 연출은 화면이 그대로 한다)
+  if (acornOfferOpen(state)) return { state, events: autoPickAcorns(state, rng) };
+
   if (state.pendingChoice !== null) {
     // 개인전은 서버가 기술을 대신 고르지 않는다 — 첫 번째든 두 번째든, 대상을 고르던 중이든
     // 시간이 다 되면 그대로 차례 종료다(자동으로 기술을 쓰면 사람이 일부러 안 쓴 것과 구분이 안 된다).
@@ -190,4 +200,27 @@ export function processTimeout(
   }
 
   return processPlayerAction(state, randomPlace(rng, state.lastPlace), rng);
+}
+
+/**
+ * 도토리 카드 고르기 — 엔진의 진입점 ④. 그 편의 후보에 있는 카드만 받는다(아니면 이벤트 없음).
+ * 모두 고르면 고르기가 닫히고(acornPicked.closed) 판이 그 자리에서 다시 흐른다 — 장소를 고를 차례인 편이 그대로 이어서 둔다.
+ */
+export function processAcornPick(
+  state: GameState,
+  side: SideId,
+  id: string,
+  rng: RNG = Math.random,
+): { state: GameState; events: GameEvent[] } {
+  return { state, events: pickAcorn(state, side, id, rng) };
+}
+
+/** 도토리 카드 리롤 — 엔진의 진입점 ⑤. 그 편의 slot번째 후보를 다시 뽑는다(칸마다 축제에 한 번, 아니면 이벤트 없음). */
+export function processAcornReroll(
+  state: GameState,
+  side: SideId,
+  slot: number,
+  rng: RNG = Math.random,
+): { state: GameState; events: GameEvent[] } {
+  return { state, events: rerollAcorn(state, side, slot, rng) };
 }

@@ -32,6 +32,14 @@ interface RuleField {
   suffix: string;
   hint?: string;
 }
+// 카드 강화 판의 축제는 "누른 장소의 장수 ×(1 + n)"이라(shared enhanceFestivalMultiplier, 2026-11-02) 두 칸의 이름을 바꿔 보인다
+// 카드 강화 판의 도토리 축제 = 도토리 카드 고르기(2026-11-06 — shared/acorn.ts): 시작 턴부터 주기마다 열린다. 축제 횟수 칸은 이 판에서 쓰지 않아 감춘다.
+const ENHANCE_FIELD_TEXT: Partial<Record<NumKey, Pick<RuleField, 'label' | 'title' | 'suffix' | 'hint'>>> = {
+  festivalTurn: { label: '축제 시작', title: '도토리 축제 시작 턴 — 이 턴부터 도토리 카드를 고른다', suffix: '턴' },
+  festivalDrawIncreaseInterval: { label: '축제 주기', title: '도토리 축제 주기 — 이 턴마다 도토리 카드를 한 장 더 고른다', suffix: '턴', hint: undefined },
+};
+const enhanceField = (f: RuleField): RuleField => ({ ...f, ...ENHANCE_FIELD_TEXT[f.key] });
+const ENHANCE_HIDDEN: NumKey[] = ['festivalDrawCount'];
 // 카드 강화 판의 "기술 카드 증가" 두 칸은 켜기/끄기 줄 아래에 따로 그린다(showSkillGrowth일 때만 — GROWTH_FIELDS)
 const RULE_FIELDS: RuleField[] = [
   { key: 'targetScore', label: '목표 점수', title: '목표 점수', suffix: '점' },
@@ -70,6 +78,9 @@ const GROWTH_FIELDS: RuleField[] = [
   { key: 'skillGrowthTurns', label: '기술 카드 추가 주기', title: '사용 가능한 기술 카드 추가 — 이 턴마다 한 장씩', suffix: '턴', hint: 'N턴마다 +1장' },
   { key: 'skillGrowthMax', label: '기술 카드 최대', title: '사용 가능한 기술 카드 최대 개수', suffix: '장', hint: '최대 4장(전부)' },
 ];
+// 카드 강화 판 — 턴이 지날수록 장소에서 더 나오는 장수(2026-11-07, 실용신양 예약 뽑기와 별개 — shared/enhance.ts enhanceTurnDrawBonus)
+const EXP_GAIN_FIELD: RuleField = { key: 'expGainMult', label: '획득 경험치', title: '승격 전(Lv.1~3) 카드의 획득 경험치 N배', suffix: '배', hint: '1 = 그대로' };
+const DRAW_GROWTH_FIELD: RuleField = { key: 'drawGrowthTurns', label: '뽑기 증가 주기', title: '장소에서 나오는 카드 +1장 — 이 턴마다', suffix: '턴', hint: '0 = 증가 없음' };
 const GROWTH_OPTIONS = [
   { value: 'on', label: 'On' },
   { value: 'off', label: 'Off' },
@@ -151,10 +162,10 @@ export function GameRulesFields({
   };
   const fields = RULE_FIELDS.filter(
     f => !(hidePause && PAUSE_KEYS.includes(f.key)) && !(hideTargetScore && f.key === 'targetScore'),
-  );
+  ).filter(f => !(showSkillGrowth && ENHANCE_HIDDEN.includes(f.key))).map(f => (showSkillGrowth ? enhanceField(f) : f));
   // 폰 — 지금 고치고 있는 항목(값 버튼을 누르면 열리는 입력 창)
   const [editing, setEditing] = useState<NumKey | null>(null);
-  const editingField = editing ? [...RULE_FIELDS, ...GROWTH_FIELDS].find(f => f.key === editing) ?? null : null;
+  const editingField = editing ? [...fields, ...GROWTH_FIELDS, DRAW_GROWTH_FIELD, EXP_GAIN_FIELD].find(f => f.key === editing) ?? null : null;
   const [open, setOpen] = useState(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
@@ -249,6 +260,8 @@ export function GameRulesFields({
                 />
               </div>
               {settings.skillGrowth && GROWTH_FIELDS.map(renderRow)}
+              {renderRow(DRAW_GROWTH_FIELD)}
+              {renderRow(EXP_GAIN_FIELD)}
             </>
           )}
           </div>
@@ -411,7 +424,7 @@ export function GameRulesInputs({
       </div>
       )}
       <div className="flex flex-col gap-3">
-        {RULE_FIELDS.map(renderRow)}
+        {RULE_FIELDS.filter(f => !(showSkillGrowth && ENHANCE_HIDDEN.includes(f.key))).map(f => (showSkillGrowth ? enhanceField(f) : f)).map(renderRow)}
         {showSkillGrowth && (
           <>
             <div className="flex items-center gap-2 text-lg">
@@ -425,6 +438,8 @@ export function GameRulesInputs({
               />
             </div>
             {settings.skillGrowth && GROWTH_FIELDS.map(renderRow)}
+            {renderRow(DRAW_GROWTH_FIELD)}
+            {renderRow(EXP_GAIN_FIELD)}
           </>
         )}
       </div>
@@ -466,6 +481,8 @@ export function RuleSummary({
               ? `기술 카드 ${settings.skillGrowthTurns}턴마다 +1장 (최대 ${settings.skillGrowthMax}장)`
               : '기술 카드 증가 없음'}
           </span>
+          {settings.drawGrowthTurns > 0 && <span>🌰 {settings.drawGrowthTurns}턴마다 장소 카드 +1장</span>}
+          {settings.expGainMult > 1 && <span>✨ 승격 전 획득 경험치 {settings.expGainMult}배</span>}
         </div>
       )}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">

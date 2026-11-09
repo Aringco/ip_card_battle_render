@@ -172,6 +172,10 @@ export interface UseWebSocketReturn {
   /** target은 개인전 특허랑이의 대상(편 id) — 다른 기술·팀전에서는 서버가 무시한다 */
   chooseSkill: (animal: Animal, target?: SideId) => void;
   passSkill: () => void;
+  /** 도토리 축제 — 후보 셋 중 하나를 고른다 */
+  pickAcorn: (id: string) => void;
+  /** 도토리 축제 — 그 칸의 후보를 다시 뽑는다 */
+  rerollAcorn: (slot: number) => void;
   /** 시연 모드의 [계속 ▶] — 시연 방이 아니면 서버가 무시한다 */
   demoContinue: () => void;
   /** 시연 4장 — 볼 결말(강탈승·회복승·패배)을 고른다 */
@@ -292,10 +296,23 @@ export function useWebSocket(): UseWebSocketReturn {
   }, []);
 
   useEffect(() => {
+    // 끊기면 다시 붙는다(2026-11-06) — 폰에서 다른 앱(카카오톡 등)에 다녀오면 브라우저가 백그라운드에서 연결을 끊는다.
+    // 예전에는 페이지를 새로 열 때만 재접속해서, 돌아와도 방과 끊긴 채였다. 이제 ① 닫히면 1 → 2 → 4 … 최대 10초 간격으로 다시
+    // 시도하고 ② 화면으로 돌아오는 순간(visibilitychange · pageshow · online) 곧바로 붙는다. 붙으면 onopen이 저장된 세션으로
+    // reconnect를 보내 대기실 · 게임에 그대로 복귀한다(서버는 대기실 자리를 LOBBY_RECONNECT_GRACE_MS 동안 붙들어 둔다).
+    // 옛 소켓의 이벤트는 모두 무시한다(wsRef.current와 다르면) — 안 그러면 늦게 온 close가 재접속을 한 번 더 건다.
+    let stopped = false;
+    let retry = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let hiddenAt = 0;
+
+    const connect = () => {
     const ws = new WebSocket(resolveWsUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (wsRef.current !== ws) return;
+      retry = 0;
       setConnected(true);
       setError(null);
 
@@ -308,14 +325,18 @@ export function useWebSocket(): UseWebSocketReturn {
     };
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return;
       setConnected(false);
+      if (!stopped) retryTimer = setTimeout(connect, Math.min(10_000, 1000 * 2 ** retry++));
     };
 
     ws.onerror = () => {
+      if (wsRef.current !== ws) return;
       setError('서버에 연결할 수 없습니다.');
     };
 
     ws.onmessage = (e: MessageEvent) => {
+      if (wsRef.current !== ws) return;
       const msg: ServerMessage = JSON.parse(e.data as string);
 
       switch (msg.type) {
@@ -519,7 +540,39 @@ export function useWebSocket(): UseWebSocketReturn {
       }
     };
 
-    return () => ws.close();
+    };
+
+    connect();
+
+    // 화면으로 돌아온 순간 — 소켓이 닫혀 있으면 기다리지 않고 바로 붙는다. 3초 넘게 가려져 있었다면 열려 보여도 새로 붙는다
+    // (폰은 백그라운드에서 끊긴 소켓을 한동안 OPEN으로 남겨 두기도 한다 — 서버는 이미 끊긴 것으로 안다).
+    const wake = () => {
+      if (stopped || document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+        return;
+      }
+      const old = wsRef.current;
+      const dead = !old || old.readyState === WebSocket.CLOSED || old.readyState === WebSocket.CLOSING;
+      const longAway = hiddenAt > 0 && Date.now() - hiddenAt > 3000;
+      hiddenAt = 0;
+      if (!dead && !longAway) return;
+      clearTimeout(retryTimer);
+      retry = 0;
+      connect();
+      if (old && !dead) old.close();
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('pageshow', wake);
+    window.addEventListener('online', wake);
+
+    return () => {
+      stopped = true;
+      clearTimeout(retryTimer);
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('pageshow', wake);
+      window.removeEventListener('online', wake);
+      wsRef.current?.close();
+    };
   }, [applyState]);
 
   const createRoom = useCallback((nickname: string, team: Seat, teamName?: string, settings?: Partial<GameSettings>, otherTeamName?: string, mode?: GameMode, enhance?: boolean) => {
@@ -591,6 +644,8 @@ export function useWebSocket(): UseWebSocketReturn {
   }, [send]);
 
   const passSkill = useCallback(() => send({ type: 'passSkill' }), [send]);
+  const pickAcorn = useCallback((id: string) => send({ type: 'pickAcorn', id }), [send]);
+  const rerollAcorn = useCallback((slot: number) => send({ type: 'rerollAcorn', slot }), [send]);
   const demoContinue = useCallback(() => send({ type: 'demoContinue' }), [send]);
   const demoScene = useCallback((key: string) => send({ type: 'demoScene', key }), [send]);
 
@@ -663,7 +718,7 @@ export function useWebSocket(): UseWebSocketReturn {
     pauseRequest, pauseWaitingUntil, resumeVoteUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
     movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat, sendEmote,
-    drawCard, chooseSkill, passSkill, demoContinue, demoScene,
+    drawCard, chooseSkill, passSkill, pickAcorn, rerollAcorn, demoContinue, demoScene,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
     eventDevStatus, eventQueue, eventMatched, eventRegistered, eventError, clearEventError,
     eventIntroUntil, leaderboard, adminState,

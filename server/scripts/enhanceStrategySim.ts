@@ -15,6 +15,7 @@
  * 실행: cd server && npx ts-node --transpile-only scripts/enhanceStrategySim.ts [판수=400]
  */
 import { initEnhanceGame } from '../engine/turnManager';
+import { autoPickAcorns } from '../engine/acorn';
 import { processPlayerAction, processSkillChoice, processPass } from '../engine/gameEngine';
 import { eligibleAnimals, levelOf } from '../engine/skills';
 import {
@@ -45,7 +46,7 @@ function makeLCG(seed: number): () => number {
 
 function pickPlace(state: GameState, rng: () => number): Place {
   const options = PLACES.filter(p => p !== state.lastPlace);
-  const odd = (a: Animal) => state.stacks[a].filter(c => c.collectedBy === null).length % 2 === 1;
+  const odd = (a: Animal) => state.stacks[a].filter(c => c.collectedBy === null).reduce((n, c) => n + c.num, 0) % 2 === 1;
   let best: Place[] = [];
   let bestP = -1;
   for (const p of options) {
@@ -166,6 +167,7 @@ function runGame(seed: number, sA: Strategy, sB: Strategy, firstTeam: 'A' | 'B',
   let guard = 0;
   while (state.phase === 'playing') {
     if (guard++ > 20_000) throw new Error(`무한루프 (seed=${seed})`);
+    autoPickAcorns(state, rng); // 도토리 축제 — 후보 중 무작위
     eat(processPlayerAction(state, pickPlace(state, rng), rng).events);
     while (state.phase === 'playing' && state.pendingChoice !== null) {
       const side = state.pendingChoice;
