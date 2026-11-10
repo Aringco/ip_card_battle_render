@@ -2,8 +2,8 @@
 
 카드배틀을 **컨테이너 하나**로 띄워 운영하는 방법이다. 이미지 정의는 루트의 `Dockerfile.nginx`.
 
-> 루트의 `Dockerfile`(nginx 없이 `server.ts` 한 프로세스)은 Render 배포(`render.yaml`)가 쓰므로
-> 그대로 둔다. 이 문서는 자체 서버(VM · 사내 서버 · 집 PC)에 올리는 경우다.
+> 루트의 `Dockerfile`은 nginx 없이 `server.ts` 한 프로세스만 띄우는 이미지다(로컬 확인용).
+> 운영(tupd.site) · 테스트(test.tupd.site)는 이 문서대로 자체 서버에 올린다.
 
 ---
 

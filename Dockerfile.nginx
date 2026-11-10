@@ -27,8 +27,8 @@
 #   HTTPS_REDIRECT  1이면 인증서가 있을 때 HTTP 요청을 https://로 보낸다(기본 1)
 #   TEST_DOMAIN · TEST_UPSTREAM  운영 컨테이너가 테스트 서버로 넘길 이름 · 주소(deploy/gen-nginx-conf)
 #
-# ※ 루트의 `Dockerfile`(nginx 없이 server.ts 한 프로세스)은 Render 배포(render.yaml)가
-#   쓰고 있으므로 그대로 둔다. 운영 절차는 DEPLOYMENT.md 참고.
+# ※ 루트의 `Dockerfile`은 nginx 없이 server.ts 한 프로세스만 띄우는 이미지다(로컬 확인용).
+#   운영 절차는 docs/DEPLOYMENT.md 참고.
 # ─────────────────────────────────────────────────────────────
 
 ARG NODE_IMAGE=node:22-alpine
