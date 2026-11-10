@@ -9,6 +9,8 @@ import {
   SHEEP_SAFETY_CAP,
   SETTINGS_LIMITS,
   clampEnhanceSettings,
+  clampSettings,
+  PLAYER_COLORS,
   enhancePlaceDrawCount,
   enhanceSkillsPerTurn,
   THRESHOLDS,
@@ -26,7 +28,7 @@ import {
   splitEnhanceCount,
 } from 'shared';
 import { settleStacks } from '../engine/drawCard';
-import { initEnhanceGame } from '../engine/turnManager';
+import { initEnhanceGame, initIndividualGame } from '../engine/turnManager';
 import { processPass, processPlayerAction, processSkillChoice, processTimeout } from '../engine/gameEngine';
 import { applySkillChoice, eligibleAnimals, levelOf } from '../engine/skills';
 import { Room } from '../room';
@@ -46,7 +48,8 @@ const rng0 = () => 0;
  */
 function newGame(overrides: Partial<typeof ENHANCE_SETTINGS> = {}): GameState {
   // 도토리 축제(카드 고르기 — acorn.test.ts가 따로 잰다)는 끈다: 고르는 동안 판이 멈춰 턴을 넘기는 아래 반복이 서 버린다
-  return initEnhanceGame(['나'], ['CPU'], rng0, { ...ENHANCE_SETTINGS, targetScore: 500, festivalTurn: 999, ...overrides });
+  // 후공 보상도 끈다 — 경험치를 정확한 숫자로 재는 테스트가 많다(보상 자체는 맨 아래 "후공 보상" 절)
+  return initEnhanceGame(['나'], ['CPU'], rng0, { ...ENHANCE_SETTINGS, targetScore: 500, festivalTurn: 999, secondComp: 'off', ...overrides });
 }
 
 /**
@@ -1028,5 +1031,35 @@ describe('방 — 카드 강화 혼자 놀기', () => {
     expect(bSkills.length).toBe(2);
     expect(lastState(ws).activeTeam).toBe('A');
     expect(ws.sent.some(m => m.type === 'error')).toBe(false);
+  });
+});
+
+describe('후공 보상 (secondComp)', () => {
+  const rng0 = () => 0;
+  const expOf = (s: GameState, side: string) => s.teams[side].exp;
+
+  it('1:1 — 강이면 후공만 양·토끼 +5 · 인어·호랑이 +8, 약이면 +3/+5, 끔이면 0', () => {
+    const want = { off: [0, 0], weak: [3, 5], strong: [5, 8] } as const;
+    for (const comp of ['off', 'weak', 'strong'] as const) {
+      const s = initEnhanceGame(['a'], ['b'], rng0, { secondComp: comp, festivalTurn: 999 });
+      const [first, second] = s.turnOrder;
+      expect(expOf(s, first)).toEqual({ sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 });
+      const [small, big] = want[comp];
+      expect(expOf(s, second)).toEqual({ sheep: small, rabbit: small, mermaid: big, tiger: big });
+    }
+  });
+
+  it('3명 이상 — 자리 비례(선 0 · 가운데 절반 · 마지막이 1:1 후공과 같은 몫)', () => {
+    const players = ['p1', 'p2', 'p3'].map((side, i) => ({ side, nickname: side, color: PLAYER_COLORS[i].id }));
+    const s = initIndividualGame(players, rng0, { ...ENHANCE_SETTINGS, secondComp: 'strong', festivalTurn: 999 }, true);
+    const [a, b, c] = s.turnOrder;
+    expect(expOf(s, a).tiger).toBe(0);
+    expect(expOf(s, b)).toEqual({ sheep: 3, rabbit: 3, mermaid: 4, tiger: 4 });
+    expect(expOf(s, c)).toEqual({ sheep: 5, rabbit: 5, mermaid: 8, tiger: 8 });
+  });
+
+  it('잘못된 값은 끔으로 — 강화 판 기본값은 강', () => {
+    expect(clampSettings({ secondComp: 'max' as never }).secondComp).toBe('off');
+    expect(clampEnhanceSettings(undefined).secondComp).toBe('strong');
   });
 });

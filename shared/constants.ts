@@ -82,6 +82,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   skillGrowthMax: 3,
   drawGrowthTurns: 0,
   expGainMult: 2,
+  secondComp: 'off',
 };
 
 /** 방장 입력값을 SETTINGS_LIMITS 범위로 잘라내고, 정수가 아니면 반올림한다. */
@@ -115,6 +116,7 @@ export function clampSettings(
     skillGrowthMax: clamp('skillGrowthMax'),
     drawGrowthTurns: clamp('drawGrowthTurns'),
     expGainMult: clamp('expGainMult'),
+    secondComp: (['off', 'weak', 'strong'] as const).includes(merged.secondComp) ? merged.secondComp : DEFAULT_SETTINGS.secondComp,
   };
 }
 

@@ -1,4 +1,4 @@
-import type { Animal, GameSettings, Place, SideId } from './types';
+import type { Animal, GameSettings, Place, SecondComp, SideId } from './types';
 import { PLACE_ANIMALS } from './types';
 import { SETTINGS_LIMITS, THRESHOLDS, clampSettings } from './constants';
 import type { AcornState } from './acorn';
@@ -82,6 +82,21 @@ export function enhanceTurnDrawBonus(turn: number, settings: Pick<GameSettings, 
 }
 
 /** 기술을 쓸 때마다 그 카드에 붙는 경험치(2026-11-07) */
+/**
+ * 후공 보상(2026-11-11) — 1:1 후공(= 마지막 자리)이 받는 시작 경험치. 봇 8000판에서 선공 승률 57% → 약 54% · 강 50%.
+ * 3명 이상은 **자리 비례**: 차례 순서 seat(0 = 선)가 seat/(n−1)만큼 받는다(같은 봇으로 자리별 1위율이 가장 고르게 나온 방식 —
+ * 모두 같은 양이면 선이 꼴찌가 되고, 자리마다 더 주면 마지막 자리가 너무 앞선다).
+ */
+export const ENHANCE_SECOND_COMP_EXP: Record<Exclude<SecondComp, 'off'>, Record<Animal, number>> = {
+  weak: { sheep: 3, rabbit: 3, mermaid: 5, tiger: 5 },
+  strong: { sheep: 5, rabbit: 5, mermaid: 8, tiger: 8 },
+};
+export function enhanceSecondCompExp(comp: SecondComp, seat: number, seats: number): Record<Animal, number> {
+  const k = comp === 'off' || seats < 2 ? 0 : seat / (seats - 1);
+  const base = comp === 'off' ? ENHANCE_SECOND_COMP_EXP.strong : ENHANCE_SECOND_COMP_EXP[comp];
+  return { sheep: Math.round(base.sheep * k), rabbit: Math.round(base.rabbit * k), mermaid: Math.round(base.mermaid * k), tiger: Math.round(base.tiger * k) };
+}
+
 export const ENHANCE_USE_EXP: Record<Animal, number> = { sheep: 1, rabbit: 1, mermaid: 2, tiger: 2 };
 
 /**
@@ -443,6 +458,7 @@ export const ENHANCE_SETTINGS: GameSettings = {
   skillGrowthMax: 2,
   drawGrowthTurns: 1,
   expGainMult: 2,
+  secondComp: 'strong',
 };
 
 /**

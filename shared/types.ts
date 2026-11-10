@@ -117,7 +117,12 @@ export interface GameSettings {
   skillGrowthMax: number;
   // 카드 강화 판 — 승격 전(Lv.1~3) 카드가 짝 · 싹쓸이로 얻는 경험치 N배(2026-11-08, 1 = 그대로). 일반 판은 읽지 않는다
   expGainMult: number;
+  // 카드 강화 판 — 후공 보상(2026-11-11): 늦게 두는 자리일수록 시작 경험치를 더 받는다(shared/enhance.ts enhanceSecondCompExp). 일반 판은 읽지 않는다
+  secondComp: SecondComp;
 }
+
+/** 후공 보상 세기 — 끔 · 약 · 강 */
+export type SecondComp = 'off' | 'weak' | 'strong';
 
 export interface GameState {
   phase: GamePhase;

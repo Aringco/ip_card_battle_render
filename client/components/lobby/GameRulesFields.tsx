@@ -86,6 +86,14 @@ const GROWTH_OPTIONS = [
   { value: 'off', label: 'Off' },
 ] as const;
 const GROWTH_TITLE = '사용 가능한 기술 카드 증가';
+// 카드 강화 판 — 후공 보상(늦게 두는 자리일수록 시작 경험치를 더 받는다 — shared/enhance.ts enhanceSecondCompExp)
+const COMP_OPTIONS = [
+  { value: 'off', label: '끔' },
+  { value: 'weak', label: '약' },
+  { value: 'strong', label: '강' },
+] as const satisfies ReadonlyArray<{ value: GameSettings['secondComp']; label: string }>;
+const COMP_TITLE = '후공 보상 — 늦게 두는 자리일수록 시작 경험치를 더 받는다';
+const COMP_SUMMARY: Record<GameSettings['secondComp'], string | null> = { off: null, weak: '약', strong: '강' };
 
 // 혼자 놀기에서 감추는 두 항목 — 서버도 같은 이유로 제한을 걸지 않는다(Room.vsComputer).
 const PAUSE_KEYS: NumKey[] = ['pauseMaxCount', 'pauseMaxMin'];
@@ -262,6 +270,10 @@ export function GameRulesFields({
               {settings.skillGrowth && GROWTH_FIELDS.map(renderRow)}
               {renderRow(DRAW_GROWTH_FIELD)}
               {renderRow(EXP_GAIN_FIELD)}
+              <div className="flex items-center justify-between gap-1 text-xs" title={COMP_TITLE}>
+                <label className="text-gray-500 truncate min-w-0">후공 보상</label>
+                <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} />
+              </div>
             </>
           )}
           </div>
@@ -440,6 +452,11 @@ export function GameRulesInputs({
             {settings.skillGrowth && GROWTH_FIELDS.map(renderRow)}
             {renderRow(DRAW_GROWTH_FIELD)}
             {renderRow(EXP_GAIN_FIELD)}
+            <div className="flex items-center gap-2 text-lg">
+              <label className="text-board-muted whitespace-nowrap">{COMP_TITLE}</label>
+              <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
+              <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} />
+            </div>
           </>
         )}
       </div>
@@ -483,6 +500,7 @@ export function RuleSummary({
           </span>
           {settings.drawGrowthTurns > 0 && <span>🌰 {settings.drawGrowthTurns}턴마다 장소 카드 +1장</span>}
           {settings.expGainMult > 1 && <span>✨ 승격 전 획득 경험치 {settings.expGainMult}배</span>}
+          {COMP_SUMMARY[settings.secondComp] && <span>⚖️ 후공 보상 {COMP_SUMMARY[settings.secondComp]}</span>}
         </div>
       )}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">

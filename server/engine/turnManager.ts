@@ -1,6 +1,7 @@
 import {
   ENHANCE_SETTINGS_LIMITS,
   enhanceSkillsPerTurn,
+  enhanceSecondCompExp,
   LOSE_HP,
   INDIVIDUAL_TWO_SKILLS_FROM,
   clampSettings,
@@ -449,5 +450,10 @@ function attachEnhance(state: GameState): void {
     evade: each(() => 0),
     usedThisTurn: [],
   };
+  // 후공 보상 — 차례 순서대로 늦은 자리가 시작 경험치를 더 받는다(선은 0)
+  state.turnOrder.forEach((side, seat) => {
+    const bonus = enhanceSecondCompExp(state.settings.secondComp, seat, state.turnOrder.length);
+    for (const a of Object.keys(bonus) as Array<keyof typeof bonus>) state.teams[side].exp[a] += bonus[a];
+  });
   attachAcorn(state);
 }
