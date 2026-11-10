@@ -1,0 +1,839 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   카드 강화 판(혼자 놀기 — shared/enhance.ts · ENHANCE_MODE.md)
+   IndividualLayout 맨 바깥에 data-enhance가 붙는다. 기술 카드(SkillChoiceBar)는 레벨에 따라
+   --enh(0 = Lv.1 … 1 = Lv.5)를 받아 아래 두 층의 세기를 정한다.
+   ⚠️ 효과는 전부 배경 층·opacity·animation이라 배치를 바꾸지 않는다(팀전에는 이 클래스가 아예 없다).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 이 판의 카드는 모두 1이라 숫자를 감춘다 — 동물 그림만 남기고 조금 키운다 */
+[data-enhance] .stack-card-num,
+[data-enhance] .draw-slot-num { display: none; }
+[data-enhance] .stack-card img { width: 80%; }
+/* 강화 판의 필드 카드 — 가리키면 그 카드가 앞으로 나와 왼쪽으로 살짝 빠진다(겹쳐 가려진 카드를 들여다보게, 2026-10-29).
+   위아래로는 움직이지 않는다 — 카드가 포인터 밑에서 빠져나가면 hover가 풀렸다 걸렸다 깜빡인다(왼쪽으로 빠져도 포인터가 있는
+   왼쪽 절반은 그대로 카드 위다). 등장·흔들기·날아가기 애니메이션 중에는 그쪽 transform이 이긴다. */
+[data-enhance] .stack-card { transition: transform 180ms ease-out, box-shadow 180ms ease-out; }
+[data-enhance] .stack-card:hover {
+  transform: translateX(-16%) scale(1.06);
+  z-index: 30 !important;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28);
+}
+/* 장소 칸의 숫자 범위("(+5 ~ +10)")는 라벨 그림의 셋째 줄에 그려져 있다 — 정사각형 그림이 칸 높이에 맞춰
+   들어가므로(칸이 가로로 넓다) 아래 41%를 잘라 이름·동물 두 줄만 남기고, 남은 두 줄을 칸 가운데로 내린다.
+   짝 옆의 합계 배지는 **남긴다** — 모든 카드가 1이라 합계가 곧 그 줄에 쌓인 장수다(2026-10-29 요청, 한때 감췄다). */
+[data-enhance] .place-text-img { clip-path: inset(0 0 41% 0); transform: translateY(7%); }
+
+/* 카드의 홀로(빛 효과)는 **등급마다 한 겹뿐이다**(2026-10-31 요청 — 그 전에는 등급이 오를 때마다 한 겹씩 쌓였고, 모든 카드에
+   밝은 그라데이션 .enh-light가 깔려 있었다 — 그 층은 걷었다): 브론즈 빛 반사(.enh-sheen) · 실버 은빛(.enh-silver) · 골드 금빛(.enh-gold) ·
+   무지개(.enh-rainbow). 아래 등급 절 참조. */
+
+/* 무지개 홀로 — **Lv.Max 등급에만** 깔린다(2026-10-31 — 그 전에는 모든 레벨에 깔려 레벨을 따라 짙어졌다. 아래 등급 절).
+   **한 줄기 사선 띠**가 카드를 가로질러 지나가고(45도), 잠깐 쉬었다 다시 지나간다. 가리키지 않아도 계속 흐른다.
+   세기는 --enh(Max면 1)를 따른다. ::after는 띠 한가운데를 따라가는 가는 하얀 반짝임.
+
+   ⚠️ 2차 수정(2026-10-28) — 처음에는 무지개를 층 전체에 깔고(background-repeat 기본값 repeat) 배경 위치만 흘렸는데, 짙어질수록
+      **층의 사각형과 타일 이음매가 보였다**(Lv.5에서 카드 오른쪽에 세로 경계가 섰다). 그래서 ① 반복을 끄고(no-repeat) 띠 앞뒤를
+      투명으로 두어 띠가 지나가지 않는 곳은 아무것도 칠하지 않고, ② 네 가장자리를 마스크로 흐려 층의 윤곽 자체를 없앴다.
+   흐르는 방향: 그림(300%)이 상자보다 커서, 배경 위치를 0% 100% → 100% 0%로 옮기면 띠가 카드의 오른쪽 위에서 왼쪽 아래로
+   45도로 지나간다(가로·세로를 같은 비율로 옮기므로 정확히 사선이다). 두 끝에서는 띠가 상자 밖이라 아무것도 보이지 않는다. */
+.enh-rainbow {
+  pointer-events: none;
+  overflow: hidden;
+  background-image: linear-gradient(
+    45deg,
+    transparent 36%,
+    hsla(0, 100%, 68%, 0.95) 40%,
+    hsla(45, 100%, 62%, 0.95) 43%,
+    hsla(110, 90%, 58%, 0.95) 46.5%,
+    hsla(185, 100%, 62%, 0.95) 50%,
+    hsla(235, 100%, 72%, 0.95) 53.5%,
+    hsla(295, 100%, 70%, 0.95) 57%,
+    hsla(350, 100%, 68%, 0.95) 60%,
+    transparent 64%
+  );
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  /* overlay — 그림의 명암을 살린 채 색만 입힌다(color-dodge는 Lv.5에서 그림이 하얗게 날아갔다) */
+  mix-blend-mode: overlay;
+  opacity: calc(0.12 + var(--enh, 0) * 0.68);
+  animation: enhRainbowSweep calc(6s - var(--enh, 0) * 3s) ease-in-out infinite;
+}
+.enh-rainbow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    45deg,
+    transparent 47%,
+    rgba(255, 255, 255, 0.85) 50%,
+    transparent 53%
+  );
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(var(--enh, 0) * 0.7);
+  /* 무지개와 같은 길이·같은 곡선이라 늘 띠 한가운데에 붙어 간다 */
+  animation: inherit;
+  animation-name: enhRainbowSweep;
+}
+/* 네 가장자리를 흐린다 — 가로·세로 두 띠의 교집합이라 모서리는 더 일찍 사라진다(둥근 카드 모서리에 층이 걸리지 않는다) */
+.enh-rainbow {
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+@keyframes enhRainbowSweep {
+  0%        { background-position: 0% 100%; }
+  65%, 100% { background-position: 100% 0%; }
+}
+/* 쿨타임 중인 카드 — 홀로는 옅게만 남긴다(그림은 이미 -disabled로 어둡다). 강화 단계는 잃지 않았다는 정도의 신호 */
+.enh-cooling { opacity: 0.18; }
+.enh-rainbow.enh-cooling { opacity: calc((0.12 + var(--enh, 0) * 0.68) * 0.3); }
+.enh-rainbow.enh-cooling::after { animation: none; opacity: 0; }
+
+/* ── 기술 카드의 등급(2026-10-31 — shared의 enhanceCardTier, SkillChoiceBar의 data-enh-tier) ──────────────────────
+   bronze  Lv.1 ~ 3   구리 테두리 · 빛 반사 홀로(.enh-sheen)
+   silver  Lv.4 ~ 7   은 테두리 · 은빛 홀로(.enh-silver) · 둘레가 은빛으로 숨 쉰다
+   gold    Lv.8 ~ 10  금색 테두리 · 금빛 홀로(.enh-gold) · 둘레가 금빛으로 숨 쉰다
+   rainbow Lv.Max     흰빛과 무지개가 어우러진 테두리(흐른다) · 무지개 홀로(.enh-rainbow) · 둘레가 흰 무지갯빛으로 숨 쉰다
+   홀로는 등급마다 하나다. 테두리는 .play-card-frame의 배경(border-box까지 깔린 그라디언트)을 갈아 끼운다 — 안쪽은 그림 층이 덮어 테두리 6px만 보인다.
+   (같은 날의 변천: 쇠 Lv.1~5 · 금 Lv.6~10 · 무지개의 3단계에 홀로가 한 겹씩 쌓였다 → 방 만들기에서 4단계를 고를 수 있었다 → 3단계를 걷고 지금의 4단계만.) */
+.skill-choice-panel[data-enh-tier='bronze'] {
+  background-image: linear-gradient(
+    158deg,
+    #f0b88a 0%,
+    #b8693a 18%,
+    #7f4220 38%,
+    #e8a26c 54%,
+    #a75a2c 74%,
+    #6a3518 100%
+  );
+}
+.skill-choice-panel[data-enh-tier='silver'] {
+  background-image: linear-gradient(
+    158deg,
+    #ffffff 0%,
+    #d7dde5 16%,
+    #9aa4b1 36%,
+    #f8fafc 52%,
+    #b9c2cd 70%,
+    #7c8693 100%
+  );
+  animation: enhSilverGlow 2.4s ease-in-out infinite;
+}
+.skill-choice-panel[data-enh-tier='silver'].skill-choice-glow {
+  animation: skillChoiceGlow 1s ease-in-out infinite;
+}
+@keyframes enhSilverGlow {
+  0%, 100% { box-shadow: inset 0 0 10px 2px rgba(226, 232, 240, 0.5); }
+  50%      { box-shadow: inset 0 0 22px 6px rgba(241, 245, 255, 0.9); }
+}
+.skill-choice-panel[data-enh-tier='gold'] {
+  background-image: linear-gradient(
+    158deg,
+    #fff4c0 0%,
+    #f2c443 18%,
+    #b9801c 38%,
+    #ffe58f 54%,
+    #d9a128 74%,
+    #8a5a12 100%
+  );
+  animation: enhGoldGlow 2.4s ease-in-out infinite;
+}
+.skill-choice-panel[data-enh-tier='rainbow'] {
+  background-image: linear-gradient(
+    120deg,
+    #ffffff 0%,
+    hsl(0 100% 78%) 8%,
+    hsl(45 100% 74%) 15%,
+    #ffffff 22%,
+    hsl(120 85% 72%) 30%,
+    hsl(190 100% 75%) 37%,
+    #ffffff 44%,
+    hsl(250 100% 80%) 52%,
+    hsl(310 100% 78%) 59%,
+    #ffffff 66%,
+    hsl(0 100% 78%) 74%,
+    hsl(45 100% 74%) 81%,
+    #ffffff 88%,
+    hsl(190 100% 75%) 100%
+  );
+  background-size: 300% 300%;
+  animation: enhRainbowGlow 2.4s ease-in-out infinite, enhBorderFlow 5s linear infinite;
+}
+/* 누를 수 있음 깜빡임(.skill-choice-glow — box-shadow)과 둘레 빛이 서로 덮는다 — 누를 수 있을 때는 그쪽을 쓴다(무지개 테두리는 계속 흐른다) */
+.skill-choice-panel[data-enh-tier='gold'].skill-choice-glow {
+  animation: skillChoiceGlow 1s ease-in-out infinite;
+}
+.skill-choice-panel[data-enh-tier='rainbow'].skill-choice-glow {
+  animation: skillChoiceGlow 1s ease-in-out infinite, enhBorderFlow 5s linear infinite;
+}
+@keyframes enhGoldGlow {
+  0%, 100% { box-shadow: inset 0 0 10px 2px rgba(255, 214, 102, 0.55); }
+  50%      { box-shadow: inset 0 0 22px 6px rgba(255, 224, 130, 0.95); }
+}
+@keyframes enhRainbowGlow {
+  0%, 100% { box-shadow: inset 0 0 10px 2px rgba(255, 255, 255, 0.6), inset 0 0 18px 4px rgba(196, 160, 255, 0.35); }
+  50%      { box-shadow: inset 0 0 22px 6px rgba(255, 255, 255, 0.95), inset 0 0 30px 8px rgba(140, 220, 255, 0.55); }
+}
+@keyframes enhBorderFlow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* 빛 반사 홀로 — 브론즈(Lv.1~3)의 홀로. 하얀 사선 띠가 무지개와 같은 길·같은 곡선으로 카드를 가로지른다(그 전에는 무지개 층의 ::after였다).
+   레벨이 오를수록(--enh) 또렷하고 자주 지나간다. 가장자리는 .enh-rainbow와 같은 마스크로 흐린다. */
+.enh-sheen {
+  pointer-events: none;
+  background-image: linear-gradient(
+    45deg,
+    transparent 42%,
+    rgba(226, 232, 240, 0.35) 46%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(226, 232, 240, 0.35) 54%,
+    transparent 58%
+  );
+  background-size: 300% 300%;
+  background-repeat: no-repeat;
+  background-position: 0% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.35 + var(--enh, 0) * 0.45);
+  animation: enhRainbowSweep calc(6s - var(--enh, 0) * 3s) ease-in-out infinite;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+.enh-sheen.enh-cooling { opacity: 0.12; animation: none; }
+.enh-gold {
+  pointer-events: none;
+  background-image:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 215, 120, calc(0.18 + var(--gold, 0) * 0.22)) 0%, transparent 70%),
+    linear-gradient(
+      -45deg,
+      transparent 38%,
+      rgba(255, 196, 64, 0.55) 45%,
+      rgba(255, 244, 200, 0.95) 50%,
+      rgba(255, 196, 64, 0.55) 55%,
+      transparent 62%
+    );
+  background-size: 100% 100%, 300% 300%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, 100% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.45 + var(--gold, 0) * 0.45);
+  animation: enhGoldSweep calc(4.2s - var(--gold, 0) * 1.6s) ease-in-out infinite;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+/* 무지개(오른쪽 위 → 왼쪽 아래)와 엇갈리게 오른쪽 아래 → 왼쪽 위로 지나간다 */
+@keyframes enhGoldSweep {
+  0%        { background-position: center, 100% 100%; }
+  60%, 100% { background-position: center, 0% 0%; }
+}
+.enh-gold.enh-cooling { opacity: 0.15; animation: none; }
+/* 은빛 홀로 — 실버(Lv.4~7)의 홀로. 금빛(.enh-gold)과 같은 길로 지나가되 차가운 흰빛 · 푸른빛이다.
+   세기는 --silver(0 = Lv.4 … 1 = Lv.7)를 따른다. */
+.enh-silver {
+  pointer-events: none;
+  background-image:
+    radial-gradient(120% 70% at 50% 0%, rgba(226, 236, 255, calc(0.16 + var(--silver, 0) * 0.2)) 0%, transparent 70%),
+    linear-gradient(
+      -45deg,
+      transparent 38%,
+      rgba(186, 206, 236, 0.5) 45%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(186, 206, 236, 0.5) 55%,
+      transparent 62%
+    );
+  background-size: 100% 100%, 300% 300%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, 100% 100%;
+  mix-blend-mode: screen;
+  opacity: calc(0.42 + var(--silver, 0) * 0.4);
+  animation: enhGoldSweep calc(4.6s - var(--silver, 0) * 1.2s) ease-in-out infinite;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 9%, #000 91%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 7%, #000 93%, transparent 100%);
+  mask-composite: intersect;
+}
+.enh-silver.enh-cooling { opacity: 0.15; animation: none; }
+
+/* 제목 옆 레벨 — 제목보다 조금 작게, 금색 */
+.enh-title-lv {
+  font-size: 0.82em;
+  color: #fde68a;
+  white-space: nowrap;
+}
+
+/* ③ 레벨이 오른 순간의 파티클 — SkillChoiceBar의 LevelUpBurst. 카드 칸(.holo-cell) 위에 얹혀 카드 밖까지 퍼진다.
+   조각의 방향(--dx/--dy, 칸 크기의 %)·색(--hue)·크기(--size)는 컴포넌트가 정한다. */
+.enh-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+.enh-burst::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--card-radius, var(--cell-r, 16px));
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.95), rgba(255, 236, 160, 0.5) 45%, transparent 75%);
+  mix-blend-mode: screen;
+  animation: enhFlash 700ms ease-out forwards;
+}
+.enh-burst-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 244, 180, 0.95);
+  box-shadow: 0 0 18px 6px rgba(255, 220, 120, 0.8);
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: enhRing 900ms ease-out forwards;
+}
+.enh-burst-piece {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  border-radius: 50%;
+  background: hsl(var(--hue, 50) 100% 66%);
+  box-shadow: 0 0 8px 2px hsl(var(--hue, 50) 100% 72%);
+  opacity: 0;
+  animation: enhPiece 1100ms cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+.enh-burst-text {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  font-size: clamp(1rem, calc(2.6 * var(--sv, 1vh)), 1.8rem);
+  color: #fde047;
+  white-space: nowrap;
+  animation: enhText 1300ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+@keyframes enhFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes enhRing {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(4.5); }
+}
+@keyframes enhPiece {
+  0%   { opacity: 1; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.3); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; left: calc(50% + var(--dx, 0%)); top: calc(50% + var(--dy, 0%)); transform: translate(-50%, -50%) scale(0.3); }
+}
+@keyframes enhText {
+  0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.4); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  75%  { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+}
+/* ④ [승격] — 등급이 바뀐 순간(SkillChoiceBar의 PromotionBurst, 2.6초). 레벨업(③)보다 화려하다:
+   ⓐ 카드 밖으로 멀리 퍼지는 폭죽(가운데 44조각 + 위쪽 세 곳의 작은 폭죽 16조각씩) ⓑ 커다란 고리
+   ⓒ 카드 전체를 새 등급의 빛(금빛 · 흰 무지갯빛 홀로)이 덮었다가(.enh-promo-glow) **아래부터 걷히며** 새 카드가 드러난다 —
+      걷히는 자리를 빛나는 경계선(.enh-promo-edge)이 따라 올라간다. 둘의 시간표(42% → 92%)는 짝이라 함께 고친다.
+   ⓓ "승격! Lv.6" 문구. 색은 data-tier가 고른다(gold · rainbow). */
+.enh-promo {
+  position: absolute;
+  inset: 0;
+  z-index: 46;
+  pointer-events: none;
+  --promo-r: var(--card-radius, var(--cell-r, 16px));
+}
+.enh-promo-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--promo-r);
+  background-size: 100% 100%, 260% 260%;
+  background-repeat: no-repeat;
+  opacity: 0;
+  animation: enhPromoGlow 2600ms ease-in-out forwards;
+}
+.enh-promo[data-tier='gold'] .enh-promo-glow {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 240, 0.95), rgba(255, 230, 150, 0) 68%),
+    linear-gradient(115deg, #fff4c2 0%, #f7c948 18%, #fffbe6 32%, #e0a526 48%, #ffe9a0 62%, #c98a14 78%, #fff1b8 100%);
+  box-shadow: 0 0 26px 10px rgba(255, 206, 84, 0.85);
+}
+.enh-promo[data-tier='silver'] .enh-promo-glow {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.95), rgba(226, 236, 255, 0) 68%),
+    linear-gradient(115deg, #ffffff 0%, #cfd8e3 18%, #ffffff 32%, #9fb0c4 48%, #eef3fa 62%, #8d9aab 78%, #ffffff 100%);
+  box-shadow: 0 0 26px 10px rgba(220, 232, 255, 0.85);
+}
+.enh-promo[data-tier='rainbow'] .enh-promo-glow {
+  background-image:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 68%),
+    linear-gradient(115deg, #ffffff 0%, hsl(0 100% 80%) 12%, hsl(48 100% 76%) 24%, #ffffff 34%, hsl(130 85% 74%) 46%, hsl(195 100% 78%) 58%, #ffffff 68%, hsl(258 100% 82%) 80%, hsl(318 100% 80%) 90%, #ffffff 100%);
+  box-shadow: 0 0 26px 10px rgba(255, 255, 255, 0.85), 0 0 46px 16px rgba(186, 150, 255, 0.55);
+}
+/* 덮기(0 → 16%) · 머묾(→ 42%) · 아래부터 걷힘(→ 92%). clip-path의 바깥 −30%는 그림자(빛 번짐)까지 살려 두려는 것이다 */
+@keyframes enhPromoGlow {
+  0%   { opacity: 0; transform: scale(0.94); clip-path: inset(-30% -30% 0% -30%); background-position: center, 0% 50%; }
+  16%  { opacity: 1; transform: scale(1.04); }
+  26%  { transform: scale(1); }
+  42%  { opacity: 1; clip-path: inset(-30% -30% 0% -30%); }
+  92%  { opacity: 1; clip-path: inset(-30% -30% 100% -30%); background-position: center, 100% 50%; }
+  100% { opacity: 0; clip-path: inset(-30% -30% 100% -30%); background-position: center, 100% 50%; }
+}
+.enh-promo-edge {
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  bottom: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: #fff;
+  opacity: 0;
+  animation: enhPromoEdge 2600ms ease-in-out forwards;
+}
+.enh-promo[data-tier='gold'] .enh-promo-edge { box-shadow: 0 0 12px 4px rgba(255, 214, 102, 0.95), 0 0 26px 8px rgba(255, 180, 40, 0.6); }
+.enh-promo[data-tier='silver'] .enh-promo-edge { box-shadow: 0 0 12px 4px rgba(235, 242, 255, 0.95), 0 0 26px 8px rgba(160, 190, 235, 0.6); }
+.enh-promo[data-tier='rainbow'] .enh-promo-edge {
+  background: linear-gradient(90deg, hsl(0 100% 80%), hsl(60 100% 80%), #fff, hsl(180 100% 80%), hsl(280 100% 85%));
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.95), 0 0 26px 8px rgba(170, 140, 255, 0.6);
+}
+@keyframes enhPromoEdge {
+  0%, 41% { opacity: 0; bottom: 0%; }
+  44%     { opacity: 1; bottom: 0%; }
+  90%     { opacity: 1; bottom: calc(100% - 6px); }
+  100%    { opacity: 0; bottom: calc(100% - 6px); }
+}
+/* 접점의 불꽃(2026-10-31 요청) — 경계선과 **같은 시간표**(enhPromoEdge)로 올라가는 줄 위에서, 조각마다 짧게 되풀이하며
+   튀어 올랐다 떨어진다. 자리 · 방향 · 길이 · 색(--x · --sx/--sy · --rot · --c)은 SkillChoiceBar의 PROMO_SPARKS가 정한다. */
+.enh-promo-sparks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  opacity: 0;
+  animation: enhPromoEdge 2600ms ease-in-out forwards;
+}
+.enh-promo-spark {
+  position: absolute;
+  left: var(--x, 50%);
+  top: 50%;
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: linear-gradient(to top, transparent 0%, var(--c, #fff) 45%, #fff 100%);
+  box-shadow: 0 0 6px 2px var(--c, #fff);
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: enhPromoSpark 500ms ease-out infinite;
+}
+@keyframes enhPromoSpark {
+  0%   { opacity: 1; transform: translate(-50%, -100%) rotate(var(--rot, 0deg)) scaleY(1.5); }
+  55%  { opacity: 1; transform: translate(calc(-50% + var(--sx, 0px)), calc(-100% + var(--sy, -12px))) rotate(var(--rot, 0deg)) scaleY(0.9); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--sx, 0px) * 1.3), calc(-100% + var(--sy, -12px) + 16px)) rotate(var(--rot, 0deg)) scaleY(0.4); }
+}
+.enh-promo-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: enhPromoRing 1200ms ease-out forwards;
+}
+.enh-promo[data-tier='gold'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(255, 210, 90, 0.9), inset 0 0 14px 4px rgba(255, 220, 120, 0.8); }
+.enh-promo[data-tier='silver'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(230, 238, 255, 0.9), inset 0 0 14px 4px rgba(200, 216, 240, 0.8); }
+.enh-promo[data-tier='rainbow'] .enh-promo-ring { box-shadow: 0 0 22px 8px rgba(255, 255, 255, 0.9), 0 0 40px 14px rgba(160, 200, 255, 0.6); }
+@keyframes enhPromoRing {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(6); }
+}
+/* 조각 — 색(--c)은 컴포넌트가 등급에 맞춰 고른다(금빛: 금 · 흰빛 다섯 / 무지개: 색상환). 터지는 자리(--ox/--oy)에서 --dx/--dy만큼 날아간다 */
+.enh-promo-piece {
+  position: absolute;
+  left: var(--ox, 50%);
+  top: var(--oy, 50%);
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  border-radius: 50%;
+  background: var(--c, #fff);
+  box-shadow: 0 0 9px 3px var(--c, #fff);
+  opacity: 0;
+  animation: enhPromoPiece 1500ms cubic-bezier(0.12, 0.75, 0.3, 1) forwards;
+}
+@keyframes enhPromoPiece {
+  0%   { opacity: 1; left: var(--ox, 50%); top: var(--oy, 50%); transform: translate(-50%, -50%) scale(1.4); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; left: calc(var(--ox, 50%) + var(--dx, 0%)); top: calc(var(--oy, 50%) + var(--dy, 0%)); transform: translate(-50%, -50%) scale(0.3); }
+}
+.enh-promo-text {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+  white-space: nowrap;
+  font-weight: 900;
+  transform: translate(-50%, -50%);
+  animation: enhPromoText 2600ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
+}
+.enh-promo-title { font-size: clamp(1.2rem, calc(3.4 * var(--sv, 1vh)), 2.3rem); }
+.enh-promo-lv { font-size: clamp(0.9rem, calc(2.2 * var(--sv, 1vh)), 1.5rem); }
+.enh-promo[data-tier='gold'] .enh-promo-text { color: #fde047; }
+.enh-promo[data-tier='silver'] .enh-promo-text { color: #f1f5f9; }
+.enh-promo[data-tier='rainbow'] .enh-promo-text { animation: enhPromoText 2600ms cubic-bezier(0.2, 1.4, 0.4, 1) forwards, enhPromoHue 900ms linear infinite; }
+@keyframes enhPromoText {
+  0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.3); }
+  14%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  24%  { transform: translate(-50%, -50%) scale(1); }
+  85%  { opacity: 1; transform: translate(-50%, -58%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -75%) scale(1); }
+}
+@keyframes enhPromoHue {
+  0%   { color: hsl(0 100% 78%); }
+  25%  { color: hsl(90 100% 75%); }
+  50%  { color: hsl(190 100% 78%); }
+  75%  { color: hsl(280 100% 82%); }
+  100% { color: hsl(360 100% 78%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enh-rainbow,
+  .enh-rainbow::after,
+  .enh-sheen,
+  .skill-choice-panel[data-enh-tier],
+  .enh-gold,
+  .enh-silver { animation: none; }
+  .enh-burst-piece,
+  .enh-burst-ring,
+  .enh-promo-piece,
+  .enh-promo-ring,
+  .enh-promo-edge,
+  .enh-promo-sparks { display: none; }
+  /* 승격의 덮었다 걷히는 빛은 움직임 없이 잠깐 비췄다 사라지기만 한다 */
+  .enh-promo-glow { animation: enhFlash 900ms ease-out forwards; clip-path: none; }
+}
+
+/* ── 카드 강화 3차 표 — 체력창의 지속 효과(TeamTotalPanel) ──────────────────────────────────────────
+   출혈(상대 특허랑이 Lv.9+): 빨간 그림자 + 위에서 흘러내리는 핏방울 + 핏방울 아이콘 안의 남은 턴.
+   지속 회복(내 상표토끼 Lv.9+): 초록 그림자 + 떠오르는 초록 십자가 + 십자가 아이콘 안의 남은 턴.
+   둘 다 있으면 그림자를 겹친다. 크기는 액자 폭(--pf-w)에 비례한다(.hp-orb-value와 같은 기준).
+   ⚠️ 그림자는 구슬 자신의 box-shadow가 아니라 **위에 얹은 층(.hp-orb-dot-glow)의 안쪽 그림자**다 — 바깥 그림자는 칸(.play-cell, overflow hidden)에
+   잘려 안 보이고, 구슬의 안쪽 그림자는 자식인 액체(.hp-orb-liquid)에 덮여 아래 절반에서 사라졌다(실제로 그렇게 만들었다가 고쳤다). */
+.hp-orb-dot-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: hpDotGlow 1.6s ease-in-out infinite;
+}
+.hp-orb-bleeding .hp-orb-dot-glow { box-shadow: inset 0 0 0 3px rgba(220, 38, 38, 0.9), inset 0 0 22px 8px rgba(220, 38, 38, 0.6); }
+.hp-orb-healing .hp-orb-dot-glow { box-shadow: inset 0 0 0 3px rgba(34, 197, 94, 0.9), inset 0 0 22px 8px rgba(34, 197, 94, 0.55); }
+/* 둘 다 — 테두리는 빨강(출혈이 먼저 든다), 그 안쪽으로 초록이 번진다 */
+.hp-orb-bleeding.hp-orb-healing .hp-orb-dot-glow {
+  box-shadow: inset 0 0 0 3px rgba(220, 38, 38, 0.9), inset 0 0 14px 6px rgba(220, 38, 38, 0.5), inset 0 0 30px 12px rgba(34, 197, 94, 0.45);
+}
+@keyframes hpDotGlow {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+
+.hp-orb-bleed,
+.hp-orb-heal,
+.hp-orb-dot-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* 핏방울 — 둥근 아래 + 뾰족한 위(한 귀퉁이만 각진 사각형을 45도 돌린 모양) */
+.hp-orb-drop {
+  --drop: calc(var(--pf-w, 1200px) * 0.0095);
+  position: absolute;
+  top: -8%;
+  width: var(--drop);
+  height: var(--drop);
+  background: radial-gradient(circle at 35% 35%, #fca5a5 0%, #dc2626 45%, #7f1d1d 100%);
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
+  box-shadow: 0 0 4px rgba(127, 29, 29, 0.6);
+}
+/* left %가 방울의 **가운데**가 되게 — 왼쪽 끝 기준이면 무리 전체가 왼쪽으로 쏠린다(TeamTotalPanel의 BLEED_DROPS). 한 번 든 순간의 조각(.hp-orb-dot-burst)은 translate로 따로 가운데를 맞추므로 여기에만 둔다 */
+.hp-orb-bleed .hp-orb-drop { animation: hpDropFall 2.4s cubic-bezier(0.55, 0, 0.9, 0.6) infinite; opacity: 0; margin-left: calc(var(--drop) / -2); }
+/* 흘러내리는 자국 — 방울 뒤에 짧게 남는 붉은 줄 */
+.hp-orb-bleed .hp-orb-drop::after {
+  content: '';
+  position: absolute;
+  /* 방울의 뾰족한 끝 = 돌리기 전 왼쪽 위 모서리 — 자국의 아래 가운데를 그 점에 맞춘다(30%면 윗변 가운데라 돌린 뒤 오른쪽으로 치우쳤다) */
+  left: -20%;
+  top: -220%;
+  width: 40%;
+  height: 220%;
+  background: linear-gradient(to bottom, transparent, rgba(220, 38, 38, 0.55));
+  transform: rotate(-45deg);
+  transform-origin: 50% 100%;
+}
+@keyframes hpDropFall {
+  0%   { opacity: 0; transform: translateY(0) rotate(45deg) scale(0.6); }
+  12%  { opacity: 1; transform: translateY(15%) rotate(45deg) scale(1); }
+  85%  { opacity: 0.9; }
+  100% { opacity: 0; top: 104%; transform: translateY(0) rotate(45deg) scale(0.85); }
+}
+/* 초록 십자가 — 가로·세로 막대 둘 */
+.hp-orb-cross {
+  position: absolute;
+  bottom: -8%;
+  width: calc(var(--pf-w, 1200px) * 0.0085);
+  height: calc(var(--pf-w, 1200px) * 0.0085);
+  filter: drop-shadow(0 0 3px rgba(22, 163, 74, 0.8));
+}
+/* 십자는 한 덩어리(clip-path) — 막대 둘에 각자 테두리를 두르면 가운데에 가로선이 비친다(.hp-status-regen 절과 같은 이유) */
+.hp-orb-cross::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #4ade80;
+  clip-path: polygon(34% 0, 66% 0, 66% 34%, 100% 34%, 100% 66%, 66% 66%, 66% 100%, 34% 100%, 34% 66%, 0 66%, 0 34%, 34% 34%);
+}
+.hp-orb-heal .hp-orb-cross { animation: hpCrossRise 2.6s ease-out infinite; opacity: 0; }
+@keyframes hpCrossRise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.6); }
+  15%  { opacity: 1; transform: translateY(-20%) scale(1); }
+  100% { opacity: 0; bottom: 100%; transform: translateY(0) scale(0.75) rotate(20deg); }
+}
+/* 한 번 든 순간 — 가운데에서 크게 터진다(출혈은 아래로, 회복은 위로 치우친다) */
+.hp-orb-dot-burst { overflow: visible; }
+.hp-orb-dot-burst > span {
+  top: 50%;
+  bottom: auto;
+  left: 50%;
+  animation: hpDotBurst 900ms ease-out forwards;
+}
+.hp-orb-dot-burst.is-bleed > span { --lift: 30px; }
+.hp-orb-dot-burst.is-regen > span { --lift: -30px; }
+@keyframes hpDotBurst {
+  0%   { opacity: 1; translate: -50% -50%; scale: 0.4; }
+  100% { opacity: 0; translate: calc(-50% + var(--bx)) calc(-50% + var(--by) + var(--lift)); scale: 1.4; }
+}
+
+/* 남은 턴 아이콘 — 체력창 위쪽에 가로로 한 줄(2026-11-02 요청 — 그 전에는 오른쪽 위에 세로로 쌓았다).
+   오른쪽 끝부터 채우고, 칸 폭을 넘으면 다음 줄로 넘긴다(아이콘이 다섯 개 모두 켜질 때). */
+.hp-orb-status {
+  position: absolute;
+  top: 7%;
+  left: 7%;
+  right: 7%;
+  z-index: 5;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.3em;
+  font-size: calc(var(--pf-w, 1200px) * 0.011);
+  pointer-events: auto;
+}
+.hp-status {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2em;
+  height: 2.2em;
+}
+.hp-status b {
+  position: relative;
+  z-index: 1;
+  font-weight: 900;
+  font-size: 1.05em;
+  color: #fff;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+.hp-status-icon { position: absolute; inset: 0; }
+.hp-status-bleed .hp-status-icon {
+  inset: 12%;
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 50%, #7f1d1d 100%);
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg) translate(4%, 4%);
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.9);
+}
+/* 십자 — 흰 테두리 십자(아이콘 자신) 위에 초록 십자(::before)를 **한 덩어리씩** 겹친다(clip-path).
+   ⚠️ 예전에는 세로 막대 · 가로 막대를 따로 그리고 각자 흰 테두리를 둘러, 위에 그린 가로 막대의 테두리가 세로 막대를 가로질러
+   가운데에 가로선 두 줄이 보였다(십자가 아니라 막대 둘로 보였다 — 2026-10-31 제보). 빛 번짐은 clip-path에 잘리므로 바깥(.hp-status-regen)에 건다. */
+.hp-status-regen { filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.95)); }
+.hp-status-regen .hp-status-icon,
+.hp-status-healcut .hp-status-icon {
+  --cross-line: 1.5px;
+  background: #fff;
+  clip-path: polygon(30% 0, 70% 0, 70% 30%, 100% 30%, 100% 70%, 70% 70%, 70% 100%, 30% 100%, 30% 70%, 0 70%, 0 30%, 30% 30%);
+}
+.hp-status-regen .hp-status-icon::before,
+.hp-status-healcut .hp-status-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #22c55e;
+  clip-path: polygon(
+    calc(30% + var(--cross-line)) var(--cross-line), calc(70% - var(--cross-line)) var(--cross-line),
+    calc(70% - var(--cross-line)) calc(30% + var(--cross-line)), calc(100% - var(--cross-line)) calc(30% + var(--cross-line)),
+    calc(100% - var(--cross-line)) calc(70% - var(--cross-line)), calc(70% - var(--cross-line)) calc(70% - var(--cross-line)),
+    calc(70% - var(--cross-line)) calc(100% - var(--cross-line)), calc(30% + var(--cross-line)) calc(100% - var(--cross-line)),
+    calc(30% + var(--cross-line)) calc(70% - var(--cross-line)), var(--cross-line) calc(70% - var(--cross-line)),
+    var(--cross-line) calc(30% + var(--cross-line)), calc(30% + var(--cross-line)) calc(30% + var(--cross-line))
+  );
+}
+/* 효과 감소(÷N, 상대 디자인어 Lv.9+) — 보라 원 안에 ÷N, 남은 턴은 오른쪽 아래 작은 숫자 */
+.hp-status-divide .hp-status-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #c4b5fd 0%, #7c3aed 60%, #4c1d95 100%);
+  border: 1.5px solid #fff;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.85em;
+  box-shadow: 0 0 6px rgba(124, 58, 237, 0.85);
+}
+.hp-status-divide b {
+  position: absolute;
+  right: -0.35em;
+  bottom: -0.35em;
+  font-size: 0.8em;
+}
+/* 회복 효율 감소(상대 특허랑이 Lv.6+) — 회색 십자가에 붉은 사선, 깎는 비율은 아래쪽에 작게(−100%는 ✕) */
+/* 회색 십자 — 생김새는 지속 회복 십자와 같은 한 덩어리 방식(위 .hp-status-regen 절), 색만 회색 */
+.hp-status-healcut { filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.85)); }
+.hp-status-healcut .hp-status-icon::before { background: #9ca3af; }
+.hp-status-healcut::after {
+  content: '';
+  position: absolute;
+  left: 46%;
+  top: -8%;
+  width: 0.22em;
+  height: 116%;
+  background: #ef4444;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px #fff;
+}
+.hp-status-healcut b {
+  position: absolute;
+  right: -0.6em;
+  bottom: -0.45em;
+  z-index: 2;
+  font-size: 0.72em;
+  white-space: nowrap;
+}
+/* 기술 회피(내 디자인어 Lv.Max) — 청록 원에 바람결 두 줄, 확률은 아래쪽에 작게 */
+.hp-status-evade .hp-status-icon {
+  inset: 8%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #a5f3fc 0%, #06b6d4 60%, #155e75 100%);
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.9);
+}
+.hp-status-evade .hp-status-icon::before,
+.hp-status-evade .hp-status-icon::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  height: 0.16em;
+  background: #fff;
+  border-radius: 999px;
+}
+.hp-status-evade .hp-status-icon::before { top: 36%; right: 18%; }
+.hp-status-evade .hp-status-icon::after  { top: 58%; right: 34%; }
+.hp-status-evade b {
+  position: absolute;
+  right: -0.6em;
+  bottom: -0.45em;
+  z-index: 2;
+  font-size: 0.72em;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-orb-dot-glow { animation: none; }
+  .hp-orb-bleed .hp-orb-drop, .hp-orb-heal .hp-orb-cross, .hp-orb-dot-burst > span { animation: none; opacity: 0.8; }
+}
+
+/* 기술 카드 제목 옆 — Lv.Max의 별도 배수(×2 · ×3 …). "Lv.Max" 뒤에 **같은 줄로** 이어 쓴다(2026-10-31 요청 —
+   하루 전에는 좁은 카드에서 접히지 않게 아래에 겹쳐 썼다. 이제는 접히는 대신 제목 전체가 폭에 맞춰 작아진다 — .skill-text-title의 --title-em).
+   ⚠️ 글자 크기 0.82em은 titleEmVar의 계산과 짝이다 — 바꾸면 그쪽 배수도 함께. */
+.enh-title-over {
+  font-size: 0.82em;
+  color: #fb923c;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* ── 카드 강화 — 기술 카드를 고르는 순간의 흙먼지(SkillQuake.tsx) ─────────────────────────────────────
+   body로 portal한 층이라 화면 좌표(fixed)다 — 기술 카드 띠·판의 칸은 overflow를 잘라 카드 밖으로 퍼지는 먼지가 안 보인다.
+   덩이(.quake-puff)는 카드 아래 변 가운데에서 부풀며 양옆·위로 번지고, 진도가 높으면 판 전체가 뿌옇다(.quake-haze, 진도 10이면 1초).
+   크기·거리·진하기·길이는 모두 진도에서 정해 변수(--dx · --dy · --op · --dur · --haze)로 받는다. 배치는 바꾸지 않는다. */
+.quake-dust {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+}
+.quake-haze {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 80%, rgba(214, 190, 150, 1) 0%, rgba(190, 165, 125, 0.75) 45%, rgba(160, 135, 100, 0.45) 100%);
+  opacity: 0;
+  animation: quakeHaze var(--dur, 1000ms) ease-out forwards;
+}
+@keyframes quakeHaze {
+  0%   { opacity: 0; }
+  18%  { opacity: var(--haze, 0.4); }
+  100% { opacity: 0; }
+}
+.quake-puff {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 55%, rgba(222, 200, 160, 0.95) 0%, rgba(190, 160, 115, 0.7) 45%, rgba(160, 130, 90, 0) 72%);
+  filter: blur(4px);
+  opacity: 0;
+  transform: translate(-50%, -60%) scale(0.3);
+  animation: quakePuff var(--dur, 800ms) cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+@keyframes quakePuff {
+  0%   { opacity: 0; transform: translate(-50%, -60%) scale(0.3); }
+  15%  { opacity: var(--op, 0.6); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), calc(-60% + var(--dy, 0px))) scale(1.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quake-puff { animation-duration: 1ms; }
+  .quake-haze { animation: none; }
+}

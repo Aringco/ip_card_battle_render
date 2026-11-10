@@ -16,7 +16,7 @@ const FLIP = /=== '[AB]' \? '[AB]' : '[AB]'/;
 
 /** [파일(루트 기준), 그 줄에 들어 있어야 하는 문자열, 허용 이유] */
 const ALLOWED: Array<[string, string, string]> = [
-  ['server/room.ts', 'const opponent: Team = team === ', '혼자 놀기 컴퓨터(pickComputerSkill)는 팀전 전용'],
+  ['server/computerSkills.ts', 'const opponent: Team = team === ', '혼자 놀기 컴퓨터(pickComputerSkill)는 팀전 전용'],
   ['server/room.ts', "const other = this.teamNames[team === 'A'", '대기실 팀 이름 중복 검사 — 팀전 전용'],
   ['server/room.ts', "this.assignTeamName(own === 'A'", '방장이 정하는 상대 팀 이름 — 팀전 전용'],
   ['server/demo/director.ts', 'const idle: Team = ', '시연 3장은 팀전 대본'],

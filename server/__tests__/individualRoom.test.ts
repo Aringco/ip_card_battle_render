@@ -243,9 +243,11 @@ describe('개인전 게임 시작', () => {
     // 기술을 쓸 수 있도록 만들어 두고(=자동 선택이 있었다면 골랐을 상황) 시간을 흘린다
     (room as unknown as { state: { teams: Record<string, { exp: { rabbit: number } }> } }).state.teams[first].exp.rabbit = 10;
     jest.advanceTimersByTime(60_000);
-    const res = lastOf(seats[0].ws, 'actionResult')!;
-    expect(res.events.some(e => e.type === 'skillApplied')).toBe(false);
-    expect(res.events.some(e => e.type === 'timeoutChoice')).toBe(true);
+    // 마지막 갱신이 아니라 시간초과 갱신을 찾는다 — 연출 유예가 짧은 판은 60초 안에 다음 사람의 장소 시간초과까지 터진다
+    const results = allOf(seats[0].ws, 'actionResult');
+    expect(results.some(r => r.events.some(e => e.type === 'skillApplied'))).toBe(false);
+    const res = results.find(r => r.events.some(e => e.type === 'timeoutChoice'))!;
+    expect(res).toBeDefined();
     expect(res.state.activeTeam).not.toBe(first);
     expect(res.state.teams[first].exp.rabbit).toBe(10);
   });

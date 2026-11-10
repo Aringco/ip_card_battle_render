@@ -1,0 +1,1203 @@
+/* ── 종료 화면 ───────────────────────────────────────────────────────────── */
+@keyframes bounceIn {
+  0%   { transform: scale(0); opacity: 0; }
+  55%  { transform: scale(1.22); opacity: 1; }
+  75%  { transform: scale(0.93); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotateZ(0deg) rotateX(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotateZ(var(--cf-rot, 540deg)) rotateX(180deg); opacity: 0.2; }
+}
+.winner-bounce-in {
+  animation: bounceIn 0.7s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 100;
+  border-radius: 2px;
+  animation: confettiFall var(--cf-dur, 2s) ease-in forwards;
+  animation-delay: var(--cf-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .winner-bounce-in { animation: none; opacity: 1; }
+  .confetti-piece   { display: none; }
+}
+
+/* ── 특허랑이 공격 — 공격자 패널 반동+슬램 ─────────────────────────────────── */
+@keyframes panelRecoilA {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-10px); }
+  40%  { transform: translateX(14px); }
+  55%  { transform: translateX(-3px); }
+  70%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+@keyframes panelRecoilB {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(10px); }
+  40%  { transform: translateX(-14px); }
+  55%  { transform: translateX(3px); }
+  70%  { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+.panel-recoil-a { animation: panelRecoilA 0.5s ease-in-out; }
+.panel-recoil-b { animation: panelRecoilB 0.5s ease-in-out; }
+
+/* ── 특허랑이 공격 — 피격 패널 들썩임 ───────────────────────────────────────── */
+@keyframes panelHitShake {
+  0%, 100% { transform: translate(0, 0); }
+  12%       { transform: translate(-9px, 5px); }
+  26%       { transform: translate(9px, -6px); }
+  40%       { transform: translate(-7px, 5px); }
+  54%       { transform: translate(6px, -4px); }
+  68%       { transform: translate(-4px, 3px); }
+  82%       { transform: translate(2px, -2px); }
+}
+.panel-hit-shake { animation: panelHitShake 0.6s ease-in-out; }
+
+/* ── 특허랑이 강탈 — 화면 전체 비네트 플래시 ─────────────────────────────── */
+@keyframes tigerVignette {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.tiger-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(127, 0, 0, 0.35) 100%);
+  animation: tigerVignette 0.6s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiger-vignette { display: none; }
+}
+
+/* ── 특허랑이 타격 — 화면 전체에 발톱자국 세 개가 슉! 하고 그어졌다 사라진다 ──────── */
+.tiger-claw-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 66;
+  pointer-events: none;
+  overflow: hidden;
+}
+.tiger-claw {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 130vmax;
+  height: 8vmax;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));
+  opacity: 0;
+  animation: tigerClawSlash 0.5s ease-out both;
+}
+.tiger-claw-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.tiger-claw-polygon {
+  fill: #ca8a04;
+  stroke: #9a3412;
+  stroke-width: 16;
+  stroke-linejoin: round;
+}
+.tiger-claw-1 { --claw-y: -9vmax; animation-delay: 0ms; }
+.tiger-claw-2 { --claw-y: 0vmax; animation-delay: 70ms; }
+.tiger-claw-3 { --claw-y: 9vmax; animation-delay: 140ms; }
+@keyframes tigerClawSlash {
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + var(--claw-y))) rotate(-22deg) scaleX(0.2); }
+  18%  { opacity: 1; transform: translate(-50%, calc(-50% + var(--claw-y))) rotate(-22deg) scaleX(1.08); }
+  30%  { opacity: 1; transform: translate(-50%, calc(-50% + var(--claw-y))) rotate(-22deg) scaleX(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiger-claw { animation: none; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-recoil-a, .panel-recoil-b, .panel-hit-shake { animation: none; }
+}
+
+/* ── 상표토끼 압박 — 상대 팀 패널에 짧은 경고 ────────────────────────────────── */
+@keyframes panelRabbitPressure {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+  35%       { box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.55); }
+}
+.panel-rabbit-pressure {
+  animation: panelRabbitPressure 0.7s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-rabbit-pressure { animation: none; outline: 2px solid rgba(236, 72, 153, 0.6); }
+}
+
+/* ── 특허랑이 공격 — 피격 테이블(실용신양/상표토끼) 들썩임 + 마이너스 플로팅 ──── */
+@keyframes tableHitShake {
+  0%, 100% { transform: translate(0, 0); }
+  20%       { transform: translate(-3px, 2px); }
+  45%       { transform: translate(4px, -2px); }
+  70%       { transform: translate(-2px, 1px); }
+}
+.table-hit {
+  animation: tableHitShake 0.35s ease-in-out;
+  outline: 2px solid rgba(220, 38, 38, 0.6);
+  outline-offset: -1px;
+}
+.table-hit-float {
+  position: absolute;
+  right: 0.5rem;
+  top: -0.6rem;
+  color: #dc2626;
+  font-weight: 800;
+  font-size: 0.9rem;
+  pointer-events: none;
+  animation: floatUp 0.8s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .table-hit { animation: none; }
+  .table-hit-float { animation: none; opacity: 0; }
+}
+
+/* ── 상표토끼 보너스 — 카드에서 점수판으로 날아가는 토끼 ──────────────────── */
+@keyframes rabbitFlightMove {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--fx, 0px), var(--fy, 0px)) scale(0.3); opacity: 0; }
+}
+.rabbit-flight-inner {
+  display: inline-block;
+  animation: rabbitFlightMove 650ms ease-in forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rabbit-flight-inner { display: none; }
+}
+
+/* ── 실용신양 추가 오픈 콤보 텍스트 ───────────────────────────────────────── */
+@keyframes sheepComboFloat {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(0); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-46px); }
+}
+.sheep-combo-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-block;
+  white-space: nowrap;
+  font-weight: 800;
+  background: linear-gradient(160deg, #ca8a04 0%, #c2410c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.6);
+  filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.35));
+  animation: sheepComboFloat 1400ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-combo-text { display: none; }
+}
+
+/* ── 실용신양 연쇄 종료 — 화면 중앙 메인 콤보 배너 ───────────────────────────── */
+@keyframes mainComboPop {
+  0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+  18%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  30%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  78%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0; }
+}
+.main-combo-banner {
+  position: fixed;
+  left: 50%;
+  top: 28%;
+  z-index: 70;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 2.6rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  animation: mainComboPop 1.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.main-combo-base { color: #f8fafc; }
+.main-combo-warm { color: #f97316; font-size: 3rem; }
+.main-combo-hot  { color: #dc2626; font-size: 3.6rem; }
+@media (prefers-reduced-motion: reduce) {
+  .main-combo-banner { animation: none; opacity: 0; }
+}
+
+/* ── 실용신양 발동 예고 — "실용신양의 N번째 힘!" 배너 ────────────────────────── */
+@keyframes sheepLoadedPop {
+  0%   { transform: translate(-50%, -50%) scale(0.5) rotate(-4deg); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.2) rotate(3deg); opacity: 1; }
+  32%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  80%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.85) rotate(0deg); opacity: 0; }
+}
+.sheep-loaded-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 2.2rem;
+  color: #f7fee7;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px #365314;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: sheepLoadedPop 1100ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.festival-loaded-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  font-weight: 900;
+  font-size: 2.2rem;
+  color: #fef3c7;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px #78350f;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: sheepLoadedPop 1100ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheep-loaded-banner, .festival-loaded-banner { animation: none; opacity: 0; }
+}
+
+/* ── 축제 진입 순간 딱 한 번, "이제부터 K턴마다 N회!" 규칙 안내(두 줄) ──────────── */
+.festival-start-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  animation: sheepLoadedPop 2600ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.festival-start-banner-line1 {
+  font-weight: 900;
+  font-size: 2.3rem;
+  color: #fef3c7;
+  -webkit-text-stroke: 2px #78350f;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.festival-start-banner-line2 {
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: #fffbeb;
+  -webkit-text-stroke: 1.5px #78350f;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .festival-start-banner { animation: none; opacity: 0; }
+}
+
+/* ── 싹쓸이 — 필드가 빈 순간 "싹쓸이!" + 네 동물의 보너스 경험치(두 줄, SweepBanner) ──────────────
+   축제 시작 안내와 같은 모양·같은 자리다(둘이 한 액션에 함께 오면 싹쓸이가 먼저 끝난 뒤 축제가 뜬다).
+   길이는 useAnimationQueue의 SWEEP_BANNER_DUR + 새 카드 세 장 + 여운(= 서버 room.ts의 TL_SWEEP_MS)과 같다. */
+.sweep-banner {
+  position: fixed;
+  left: 50%;
+  top: 16%;
+  z-index: 71;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  animation: sheepLoadedPop 2380ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.sweep-banner-line1 {
+  font-weight: 900;
+  font-size: 2.6rem;
+  color: #fef9c3;
+  -webkit-text-stroke: 2px #713f12;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.sweep-banner-line2 {
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #fffbeb;
+  -webkit-text-stroke: 1.5px #713f12;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sweep-banner { animation: none; opacity: 0; }
+}
+
+/* ── 턴 시작 알림 — "내 차례"/"우리팀 차례"/"상대 차례" ──────────────────────────
+   다른 배너들(테두리 없이 두꺼운 글자만 둥둥 떠 있는 스타일)과 달리, 흰 알약 배경
+   위에 이중 테두리(border+outline)와 그림자를 얹어 게임판 위에서 확실히 도드라지게
+   한다. 강조 정도는 굵기가 아니라(사이트 전체가 이미 font-weight:900 일색이라
+   굵기 차이는 잘 안 보인다) 크기·색 채도로 나눈다 — 내 차례가 가장 크고 선명한 초록,
+   우리팀 차례는 더 작고 옅은 초록, 상대 차례는 검붉은색. ────────────────────── */
+@keyframes turnAnnouncePop {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  18%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  28%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  78%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.94); opacity: 0; }
+}
+.turn-announce-banner {
+  position: fixed;
+  left: 50%;
+  top: 30%;
+  z-index: 68;
+  pointer-events: none;
+  padding: 1.1rem 3.2rem;
+  border-radius: 9999px;
+  font-weight: 900;
+  white-space: nowrap;
+  background: #ffffff;
+  animation: turnAnnouncePop 1400ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.turn-announce-mine {
+  font-size: 2.9rem;
+  color: #16a34a;
+  border: 4px solid #22c55e;
+  outline: 4px solid #dcfce7;
+  outline-offset: 4px;
+  box-shadow: 0 16px 40px rgba(22, 163, 74, 0.45);
+}
+.turn-announce-ally {
+  font-size: 2.1rem;
+  color: #65a30d;
+  border: 4px solid #a3e635;
+  outline: 4px solid #ecfccb;
+  outline-offset: 4px;
+  box-shadow: 0 12px 30px rgba(101, 163, 13, 0.32);
+}
+.turn-announce-enemy {
+  font-size: 2.4rem;
+  color: #7f1d1d;
+  border: 4px solid #991b1b;
+  outline: 4px solid #fecaca;
+  outline-offset: 4px;
+  box-shadow: 0 14px 34px rgba(69, 10, 10, 0.4);
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-announce-banner { animation: none; opacity: 0; }
+}
+
+/* ── 설정(⚙️) 버튼 발견 안내 — 게임 시작 시 딱 한 번, 30초 ───────────────────── */
+@keyframes settingsHintPop {
+  0%   { transform: translateY(8px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.settings-hint-popup {
+  position: fixed;
+  bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 95;
+  /* max-width로 줄바꿈시키지 않고, 문구 길이에 맞춰 한 줄로 딱 맞게 늘어나게 한다
+     (fixed 위치 요소는 left를 안 정하면 내용 크기만큼 자동으로 넓어진다). */
+  white-space: nowrap;
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 0.85rem 1.75rem 0.85rem 1rem;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  border: 2px solid #16a34a;
+  animation: settingsHintPop 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.settings-hint-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #14532d;
+  line-height: 1.4;
+}
+/* ⚠️ **글자는 작지만 누르는 면적은 44px 이상**이어야 한다(손가락). 예전에는 글자
+   크기 그대로라 15×17px이었다 — 실측에서 "작은 버튼"으로 잡혔고, 실제로 폰에서
+   닫기가 잘 안 눌렸다. 보이는 ✕는 그대로 두고 상자만 키운다. */
+.settings-hint-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: #9ca3af;
+}
+.settings-hint-close:hover { color: #4b5563; }
+/* 오른쪽 아래에 고정된 두 요소(톱니 버튼·펼친 설정 판)는 Tailwind의 bottom-3/right-3으로
+   자리를 잡는데, 가로로 눕힌 노치 폰에서는 그 자리가 노치·홈 표시줄에 가린다.
+   ⚠️ 데스크톱에서는 env()가 0이라 0.75rem이 그대로 이긴다 — 값이 바뀌지 않는다. */
+.settings-fab,
+.settings-fab-panel {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  right: max(0.75rem, env(safe-area-inset-right));
+}
+/* 펼친 판은 보이는 높이를 넘지 않는다 — 넘치면 위쪽(머리줄 · [전체화면] 버튼)이 화면 밖으로 밀려났다(가로 폰).
+   머리줄 · [전체화면]은 고정, 나머지(.settings-fab-scroll)만 판 안에서 스크롤한다(SoundToggle.tsx). */
+.settings-fab-panel {
+  max-height: calc(var(--app-h, 100dvh) - 2 * max(0.75rem, env(safe-area-inset-bottom)));
+}
+.settings-hint-arrow {
+  position: absolute;
+  bottom: -7px;
+  right: 1.15rem;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border-right: 2px solid #16a34a;
+  border-bottom: 2px solid #16a34a;
+  transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-hint-popup { animation: none; }
+}
+
+/* ── 카드 오픈/페어/효과 자막 (보드 중앙 오버레이) ───────────────────────────── */
+@keyframes captionPop {
+  0%   { transform: scale(0.5); opacity: 0; }
+  15%  { transform: scale(1.15); opacity: 1; }
+  25%  { transform: scale(1); opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: scale(0.92) translateY(-8px); opacity: 0; }
+}
+.card-caption {
+  font-weight: 900;
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  animation: captionPop cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.card-caption-flip {
+  font-size: 1.35rem;
+  color: #f8fafc;
+  animation-duration: 550ms;
+}
+.card-caption-pair {
+  font-size: 1.7rem;
+  color: #fbbf24;
+  animation-duration: 800ms;
+}
+.card-caption-effect {
+  font-size: 3.3rem;
+  animation-duration: 950ms;
+}
+.card-caption-effect-ally { color: #22c55e; }
+.card-caption-effect-enemy { color: #ef4444; }
+.card-caption-effect-neutral { color: #ca8a04; }
+/* 관전자에게는 아군/적군이 없으므로, 자막도 발동한 팀의 색(민트·핑크)으로 쓴다. */
+.card-caption-effect-spectator { color: var(--spec-strong); }
+@media (prefers-reduced-motion: reduce) {
+  .card-caption { animation: none; opacity: 0; }
+}
+
+/* ── 카드 포커스(시선 집중) 연출 — 화면을 어둡게 하지 않고, 클릭된 장소
+   테두리에서 빠르게 연달아 3개의 링이 뻗어나가며 "샤샤샥" 느낌을 준다. ────── */
+@keyframes cardFocusRingFast {
+  0%   { transform: scale(0.5); opacity: 0.95; border-width: 4px; }
+  100% { transform: scale(1.7); opacity: 0; border-width: 1px; }
+}
+.card-focus-burst {
+  pointer-events: none;
+  z-index: 55;
+}
+.card-focus-ring-fast {
+  position: absolute;
+  inset: -6px;
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  border-radius: 10px;
+  box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.7);
+  animation: cardFocusRingFast 260ms ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-focus-burst { display: none; }
+}
+
+/* ── 플레이어 반응 이모티콘 (프로필 옆) ──────────────────────────────────── */
+/* 등장(팝+흔들림) → 유지 → 마지막에 페이드아웃, 총 2000ms (JS 제거 타이밍과 일치)
+   세로 위치(큐에서의 자리)는 바깥 span의 transform + transition이 맡는다 — 예전엔 이
+   키프레임 안에 자리 오프셋을 같이 넣었는데, 그러면 앞엣것이 사라져도 뒤엣것이 제자리에
+   붙박여 위로 딸려 올라오질 못한다. */
+@keyframes emoticonLifecycle {
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  18%  { transform: scale(1.15) rotate(6deg); opacity: 1; }
+  27%  { transform: scale(0.95) rotate(-4deg); opacity: 1; }
+  36%  { transform: scale(1.05) rotate(2deg); opacity: 1; }
+  45%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  85%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(0.85) rotate(0deg); opacity: 0; }
+}
+/* 게임 종료 좌절 연출용 — 등장까지만 재생하고 그 자리에 그대로 멈춘다(페이드아웃 없음).
+   위 emoticonLifecycle이 45%(=900ms) 지점에서 정지 자세에 도달하므로, 같은 동작을
+   0~100%로 펴서 900ms에 끝나게 맞춘 것이다. */
+@keyframes emoticonEnter {
+  0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  40%  { transform: scale(1.15) rotate(6deg); opacity: 1; }
+  60%  { transform: scale(0.95) rotate(-4deg); opacity: 1; }
+  80%  { transform: scale(1.05) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.player-emoticon {
+  display: block;
+  border: 3px solid rgba(0, 0, 0, 0.85);
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  object-fit: contain;
+  background: #fff;
+  animation: emoticonLifecycle 2000ms ease-out both;
+}
+/* 클래스를 둘 다 단 선택자라 위 .player-emoticon보다 우선한다 — 상자 모양은 그대로 두고
+   애니메이션만 "떠서 멈추는" 쪽으로 바꾼다. JS 쪽에 제거 타이머가 없는 이모티콘 전용. */
+.player-emoticon.is-staying {
+  animation: emoticonEnter 900ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* is-staying 쪽도 함께 적어야 한다 — .player-emoticon 한 줄만으로는 위의 두 클래스
+     선택자를 못 이겨서 애니메이션이 그대로 재생된다. */
+  .player-emoticon,
+  .player-emoticon.is-staying { animation: none; }
+}
+
+/* ── 디자인어 효과 — 큰 인어 팝업 + 음표 ───────────────────────────────────── */
+@keyframes mermaidPopIn {
+  0%   { transform: scale(0) translateY(20px); opacity: 0; }
+  15%  { transform: scale(1.15) translateY(0); opacity: 1; }
+  25%  { transform: scale(1); opacity: 1; }
+  85%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.7); opacity: 0; }
+}
+@keyframes mermaidShiver {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10%       { transform: translateX(-4px) rotate(-3deg); }
+  20%       { transform: translateX(4px) rotate(3deg); }
+  30%       { transform: translateX(-4px) rotate(-3deg); }
+  40%       { transform: translateX(4px) rotate(3deg); }
+  50%       { transform: translateX(-3px) rotate(-2deg); }
+  60%       { transform: translateX(3px) rotate(2deg); }
+}
+.mermaid-popup {
+  position: absolute;
+  bottom: 8px;
+  z-index: 46;
+  pointer-events: none;
+  font-size: 4rem;
+  line-height: 1;
+  animation: mermaidPopIn 2s ease-in-out forwards;
+}
+.mermaid-popup.left  { left: 12px; }
+.mermaid-popup.right { right: 12px; }
+.mermaid-popup-body {
+  display: inline-block;
+  font-size: 6.5rem;
+  animation: mermaidShiver 0.5s ease-in-out 0.35s 3;
+}
+@keyframes notePop {
+  0%   { transform: translate(0, 0) scale(0.5) rotate(0deg); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--note-x, 20px), var(--note-y, -40px)) scale(1.2) rotate(var(--note-rot, 20deg)); opacity: 0; }
+}
+.mermaid-note {
+  position: absolute;
+  font-size: 2.75rem;
+  animation: notePop 900ms ease-out forwards;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-popup { animation: none; opacity: 1; }
+  .mermaid-popup-body { animation: none; }
+  .mermaid-note { display: none; }
+}
+
+/* ── 장소 타일 — 평소엔 어둡게, 마우스 올리면 밝아짐 ─────────────────────────── */
+.place-tile {
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.55);
+  transition: filter 0.2s ease, transform 0.15s ease;
+}
+/* ⚠️ 커서가 있는 기기에서만 — 터치에서는 탭한 뒤 `:hover`가 **붙은 채 남아**, 방금 누른
+   장소만 계속 확대된 상태로 굳는다(손가락을 뗐는데도). 크기·위치를 바꾸는 hover는
+   전부 이 조건 안에 둔다(MOBILE_ROADMAP.md M1).
+   ⚠️ 조건은 `(any-hover: hover)`다 — "붙어 있는 입력 장치 중 하나라도 hover가 되면". 처음에는
+      `(hover: hover) and (pointer: fine)`(= **주 입력**이 마우스일 때만)였는데, 터치스크린 노트북·원격 데스크톱처럼
+      주 입력이 터치로 잡히는 PC에서는 마우스를 쓰는데도 카드·장소 hover가 통째로 사라졌다(2026-10-26 요청으로 되돌림).
+      폰·태블릿은 붙은 장치가 터치뿐이라 any-hover가 none이므로 위의 "굳는 hover"는 여전히 막힌다. */
+@media (any-hover: hover) {
+  .place-tile-active:hover {
+    filter: brightness(1);
+    transform: scale(1.015);
+  }
+}
+.place-tile-disabled {
+  filter: brightness(0.4) grayscale(30%);
+}
+@keyframes placeTilePress {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.93); }
+  100% { transform: scale(1); }
+}
+.place-tile-pressed {
+  animation: placeTilePress 180ms ease-out;
+}
+/* 직전 턴에 쓴 장소 — 50% 검은 배경 위에 80% 흰색 금지 마크(원 + 대각선). */
+.place-forbidden-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 5;
+}
+.place-forbidden-mark {
+  width: 34%;
+  height: 34%;
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-tile-pressed { animation: none; }
+}
+
+/* ── "여기를 눌러보세요" 손가락 가이드(내 턴마다) ────────────────────────────── */
+/* 버튼 정중앙을 손으로 가리면 안 보이니, 버튼 위쪽 10% 지점(살짝 위)에 아래를
+   가리키는 손이 위아래로 까딱까딱하며 "여길 누르세요"를 유도한다. 보드 맨 윗줄
+   장소(오두막·부둣가)는 타일 바로 위가 곧 게임 화면 자체의 위쪽 경계라, 이 손가락이
+   튀어나오는 만큼의 여유 공간을 GameLayout.tsx의 <main> 위쪽 패딩(pt-12)에서
+   미리 확보해둔다 — 그 패딩이 부족해지면 이 손가락 끝이 다시 잘려 보인다. */
+/* ⚠️ 예전에 주인 없는 자리를 그리던 👇 **이모지** 손가락 규칙들
+   (.place-guide-finger·-spectator·-halo·-glyph와 guideFingerBounce)은 걷어냈다 —
+   그 자리도 이제 그림(hand_point)을 쓰므로 위의 .place-guide-hand 하나로 충분하다.
+   이모지는 OS마다 모양이 달라 보는 사람에 따라 화면이 달라졌다. */
+
+/* ── 무작위 주사위 버튼 ────────────────────────────────────────────────
+   닉네임·팀 이름을 다시 뽑는 버튼. 예전에는 🎲 이모지에 초록 테두리 상자를 둘렀지만,
+   지금은 나무틀까지 그려진 그림이라 **상자를 두르면 액자가 두 겹**이 된다.
+
+   폭만 고정하고 세로는 `align-self: stretch`로 옆 입력창 높이에 맞춘다 —
+   그림이 거의 정사각형(0.93:1)이라 `object-fit: contain`이면 비율이 유지된다. */
+.dice-button {
+  flex: none;
+  align-self: stretch;
+  position: relative;
+  /* ⚠️ 그림이 이 버튼의 높이를 밀어 올리지 못하게 해야 한다.
+     `align-self: stretch`는 "옆 입력창 높이에 맞춰라"는 뜻인데, 안쪽 `img`가 제
+     본래 크기(340×365)로 자리를 차지하면 오히려 **이 버튼이 줄 높이를 끌어올린다**
+     (실측: 입력창 48px 옆에서 버튼이 67px, `aspect-ratio`로 바꿨더니 493px까지 갔다).
+     그래서 img를 `position: absolute`로 띄워 높이 계산에서 빼고, 폭만 여기서 정한다. */
+  width: 2.7rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.dice-button img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+@media (any-hover: hover) {
+  .dice-button:hover {
+    filter: brightness(1.07) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.3));
+    transform: translateY(-1px);
+  }
+}
+.dice-button:active {
+  transform: translateY(2px) scale(0.94);
+  transition-duration: 0.05s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dice-button:hover, .dice-button:active { transform: none; }
+}
+
+/* 대기실의 선 플레이어 줄 — 로비 폼보다 패널이 넓어(약 630px) 버튼을 크게 두고
+   양끝에 붙여 늘어놓는다. `flex: 1`로 꽉 채우면 한 칸이 210px가 넘어 주변 글씨에
+   견줘 과하므로, 폭을 24%로 묶고 `justify-content: space-between`으로 벌린다. */
+.first-team-row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.first-team-row .pick-image-button {
+  flex: none;
+  width: 24%;
+}
+
+/* ── 캐릭터별 손 가이드 ─────────────────────────────────────────────────
+   행동(기술) 칸을 짚는 손. 👇 이모지를 대신하지만 **기준점이 다르다.**
+
+   이모지는 거의 정사각형이라 가운데를 기준선(top: 10%)에 맞추면 됐다. 이 손 그림은
+   세로로 긴 데다(약 0.58:1) **손끝이 아래를 가리키므로**, 같은 방식으로 앉히면
+   손이 칸 한복판을 덮고 정작 손끝은 칸 아래쪽을 짚는다.
+   그래서 세로 기준을 -50%가 아니라 **-82%**로 잡아 그림 아랫부분(손끝)이 기준선에
+   오게 한다 — 아래 keyframes의 translate 값과 반드시 같아야 한다(애니메이션이
+   transform을 통째로 덮어쓰므로, 한쪽만 고치면 손이 순간 튄다). */
+/* ⚠️ 세로 이동량이 `--hand-shift` 변수인 것이 요령이다. 이 애니메이션이 매 프레임
+   transform을 덮어쓰므로, 정적으로 선언한 translate는 **한 프레임도 적용되지 않는다**.
+   쓰는 쪽에서 자리를 조절하려면 이렇게 변수로 뚫어 두는 수밖에 없다.
+   -100%면 요소의 **아래 끝**이 곧 `top`이 되어, 손 그림의 세로 비율과 무관하게
+   "손끝이 여기서 멈춘다"를 정확히 지정할 수 있다(행동 카드가 그렇게 쓴다). */
+/* ⚠️ 튀는 높이(14px)도 손 크기를 따라간다 — 손이 절반으로 줄었는데 14px 그대로 튀면
+   그 폭이 손보다 커져 제자리에서 펄떡이는 것처럼 보인다(`--hand-bounce`). */
+@keyframes guideHandBounce {
+  0%, 100% { transform: translate(-50%, var(--hand-shift, -82%)) translateY(0); }
+  50%      { transform: translate(-50%, var(--hand-shift, -82%)) translateY(calc(var(--hand-bounce, 14px) * -1)); }
+}
+.place-guide-hand {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  /* ⚠️ 크기가 **무대를 따라간다**(--sp). 예전 3.4rem 고정은 폰 가로에서 장소 타일
+     (86×73px)만큼 커져 타일 이름과 확률을 통째로 덮었다. 데스크톱에서는 값이 그대로다. */
+  width: min(3.4rem, calc(54.4 * var(--sp)));
+  transform: translate(-50%, var(--hand-shift, -82%));
+  --hand-bounce: min(14px, calc(14 * var(--sp)));
+  z-index: 95;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+  animation: guideHandBounce 0.8s ease-in-out infinite;
+}
+/* ⚠️ **장소 타일용은 더 낮게 앉힌다.** 타일은 보드 칸(.play-cell-board) 안에 있고 그
+   칸은 둥근 모서리 때문에 `overflow: hidden`이라, 칸 위로 삐져나온 만큼 손이 **잘린다**
+   (기본 −82%로 두면 1920에서 65px 중 25px, 38%가 잘렸다).
+   행동 카드는 잘리지 않는 래퍼에 있어 기본값을 그대로 쓴다 — 그래서 값을 나눠 둔다.
+   ⚠️ **`transform`으로는 못 내린다.** 통통 튀는 애니메이션(guideHandBounce)이 매 프레임
+      transform을 덮어써서, 여기에 무엇을 적어도 한 프레임도 적용되지 않는다(실제로
+      -36%를 줘 봤지만 잘린 비율이 그대로였다). 애니메이션이 건드리지 않는 `top`을 옮긴다.
+     필요 조건: 타일 높이 × top% − 0.82 × 손 높이(65px) ≥ −(보드 안여백 8px)
+     가장 빠듯한 1366(타일 165px)에서 top ≥ 27.5% → 여유를 둬 30% */
+.place-guide-hand-tile { top: 30%; }
+
+/* ⚠️ **행동 카드용은 더 높이 앉힌다.** 손이 카드 우상단의 효과 문구
+   (.skill-effect-label, "다음 턴 카드 +6회")를 덮고 있었다 — 1600에서 19px,
+   1920에서 23px이 겹쳤다.
+   `--hand-shift: -100%`로 **손의 아래 끝을 곧 `top`으로** 만든 다음, 그 자리를
+   효과 문구의 윗선보다 위에 둔다. -82%인 채로 `top`만 올리면 손 그림마다 세로
+   비율이 달라(347×500 ~ 370×500) 겹침이 캐릭터별로 들쭉날쭉해진다.
+     효과 문구 윗선 = 테두리 5px + --deco × 0.42
+     손끝           = --deco × 0.42            → 정확히 5px 위에서 멈춘다 */
+/* ⚠️ **손을 더 올려서는 안 된다.** 안내 띠(.play-timer-window)가 카드 바로 위 3px에
+   붙어 있어, 손이 카드 위로 올라간 만큼 그대로 그 띠를 침범한다 — 실제로 손끝을 효과
+   문구 위로 올렸더니 침범이 23px에서 46px이 되어 "이번 턴의 행동을 선택하세요!"를
+   덮었다. 효과 문구를 살리려다 안내 문구를 가리는 맞바꿈일 뿐이었다.
+   그래서 손은 **있던 높이 그대로** 두고, 효과 문구를 손끝 아래로 내렸다(--label-top).
+
+   다만 `--hand-shift: -100%`로 바꿔 **손의 아래 끝이 곧 `top`이 되게** 했다. -82%인
+   채로는 자리가 손 그림의 세로 비율에 딸려 가는데, 다섯 손이 347×500 ~ 370×500으로
+   제각각이라 캐릭터마다 손끝 높이가 3px씩 달랐다. 이제 다섯이 같은 자리에 선다. */
+.place-guide-hand-card {
+  --hand-shift: -100%;
+  top: var(--label-top);
+  /* 효과 문구를 위로 올리며(2026-10-30, --label-top) 손도 따라 올라간다 — 안내 띠를 더 덮지 않게 0.8배로 줄인다 */
+  width: calc(min(3.4rem, calc(54.4 * var(--sp))) * 0.8);
+}
+.place-guide-hand img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* 관전 시점 — 이모지 때와 달리 후광 원을 깔지 않는다. 세로로 긴 그림 뒤에 원을 두면
+   손끝만 원 밖으로 삐져나와 어색하다. 대신 팀 색 drop-shadow로 그림의 윤곽을 따라
+   빛을 두른다(모양을 따라가므로 손 모양 그대로 물든다). */
+.place-guide-hand-spectator {
+  filter:
+    drop-shadow(0 0 5px var(--spec-base))
+    drop-shadow(0 0 10px var(--spec-glow))
+    drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-guide-hand { animation: none; }
+}
+
+/* ── 그림으로 고르는 버튼 (자리 선택 · 선 플레이어) ──────────────────────
+   글씨가 그림 안에 있으므로 HTML 라벨을 겹쳐 쓰지 않는다 — 이름은 aria-label로만
+   싣는다(`BarButton`과 같은 규칙).
+
+   고른 것과 안 고른 것을 **색으로** 가른다. 안 고른 쪽은 흑백으로 눌러 두고, 고른
+   쪽만 제 색으로 살아나며 살짝 떠오른다. 테두리나 링을 더하지 않는 이유는 그림에
+   이미 나무·금속 테두리가 그려져 있어 링이 하나 더 붙으면 액자가 두 겹이 되기 때문이다. */
+.pick-image-button {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  line-height: 0;
+  border-radius: 0.6rem;
+  filter: grayscale(0.75) brightness(0.94) opacity(0.72);
+  transition: filter 0.16s ease, transform 0.16s ease;
+}
+.pick-image-button img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pick-image-button:hover:not([aria-pressed='true']) {
+  filter: grayscale(0.3) brightness(1) opacity(0.9);
+}
+.pick-image-button[aria-pressed='true'] {
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.32));
+  transform: translateY(-1px) scale(1.03);
+}
+/* 누르는 순간 — 실제 버튼처럼 쑥 들어갔다 나온다.
+   `:active`가 위 `[aria-pressed='true']`보다 **뒤에** 와야 한다. 둘의 특이도가 같아서
+   순서로만 갈리는데, 앞에 두면 이미 고른 버튼을 다시 눌러도 눌리지 않는다.
+   transition을 짧게 덮어써 누를 때는 즉각 반응하고 뗄 때만 부드럽게 돌아온다. */
+.pick-image-button:active {
+  transform: translateY(3px) scale(0.94);
+  filter: brightness(0.9) drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+  transition-duration: 0.05s;
+}
+
+/* 고르는 순간 한 번 튕긴다 — 눌러서 들어갔다가 제자리보다 살짝 크게 솟은 뒤 자리를 잡는다.
+   `:active`의 들어감과 이어져 "누름 → 튕김"이 한 동작으로 읽힌다. */
+@keyframes pickPop {
+  0%   { transform: translateY(3px) scale(0.94); }
+  55%  { transform: translateY(-3px) scale(1.07); }
+  100% { transform: translateY(-1px) scale(1.03); }
+}
+.pick-image-button[aria-pressed='true'] {
+  animation: pickPop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 크기 변형 — 대기실 참가자 줄처럼 좁은 자리에서는 작게, 폭도 고정한다.
+   (기본형은 `flex: 1`이라 폼의 한 줄을 셋이 나눠 쓴다) */
+.pick-image-button-sm {
+  flex: none;
+  width: 3.4rem;
+}
+
+/* 고르는 버튼이 아니라 **누르면 곧바로 실행되는** 버튼(자리 옮기기)용.
+   고른 상태라는 개념이 없으므로 흑백으로 눌러 두지 않는다. */
+.pick-image-button-action {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28));
+}
+@media (any-hover: hover) {
+  .pick-image-button-action:hover {
+    filter: brightness(1.07) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.34));
+    transform: translateY(-1px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pick-image-button[aria-pressed='true'],
+  .pick-image-button:active,
+  .pick-image-button-action:hover { transform: none; }
+  .pick-image-button[aria-pressed='true'] { animation: none; }
+}
+
+/* ── 턴 종료 스킬 선택 모달 ─────────────────────────────────────────────── */
+.skill-choice-panel {
+  border: none;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 지금 실제로 고를 수 있는 칸에 마우스를 올리면, 카드 게임에서 손에 쥔 카드를
+   고르듯 살짝 떠오르며 커진다. disabled(레벨 부족/내 차례 아님)에는 걸리지 않는다. */
+/* ⚠️ 커서가 있는 기기에서만 — 터치에서는 고른 카드가 떠오른 채로 굳는다(위 주석 참고). */
+@media (any-hover: hover) {
+  .skill-choice-panel:not(:disabled):hover {
+    transform: translateY(-16px) scale(1.06);
+    z-index: 30;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skill-choice-panel { transition: none; }
+  .skill-choice-panel:not(:disabled):hover { transform: none; }
+}
+/* 컷신 이미지를 어둡게 하는 filter는 반드시 이 배경 레이어(자막과 분리된 별도
+   div)에만 걸어야 한다 — 버튼 전체에 filter를 걸면 그 위에 얹은 자막까지 함께
+   어두워져 "레벨 부족"일 때 제목/설명 글자가 거의 안 보이는 문제가 있었다. */
+/* 밝기 — 평소 0.78, 가리키면 1.1(2026-10 요청으로 0.55 → 0.78, 1 → 1.1). 글자는 검은 외곽선(.skill-outline-text)과
+   아래쪽 어둠(.skill-choice-dim)이 받쳐 주므로 그림을 밝혀도 읽힌다. 레벨이 없는 칸은 아래 -disabled가 그대로 어둡게 둔다. */
+.skill-choice-bg {
+  background-size: cover;
+  background-position: center;
+  filter: brightness(0.78);
+  transition: filter 0.2s ease;
+}
+.skill-choice-panel:hover .skill-choice-bg,
+.skill-choice-panel:focus-visible .skill-choice-bg,
+/* 상대 차례에는 버튼이 disabled라(포인터를 감싸는 칸이 받는다) 버튼의 :hover가 안 걸린다 — 칸 기준으로도 밝힌다
+   (칸은 :hover가 아니라 HoloCell이 다는 data-hover로 본다 — .holo-cell 절 참고) */
+.holo-cell[data-holo][data-hover] .skill-choice-bg {
+  filter: brightness(1.1);
+}
+.skill-choice-bg-disabled,
+.skill-choice-panel:hover .skill-choice-bg-disabled,
+.skill-choice-panel:focus-visible .skill-choice-bg-disabled {
+  filter: brightness(0.18) grayscale(70%);
+}
+
+/* [턴 마치기] 카드 그림 — 숲길 팻말을 든 로봇(2026-10-29, 원본 assets-src/pass_skill.png → 900px webp). 다른 기술 카드처럼
+   .skill-choice-bg(cover · 밝기 0.78 · hover 밝게 · 잠기면 어둡게)를 그대로 따른다 — 그래서 여기서 filter를 다시 정하지 않는다
+   (예전 SVG 화살표 시절의 brightness 덮어쓰기는 잠긴 칸의 어둡게까지 덮었다). 세로로 긴 칸이라 그림의 왼쪽(로봇)을 남긴다 — 로봇은 그림 폭의
+   11~58%에 있다. 42%로 두었더니 로봇 머리 왼쪽이 잘려(2026-10-30 요청) 15%로 옮겼다 — 칸이 가장 좁을 때(가로:세로 0.5, 그림의 절반이 보임)도
+   보이는 구간이 7.5~57.5%라 로봇이 통째로 들어온다. 팻말 화살표 끝은 잘려도 된다. */
+.pass-panel-bg {
+  background-image: url('/skills/pass_skill.webp');
+  background-position: 15% center;
+}
+/* 컷신 이미지는 거의 안 보일 만큼 어둡게, 그 위 자막(하얀 글자 + 검정 테두리)만
+   또렷하게 읽히도록 전체적으로 진하게 깐다. */
+/* 아래쪽(글자 자리)만 어둡게 받치고 위쪽 그림은 거의 그대로 둔다 — 예전에는 위까지 0.24로 덮어 카드가 칙칙했다. */
+.skill-choice-dim {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.2) 40%, rgba(0, 0, 0, 0.06) 70%, rgba(0, 0, 0, 0.04) 100%);
+  pointer-events: none;
+}
+
+/* ── 쓸 수 있는 스킬이 하나도 없을 때 — "아무것도 하지 않음" 강조 ────────────── */
+@keyframes skillChoiceGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(163, 230, 53, 0); filter: brightness(0.85); }
+  50%       { box-shadow: inset 0 0 24px 6px rgba(163, 230, 53, 0.85); filter: brightness(1.15); }
+}
+.skill-choice-glow {
+  animation: skillChoiceGlow 1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skill-choice-glow { animation: none; box-shadow: inset 0 0 0 3px rgba(163, 230, 53, 0.9); }
+}
+.skill-outline-text {
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 3px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* ── 중앙 동물 스택 — 카드 한 장 ──────────────────────────────────────────── */
+/* 카드 크기를 부모(스택 칸) 기준 %로 주면 flex 중첩 구조에서 높이 계산이 꼬여
+   레이아웃이 전체적으로 무너지는 문제가 있었다(보드 두 번째 줄이 화면 밖으로
+   밀려나는 등). 그래서 부모 크기와 무관하게 항상 같은 값으로 계산되는 rem
+   고정 크기로 되돌리되, 원래 88×116px(=5.5rem×7.25rem, 루트 16px 기준)를 그대로
+   rem으로 옮겨서, 루트 폰트 크기를 80%로 낮춘 지금은 자동으로 70.4×92.8px로
+   함께 줄어들도록 한다 — 나머지 rem 기반 UI와 항상 같은 비율을 유지한다. */
+/* ⚠️ **폭만이 아니라 키도 무대를 따라간다**(--sp). 예전에는 88×116px 고정이라, 폰
+   가로에서 보드 칸이 400×164로 줄어 줄 하나가 35px밖에 안 되는데 카드만 116px로 남아
+   **위아래 줄을 통째로 덮었다**(JS의 축소는 가로 넘침만 본다).
+   안의 치수는 전부 `--stack-card-w`에서 파생시켜, 카드가 작아져도 비례가 유지된다.
+   ⚠️ `AnimalStackArea.tsx`가 겹침 간격과 축소 배율을 계산할 때 이 폭을 **실제로 재서**
+   쓴다 — 여기 값을 바꾸면 그쪽 CARD_WIDTH_PX(폴백)도 함께 볼 것. */
+.stack-card {
+  --stack-card-w: min(5.5rem, calc(88 * var(--sp)));
+  position: relative;
+  width: var(--stack-card-w);
+  height: calc(var(--stack-card-w) * 116 / 88);
+  border-radius: calc(var(--stack-card-w) * 14 / 88);
+  background: #fff;
+  border: max(1px, calc(var(--stack-card-w) * 2 / 88)) solid #d1d5db;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--stack-card-w) * 4 / 88);
+  flex-shrink: 0;
+}
+/* 카드가 겹치는 폭 — 예전에는 JS 인라인 style의 `-46px` 고정이었다. 카드가 작아지면
+   겹침도 같은 비율로 줄어야 낱장이 제대로 보인다(46/88 = 0.5227). */
+.stack-card + .stack-card { margin-left: calc(var(--stack-card-w) * -46 / 88); }
+/* 카드 안의 숫자 — 예전 text-2xl(1.5rem) 고정. 카드가 절반이 되면 숫자가 카드를 넘는다. */
+.stack-card-num { font-size: calc(var(--stack-card-w) * 0.273 * var(--font-scale)); }
+/* 10장·100장 묶음(AnimalStackArea의 bundleCards, 2026-10-29) — 은색(x10)·금색(x100) 3px 테두리에 장수를 쓴다.
+   카드 강화 판은 낱장 숫자를 감추지만(data-enhance) 묶음의 장수는 감추지 않는다(.stack-card-num과 클래스가 다르다).
+   묶음도 낱장과 **똑같이 겹친다**(같은 날 요청 — 한때 묶음 뒤만 조금 겹쳤다). 그래서 장수는 겹쳐도 남는 **왼쪽 위**에 작게 쓴다
+   (가운데에 두면 다음 카드가 오른쪽 절반을 덮어 "x100"이 "x1"로 잘리고, 아래에 두면 맨 아래 줄은 타이머 창에 가린다). */
+.stack-card-bundle { border-width: 3px; }
+.stack-card-bundle-10 { border-color: #b4bac4; background: linear-gradient(160deg, #ffffff 0%, #eef0f4 100%); }
+.stack-card-bundle-100 { border-color: #d4a017; background: linear-gradient(160deg, #fffdf4 0%, #fdf1c8 100%); }
+.stack-card-bundle-count {
+  position: absolute;
+  left: 7%;
+  top: 5%;
+  font-size: calc(var(--stack-card-w) * 0.17 * var(--font-scale));
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-shadow: 0 0 3px #fff, 0 0 2px #fff;
+}
+.stack-card-bundle-10 .stack-card-bundle-count { color: #4b5563; }
+.stack-card-bundle-100 .stack-card-bundle-count { color: #92400e; }
+
+/* 카드 강화의 배수 카드(2026-11-02 — shared/enhance.ts의 ENHANCE_CARD_DENOMS) — 한 장이 ×N장을 뜻한다.
+   ×5 구리 · ×10 은 · ×100 금 · ×1000 무지개(테두리가 돈다). 배수는 겹쳐도 남는 왼쪽 위에 쓴다(묶음 표시와 같은 자리).
+   ⚠️ 낱장 숫자(.stack-card-num)를 감추는 [data-enhance] 규칙과 클래스가 다르다 — 배수는 감추지 않는다. */
+.stack-card-denom { border-width: max(2px, calc(var(--stack-card-w) * 4 / 88)); }
+.stack-card-denom-5 { border-color: #b87333; background: linear-gradient(160deg, #fff7ef 0%, #f3d2b3 100%); box-shadow: 0 0 0 1px #7a4419 inset; }
+.stack-card-denom-10 { border-color: #aeb6c2; background: linear-gradient(160deg, #ffffff 0%, #dfe4ec 100%); box-shadow: 0 0 6px rgba(200, 210, 225, 0.9); }
+.stack-card-denom-100 { border-color: #e0a800; background: linear-gradient(160deg, #fffbe6 0%, #fbe08a 100%); box-shadow: 0 0 10px rgba(255, 200, 40, 0.85); }
+.stack-card-denom-1000 {
+  border-color: transparent;
+  background:
+    linear-gradient(160deg, #ffffff 0%, #f6f0ff 100%) padding-box,
+    conic-gradient(from var(--denom-a, 0deg), #ff4d4d, #ffb84d, #fff04d, #5dff7a, #4dd2ff, #7a5dff, #ff4dd8, #ff4d4d) border-box;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.95), 0 0 22px rgba(170, 120, 255, 0.7);
+  animation: denomSpin 2.4s linear infinite;
+}
+@property --denom-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes denomSpin { to { --denom-a: 360deg; } }
+.stack-card-denom-count {
+  position: absolute;
+  left: 6%;
+  top: 4%;
+  font-size: calc(var(--stack-card-w) * 0.2 * var(--font-scale));
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-shadow: 0 0 3px #fff, 0 0 2px #fff;
+}
+.stack-card-denom-5 .stack-card-denom-count { color: #7a3b0c; }
+.stack-card-denom-10 .stack-card-denom-count { color: #374151; }
+.stack-card-denom-100 .stack-card-denom-count { color: #8a4b00; }
+.stack-card-denom-1000 .stack-card-denom-count {
+  background: linear-gradient(90deg, #ff3b3b, #ff9f1a, #d4b800, #19c24a, #1aa3ff, #7a3bff, #e63bc7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 2px #fff);
+}
+/* 날아가는 사본(BigCardSlamLayer) — body에 portal된다. 크기는 줄의 카드를 잰 값(--slam-w)이다. */
+.big-slam { position: fixed; z-index: 96; pointer-events: none; will-change: translate, scale; }
+.big-slam .stack-card { --stack-card-w: var(--slam-w, 60px); width: 100%; height: 100%; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
+.big-slam .stack-card-denom-1000 { box-shadow: 0 0 18px #fff, 0 0 40px rgba(170, 120, 255, 0.9), 0 10px 30px rgba(0, 0, 0, 0.45); }
+.big-slam .stack-card img { width: 80%; }
+@keyframes stackCardPop {
+  0%   { transform: scale(0.4) translateY(-10px); opacity: 0; }
+  60%  { transform: scale(1.12) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.stack-card-new {
+  animation: stackCardPop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+/* 장소 타일 절반쯤을 지나는 지점까지만 이동한 뒤, 자연스럽게 페이드아웃되며 사라진다
+   (합계 점수판이 화면 아래쪽으로 옮겨졌으므로 아래쪽으로 더 크게 이동한다). */
+/* 카드가 실제로 획득한 팀의 그 동물 칸(--fling-dx/dy, StackCardView가 계산)까지
+   정확히 날아간다 — 대상 칸을 못 찾으면 팀 방향으로만 대략 날아가는 폴백값이 대신 들어온다. */
+@keyframes stackCardFling {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  35%  { opacity: 1; }
+  100% { transform: translate(var(--fling-dx), var(--fling-dy)) scale(0.4) rotate(var(--fling-rot)); opacity: 0; }
+}
+.stack-card-fling { animation: stackCardFling 450ms ease-in forwards; z-index: 20 !important; } /* 원래 750ms의 60% — useAnimationQueue.ts의 COLLECT_FLING_DUR과 일치해야 함 */
+/* 스택 줄 왼쪽의 합계 숫자 — 예전 text-4xl(2.25rem) 고정이라 폰에서는 줄 높이(35px)보다
+   커서 위아래 줄을 덮었다. 옆 카드와 같은 비율로 줄어든다. */
+.stack-total-badge {
+  line-height: 1;
+  font-size: min(calc(2.25rem * var(--font-scale)), calc(36 * var(--sp) * var(--font-scale)));
+}
+/* 합계가 앉는 칸 — 예전 w-16(4rem) 고정. 폭의 16%를 이 칸이 먹으면 카드 자리가 없다. */
+.stack-total-slot { width: min(4rem, calc(64 * var(--sp))); }
+@media (prefers-reduced-motion: reduce) {
+  .stack-card-new, .stack-card-fling { animation: none; }
+}
+
+/* ── 슬롯머신 뽑기 연출 ──────────────────────────────────────────────────── */
+.draw-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 88px;
+  min-height: 128px;
+  background: #fff;
+  border: 3px solid #fbbf24;
+  border-radius: 14px;
+  padding: 8px 14px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+@keyframes drawSlotShake {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  25%       { transform: translate(-50%, -50%) rotate(-6deg) scale(1.05); }
+  50%       { transform: translate(-50%, -50%) rotate(0deg) scale(0.97); }
+  75%       { transform: translate(-50%, -50%) rotate(6deg) scale(1.05); }
+}
+.draw-slot-spin {
+  animation: drawSlotShake 0.13s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-slot-spin { animation: none; }
+}
+
+/* 축제 시작 — 보드 여기저기서 도토리가 폭죽처럼 터진다 */
+@keyframes festivalAcornPop {
+  0%   { transform: translate(-50%, -50%) scale(0.3) rotate(-20deg); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.3) rotate(10deg); opacity: 1; }
+  40%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -60%) scale(0.8) rotate(0deg); opacity: 0; }
+}
+.festival-acorn-burst {
+  font-size: 2.2rem;
+  animation: festivalAcornPop 900ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .festival-acorn-burst { animation: none; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stack-card-bomb-fall { animation: none; opacity: 0; }
+}
+
+/* ── 짝 맞음 확인 흔들기 — 홀수/짝수 번째 카드가 서로 반대 방향으로 흔들린다 ─────── */
+@keyframes stackCardShakeA {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-9px); }
+  50%      { transform: translateX(0); }
+  75%      { transform: translateX(9px); }
+}
+@keyframes stackCardShakeB {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(9px); }
+  50%      { transform: translateX(0); }
+  75%      { transform: translateX(-9px); }
+}
+.stack-card-shake-a { animation: stackCardShakeA 550ms ease-in-out; }
+.stack-card-shake-b { animation: stackCardShakeB 550ms ease-in-out; }
+@media (prefers-reduced-motion: reduce) {
+  .stack-card-shake-a, .stack-card-shake-b { animation: none; }
+}
+
+/* ── 실용신양 예약 뽑기 — 양 이모지가 장소까지 통통 튀며 날아간다 ───────────── */
+@keyframes woolBounce {
+  0%, 100% { translate: 0 0; rotate: -10deg; }
+  50%      { translate: 0 -8px; rotate: 10deg; }
+}
+.wool-ball {
+  font-size: 3.2rem;
+  animation: woolBounce 0.3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.75)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+  .wool-ball { animation: none; }
+}
+
+/* ── 도토리 축제 랜덤 뽑기 — 양 이모지와 같은 자리에서, 도토리답게 살짝 흔들며 날아간다 ── */
+@keyframes acornWobble {
+  0%, 100% { rotate: -12deg; }
+  50%      { rotate: 12deg; }
+}
+/* 도토리 그림(AcornIcon) — 이모지 자리를 그대로 이어받아 높이 1em, 부모 글자 크기를 따른다 */
+.acorn-icon {
+  display: inline-block;
+  height: 1em;
+  width: auto;
+  vertical-align: -0.15em;
+}
+.acorn-ball {
+  font-size: 3rem;
+  line-height: 1;
+  animation: acornWobble 0.3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(217, 119, 6, 0.85)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+  .acorn-ball { animation: none; }
+}

@@ -1,0 +1,148 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   개인전 모바일(가로 폰) — components/game/mobile/MobileIndividualLayout.tsx · IndividualPanels.tsx
+   팀전 모바일 배치(.m-*) 위에 "상대가 여럿"인 것만 더한다: 사람마다 고른 색 · 상대 목록 창 · 공격 대상 고르기 창.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 사람 색 — 열 테두리 · 이름 알약 · 체력 막대가 그 사람이 대기실에서 고른 색이다(출혈 · 지속 회복의 빛 색은 그대로) */
+.m-rail-list[data-colored] { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--rail-color) 85%, transparent), 0 0 8px color-mix(in srgb, var(--rail-color) 40%, transparent); }
+.m-rail-list[data-colored][data-active] { box-shadow: inset 0 0 0 3px var(--rail-color), 0 0 14px color-mix(in srgb, var(--rail-color) 75%, transparent); }
+.m-name[data-colored] { border-color: var(--name-color); color: #fff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--name-color) 40%, transparent), 0 2px 5px rgba(0, 0, 0, 0.4); }
+/* 내가 노려 잠깐 오른쪽에 세운 상대 — 이름 알약이 깜빡여 "지금은 공격한 상대"임을 알린다 */
+.m-name[data-attacked] { animation: mNameAttacked 0.9s ease-in-out infinite; }
+@keyframes mNameAttacked {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--name-color) 40%, transparent), 0 2px 5px rgba(0, 0, 0, 0.4); }
+  50%      { box-shadow: 0 0 0 3px var(--name-color), 0 0 12px var(--name-color); }
+}
+.m-hp[data-color] .m-hp-fill {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--hp-color) 45%, white) 0%,
+    var(--hp-color) 48%,
+    color-mix(in srgb, var(--hp-color) 70%, black) 100%);
+}
+.m-hp[data-color] .m-hp-aura {
+  background: linear-gradient(var(--aura-dir), color-mix(in srgb, var(--hp-color) 85%, white), color-mix(in srgb, var(--hp-color) 55%, transparent) 45%, transparent);
+}
+
+/* ── 상대 목록 창(오른쪽 → 왼쪽 스와이프) — 오른쪽에서 미끄러져 나온다. 한 줄 = 한 사람, 세로로 스크롤 ── */
+.m-opp-list {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(66%, 400px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid #3f2410;
+  background: rgba(255, 248, 232, 0.97);
+  color: #3b2a1a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  transform: translateX(108%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease;
+}
+.m-opp-list[data-open] { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.m-opp-list-title { font-size: 13px; font-weight: 900; }
+.m-opp-list-tip { font-size: 11px; font-weight: 700; color: #8a6a48; }
+.m-opp-rows { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; padding: 2px; touch-action: pan-y; }
+.m-opp-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 8px 6px;
+  border-radius: 10px;
+  border: 2px solid color-mix(in srgb, var(--opp-color) 45%, #d6c3a0);
+  background: #fffaf0;
+  text-align: left;
+  font-size: 12px;
+}
+.m-opp-row[data-active] { border-color: var(--opp-color); }
+.m-opp-row[data-selected] { border-color: var(--opp-color); box-shadow: 0 0 0 2px var(--opp-color), 0 0 10px color-mix(in srgb, var(--opp-color) 60%, transparent); background: #fff; }
+.m-opp-row[data-finished] { opacity: 0.6; }
+.m-opp-row-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-opp-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--opp-color); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0, 0, 0, 0.2); }
+.m-opp-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 900; }
+.m-opp-finish { flex: none; padding: 0 6px; border-radius: 999px; background: #3f2410; color: #fde68a; font-size: 10px; font-weight: 800; }
+.m-opp-hp { margin-left: auto; flex: none; font-weight: 900; color: #9f1239; }
+.m-opp-dots { flex: none; display: flex; gap: 2px; font-size: 8px; }
+.m-opp-hpbar { display: block; height: 5px; border-radius: 999px; background: rgba(63, 36, 16, 0.15); overflow: hidden; }
+.m-opp-hpbar > span { display: block; height: 100%; border-radius: 999px; background: var(--opp-color); }
+.m-opp-animals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.m-opp-animal { display: grid; grid-template-columns: 22px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 3px; }
+.m-opp-animal img { grid-row: 1 / span 2; width: 22px; height: 22px; object-fit: contain; }
+.m-opp-animal img[data-lv0] { filter: saturate(0.5) brightness(0.85); }
+.m-opp-animal-lv { font-size: 11px; font-weight: 900; line-height: 1.1; }
+.m-opp-animal-bar { display: block; height: 4px; border-radius: 999px; background: rgba(63, 36, 16, 0.15); overflow: hidden; }
+.m-opp-animal-bar > span { display: block; height: 100%; background: #22c55e; }
+
+/* ── 공격 대상 고르기 — 화면을 어둡게 덮고 상대를 한 줄씩. 카드 띠보다 위, 상세 창(.m-sheets)보다 아래 ── */
+.m-target {
+  position: absolute;
+  inset: 0;
+  z-index: 91;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(10, 6, 2, 0.72);
+}
+.m-target-card {
+  width: min(560px, 92%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 3px solid #5a3a1a;
+  background: linear-gradient(180deg, #fff8e8 0%, #f6e3bd 100%);
+  color: #3b2a1a;
+}
+.m-target-title { font-size: 16px; font-weight: 900; }
+.m-target-sub { font-size: 11.5px; font-weight: 700; color: #7d6a55; }
+.m-target-rows { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px; touch-action: pan-y; }
+.m-target-row {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 2px solid color-mix(in srgb, var(--opp-color) 45%, #d6c3a0);
+  background: #fffaf0;
+  font-size: 14px;
+  text-align: left;
+}
+.m-target-row[data-focus] {
+  border-color: var(--opp-color);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--opp-color), 0 0 14px color-mix(in srgb, var(--opp-color) 70%, transparent);
+  transform: scale(1.02);
+}
+.m-target-lethal { flex: none; padding: 1px 7px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; }
+.m-target-hp { margin-left: auto; flex: none; display: flex; align-items: center; gap: 6px; width: 40%; font-weight: 900; color: #9f1239; }
+.m-target-hp .m-opp-hpbar { flex: 1; height: 7px; }
+.m-target-row .m-opp-dots { font-size: 9px; }
+.m-target-cancel { align-self: flex-end; min-height: 40px; padding: 0 14px; font-size: 13px; font-weight: 800; color: #7d6a55; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-opp-list { transition: none; }
+  .m-name[data-attacked] { animation: none; }
+}
+
+/* ── 모바일 — 기술 카드 두께 1px(2026-10-31 요청, PC는 2px 그대로) · 개인전 감정표현 버튼 ──
+   두께는 SkillChoiceBar의 HOLO_EDGE_PX(2px)로 잡힌 옆면 그림자 길이에 곱하는 배율(--edge-k)로 줄인다. */
+.m-layout { --edge-k: 0.5; }
+/* 개인전 — 감정표현 버튼을 내 동물 열 위에 둔다(PC는 정보창 오른쪽 위에 겹쳐 앉는다). 그만큼 아이콘을 줄인다 */
+.m-layout[data-individual] { --m-icon: clamp(38px, calc((var(--m-view-h) - 64px) / 4), 62px); }
+.m-layout[data-individual] .m-rail-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.m-layout[data-individual] .m-rail-left .emote-button { position: static; flex: none; width: 34px; height: 34px; }
+.m-layout[data-individual] .m-rail-left .m-rail-list { flex: 1; min-height: 0; width: 100%; height: auto; }
+
+/* 지속 효과의 빛이 막대 안쪽(빈 칸)으로 비치지 않게 — 트랙을 불투명하게. 빛은 막대 둘레로만 보인다 */
+.m-hp-track { background: #2b1d0f; }

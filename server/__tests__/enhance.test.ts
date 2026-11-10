@@ -29,7 +29,8 @@ import { settleStacks } from '../engine/drawCard';
 import { initEnhanceGame } from '../engine/turnManager';
 import { processPass, processPlayerAction, processSkillChoice, processTimeout } from '../engine/gameEngine';
 import { applySkillChoice, eligibleAnimals, levelOf } from '../engine/skills';
-import { Room, settleGraceMs } from '../room';
+import { Room } from '../room';
+import { settleGraceMs } from '../settleTiming';
 
 /**
  * 혼자 놀기 '카드 강화'(shared/enhance.ts · ENHANCE_MODE.md) — 엔진 규칙과 방의 시작·컴퓨터.

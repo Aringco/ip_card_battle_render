@@ -1,0 +1,763 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   모바일(가로 폰) 게임 화면 — components/game/mobile/ (시범: 혼자 놀기만, lib/mobileLayout.ts가 켠다)
+   ══════════════════════════════════════════════════════════════════════════
+   PC의 그림 액자(play_frame) · 상단 들보를 쓰지 않고 **CSS로만** 그린다(개인전의 .play-frame-css와 같은 방식).
+     ┌ 단계 칩 ──────── 타이머 · 문구 ──────── 진행 안내 ┐   .m-top
+     │ 내 동물 4 │      판 / 기술 카드      │ 상대 동물 4 │   .m-rail · .m-view
+     └──── 내 체력 ◀━━━━━━━┃━━━━━━━▶ 상대 체력 ────┘   .m-bottom
+   ⚠️ 이 블록은 **파일 끝**에 있어야 한다 — 같은 클래스(.play-timer-*, .holo-cell …)를 덮어쓰는 규칙이 앞의 T1·T2 블록보다 뒤에 와야 이긴다.
+   ⚠️ 판 · 카드 컴포넌트(GameBoard · SkillChoiceBar)는 크기를 **무대 비례**(--sp · --sv)로 잡는다. 그 기준인 --stage-w를 이 화면의
+      판 높이에서 다시 정한다(뒤의 둘도 함께 다시 선언해야 한다 — :root에서 이미 계산된 값을 물려받기 때문이다).
+      3.25 = 기술 카드 높이가 PC 1366×768과 같은 비율이 되는 값 — 판 높이 320px(844×390)에서 무대 1040px(--sp 0.81). */
+.m-layout {
+  --m-gutter: max(8px, env(safe-area-inset-left), env(safe-area-inset-right));
+  --m-top-h: 34px;
+  --m-bottom-h: 30px;
+  --m-view-h: calc(var(--app-h, 100dvh) - var(--m-top-h) - var(--m-bottom-h) - 16px);
+  /* 동물 아이콘 지름 — 판 높이를 넷으로 나눈 것에서 간격을 뺀다 */
+  --m-icon: clamp(40px, calc((var(--m-view-h) - 24px) / 4), 66px);
+  --stage-w: calc(var(--m-view-h) * 3.25);
+  --sp: calc(var(--stage-w) / 1286.6);
+  --sv: calc(var(--stage-w) / 167.52);
+  position: relative;
+  height: var(--app-h, 100dvh);
+  /* ⚠️ hidden이 아니라 clip — hidden은 손으로는 안 밀려도 **프로그램으로는 스크롤된다**(요소에 초점이 가거나 scrollIntoView).
+     내려가 있는 카드 띠(.m-cards) 만큼 아래에 자리가 있어, 장소를 누르는 순간 판 전체가 위로 밀려 위 띠가 사라졌다. */
+  overflow: clip;
+  display: grid;
+  grid-template-columns: calc(var(--m-icon) + 10px) minmax(0, 1fr) calc(var(--m-icon) + 10px);
+  grid-template-rows: var(--m-top-h) minmax(0, 1fr) var(--m-bottom-h);
+  grid-template-areas:
+    'top top top'
+    'left view right'
+    'bottom bottom bottom';
+  column-gap: 6px;
+  row-gap: 4px;
+  padding: 4px var(--m-gutter) max(4px, env(safe-area-inset-bottom));
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── 위 띠 — [단계 칩 · 내 닉네임] [타이머] [상대 닉네임 · 일시정지 자리] ── */
+/* **좌우 대칭**(2026-10-31 요청): 양 끝 칸이 같은 폭(1fr · 1fr)이라 타이머가 화면 가운데에 오고, 그 칸의 바깥 끝에는 같은 폭(--m-slot)의
+   상자가 하나씩 선다 — 왼쪽은 단계 칩, 오른쪽은 [일시정지] 버튼이 얹히는 빈 상자(.m-pause-slot). 닉네임은 그 안쪽에 마주 본다.
+   진행 안내(축제 · 추가 뽑기)는 이 띠에 두지 않고 바로 아래에 띄운다(.m-notice-float) — 띠에 넣으면 대칭이 깨지고, 예전처럼
+   좁은 폰에서 [일시정지]에 가려 "상…"으로 잘렸다. */
+.m-top {
+  --m-slot: 132px;
+  grid-area: top;
+  position: relative;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+.m-top-side { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-top-right { flex-direction: row-reverse; }
+.m-top-center { position: relative; width: clamp(210px, 34vw, 320px); height: 100%; }
+.m-pause-slot { flex: none; width: var(--m-slot); height: 26px; }
+/* 닉네임 — 아래 체력 막대 옆에서는 잘 안 보여 위로 올렸다. 그 편 색 테두리의 짙은 알약 */
+.m-name {
+  min-width: 0;
+  max-width: 100%;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: rgba(30, 18, 8, 0.72);
+  color: #fff;
+  font-size: calc(12px * var(--font-scale) / 1.12);
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+.m-name[data-tone='mine'] { border-color: #84cc16; color: #ecfccb; }
+.m-name[data-tone='enemy'] { border-color: #f43f5e; color: #ffe4e6; }
+/* 진행 안내 — 위 띠 바로 아래, 판의 오른쪽 위 모서리에 뜬다 */
+.m-notice-float {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: calc(var(--m-icon) + 10px + 6px + 8px);
+  pointer-events: none;
+}
+
+/* 타이머 창 — PC의 ActionPrompt를 그대로 쓰고 크기만 띠에 맞춘다(창 안의 모든 치수가 --timer-h의 배수다) */
+.m-layout .play-timer-window {
+  --timer-h: 28px;
+  top: 0;
+  min-width: 0;
+  max-width: 100%;
+  padding-inline: 12px;
+}
+.m-layout .play-timer-bar { min-width: 48px; }
+.m-layout .play-timer-note { display: none; }
+.m-layout .play-timer-text {
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 단계 칩 — 늘 왼쪽 위에 떠 있다. 크게 뜨는 판(.m-phase-hero)이 날아와 앉는 동안에는 감춰 둔다 */
+.m-phase-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  /* 오른쪽 일시정지 자리(.m-pause-slot)와 같은 폭 — 좌우 대칭 */
+  width: var(--m-slot);
+  overflow: hidden;
+  height: 26px;
+  padding: 0 8px 0 3px;
+  border-radius: 999px;
+  border: 2px solid #f7e6c2;
+  background: #57534e;
+  color: #fff6df;
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.25s ease, background-color 0.3s ease;
+}
+.m-phase-name { flex: 1; text-align: center; }
+.m-phase-chip[data-phase='draw'] { background: #15803d; }
+.m-phase-chip[data-phase='choice'] { background: #b45309; }
+.m-phase-chip[data-arriving] { opacity: 0; }
+.m-phase-turn {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f7e6c2;
+  color: #3f2410;
+  font-size: 0.86em;
+  line-height: 18px;
+}
+
+/* 크게 뜨는 단계 판 — 화면의 50%로(2026-10-31 — 80%에서 줄였다) 떴다가 왼쪽 위(단계 칩 자리)로 날아가며 작아진다.
+   transform-origin이 왼쪽 위라 끝의 translate가 곧 칩의 자리다(가장자리 여백 12px · 위 6px). 애니메이션이 끝나면 MobilePhase가 판을 걷는다(onAnimationEnd). */
+.m-phase-hero {
+  position: fixed;
+  left: 25vw;
+  top: 25vh;
+  width: 50vw;
+  height: 50vh;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6vh;
+  border-radius: 22px;
+  border: 3px solid #f7e6c2;
+  background: radial-gradient(ellipse at 50% 40%, rgba(21, 128, 61, 0.92) 0%, rgba(12, 52, 26, 0.94) 100%);
+  color: #fff6df;
+  text-align: center;
+  pointer-events: none;
+  transform-origin: 0 0;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: mPhaseHero 1.5s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+.m-phase-hero[data-phase='choice'] {
+  background: radial-gradient(ellipse at 50% 40%, rgba(194, 65, 12, 0.92) 0%, rgba(84, 30, 6, 0.94) 100%);
+}
+.m-phase-hero-step {
+  padding: 0.3vh 2.2vh;
+  border-radius: 999px;
+  background: #f7e6c2;
+  color: #3f2410;
+  font-size: max(11px, 3.2vh);
+  font-weight: 800;
+}
+.m-phase-hero-title {
+  font-size: min(10vh, 6.4vw);
+  font-weight: 900;
+  line-height: 1.05;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.m-phase-hero-sub { font-size: max(11px, 3.1vh); font-weight: 700; opacity: 0.92; padding-inline: 4%; }
+@keyframes mPhaseHero {
+  0%   { opacity: 0; transform: translate(4vw, 4vh) scale(0.9); }
+  14%  { opacity: 1; transform: translate(0, 0) scale(1); }
+  58%  { opacity: 1; transform: translate(0, 0) scale(1); }
+  90%  { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(calc(12px - 25vw), calc(6px - 25vh)) scale(0.2); }
+}
+
+/* 오른쪽 위 진행 안내(실용신양 추가 뽑기 · 도토리 축제) */
+.m-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  max-width: 100%;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1.5px solid #1e1206;
+  background: #3f2410;
+  color: #f7e6c2;
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.m-notice > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-notice b { color: #fcd34d; font-weight: 900; }
+.m-notice-sheep { background: #3f6212; }
+.m-notice-icon { height: 16px; width: auto; flex-shrink: 0; }
+.m-notice-quiet { opacity: 0.85; }
+.m-notice-pop { animation: mNoticePop 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes mNoticePop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.m-error {
+  position: absolute;
+  top: calc(var(--m-top-h) + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+/* [일시정지] · 설정 톱니 — 전역 버튼이라 이 화면에서만 작게 모서리로 붙인다 */
+/* [일시정지]는 위 띠 오른쪽 끝의 빈 상자(.m-pause-slot, 폭 132px) 가운데에 오게 한다 — zoom이 위치 값에도 곱해지므로 0.6으로 나눠 적는다.
+   버튼 폭 약 82px → 상자 오른쪽 끝(가장자리 여백 8px)에서 (132 − 82) / 2 = 25px 안쪽. */
+body:has(.m-layout) .pause-fab {
+  zoom: 0.6;
+  top: max(8.5px, calc(env(safe-area-inset-top) / 0.6));
+  right: calc(max(8px, env(safe-area-inset-right)) / 0.6 + 25px / 0.6);
+}
+body:has(.m-layout) .settings-fab { zoom: 0.72; bottom: max(3px, env(safe-area-inset-bottom)); right: max(3px, env(safe-area-inset-right)); }
+
+/* ── 양옆 동물 아이콘 열 ── */
+.m-rail { position: relative; z-index: 30; min-height: 0; }
+.m-rail-left { grid-area: left; }
+.m-rail-right { grid-area: right; }
+.m-rail-list {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  border-radius: 999px;
+  background: rgba(40, 24, 10, 0.38);
+  box-shadow: inset 0 0 0 1.5px rgba(247, 230, 194, 0.35);
+  transition: box-shadow 0.3s ease;
+}
+/* 지금 차례인 편 — 열 둘레가 그 편 색으로 빛난다(왼쪽 = 나 연두, 오른쪽 = 상대 붉은) */
+.m-rail-list[data-active][data-side='left'] { box-shadow: inset 0 0 0 2px rgba(132, 204, 22, 0.95), 0 0 12px rgba(132, 204, 22, 0.55); }
+.m-rail-list[data-active][data-side='right'] { box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.9), 0 0 12px rgba(244, 63, 94, 0.5); }
+
+.m-rail-item { position: relative; width: var(--m-icon); height: var(--m-icon); }
+.m-icon {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 50%;
+  /* 바탕은 흰색이 아니라 짙은 나무색 — 흰 원 위에 얼굴을 얹으면 숲 배경에서 흰 동그라미만 떠 보였다(2026-10-31 제보).
+     얼굴 그림도 투명 바탕(face_*.webp)이라 이 바탕이 그대로 비친다. */
+  background: radial-gradient(circle at 50% 40%, rgba(255, 238, 200, 0.28) 0%, rgba(58, 36, 16, 0.78) 72%, rgba(40, 24, 10, 0.88) 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+/* 경험치 테두리 — 12시에서 시작해 시계 방향으로 찬다. 초록 = 이번 레벨에서 쌓은 만큼, 흰색 = 모자란 만큼 */
+.m-icon-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; pointer-events: none; }
+.m-icon-ring-track { fill: none; stroke: #ffffff; stroke-width: 9; }
+.m-icon-ring-fill { fill: none; stroke: #22c55e; stroke-width: 9; transition: stroke-dasharray 0.35s ease, stroke 0.2s ease; }
+.m-icon-ring-fill.is-max { stroke: #f59e0b; }
+.m-icon.is-flash .m-icon-ring-fill { stroke: #86efac; filter: drop-shadow(0 0 4px #4ade80); }
+.m-icon-face {
+  position: absolute;
+  left: 11%;
+  top: 11%;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+/* 레벨 0 — 아직 쓸 수 없는 카드는 빛을 죽인다(PC 경험치 표의 "focus" 표정 대신) */
+.m-icon-face[data-lv0] { filter: saturate(0.55) brightness(0.82) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.m-icon[data-cooling] .m-icon-face { filter: grayscale(0.7) brightness(0.75); }
+.m-icon-lv {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  padding: 0 0.45em;
+  border-radius: 999px;
+  border: 1.5px solid #f7e6c2;
+  background: #3f2410;
+  color: #fde68a;
+  font-size: max(9px, calc(var(--m-icon) * 0.2));
+  font-weight: 900;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.m-icon-sticker,
+.m-icon-over {
+  position: absolute;
+  top: -5px;
+  padding: 0 0.4em;
+  border-radius: 999px;
+  border: 1.5px solid #fff;
+  color: #fff;
+  font-size: max(9px, calc(var(--m-icon) * 0.19));
+  font-weight: 900;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.m-icon-sticker { right: -7px; background: #7c3aed; }
+.m-icon-over { left: -7px; background: #ea580c; }
+.m-icon.is-levelup { animation: mIconLevelUp 0.7s ease; }
+@keyframes mIconLevelUp {
+  0%, 100% { transform: scale(1); }
+  30%      { transform: scale(1.22); }
+  60%      { transform: scale(0.94); }
+}
+.m-icon-levelup {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+  text-shadow: 0 0 3px #b45309, 0 1px 2px #000;
+  pointer-events: none;
+  animation: mLevelUpText 0.9s ease-out forwards;
+}
+@keyframes mLevelUpText {
+  0%   { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+  25%  { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -150%) scale(1); }
+}
+
+/* 상태 창(아코디언) — 아이콘 옆, 판 쪽으로 펼쳐진다. 항상 그려 두고 clip-path로 아이콘 쪽에서부터 열린다 */
+.m-rail-panel {
+  position: absolute;
+  top: 50%;
+  z-index: 36;
+  width: max-content;
+  max-width: min(42vw, 240px);
+  padding: 6px 10px 7px;
+  border-radius: 10px;
+  border: 2px solid #3f2410;
+  background: rgba(255, 248, 232, 0.97);
+  color: #3b2a1a;
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  line-height: 1.35;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: clip-path 0.28s ease, opacity 0.2s ease;
+}
+.m-rail-panel[data-side='left'] { left: calc(100% + 8px); clip-path: inset(0 100% 0 0 round 10px); }
+.m-rail-panel[data-side='right'] { right: calc(100% + 8px); clip-path: inset(0 0 0 100% round 10px); }
+.m-rail-item[data-open] .m-rail-panel { clip-path: inset(0 0 0 0 round 10px); opacity: 1; pointer-events: auto; }
+.m-rail-item[data-open] .m-icon { box-shadow: 0 0 0 2px #fde68a, 0 2px 8px rgba(0, 0, 0, 0.5); }
+.m-rail-panel-title { font-size: 1.12em; font-weight: 900; white-space: nowrap; }
+.m-rail-panel-lv { color: #3f2410; }
+.m-rail-panel-line { font-weight: 700; white-space: nowrap; }
+.m-rail-panel-desc { margin-top: 2px; color: #6b4a2a; white-space: normal; min-width: 150px; }
+
+/* ── 가운데 — 장소 선택 판, 행동 선택이면 판이 어두워지고 기술 카드가 올라온다 ── */
+.m-view { grid-area: view; position: relative; z-index: 10; min-width: 0; min-height: 0; }
+/* 감정 표현(연출 표정 풍선 — PlayerEmoticonLayer, fixed)은 이 층(.m-emotes, 35)에 가둔다. 평소에는 판(10) 위에 뜨지만, 기술 카드 띠가
+   올라와 있는 동안에는 가운데(.m-view)가 40으로 올라가 **카드가 풍선 위**에 온다(2026-10-31 요청). 아이콘 열(30)의 펼침 창은 그동안 어둠 아래로 간다. */
+.m-emotes { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
+.m-layout[data-cards] .m-view { z-index: 40; }
+/* 스와이프로 연 창(기술 카드 띠 · 카드 상세 · 상대 목록)은 **언제나 맨 위**(2026-10-31 요청) — 그동안 가운데를 화면 전역 연출 층(콤보 문구 ·
+   토끼떼 · 축제 배너 …)보다 위로 올린다. 일시정지 막(95)보다는 아래다. 판 안의 연출(뽑기 슬롯 · 자막 · 짝 카드)은 판(.m-board)이 제 층에
+   가두므로 카드 띠 · 어둠 아래에서 돈다. */
+.m-layout[data-panel="cards"] .m-view { z-index: 90; }
+.m-board { z-index: 1; }
+/* 카드 상세 · 상대 목록 창의 층 — 판(.m-view)과 같은 칸에 겹쳐 놓고 언제나 그 위다(카드 띠 · 개인전 상대 고르기(.m-target, 91)보다도 위).
+   창이 닫혀 있으면 누름을 통과시킨다. */
+.m-sheets { grid-area: view; position: relative; z-index: 92; min-width: 0; min-height: 0; pointer-events: none; }
+.m-sheets > [data-open] { pointer-events: auto; }
+.m-board {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 3px solid #5a3a1a;
+  background: linear-gradient(180deg, #f8ead0 0%, #efd9a8 100%);
+  box-shadow: inset 0 0 14px rgba(90, 58, 26, 0.35), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.m-board [data-board-root] { border-radius: 9px; }
+/* 스택 카드의 얼굴 그림을 되살린다 — 작은 무대용 규칙(T1)이 "숫자만 남긴다"며 그림을 지우는데, 카드 강화 판은 숫자도 감춰
+   (data-enhance) 카드가 **빈 흰 종이**로 남았다(2026-10-31 제보). 모바일 판은 카드가 PC 1366 판만 해서 그림과 숫자가 함께 들어간다. */
+.m-layout .stack-card img { display: block; width: 62%; }
+.m-layout .stack-card-num { font-size: max(9px, calc(var(--stack-card-w) * 0.3 * var(--font-scale))); line-height: 1; }
+.m-layout[data-enhance] .stack-card img { width: 80%; }
+.m-board-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 12px;
+  background: rgba(8, 6, 3, 0.66);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.m-layout[data-cards] .m-board-dim { opacity: 1; pointer-events: auto; }
+/* 카드 띠 — 다섯 장(4 + 턴 마치기)이 판 가운데에 선다. 카드 한 장 ≈ 띠 폭의 19.6%, 카드 비율 0.708(PC와 같다) → 띠 비율 약 3.6 */
+.m-cards {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 25;
+  width: min(97%, calc(var(--m-view-h) * 0.86 * 3.6));
+  aspect-ratio: 3.6;
+  --card-side: #5a2a06;
+  --cell-r: 10px;
+  opacity: 0;
+  transform: translate(-50%, 40%);
+  pointer-events: none;
+  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.1), opacity 0.25s ease;
+}
+.m-layout[data-cards] .m-cards { opacity: 1; transform: translate(-50%, -46%); pointer-events: auto; }
+/* 고른 카드 — 1.3배로 **카드 중앙 기준** 커지고(2026-11-01 요청 — 그 전에는 1.05배 + 위로 3%) 손가락이 끄는 곳을 따라 기운다.
+   touch-action으로 끄는 동안 화면이 밀리지 않게 한다 */
+.m-layout .holo-cell { touch-action: none; }
+.m-layout .holo-cell[data-holo][data-hover] {
+  transform: perspective(700px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.3);
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
+}
+
+/* ── 아래 띠 — [내 체력 막대] [지속 효과 아이콘] [상대 체력 막대] ── */
+/* 두 막대는 같은 폭(1fr · 1fr — 좌우 대칭)으로 화면 양 끝까지 뻗는다(2026-10-31 요청). 양 끝은 설정 톱니(.settings-fab, fixed — 오른쪽 아래 약 34px)에
+   가리지 않을 만큼만 같게 비운다. 가운데 지속 효과 묶음(MobileDotHub)은 강화 판에만 있다 — 없으면 막대 사이 틈만 남는다. */
+.m-bottom {
+  grid-area: bottom;
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4px minmax(0, 1fr);
+  column-gap: 4px;
+  align-items: center;
+  padding-inline: 38px;
+}
+.m-bottom[data-hub] { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 6px; }
+.m-bottom:not([data-hub]) > .m-hp[data-side='right'] { grid-column: 3; }
+.m-hp { position: relative; display: flex; align-items: center; height: 100%; min-width: 0; }
+.m-hp-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  border: 2px solid #2a1a0a;
+  background: rgba(30, 20, 10, 0.6);
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+/* 양 끝 모두 둥글게(2026-10-31 — 가운데 쪽 끝도 둥글게) */
+.m-hp[data-side='left'] .m-hp-track,
+.m-hp[data-side='right'] .m-hp-track { border-radius: 999px; }
+.m-hp-fill,
+.m-hp-ghost { position: absolute; top: 0; bottom: 0; transition: width 0.45s ease; }
+.m-hp[data-side='left'] .m-hp-fill,
+.m-hp[data-side='left'] .m-hp-ghost { right: 0; }
+.m-hp[data-side='right'] .m-hp-fill,
+.m-hp[data-side='right'] .m-hp-ghost { left: 0; }
+/* 흰 막대 — 색 막대 바로 뒤. 둘이 같은 목표 폭으로 가되 **먼저 움직이는 쪽이 방향마다 반대**다(MobileHpBar의 data-change):
+     깎임(down): 색 막대가 곧바로 줄고 → 0.6초 뒤 흰 막대가 따라 준다(그 사이 깎인 몫이 하얗게 남는다)
+     오름(up):   흰 막대가 곧바로 늘고 → 0.6초 뒤 색 막대가 따라 찬다(그 사이 오를 몫이 하얗게 먼저 보인다) */
+.m-hp-ghost { background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 60%, #cbd5e1 100%); }
+.m-hp[data-change='down'] .m-hp-fill  { transition: width 0.22s ease-out; }
+.m-hp[data-change='down'] .m-hp-ghost { transition: width 0.5s ease-in-out 0.6s; }
+.m-hp[data-change='up'] .m-hp-ghost   { transition: width 0.22s ease-out; }
+.m-hp[data-change='up'] .m-hp-fill    { transition: width 0.5s ease-in-out 0.6s; }
+/* 움직인 양(−N · +N) — 막대 안, 체력 숫자 옆에서 튀어나왔다가 흐려진다 */
+.m-hp-delta {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  font-size: calc(13px * var(--font-scale) / 1.12);
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  animation: mHpDelta 1.5s ease-out forwards;
+}
+.m-hp[data-side='left'] .m-hp-delta { right: 46px; }
+.m-hp[data-side='right'] .m-hp-delta { left: 46px; }
+.m-hp-delta.is-down { color: #fee2e2; text-shadow: 0 0 2px #7f1d1d, 0 0 4px #b91c1c, 0 1px 1px #000; }
+.m-hp-delta.is-up { color: #dcfce7; text-shadow: 0 0 2px #14532d, 0 0 4px #15803d, 0 1px 1px #000; }
+@keyframes mHpDelta {
+  0%   { opacity: 0; transform: translateY(-50%) scale(0.5); }
+  12%  { opacity: 1; transform: translateY(-50%) scale(1.3); }
+  25%  { transform: translateY(-50%) scale(1); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-50%) scale(1); }
+}
+/* 내 체력이 막대의 20% 아래 — 색 막대가 붉게 밝아졌다 돌아오기를 되풀이한다(MobileHpBar의 data-low) */
+.m-hp[data-low] .m-hp-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #fecaca 0%, #ef4444 50%, #991b1b 100%);
+  animation: mHpLow 0.9s ease-in-out infinite;
+}
+.m-hp[data-low] .m-hp-track { animation: mHpLowRing 0.9s ease-in-out infinite; }
+@keyframes mHpLow {
+  0%, 100% { opacity: 0; }
+  50%      { opacity: 0.95; filter: brightness(1.35); }
+}
+@keyframes mHpLowRing {
+  0%, 100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5); }
+  50%      { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px 2px rgba(239, 68, 68, 0.85); }
+}
+.m-hp[data-tone='mine'] .m-hp-fill { background: linear-gradient(180deg, #d9f99d 0%, #84cc16 45%, #4d7c0f 100%); }
+.m-hp[data-tone='enemy'] .m-hp-fill { background: linear-gradient(180deg, #fecdd3 0%, #f43f5e 45%, #9f1239 100%); }
+.m-hp-start { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.75); }
+.m-hp-value {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: calc(13px * var(--font-scale) / 1.12);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 1px 2px #000;
+}
+.m-hp[data-side='left'] .m-hp-value { right: 8px; }
+.m-hp[data-side='right'] .m-hp-value { left: 8px; }
+/* ── 체력 막대의 빛 — 홀로그램 · 오라 · 지속 효과의 흐름 · 순간 훑기 ──
+   방향 이름은 **화면 방향**이다: to-left = 오른쪽 → 왼쪽, to-right = 왼쪽 → 오른쪽(MobileHpBar가 막대마다 고른다).
+   가운데에서 바깥으로 = 왼쪽 막대 to-left · 오른쪽 막대 to-right. */
+.m-hp-track { z-index: 1; }
+/* 홀로그램 — 채움 위로 무지갯빛 띠(흰 · 하늘 · 분홍 · 연보라)가 가운데에서 바깥으로 흐르고, 위쪽 광택이 깔린다 */
+.m-hp-holo {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, transparent 0%, transparent 30%, rgba(255, 255, 255, 0.55) 38%, hsla(190, 100%, 82%, 0.5) 43%, hsla(320, 100%, 84%, 0.45) 48%, hsla(260, 100%, 86%, 0.35) 53%, transparent 62%, transparent 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 48%, rgba(0, 0, 0, 0.12) 100%);
+  background-size: 250% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.m-hp[data-side='left'] .m-hp-holo { animation: mHoloToLeft 3.2s linear infinite; }
+.m-hp[data-side='right'] .m-hp-holo { animation: mHoloToRight 3.2s linear infinite; }
+@keyframes mHoloToLeft  { 0% { background-position: 0% 0, 0 0; }   100% { background-position: 100% 0, 0 0; } }
+@keyframes mHoloToRight { 0% { background-position: 100% 0, 0 0; } 100% { background-position: 0% 0, 0 0; } }
+/* 오라 — 막대 뒤에 그 편 색 빛이 안쪽 끝(가운데)에서 번져 나가며 흐려진다. 두 막대가 거울이라 가운데에서 양쪽으로 퍼진다 */
+.m-hp-aura {
+  position: absolute;
+  /* 막대(트랙)보다 위아래로 넓게 — 트랙이 불투명해 그 안쪽에 그리면 빛이 보이지 않는다 */
+  inset: -4px 0;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(4px);
+  opacity: 0;
+  animation: mHpAura 2.6s ease-out infinite;
+}
+.m-hp[data-tone='mine'] .m-hp-aura { background: linear-gradient(var(--aura-dir), rgba(190, 242, 100, 0.95), rgba(132, 204, 22, 0.55) 45%, transparent); }
+.m-hp[data-tone='enemy'] .m-hp-aura { background: linear-gradient(var(--aura-dir), rgba(253, 164, 175, 0.95), rgba(244, 63, 94, 0.55) 45%, transparent); }
+.m-hp[data-side='left'] .m-hp-aura { --aura-dir: 270deg; transform-origin: 100% 50%; }
+.m-hp[data-side='right'] .m-hp-aura { --aura-dir: 90deg; transform-origin: 0% 50%; }
+/* 안쪽 끝에서 막대 높이 그대로 시작해 바깥으로 길어지며 위아래로 부풀고, 다 퍼지면 흐려진다 — 막대보다 커지는 구간에 빛이 보인다 */
+@keyframes mHpAura {
+  0%   { opacity: 0.95; transform: scale(0.2, 1); }
+  55%  { opacity: 0.6; }
+  100% { opacity: 0; transform: scale(1.04, 1.9); }
+}
+
+/* 지속 효과의 빛(MobileHpBar의 .m-hp-dotglow) — 걸려 있는 동안 막대 둘레의 그라데이션 빛이 **막대를 따라 돈다**(2026-10-31 요청).
+   막대보다 조금 큰 상자에 원뿔 그라데이션(conic-gradient)을 깔고 흐리게 번진 채 그 각도(--dot-a)를 돌린다 — 막대(트랙)가 가운데를 덮어
+   둘레로 비어져 나온 빛만 보이고, 가로로 긴 막대라 빛의 경계가 막대를 따라 미끄러져 돈다.
+   회복만이면 초록, 출혈만이면 붉은색(밝은 자리 하나가 돈다), 둘 다면 **반반이 함께** 돈다. 한 번 든 순간(.m-hp-dotflash)은 크게 번쩍인다. */
+@property --dot-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.m-hp-dotglow {
+  position: absolute;
+  inset: -4px -3px;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  filter: blur(5px);
+  animation: mDotSpin 2.6s linear infinite, mDotBreathe 1.8s ease-in-out infinite;
+}
+.m-hp-dotglow[data-regen] { --c1: rgba(34, 197, 94, 1); --c2: rgba(187, 247, 208, 1); background: conic-gradient(from var(--dot-a), var(--c1) 0deg, var(--c2) 60deg, var(--c1) 120deg, var(--c1) 360deg); }
+.m-hp-dotglow[data-bleed] { --c1: rgba(220, 38, 38, 1); --c2: rgba(254, 202, 202, 1); background: conic-gradient(from var(--dot-a), var(--c1) 0deg, var(--c2) 60deg, var(--c1) 120deg, var(--c1) 360deg); }
+.m-hp-dotglow[data-regen][data-bleed] {
+  background: conic-gradient(from var(--dot-a),
+    rgba(34, 197, 94, 1) 0deg, rgba(134, 239, 172, 1) 90deg, rgba(34, 197, 94, 1) 170deg,
+    rgba(220, 38, 38, 1) 190deg, rgba(252, 165, 165, 1) 270deg, rgba(220, 38, 38, 1) 350deg, rgba(34, 197, 94, 1) 360deg);
+}
+@keyframes mDotSpin { to { --dot-a: 360deg; } }
+@keyframes mDotBreathe {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+.m-hp-dotflash { position: absolute; inset: 2px 0; z-index: 0; border-radius: 999px; pointer-events: none; animation: mDotFlash 0.9s ease-out forwards; }
+.m-hp-dotflash.is-regen { --dot-c: rgba(74, 222, 128, 1); }
+.m-hp-dotflash.is-bleed { --dot-c: rgba(239, 68, 68, 1); }
+@keyframes mDotFlash {
+  0%   { box-shadow: 0 0 0 0 var(--dot-c); opacity: 1; }
+  35%  { box-shadow: 0 0 14px 8px var(--dot-c); opacity: 1; }
+  100% { box-shadow: 0 0 22px 12px var(--dot-c); opacity: 0; }
+}
+
+/* 순간 훑기 — 체력이 오른 순간(is-gain)은 빛 띠가 가운데에서 바깥으로 한 번 지나가고,
+   깎인 순간(is-loss)은 붉게 번쩍인다 */
+.m-hp-pulse { position: absolute; inset: 0; pointer-events: none; }
+.m-hp-pulse.is-gain {
+  background-size: 45% 100%;
+  background-repeat: no-repeat;
+}
+.m-hp-pulse.is-gain { background-image: linear-gradient(90deg, transparent 0%, rgba(220, 255, 180, 0.9) 50%, transparent 100%); }
+.m-hp-pulse.to-left  { animation: mSweepToLeft 0.75s ease-out forwards; }
+.m-hp-pulse.to-right { animation: mSweepToRight 0.75s ease-out forwards; }
+.m-hp-pulse.is-loss { background: rgba(255, 70, 70, 0.65); animation: mHpFlash 0.6s ease-out forwards; }
+@keyframes mSweepToLeft {
+  0%   { background-position: 160% 0; opacity: 1; }
+  100% { background-position: -60% 0; opacity: 0.4; }
+}
+@keyframes mSweepToRight {
+  0%   { background-position: -60% 0; opacity: 1; }
+  100% { background-position: 160% 0; opacity: 0.4; }
+}
+@keyframes mHpFlash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+.m-hp-recoil { animation: mHpRecoil 0.4s ease-out; }
+@keyframes mHpRecoil {
+  0%, 100% { transform: translateY(0); }
+  40%      { transform: translateY(3px); }
+}
+/* 그 밖의 상태(효과 감소 · 회복 효율 감소 · 회피) — 걸렸을 때만, 막대 안쪽 끝 위에 작게 */
+.m-hp-extra { position: absolute; bottom: calc(100% + 3px); display: flex; gap: 4px; font-size: 10px; pointer-events: auto; }
+.m-hp[data-side='left'] .m-hp-extra { right: 4px; }
+.m-hp[data-side='right'] .m-hp-extra { left: 4px; }
+
+/* 지속 효과 아이콘 묶음 — 두 막대 사이. 늘 있고, 꺼진 아이콘은 회색이다. 켜지면 제 색이 돌아오고 가운데에 남은 턴 수가 뜬다.
+   아이콘 생김새(핏방울 · 초록 십자)는 체력 구슬의 .hp-status-*를 그대로 쓴다 — 크기만 font-size로 정한다(그쪽이 em 단위다). */
+.m-dot-hub { display: flex; align-items: center; gap: 6px; height: 100%; }
+.m-dot-pair {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: rgba(30, 18, 8, 0.72);
+  font-size: 10px;
+}
+.m-dot-pair[data-tone='mine'] { border-color: rgba(132, 204, 22, 0.8); }
+.m-dot-pair[data-tone='enemy'] { border-color: rgba(244, 63, 94, 0.75); }
+.m-dot[data-off] { filter: grayscale(1) brightness(0.7); opacity: 0.5; }
+.m-dot[data-off] .hp-status-icon { box-shadow: none; }
+.m-dot:not([data-off]) { animation: mDotOn 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes mDotOn {
+  0%   { transform: scale(0.5); }
+  100% { transform: scale(1); }
+}
+
+/* ── 스와이프 — 브라우저의 손짓(당겨서 새로고침 · 가로 밀어 뒤로가기 · 화면 밀기)을 끄고 이 화면이 받는다(useSwipePanels) ── */
+.m-layout { touch-action: none; }
+html:has(.m-layout),
+body:has(.m-layout) { overscroll-behavior: none; }
+
+/* 판 위에 무엇이 덮여 있으면(카드 띠 · 상세 창) 장소 타일의 안내 손을 감춘다 — 손은 z-index 95라 그 창들 위로 비쳐 나왔다 */
+.m-layout[data-cards] .m-board .place-guide-hand,
+.m-layout[data-panel] .m-board .place-guide-hand { display: none; }
+
+/* ── 카드 상세 창(StatusSheet) — 가로 스와이프로 판 위에 미끄러져 나온다. 내 것은 왼쪽에서, 상대 것은 오른쪽에서 ── */
+.m-sheet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 28;
+  width: min(64%, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 2px solid #3f2410;
+  background: rgba(255, 248, 232, 0.97);
+  color: #3b2a1a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease;
+}
+.m-sheet[data-side='left'] { left: 0; transform: translateX(-108%); }
+.m-sheet[data-side='right'] { right: 0; transform: translateX(108%); }
+.m-sheet[data-open] { transform: translateX(0); opacity: 1; pointer-events: auto; }
+.m-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.m-sheet[data-side='right'] .m-sheet-head { flex-direction: row-reverse; }
+.m-sheet-team {
+  padding: 1px 10px;
+  border-radius: 999px;
+  border: 1.5px solid;
+  background: #3f2410;
+  color: #fff;
+  font-size: calc(12px * var(--font-scale) / 1.12);
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-sheet-team[data-tone='mine'] { border-color: #84cc16; }
+.m-sheet-team[data-tone='enemy'] { border-color: #f43f5e; }
+.m-sheet-hint { font-size: 10px; color: #8a6a48; white-space: nowrap; }
+/* 설명이 줄바꿈되며 길어지므로(아래 .m-sheet-desc) 목록이 스크롤한다 — 예전에는 네 줄을 높이에 나눠 넣고 설명을 말줄임했다(특허랑이 설명이 잘렸다) */
+.m-sheet-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; touch-action: pan-y; }
+.m-sheet-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(63, 36, 16, 0.07);
+}
+.m-sheet-row[data-cooling] { background: rgba(63, 36, 16, 0.16); }
+.m-sheet-face { flex: none; width: 40px; height: 40px; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+.m-sheet-face[data-lv0] { filter: saturate(0.55) brightness(0.85); }
+.m-sheet-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: calc(10.5px * var(--font-scale) / 1.12); line-height: 1.3; }
+.m-sheet-title { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 1.1em; }
+.m-sheet-lv { font-weight: 900; color: #3f2410; }
+.m-sheet-exp { margin-left: auto; font-weight: 700; color: #6b4a2a; }
+.m-sheet-bar { display: block; height: 5px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1px rgba(63, 36, 16, 0.25); overflow: hidden; }
+.m-sheet-bar > span { display: block; height: 100%; background: #22c55e; border-radius: 999px; }
+.m-sheet-lines { font-weight: 800; color: #7c3aed; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-sheet-desc { color: #6b4a2a; white-space: normal; }
+/* 핵심 낱말 · 숫자(emphasize.tsx) */
+.m-sheet-desc b,
+.m-rail-panel-desc b { color: #3b2a1a; font-weight: 900; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-phase-hero { animation: mPhaseHeroFade 1.5s ease forwards; }
+  .m-cards, .m-board-dim, .m-rail-panel, .m-sheet { transition: none; }
+  .m-hp-holo, .m-hp-aura, .m-hp-dotglow { animation: none; }
+}
+@keyframes mPhaseHeroFade {
+  0%, 70% { opacity: 1; }
+  100%    { opacity: 0; }
+}

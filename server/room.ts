@@ -13,18 +13,13 @@ import {
   initIndividualGame,
   initEnhanceGame,
 } from './engine/gameEngine';
-import { eligibleAnimals, levelOf } from './engine/skills';
+import { eligibleAnimals } from './engine/skills';
 import { acornOfferOpen } from './engine/acorn';
 import type { GameEvent, GameSettings, GameState, LobbyChatMessage } from 'shared';
 import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
   SHEEP_TIMER_EXTRA_DRAW_CAP,
   PLACES,
-  PLACE_DRAW_STEP_MS,
-  rollDrawStep,
-  ENHANCE_SLAM_FROM,
-  enhanceSlamLandMs,
-  enhanceSlamMs,
   randomNickname,
   randomTeamName,
   NICKNAME_MAX_LEN,
@@ -48,7 +43,6 @@ import {
   ANIMALS,
   THRESHOLDS,
   oneWellSettings,
-  skillMultiplier,
   skillPeakValue,
   ONE_WELL_ALLOWED,
   ONE_WELL_MULTIPLIERS,
@@ -59,23 +53,16 @@ import {
   SCORE_RACE_TURNS,
   timeAttackSettings,
   beatDevSettings,
-  opponentsOf,
   clampEnhanceSettings,
-  enhanceValue,
-  enhanceHealAfterCut,
-  enhanceHealCutOf,
-  enhanceAmount,
-  enhanceDivisorOf,
-  enhanceOverMultiplier,
-  enhanceSheepExp,
-  enhanceSheepExpStack,
 } from 'shared';
 import type { EventEndReason, EventInfo, EventKind } from 'shared';
-import { ACORN_PICK_SEC, finisherLeadMs, finisherTargets } from 'shared';
+import { ACORN_PICK_SEC } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
 import { isDemoRequest } from './demo/trigger';
 import { DemoDirector } from './demo/director';
 import { DEMO_SETTINGS } from './demo/script';
+import { SETTLE_GRACE_MARGIN_MS, settleGraceMs } from './settleTiming';
+import { pickComputerSkill, pickEnhanceComputerSkill, pickScoreRaceComputerSkill } from './computerSkills';
 
 // 싱글 모드 컴퓨터 플레이어는 실제 WebSocket 연결이 없으므로 고정 ID로 취급한다.
 const CPU_PLAYER_ID = 'CPU';
@@ -103,225 +90,6 @@ const CPU_SKILL_THINK_MAX_MS = 1500;
 function normalizeNickname(nickname: string): string {
   return nickname.trim().slice(0, NICKNAME_MAX_LEN) || randomNickname();
 }
-// ─── 연출 유예(settle grace) ──────────────────────────────────────────────
-// 서버는 액션을 처리하는 즉시 다음 턴 타이머를 시작하지만, 클라이언트는 그 액션의
-// 연출(슬롯 → 카드 등장 → 페어 정산 → 행동 효과)이 다 끝나야 비로소 조작을 받는다.
-// 그 연출 시간이 제한시간에서 그대로 깎이면 "방에서 설정한 시간보다 적은 숫자에서
-// 카운트다운이 시작"되고, 연출이 길면 화면에 타이머가 뜨기도 전에 시간이 다 가버린다.
-// 그래서 이번 액션의 연출 길이를 추정해 그만큼을 제한시간 위에 얹는다.
-//
-// 아래 값들은 client/lib/drawTiming.ts와 client/hooks/useAnimationQueue.ts의 실제
-// 연출 타이밍에서 가져온 근사치다. 정확히 일치할 필요는 없고(연출이 조금 바뀌어도
-// 게임 규칙은 그대로다), 모자라기보다 조금 넉넉한 쪽이 안전하다.
-const SETTLE_DRAW_MS = 1430;        // SLOT_TOTAL_DUR(1350) + EMPTY_GAP(80) — 마지막 한 장
-const SETTLE_ROLL_STEP_MS = 300;    // SHEEP_DRAW_STEP — 연쇄 뽑기는 0.3초 간격으로 겹쳐 재생된다
-const SETTLE_ROLL_ENTER_MS = 500;   // WOOL_BALL_DUR — 예약 뽑기 롤에 진입하는 울 볼/도토리
-const SETTLE_COLLECT_MS = 1080;     // SHAKE_CHECK_DUR(550) + COLLECT_FLING_DUR(450) + 80
-const SETTLE_SKILL_MS = 1500;       // 행동 효과 연출(가장 긴 특허랑이 기준)
-const SETTLE_FESTIVAL_MS = 700;     // 축제 시작 연출
-// 아래 근사식의 상한(대규모 연쇄 뽑기 대비) — 근사식은 연쇄 뽑기를 장당 0.3초로 세어 크게 부풀기 때문이다.
-const SETTLE_ESTIMATE_MAX_MS = 15000;
-// 연출 유예 전체의 상한 — 화면 타임라인을 그대로 따라 센 값(settleTimelineMs)에 거는 안전선. 카드 강화 판의 최악(예약 뽑기 두 롤 ·
-// 짝 넷 · 짝 효과 넷)도 40초 남짓이다(롤 하나는 rollDrawStep이 5초 안으로 묶는다).
-const SETTLE_GRACE_MAX_MS = 60000;
-
-/**
- * 방금 브로드캐스트한 이벤트들의 클라이언트 연출이 끝나기까지 걸리는 시간(ms) 추정치.
- * 예전 근사식(settleEstimateMs, 15초 상한)과 화면 타임라인 그대로의 계산(settleTimelineMs) 중 **긴 쪽**이다 — 일반 판은 거의 언제나
- * 근사식이 더 넉넉해 예전과 같고, 카드 강화의 큰 연쇄 뽑기에서만 타임라인이 이긴다.
- * ⚠️ 이 값이 연출보다 짧으면 컴퓨터의 다음 수가 연출 도중에 도착해 화면이 진행 중이던 연출을 걷어낸다 — 뽑기 도중에 판이
- *    "초기화"되는 것처럼 보인다(2026-10-29, 예약 100장에서 예전의 15초 상한에 걸렸다).
- */
-export function settleGraceMs(events: GameEvent[], enhance = false): number {
-  return Math.min(SETTLE_GRACE_MAX_MS, Math.max(settleEstimateMs(events), settleTimelineMs(events, enhance)));
-}
-
-// 화면(useAnimationQueue)의 연출 시각 — 그쪽 상수와 같은 값이다(SLOT_TOTAL_DUR · WOOL_BALL_DUR · EMPTY_GAP · SHAKE_CHECK_DUR ·
-// COLLECT_FLING_DUR · EFFECT_DUR · TIGER_RECOIL_DUR + TIGER_HIT_DUR · RANK_BANNER_DUR). 뽑기 간격은 shared(rollDrawStep · PLACE_DRAW_STEP_MS)를 함께 쓴다.
-const TL_SLOT_MS = 1350;
-const TL_ROLL_ENTER_MS = 500;
-const TL_GAP_MS = 80;
-const TL_COLLECT_MS = 550 + 450 + 80;
-const TL_COLLECT_GROUP_GAP_MS = 150;
-const TL_COLLECT_ORDER: Animal[] = ['sheep', 'rabbit', 'tiger', 'mermaid'];
-const TL_EFFECT_MS = 1200;
-const TL_TIGER_MS = 500 + 900 + 80;
-const TL_RANK_MS = 1700;
-const TL_FESTIVAL_MS = 900;
-const TL_ACORN_START_MS = 2600; // 첫 도토리 고르기 앞의 "도토리 축제 시작!" 안내(useAnimationQueue의 FESTIVAL_START_INFO_DUR)
-const TL_TICK_MS = 1000; // 카드 강화의 출혈·지속 회복 한 번(useAnimationQueue의 TICK_DUR)
-// 도토리 카드 — 고르기가 닫힌 뒤 마지막으로 고른 사람의 "카드가 자리에 들어오는" 연출(화면 AcornShelf의 ACORN_GET_MS)
-const TL_ACORN_GET_MS = 4400; // 화면 AcornLayer — 얻기 연출(ACORN_GET_MS 4초) 끝무렵(ACORN_FLY_AT 3.5초)에 빛이 배지로 날아가 앉는다(ACORN_FLY_MS 0.8초) + 여운
-// 싹쓸이 — "싹쓸이!" 알림 뒤 새 카드 SWEEP_REFILL_COUNT장이 차례로 깔린다(useAnimationQueue의 SWEEP_BANNER_DUR + 장 간격 × 장수 + 여운)
-const TL_SWEEP_MS = 1300 + 3 * 260 + 300;
-
-/** useAnimationQueue의 Pass 1(뽑기) → 1.5(정산) → 싹쓸이 → 1.6(효과) → 순위 → 축제 스케줄을 그대로 따라 센 연출 길이 */
-function settleTimelineMs(events: GameEvent[], enhance: boolean): number {
-  let cursor = 0;
-  let lastDrawEnd = 0;
-  let rollRemaining = 0;
-  let rollTotal = 0;
-  let placeRemaining = 0;
-  for (const ev of events) {
-    if (ev.type === 'bonusDraws' || ev.type === 'festivalDraws') {
-      rollRemaining = ev.count;
-      rollTotal = ev.count;
-    } else if (ev.type === 'placeDraws') {
-      placeRemaining = ev.count;
-    } else if (ev.type === 'draw') {
-      const inRoll = rollRemaining > 0;
-      if (inRoll) rollRemaining--;
-      const inPlace = !inRoll && placeRemaining > 0;
-      if (inPlace) placeRemaining--;
-      const triggerAt = cursor;
-      let drawEnd = (inRoll ? triggerAt + TL_ROLL_ENTER_MS : triggerAt) + TL_SLOT_MS;
-      // 카드 강화의 배수 카드(×5~) — 카드가 나올 자리에서 쿵 떨어지는 연출이 붙고, 다음 장은 그 카드가 닿은 뒤에 나온다(화면과 같은 식)
-      const slam = enhance && ev.card.num >= ENHANCE_SLAM_FROM;
-      if (slam) drawEnd = drawEnd - 120 + enhanceSlamMs(ev.card.num);
-      lastDrawEnd = Math.max(lastDrawEnd, drawEnd);
-      const step = inRoll ? rollDrawStep(rollTotal) : inPlace && placeRemaining > 0 ? PLACE_DRAW_STEP_MS : null;
-      cursor = step === null
-        ? drawEnd + TL_GAP_MS
-        : triggerAt + (slam ? Math.max(step, enhanceSlamLandMs(ev.card.num)) : step);
-    }
-  }
-  cursor = Math.max(cursor, lastDrawEnd + TL_GAP_MS);
-
-  let groups = 0;
-  for (const animal of TL_COLLECT_ORDER) {
-    const n = events.filter(e => e.type === 'collect' && e.animal === animal).length;
-    if (n === 0) continue;
-    if (groups++ > 0) cursor += TL_COLLECT_GROUP_GAP_MS;
-    cursor += n * TL_COLLECT_MS;
-  }
-  // 싹쓸이는 정산 바로 뒤, 짝 효과보다 먼저 재생된다
-  if (events.some(e => e.type === 'sweep')) cursor += TL_SWEEP_MS;
-  for (const ev of events) {
-    if (ev.type === 'skillApplied' && ev.level > 0) cursor += ev.animal === 'tiger' ? TL_TIGER_MS : TL_EFFECT_MS;
-    else if (ev.type === 'ranked') cursor += TL_RANK_MS;
-  }
-  cursor += events.filter(e => e.type === 'enhanceTick').length * TL_TICK_MS;
-  // 마무리 연출(승패를 정한 체력 변화 앞 — shared finisherTargets) 동안은 판이 흐르지 않는다. 500 = 화면 TIGER_RECOIL_DUR
-  for (const i of finisherTargets(events).keys()) cursor += finisherLeadMs(events[i], 500);
-  if (events.some(e => e.type === 'acornOffer' && e.no === 1)) cursor += TL_ACORN_START_MS;
-  else if (events.some(e => e.type === 'festival')) cursor += TL_FESTIVAL_MS;
-  if (events.some(e => e.type === 'acornPicked' && e.closed)) cursor += TL_ACORN_GET_MS;
-  return cursor;
-}
-
-/** 예전 근사식 — 일반 판의 연출 유예는 이 값으로 정해져 왔다(15초 상한). */
-function settleEstimateMs(events: GameEvent[]): number {
-  let draws = 0;
-  let rolls = 0;
-  let collects = 0;
-  let skills = 0;
-  let festivals = 0;
-
-  for (const ev of events) {
-    if (ev.type === 'draw') draws++;
-    else if (ev.type === 'bonusDraws' || ev.type === 'festivalDraws') rolls++;
-    else if (ev.type === 'collect') collects++;
-    else if (ev.type === 'skillApplied' || ev.type === 'enhanceTick') skills++;
-    else if (ev.type === 'festival') festivals++;
-    else if (ev.type === 'sweep') skills += 2; // 알림 + 새 카드 세 장 — 기술 연출 두 번 남짓
-  }
-
-  const ms =
-    (draws > 0 ? SETTLE_DRAW_MS + (draws - 1) * SETTLE_ROLL_STEP_MS : 0) +
-    rolls * SETTLE_ROLL_ENTER_MS +
-    collects * SETTLE_COLLECT_MS +
-    skills * SETTLE_SKILL_MS +
-    festivals * SETTLE_FESTIVAL_MS;
-
-  return Math.min(ms, SETTLE_ESTIMATE_MAX_MS);
-}
-
-// 연출 길이 추정이 조금 모자라도 서버 타임아웃이 클라이언트보다 먼저 터지지 않도록 하는
-// 여유분. 유예 구간은 화면에 드러나지 않으므로(게이지는 turnTotalMs 기준으로 가득 찬
-// 상태를 유지한다) 이 값을 늘려도 표시되는 숫자는 변하지 않는다.
-const SETTLE_GRACE_MARGIN_MS = 600;
-
-/**
- * 싱글 모드 컴퓨터의 행동 선택 — 기본은 무작위지만, 지금 당장 이길 수 있는 수(상표토끼로
- * 체력이 WIN_HP에 닿거나 특허랑이로 상대를 0으로 만드는 경우)가 있으면 그걸 최우선으로
- * 고른다. 그 외에는 완전히 무작위라 사람 상대처럼 실수도 한다.
- */
-function pickComputerSkill(state: GameState, team: Team): Animal | null {
-  const options = eligibleAnimals(state, team);
-  if (options.length === 0) return null;
-
-  const opponent: Team = team === 'A' ? 'B' : 'A';
-  const me = state.teams[team];
-  const foe = state.teams[opponent];
-  const winHp = state.settings.targetScore * 2;
-
-  for (const animal of options) {
-    if (animal === 'sheep' || animal === 'mermaid') continue;
-    const amount = levelOf(state, team, animal) * skillMultiplier(state, team, animal);
-    if (animal === 'rabbit' && me.hp + amount >= winHp) return animal;
-    if (animal === 'tiger' && amount >= foe.hp) return animal;
-  }
-
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-/**
- * 이벤트 '목표점수 달성하기'의 컴퓨터 — **도전자의 점수를 깎는 쪽으로만** 둔다(2026-10-26 요청).
- * 상표토끼는 쓰지 않고, 특허랑이가 있으면(도전자에게 빼앗을 점수가 있을 때) 그것부터, 아니면 디자인어로 다음 특허랑이의
- * 배율을 쌓고, 그것도 없으면 실용신양으로 카드를 더 뽑는다. 쓸 것이 없으면 넘긴다(null).
- */
-function pickScoreRaceComputerSkill(state: GameState, team: SideId): Animal | null {
-  const options = eligibleAnimals(state, team).filter(a => a !== 'rabbit');
-  if (options.length === 0) return null;
-  const foe = opponentsOf(state, team)[0];
-  const foeHp = foe === undefined ? 0 : (state.teams[foe]?.hp ?? 0);
-  if (options.includes('tiger') && foeHp > 0) return 'tiger';
-  if (options.includes('mermaid')) return 'mermaid';
-  if (options.includes('sheep')) return 'sheep';
-  return null;
-}
-
-/**
- * 혼자 놀기 '카드 강화'의 컴퓨터 — 판을 끝낼 수 있으면 그것부터(특허랑이로 0 · 상표토끼로 승리선), 아니면 "지금 얻는 값"이
- * 가장 큰 카드를 고르되 매번 조금씩 흔들어(×0.7~1.3) 사람처럼 실수도 한다. 배율이 걸려 있지 않을 때는 가끔 디자인어로
- * 다음 수를 키운다. 쓸 것이 없으면 넘긴다(null).
- */
-function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal | null {
-  const options = eligibleAnimals(state, side);
-  if (options.length === 0) return null;
-  const foe = opponentsOf(state, side)[0];
-  if (foe === undefined) return null;
-  const me = state.teams[side];
-  const foeHp = state.teams[foe]?.hp ?? 0;
-  const mult = me.pendingMultiplier;
-  const winHp = state.settings.targetScore * 2;
-  const div = enhanceDivisorOf(state, side);
-  const over = (a: Animal) => enhanceOverMultiplier(a, me.exp[a]);
-  const value = (a: Animal) => enhanceAmount(enhanceValue(a, levelOf(state, side, a)), mult * over(a), div);
-  // 상표토끼 — 즉시 회복에 상대 특허랑이가 건 회복 효율 감소를 거친 값(엔진 applyEnhanceEffect와 같은 계산)
-  const rabbitHeal = () => enhanceHealAfterCut(value('rabbit'), enhanceHealCutOf(state, side));
-
-  if (options.includes('tiger') && value('tiger') >= foeHp) return 'tiger';
-  if (options.includes('rabbit') && me.hp + rabbitHeal() >= winHp) return 'rabbit';
-  if (options.includes('mermaid') && mult === 1 && options.length > 1 && Math.random() < 0.35) return 'mermaid';
-
-  const gain = (a: Animal): number => {
-    if (a === 'tiger') return Math.min(value(a), foeHp);
-    if (a === 'rabbit') return rabbitHeal();
-    // 실용신양 — 추가 뽑기 + 무작위 경험치(키우는 값). 6차 표의 장수(4~14)만 보면 컴퓨터가 실용신양을 거의 고르지 않는다 —
-    // 장수 × 0.6이던 것을 (장수 + 경험치) × 1로 바꿨다(시뮬레이션에서 컴퓨터의 강함은 그대로, ×3이면 오히려 약해진다)
-    if (a === 'sheep') return value(a) + enhanceSheepExp(levelOf(state, side, a)) * enhanceSheepExpStack(levelOf(state, side, a));
-    return mult === 1 ? 1.5 : 0;              // 디자인어 — 이미 걸려 있으면 굳이 쓰지 않는다
-  };
-  let best: Animal = options[0];
-  let bestScore = -Infinity;
-  for (const a of options) {
-    const score = gain(a) * (0.7 + Math.random() * 0.6);
-    if (score > bestScore) { best = a; bestScore = score; }
-  }
-  return best;
-}
-
 // ─── 이벤트 모드(EVENT_MODE_ROADMAP.md) ─────────────────────────────────────────
 // 이벤트 판은 새 엔진이 아니라 팀전 1:1 판에 프리셋·제약을 얹은 것이다. 도전자는 언제나 A팀이고, 상대는
 // 컴퓨터(목표점수 달성하기·한 우물만 파기) 또는 개발자(개발자를 이겨라, B팀)다.

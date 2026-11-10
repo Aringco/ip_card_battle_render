@@ -1,0 +1,97 @@
+/* ── 마무리 연출(FinisherLayer) — 판을 끝낼 체력 변화 직전: 그 체력 막대가 커지고(data-finisher), 둘레가 어두워지며 막대 가운데로
+   빛이 모였다가(--gather) 터진다(--burst). 시간은 useAnimationQueue의 FINISHER_GATHER_DUR · FINISHER_BURST_DUR. 막대는 `scale`
+   속성으로 키운다(transform을 쓰는 흔들림 연출과 겹치지 않게). 층은 도토리 창(115)보다 위다. */
+[data-finisher='panel'] {
+  box-shadow: inset 0 0 0 4px rgba(255, 214, 102, 0.95), inset 0 0 28px 6px rgba(255, 214, 102, 0.55) !important;
+  animation: finisherPanel 0.5s ease-in-out infinite alternate;
+}
+@keyframes finisherPanel { from { filter: brightness(1); } to { filter: brightness(1.25); } }
+[data-finisher='bar'] {
+  scale: 1.35;
+  filter: drop-shadow(0 0 14px rgba(253, 230, 138, 0.9));
+  transition: scale 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.9s ease;
+}
+/* PC 체력 칸(.play-cell)은 overflow: hidden이라 커진 구슬이 잘린다 — 그동안만 열고 이웃 칸 위로 올린다 */
+.play-cell:has(> [data-finisher], > * > [data-finisher]) { overflow: visible; z-index: 50; }
+html[data-finishing] .m-layout .m-cards { opacity: 0; transition: opacity 0.25s ease; }
+.finisher-layer { position: fixed; inset: 0; z-index: 140; pointer-events: none; overflow: hidden; }
+.finisher-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--fx) var(--fy), transparent 0, transparent var(--fr, 90px), rgba(0, 0, 0, 0.72) calc(var(--fr, 90px) + 250px));
+  opacity: 0;
+  animation: finisherFadeIn var(--gather) ease-out forwards, finisherFadeOut 0.3s ease-in var(--gather) forwards;
+}
+.finisher-gather { position: absolute; inset: 0; animation: finisherOff 0.01s linear var(--gather) forwards; }
+.finisher-core {
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff7d1 35%, rgba(253, 200, 80, 0.85) 60%, rgba(253, 200, 80, 0) 72%);
+  box-shadow: 0 0 24px 10px rgba(255, 220, 120, 0.8);
+  animation: finisherCore var(--gather) cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+}
+.finisher-spark {
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #fff6c8;
+  box-shadow: 0 0 10px 3px rgba(255, 214, 102, 0.95);
+  opacity: 0;
+  animation: finisherSpark 700ms ease-in infinite;
+}
+.finisher-ring {
+  position: absolute;
+  left: var(--fx);
+  top: var(--fy);
+  width: 80px;
+  height: 80px;
+  margin: -40px 0 0 -40px;
+  border-radius: 50%;
+  border: 6px solid rgba(255, 236, 170, 0.95);
+  box-shadow: 0 0 30px 10px rgba(255, 200, 80, 0.8), inset 0 0 20px 6px rgba(255, 240, 200, 0.8);
+  opacity: 0;
+  animation: finisherRing var(--burst) cubic-bezier(0.1, 0.7, 0.3, 1) var(--gather) forwards;
+}
+.finisher-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--fx) var(--fy), rgba(255, 255, 255, 0.95) 0, rgba(255, 240, 200, 0.7) 25%, rgba(255, 240, 200, 0) 70%);
+  opacity: 0;
+  animation: finisherFlash var(--burst) ease-out var(--gather) forwards;
+}
+@keyframes finisherFadeIn { to { opacity: 1; } }
+@keyframes finisherFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes finisherOff { to { visibility: hidden; } }
+@keyframes finisherCore {
+  0%   { transform: scale(0.2); opacity: 0.4; }
+  80%  { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(2.6); opacity: 1; }
+}
+@keyframes finisherSpark {
+  0%   { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translate(0, 0) scale(0.3); opacity: 0.9; }
+}
+@keyframes finisherRing {
+  0%   { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(9); opacity: 0; }
+}
+@keyframes finisherFlash {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-finisher='bar'] { scale: 1.15; transition: none; }
+  [data-finisher='panel'] { animation: none; }
+  .finisher-spark, .finisher-ring { display: none; }
+}

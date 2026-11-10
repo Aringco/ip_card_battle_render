@@ -1,0 +1,360 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   홀로 카드 — 기술 카드에 마우스를 올리면 커지고, 포인터를 따라 기울어지고, 포인터 자리에서 빛이 반사된다
+   (INDIVIDUAL_MODE_ROADMAP.md T7-1 · 요구 G6 · 팀전·개인전 공통)
+   components/game/SkillChoiceBar.tsx의 HoloCell이 --mx/--my(광택 위치)·--rx/--ry(기울기)를 쓴다.
+
+   ⚠️ **참고한 사이트(poke-holo.simey.me)의 코드는 가져오지 않았다.** 원본 저장소는 GPL-3.0이라 복사하면
+      이 저장소 전체에 그 조건이 걸릴 수 있다. 기법(포인터 좌표 → CSS 변수 → 기울기·광택·무지개 층)만 새로 썼다.
+
+   ⚠️ 기울기·확대는 **버튼이 아니라 감싸는 칸**(.holo-cell)에 건다 — 버튼은 모서리를 다듬느라
+      overflow-hidden이라 버튼 자신을 확대하면 튀어나온 부분이 잘린다.
+   ⚠️ 효과는 transform·opacity뿐이라 배치를 바꾸지 않는다(팀전 measurePlay --diff로 확인한다).
+   ⚠️ 잠긴 카드(disabled)에는 걸지 않는다 — HoloCell이 enabled일 때만 data-holo와 두 층을 그린다.
+   ══════════════════════════════════════════════════════════════════════════ */
+.holo-cell {
+  --mx: 50%;
+  --my: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+  /* 기울기·확대의 기준은 **카드 중앙**이다 — 한때 아래 변을 기준으로 두었더니(카드 아래가 판 밖으로 나가지 않게)
+     기울기까지 아래 변을 축으로 돌아 위쪽만 크게 휘둘렸다. 아래 변이 제자리에 남는 것은 hover 쪽의
+     translateY(-10.5%)가 맡는다. */
+  transform-origin: 50% 50%;
+  transition: transform 0.35s cubic-bezier(0.34, 1.3, 0.64, 1), filter 0.25s ease;
+  will-change: auto;
+}
+.holo-cell[data-holo][data-hover] {
+  z-index: 30;
+  /* 1.3배로 **카드 중앙 기준** 커진다(2026-11-01 요청 — 그 전에는 1.21배로 커진 만큼 위로 옮겨 아래 변을 제자리에 두고
+     16px 더 띄웠다 = "아래 기준"). 위아래 · 좌우로 똑같이 15%씩 넘친다(옆 카드 위로 겹치는 것은 z-index 30이 맡는다).
+     기울기는 포인터를 짧은 지연으로 따라간다. */
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1.3);
+  transition: transform 0.09s linear, filter 0.25s ease;
+  /* 아래로 드리우는 그림자 + 흰 빛 번짐(모든 카드 같은 색 — 한때 카드별 색이었다가 흰 빛으로 통일).
+     filter라 카드 모양(둥근 모서리)을 따라간다. */
+  filter: drop-shadow(0 18px 16px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
+  will-change: transform;
+}
+/* 내가 행동을 고르는 단계가 아니면(상대 차례 · 내 장소 선택 · 연출 중 · 관전) **입체 움직임(떠오름·확대·기울기·옆면) 없이 홀로그램(광택 띠)만** — 2026-10-30 요청. HoloCell이 data-flat을 단다(SkillChoiceBar의 interactive).
+   광택은 포인터 높이(--my)를 그대로 따라간다. 카드 밝아짐(.skill-choice-bg)도 그대로 둔다. */
+.holo-cell[data-holo][data-hover][data-flat] {
+  z-index: auto;
+  transform: none;
+  filter: none;
+  will-change: auto;
+}
+.holo-cell[data-holo][data-hover][data-flat] .holo-edge { opacity: 0; }
+/* 레벨은 있지만 지금은 누를 수 없는 카드(상대 차례)에도 효과를 건다. 그때 버튼은 disabled라 마우스 이벤트를
+   삼켜 감싸는 칸이 포인터를 못 받는다 — 버튼만 포인터를 통과시켜 칸이 받게 한다(어차피 누를 수 없는 버튼이다). */
+.holo-cell[data-holo] .skill-choice-panel:disabled { pointer-events: none; }
+/* 버튼 자신의 옛 hover(떠오름·확대)는 끈다 — 같은 일을 감싸는 칸이 하므로 겹치면 두 번 커진다. */
+.holo-cell[data-holo] .skill-choice-panel:not(:disabled):hover {
+  transform: none;
+}
+/* ⚠️ 가리키고 있는 카드에서는 "누를 수 있음" 깜빡임(.skill-choice-glow — 1초마다 밝기·안쪽 빛이 출렁인다)을
+   멈춘다. 그대로 두면 밝기가 계속 오르내려 홀로그램 무지개·광택이 묻혀 보이지 않는다. 빛 대신 고정된
+   연두 테두리 한 줄만 남겨 "누를 수 있다"는 신호는 유지한다. */
+.holo-cell[data-holo][data-hover] .skill-choice-glow {
+  animation: none;
+  filter: none;
+  box-shadow: inset 0 0 0 3px rgba(163, 230, 53, 0.85);
+}
+
+/* 빛 반사 — **사선 반사 띠만** 쓴다(무지개 → 사선 띠 → 마우스 광원 → 둘을 함께 → 요청으로 마우스 광원을 걷었다).
+   .holo-shine: 카드 면을 가로지르는 하얀 사선 띠 — 포인터 높이(--my)에 따라 위아래로 미끄러진다(screen).
+   기울기(--rx/--ry)는 그대로 포인터를 따라간다. 기법만 참고하고 새로 썼다. */
+/* ⚠️ z-index는 버튼보다 높아야 한다 — 누를 수 있는 카드에 마우스를 올리면 버튼이 z-index 30이 된다
+   (.skill-choice-panel:not(:disabled):hover). 처음에 4로 두었더니 정확히 hover하는 순간 버튼에 덮여
+   무지개·광택이 하나도 보이지 않았다. 손가락 가이드(95)보다는 낮게 둔다. */
+.holo-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  border-radius: var(--card-radius, var(--cell-r, 16px));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.holo-shine {
+  background-image:
+    linear-gradient(
+      168deg,
+      transparent 0%,
+      transparent 37%,
+      rgba(255, 255, 255, 0.22) 43%,
+      rgba(255, 255, 255, 0.8) 48%,
+      rgba(255, 255, 255, 0.22) 53%,
+      transparent 59%,
+      transparent 100%
+    );
+  background-size: 100% 260%;
+  background-position: 50% var(--my);
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+}
+.holo-cell[data-holo][data-hover] .holo-shine { opacity: 0.85; }
+
+/* ⚠️ 이 효과는 CSS `:hover`도, "hover 되는 기기인가" 미디어 쿼리도 쓰지 않는다 — **`data-hover`가 켜는 일**이다.
+   HoloCell이 포인터가 들어올 때 그 종류(pointerType)를 보고 **마우스·펜일 때만** `data-hover`를 단다.
+   변천: `(hover: hover) and (pointer: fine)` → `(any-hover: …)`(2026-10-26) → 이 방식(같은 날). 미디어 쿼리는 브라우저가
+   기기를 어떻게 판정하느냐에 달려 있어, 터치스크린 노트북·원격 데스크톱처럼 판정이 어긋나는 PC에서는 마우스로 가리켜도
+   카드만 그대로였다(같은 화면의 손가락 가이드는 조건 없는 애니메이션이라 멀쩡히 움직여 원인을 가리기 어려웠다).
+   터치는 pointerType이 'touch'라 애초에 켜지지 않으므로, 폰에서 손을 뗀 뒤에도 카드가 떠 있는 "굳는 hover"도 없다. */
+/* 움직임을 줄이는 설정이면 기울기·광택을 끈다 — 기존 hover(떠오름)도 이미 꺼져 있다. */
+@media (prefers-reduced-motion: reduce) {
+  .holo-shine { display: none; }
+  .holo-cell,
+  .holo-cell[data-holo][data-hover] { transform: none; transition: none; filter: none; }
+}
+
+/* ── 개인전 이모티콘 풍선 — 꼬리(뾰족한 부분)가 플레이어를 가리킨다 ───────────────────
+   components/effects/PlayerEmoticonLayer.tsx의 SideBubble이 쓴다(팀전 이모티콘은 그대로).
+   풍선은 플레이어 칸의 왼쪽에 뜨고, 왼쪽이 화면 밖이면 오른쪽으로 넘어간다 — 어느 쪽이든 꼬리는 플레이어 쪽.
+   등장·퇴장 연출(emoticonLifecycle)은 그림이 아니라 **풍선 전체**에 건다 — 그림에만 걸면 꼬리가 남는다.
+   꼬리 높이(--tail-y)는 풍선 가운데에서 플레이어(닉네임) 높이까지의 거리다(화면 아래로 넘쳐 풍선을
+   끌어올렸을 때도 꼬리는 플레이어를 가리킨다). */
+.emoticon-bubble {
+  position: relative;
+  display: block;
+  animation: emoticonLifecycle 2000ms ease-out both;
+}
+.emoticon-bubble.is-staying {
+  animation: emoticonEnter 900ms ease-out both;
+}
+.emoticon-bubble .player-emoticon { animation: none; }
+/* 플레이어가 고른 감정표현(EmotePicker) — 연출 표정보다 오래 떠 있다(EMOTE_SHOW_MS, shared/emotes.ts와 같은 값).
+   **풍선(흰 상자 + 꼬리)은 움직이지 않고** 나타났다 사라지기만 하며, 그 안의 그림만 좌우로 흔들린다.
+   상자(.emote-box)와 그림(.emote-img)을 나눠 그리는 이유다 — 상자째 돌리면 풍선이 흔들리고 꼬리가 플레이어를 놓친다.
+   상자의 안쪽 여백은 기울어진 그림의 모서리가 상자 밖으로 삐져나오지 않을 만큼이다(넘치는 건 overflow로 자른다). */
+.emoticon-bubble.is-emote { animation: emoteBubbleFade 3000ms ease-out both; }
+@keyframes emoteBubbleFade {
+  0%   { opacity: 0; }
+  6%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.emote-box {
+  box-sizing: border-box;
+  padding: 16px;
+  overflow: hidden;
+}
+.emote-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 85%;
+  animation: emoteWiggle 640ms ease-in-out infinite;
+}
+@keyframes emoteWiggle {
+  0%, 100% { transform: rotate(-7deg); }
+  50%      { transform: rotate(7deg); }
+}
+
+/* ── 개인전 감정표현 버튼·고르기 창(components/game/EmotePicker.tsx) ─────────────────────
+   버튼은 내 정보창(.ind-cell-me) 오른쪽 위에 **겹쳐** 앉는다(absolute) — 칸 안의 배치를 한 픽셀도 밀지 않게
+   (measureIndividual이 지키는 상자들). 창은 body로 띄우는 fixed라 칸의 overflow에 잘리지 않는다.
+   색은 개인전 액자(.play-frame-css)의 갈색·크림을 따른다. */
+.emote-button {
+  position: absolute;
+  top: 6px;
+  right: 20px;
+  /* 정보창 오른쪽 위의 잎 장식(LeafDecoration, z-10)보다 위 — 잎 끝은 버튼 오른쪽으로 비어져 보인다 */
+  z-index: 11;
+  width: 34px;
+  height: 34px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 2px solid #6f4521;
+  background: #fff7e6;
+  box-shadow: 0 2px 6px rgba(58, 34, 15, 0.35);
+  cursor: pointer;
+  transition: transform 120ms ease-out, opacity 200ms;
+}
+.emote-button img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.emote-button:hover { transform: scale(1.1); }
+/* 창이 열려 있는 동안 — 눌린 모습. 창을 닫는 길이 이 버튼뿐이라 열려 있다는 것이 버튼에 보여야 한다. */
+.emote-button[data-open] { background: #8d5c2e; border-color: #3a220f; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35); }
+.emote-button:focus-visible { outline: 3px solid #c79a5e; outline-offset: 2px; }
+
+/* 켜 두는 창 — 내 정보창 칸 위에 그 폭 그대로 겹친다(판 쪽에 열면 켜 둔 동안 장소 타일을 가린다).
+   높이는 화면 아래까지(maxHeight는 컴포넌트가 준다), 넘치면 칸 영역만 스크롤된다. */
+.emote-panel {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  /* 장소 타일의 안내 손(.place-guide-hand, 95)보다 위 — 아래면 손가락이 고르는 칸을 덮는다 */
+  z-index: 110;
+  padding: 8px;
+  border-radius: 12px;
+  border: 3px solid #6f4521;
+  background: #fff7e6;
+  box-shadow: 0 10px 28px rgba(58, 34, 15, 0.45);
+}
+.emote-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.emote-tab {
+  flex: 1;
+  padding: 4px 0;
+  border-radius: 8px;
+  border: 2px solid #c79a5e;
+  background: #fee9bb;
+  color: #6f4521;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.emote-tab[aria-selected="true"] { background: #8d5c2e; border-color: #6f4521; color: #fff7e6; }
+/* ⚠️ 안쪽 여백(padding)은 칸이 커지는 몫이다 — 칸이 hover에 1.08배로 커지고 포커스 테두리(3px + 1px 띄움)가 바깥에
+   그려지는데, 이 상자가 스크롤 영역이라 오른쪽·아래 끝 칸이 그만큼 넘치면 스크롤바가 생겼다. 넉넉히 둔다. */
+.emote-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 10px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* 방금 하나 보내 잠깐(EMOTE_MIN_INTERVAL_MS) 잠긴 동안 — 깜빡이지 않게 살짝만 흐린다 */
+.emote-grid[data-cooling] .emote-cell { opacity: 0.55; cursor: default; }
+.emote-cell {
+  aspect-ratio: 1;
+  padding: 3px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #fff;
+  cursor: pointer;
+  transition: transform 100ms ease-out, border-color 100ms;
+}
+.emote-cell img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+/* 칸 = 그림 버튼 + 왼쪽 위 즐겨찾기 별(따로 된 버튼) + 즐겨찾기면 오른쪽 아래 단축키 글자(A·S·D·F) */
+.emote-cell-wrap { position: relative; }
+.emote-cell-wrap > .emote-cell { display: block; width: 100%; }
+.emote-star {
+  position: absolute;
+  top: -3px;
+  left: -2px;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 17px;
+  line-height: 20px;
+  color: #b49a78;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  cursor: pointer;
+}
+.emote-star:hover:not(:disabled) { color: #8d5c2e; }
+.emote-star[data-on] { color: #f5c400; text-shadow: 0 0 1px #6f4521, 0 0 1px #6f4521, 0 0 3px #fff; }
+.emote-star:disabled { opacity: 0.35; cursor: default; }
+.emote-star:focus-visible { outline: 2px solid #8d5c2e; border-radius: 4px; }
+.emote-key {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: #6f4521;
+  color: #fff7e6;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+.emote-hint {
+  margin: 6px 2px 0;
+  font-size: 11px;
+  color: #7d6a55;
+  text-align: center;
+}
+.emote-cell:hover:not(:disabled) { transform: scale(1.08); border-color: #c79a5e; }
+.emote-cell:focus-visible { outline: 3px solid #8d5c2e; outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .emote-button, .emote-cell { transition: none; }
+  .emote-button:hover, .emote-cell:hover:not(:disabled) { transform: none; }
+}
+/* 꼬리 — 검은 테두리 삼각형 위에 흰 삼각형을 얹어, 그림의 3px 테두리와 이어지게 한다.
+   그림 쪽으로 3px 파고들어 테두리 선을 흰색으로 덮어 풍선과 꼬리가 한 몸으로 보인다. */
+.emoticon-tail {
+  position: absolute;
+  top: calc(50% + var(--tail-y, 0px));
+  width: 22px;
+  height: 30px;
+  margin-top: -15px;
+  background: rgba(0, 0, 0, 0.85);
+}
+.emoticon-tail::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: 15px;
+  height: 20px;
+  background: #fff;
+}
+/* 풍선이 플레이어의 왼쪽 — 꼬리는 오른쪽으로 */
+.emoticon-tail-right { left: calc(100% - 3px); clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.emoticon-tail-right::after { left: 0; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+/* 풍선이 플레이어의 오른쪽(왼쪽이 화면 밖) — 꼬리는 왼쪽으로 */
+.emoticon-tail-left { right: calc(100% - 3px); clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.emoticon-tail-left::after { right: 0; clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+@media (prefers-reduced-motion: reduce) {
+  .emoticon-bubble,
+  .emoticon-bubble.is-staying,
+  .emoticon-bubble.is-emote,
+  .emote-img { animation: none; }
+}
+
+/* ── 끝낼 수 있는 수 — 빨간 빛 ───────────────────────────────────────────────────
+   이 기술 하나로 판을 끝낼 수 있을 때(상표토끼·특허랑이 — lib/skills.ts의 finishingMove) 카드 둘레와, 특허랑이의
+   상대 선택 화면에서 끝낼 수 있는 상대 버튼에 띄운다. 카드 쪽은 버튼이 아니라 **감싸는 칸**(.holo-cell)에 건다 —
+   버튼의 box-shadow는 "누를 수 있음" 깜빡임(.skill-choice-glow)이 애니메이션으로 덮어쓴다. */
+@keyframes lethalPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.9), 0 0 12px 3px rgba(239, 68, 68, 0.55); }
+  50%      { box-shadow: 0 0 0 3px rgba(239, 68, 68, 1), 0 0 24px 8px rgba(239, 68, 68, 0.85); }
+}
+.skill-card-lethal {
+  border-radius: var(--card-radius, var(--cell-r, 16px));
+  animation: lethalPulse 1.4s ease-in-out infinite;
+}
+.target-picker-card-lethal {
+  border-color: #b91c1c;
+  animation: lethalPulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skill-card-lethal,
+  .target-picker-card-lethal {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.95), 0 0 16px 5px rgba(239, 68, 68, 0.7);
+  }
+}
+
+/* ── 카드 두께감 — 기울어지면 옆면이 드러난다 ───────────────────────────────────
+   진짜 3D 옆면(preserve-3d + translateZ)은 쓸 수 없다 — 칸에 걸린 filter(drop-shadow)가 3D를 평면으로 눌러 버린다.
+   대신 HoloCell이 기울기에서 옆면의 방향·길이(--ex/--ey, px 숫자)를 계산해 넘기고, 여기서 그 방향으로 조금씩
+   어두워지는 그림자 다섯 겹을 쌓아 "카드 옆면"을 그린다. rotateY가 양수면(오른쪽이 들어가면) 왼쪽 옆면이,
+   rotateX가 양수면(위가 젖혀지면) 아래 옆면이 보인다 — CSS 회전에서 화면을 향하게 되는 면이 그쪽이다.
+   옆면 색은 --card-side(기본 금색, 개인전은 고동색 — .ind-cards). 기울지 않아도 아래로 2px(카드 두께)는 늘 보여 떠오른 카드가 종이처럼 얇아 보이지 않게 한다. */
+.holo-edge {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--card-radius, var(--cell-r, 16px));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow:
+    calc(var(--ex, 0) * 0.2px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.2px * var(--edge-k, 1)) 0 var(--card-side, #c9952e),
+    calc(var(--ex, 0) * 0.4px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.4px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 85%, #000),
+    calc(var(--ex, 0) * 0.6px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.6px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 72%, #000),
+    calc(var(--ex, 0) * 0.8px * var(--edge-k, 1)) calc(var(--ey, 2) * 0.8px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 60%, #000),
+    calc(var(--ex, 0) * 1px * var(--edge-k, 1)) calc(var(--ey, 2) * 1px * var(--edge-k, 1)) 0 color-mix(in srgb, var(--card-side, #c9952e) 50%, #000);
+}
+.holo-cell[data-holo][data-hover] .holo-edge { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .holo-edge { display: none; }
+}

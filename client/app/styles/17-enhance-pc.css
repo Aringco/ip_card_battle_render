@@ -1,0 +1,394 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   PC 카드 강화 판(2026-11-07, tmp_prompt/20261107/v2.txt) — GameLayout의 enhPc
+   그림 들보 · 그림 액자 · 체력 구슬 대신 CSS 띠(.enh-top) · CSS 판(.play-frame-css.enh-frame — 고동색 판, 정보 칸은 숲 색) ·
+   타이머 양옆 체력 막대(MobileHpBar) · 좌우 끝 도토리 카드 칸 · 녹색 실크 천 위의 기술 카드. 일시정지 버튼(.pause-fab)과 그 메뉴는 그대로다.
+     판 칸:  me(내 정보) · board · opp(상대 정보)        — 위(정보 칸 높이 = 카드 필드)
+             mid: 도토리 | 체력 | 타이머(아래 지속 효과) | 체력 | 도토리   — 판 폭 전체
+             cards(기술 카드 — 실크 천, 카드 다섯 장은 카드 필드 폭)      — 판 폭 전체
+   ⚠️ 판 높이는 팀전 액자와 같은 상자(--pf-h)다 — --stage-w가 "위 띠 + 판"이 세로에 들어가게 정해져 있다.
+   ══════════════════════════════════════════════════════════════════════════ */
+.enh-top {
+  /* 글자 · 안여백은 고정 px가 아니라 띠 높이(--beam-h — 무대 폭 비례)의 비율이다(2026-11-07 요청) */
+  --m-slot: calc(var(--beam-h) * 0.9);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+  box-sizing: border-box;
+  width: var(--stage-w);
+  height: calc(var(--beam-h) * 0.62);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: calc(var(--beam-h) * 0.09);
+}
+.enh-top-side { display: flex; align-items: center; gap: calc(var(--beam-h) * 0.06); min-width: 0; }
+.enh-top-right { flex-direction: row-reverse; }
+.enh-top .m-name { font-size: calc(var(--beam-h) * 0.17 * var(--font-scale) / 1.12); padding: 0.15em 0.8em; max-width: 12em; border-width: max(1.5px, 0.08em); }
+.enh-turn,
+.enh-steps,
+.enh-top-center {
+  border: 1.5px solid #6f9a45;
+  background: linear-gradient(180deg, rgba(36, 64, 28, 0.92), rgba(20, 38, 16, 0.92));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(190, 230, 140, 0.25);
+}
+.enh-turn { padding: 0.15em 0.7em; border-radius: 999px; color: #fde68a; font-weight: 900; font-size: calc(var(--beam-h) * 0.17 * var(--font-scale) / 1.12); white-space: nowrap; }
+.enh-steps { display: inline-flex; align-items: center; gap: 0.25em; padding: 0.18em; border-radius: 999px; white-space: nowrap; font-size: calc(var(--beam-h) * 0.16 * var(--font-scale) / 1.12); }
+.enh-step {
+  padding: 0.12em 0.75em;
+  border-radius: 999px;
+  color: rgba(236, 252, 203, 0.5);
+  font-weight: 800;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+.enh-step[data-on][data-phase='draw'] { background: #15803d; color: #fff; box-shadow: 0 0 12px rgba(74, 222, 128, 0.65); }
+.enh-step[data-on][data-phase='choice'] { background: #b45309; color: #fff; box-shadow: 0 0 12px rgba(251, 191, 36, 0.65); }
+.enh-step-arrow { color: #a3c46a; font-weight: 900; }
+.enh-top-center {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  padding: 0.2em 0.9em;
+  border-radius: 0.6em;
+  color: #ecfccb;
+  font-size: calc(var(--beam-h) * 0.22 * var(--font-scale) / 1.12);
+  white-space: nowrap;
+}
+.enh-top-center[data-tone='mine'] { border-color: #84cc16; box-shadow: 0 0 16px rgba(132, 204, 22, 0.45), 0 2px 6px rgba(0, 0, 0, 0.45); }
+.enh-top-center[data-tone='enemy'] { border-color: #f43f5e; color: #ffe4e6; box-shadow: 0 0 16px rgba(244, 63, 94, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45); }
+.enh-top .festival-running { font-size: calc(var(--beam-h) * 0.17 * var(--font-scale) / 1.12); gap: 0.35em; padding: 0.3em 1em 0.3em 0.45em; }
+.enh-top-nick { font-size: 0.72em; font-weight: 700; opacity: 0.85; }
+
+/* [일시정지] — 상대 이름 오른쪽의 빈 상자(.m-pause-slot) 자리, 위 띠 높이의 가운데(2026-11-08 요청). 나무판의 transform 연출과 겹치지 않게 translate로 올린다 */
+/* 빈 상자 폭 = 버튼 폭(나무판 양 끝 28px씩 + 글자 약 5em) — 무대 비례인 --m-slot만 쓰면 작은 화면에서 버튼이 상대 이름을 덮는다 */
+.enh-top .m-pause-slot { width: calc(56px + 1.04rem * var(--font-scale) * 5.2); }
+body:has(.enh-top) .pause-fab {
+  top: calc(var(--beam-h) * 0.31);
+  right: calc((100vw - var(--stage-w)) / 2);
+  translate: 0 -50%;
+}
+
+/* 판 — 개인전 CSS 판(.play-frame-css)의 틀을 쓰되 폭 · 칸 나눔 · 색만 바꾼다 */
+.play-frame-css.enh-frame {
+  --ind-frame-w: var(--stage-w);
+  --pf-w: var(--stage-w);
+  --enh-timer-w: 30%;
+  --enh-side: calc(var(--pf-w) * 0.15);
+  /* 가운데 줄 한 행 = 타이머 창 높이(도토리 · 지속 효과도 이 높이 — 2026-11-08 요청) */
+  --enh-bar-h: calc(var(--pf-h) * 0.05);
+  width: var(--stage-w);
+  padding: calc(var(--pf-h) * 0.035) calc(var(--pf-w) * 0.016);
+  grid-template-columns: var(--enh-side) minmax(0, 1fr) var(--enh-side);
+  /* 기술 카드 줄을 값으로 정한다 — 카드 폭을 높이에서 계산해야 1:1.258이 어느 해상도에서나 유지된다(2026-11-08 요청) */
+  --enh-cards-h: calc(var(--pf-h) * 0.3576);
+  --enh-card-pad: calc(var(--pf-h) * 0.014);
+  --enh-card-w: calc((var(--enh-cards-h) - var(--enh-card-pad) * 2) / 1.258);
+  grid-template-rows: minmax(0, 1fr) var(--enh-bar-h) var(--enh-cards-h);
+  column-gap: calc(var(--pf-w) * 0.012);
+  row-gap: calc(var(--pf-h) * 0.016);
+  /* 내 정보 · 상대 정보는 카드 필드와 같은 높이(위 줄만 — 2026-11-07 요청). 가운데 줄과 기술 카드 줄은 판 폭 전체다 */
+  grid-template-areas:
+    "me board opp"
+    "mid mid mid"
+    "hpa cards hpb";
+  /* 판 — 고동색 나무(2026-11-07 요청: 판 전체는 갈색 톤) */
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 9px),
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 220, 160, 0.12), transparent 60%),
+    linear-gradient(135deg, #6b4423 0%, #4e2f17 46%, #643e20 100%);
+  box-shadow:
+    inset 0 0 0 var(--fr-line) #2a1708,
+    inset 0 0 0 calc(var(--fr-line) * 2.6) #c79a5e,
+    inset 0 0 0 calc(var(--fr-line) * 3.4) #2a1708,
+    inset 0 0 calc(var(--pf-w) * 0.03) rgba(0, 0, 0, 0.4),
+    0 calc(var(--pf-w) * 0.006) calc(var(--pf-w) * 0.02) rgba(0, 0, 0, 0.45);
+}
+.enh-frame > .play-cell,
+.enh-frame > .play-cards,
+.enh-frame > .play-prompt-strip {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+.enh-frame > .play-cell { border-radius: var(--cell-r); box-shadow: 0 0 0 var(--fr-line) #a7c47a, 0 0 0 calc(var(--fr-line) * 2) #10200c; }
+.enh-frame > .play-cell-exp-a { grid-area: me; --exp-w: calc(var(--pf-w) * 0.15); }
+.enh-frame > .play-cell-exp-b { grid-area: opp; --exp-w: calc(var(--pf-w) * 0.15); }
+.enh-frame > .play-cell-board { grid-area: board; }
+.enh-frame > .play-cell-hp-a { grid-area: hpa; width: 80%; justify-self: start; }
+.enh-frame > .play-cell-hp-b { grid-area: hpb; width: 80%; justify-self: end; }
+/* 체력 — 입체 유리관(2026-11-08 요청): 위쪽 왼편의 광원 · 왼쪽 세로 반사광 · 양옆이 어두운 원통 음영 · 아래 반사. 눈금은 시작 체력 하나(모바일과 같다) */
+.enh-frame .hp-orb {
+  background: linear-gradient(90deg, rgba(214, 232, 238, 0.82), rgba(248, 253, 255, 0.76) 34%, rgba(248, 253, 255, 0.7) 66%, rgba(208, 226, 234, 0.84));
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4), 0 0 14px rgba(190, 230, 255, 0.22);
+}
+/* 액체를 덮어야 하므로 구슬의 box-shadow가 아니라 위층에 그린다(z 1 — 숫자 z 2 아래) */
+.enh-frame .hp-orb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(55% 22% at 32% 9%, rgba(255, 255, 255, 0.85), transparent 72%),
+    radial-gradient(70% 16% at 62% 100%, rgba(255, 255, 255, 0.45), transparent 75%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, transparent 14%, rgba(255, 255, 255, 0.2) 38%, transparent 64%, rgba(0, 0, 0, 0.1) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), inset 0 8px 14px rgba(255, 255, 255, 0.4), inset 0 -8px 14px rgba(0, 0, 0, 0.07);
+}
+.enh-frame .hp-orb-sheen {
+  top: 6%;
+  left: 8%;
+  width: 9%;
+  height: 74%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.12));
+  border-radius: 999px;
+  filter: blur(1.5px);
+}
+.enh-frame .hp-orb-liquid { box-shadow: 0 -2px 10px rgba(255, 255, 255, 0.35); }
+.enh-frame .hp-orb-mine .hp-orb-liquid { background: linear-gradient(180deg, #9bf01a 0%, #3fb80a 100%); }
+.enh-frame .hp-orb-enemy .hp-orb-liquid { background: linear-gradient(180deg, #ff5c7a 0%, #e8083a 100%); }
+.enh-frame .hp-orb-spectator .hp-orb-liquid { filter: saturate(1.5); }
+/* 바닥의 옅은 빛이 진한 색을 씻어 낸다 — 이 판에서는 끄고, 진한 액체 위에서도 숫자가 읽히게 흰 테를 두른다 */
+.enh-frame .hp-orb-rise::after { display: none; }
+.enh-frame .hp-orb-value { text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 8px rgba(255, 255, 255, 0.9); }
+.enh-frame .hp-orb-segments { display: none; }
+.enh-frame .hp-orb-start { display: block; position: absolute; left: 0; right: 0; z-index: 1; height: 2px; background: rgba(255, 255, 255, 0.95); box-shadow: 0 0 0 1px rgba(60, 80, 90, 0.28); }
+/* 출혈 · 지속 회복은 타이머 양옆(.enh-dots)이 보여 준다 — 구슬에는 그 밖의 상태만 */
+.enh-frame .hp-orb-status > .hp-status-bleed,
+.enh-frame .hp-orb-status > .hp-status-regen { display: none; }
+.enh-frame > .play-cards {
+  grid-area: cards;
+  /* 기술 카드 — 녹색 실크 천 위에 놓인 것처럼(2026-11-07 요청). 양옆 체력 구슬이 80%로 줄어든 만큼 칸보다 넓게 선다(2026-11-08 요청) */
+  margin-inline: calc(var(--enh-side) * -0.2 + var(--pf-w) * 0.001);
+  padding: var(--enh-card-pad) calc(var(--pf-w) * 0.005);
+  border-radius: var(--cell-r);
+  background:
+    linear-gradient(112deg, transparent 18%, rgba(255, 255, 255, 0.16) 30%, transparent 42%, transparent 58%, rgba(255, 255, 255, 0.1) 70%, transparent 82%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 140% at 50% 0%, #2f8a4e 0%, #1c6b3a 45%, #0f4626 100%);
+  box-shadow:
+    inset 0 calc(var(--pf-h) * 0.012) calc(var(--pf-h) * 0.03) rgba(0, 0, 0, 0.35),
+    inset 0 calc(var(--pf-h) * -0.01) calc(var(--pf-h) * 0.02) rgba(150, 230, 170, 0.18),
+    0 0 0 var(--fr-line) #c79a5e,
+    0 0 0 calc(var(--fr-line) * 2) #2a1708;
+}
+/* 다섯 장은 1:1.258 고정 폭으로 천 위에 고르게 벌린다 */
+.enh-frame .play-cards-grid { grid-template-columns: repeat(5, var(--enh-card-w)); justify-content: space-evenly; gap: 0; }
+.enh-frame > .play-prompt-strip { grid-area: mid; justify-self: center; align-self: stretch; width: var(--enh-timer-w); height: auto; }
+/* 타이머 창은 제 칸을 넘지 않는다 — 막대는 30%까지만, 긴 문구(첫 턴 안내)는 한 줄에서 말줄임(양옆 칸을 덮지 않게) */
+.enh-frame .play-timer-window { --timer-h: var(--enh-bar-h); min-width: 0; max-width: 100%; top: 0; }
+.enh-frame .play-timer-bar { flex: 0 1 30%; }
+.enh-frame .play-timer-text { flex: 1 1 0; }
+.enh-frame .play-timer-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 내 정보 · 상대 정보 — 양피지 대신 숲 색(짙은 이끼 바탕 · 연두 빛), 경험치 줄은 옅은 이끼 */
+.enh-frame > .play-cell-exp-a,
+.enh-frame > .play-cell-exp-b { background: #1d3117; }
+.enh-frame .play-panel-body {
+  background-image:
+    linear-gradient(var(--panel-tint, transparent), var(--panel-tint, transparent)),
+    radial-gradient(130% 55% at 50% 0%, rgba(190, 230, 140, 0.24), transparent 70%),
+    linear-gradient(180deg, #36592a 0%, #25411d 58%, #1b3216 100%);
+  background-size: 100% 100%;
+}
+.enh-frame .play-team-head { color: #ecfccb; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.enh-frame .play-panel-body hr { border-color: rgba(190, 230, 140, 0.28); }
+.enh-frame .exp-row { background: rgba(236, 248, 218, 0.92); border-color: #6b8f45; box-shadow: inset 0 -2px 0 rgba(60, 90, 40, 0.18); }
+.enh-frame .exp-row-lv { background: #cfe6b0; }
+
+/* 가운데 줄 — 도토리 카드 · 지속 효과 · (타이머) · 지속 효과 · 도토리 카드. 타이머는 같은 칸의 .play-prompt-strip이 위에 얹힌다 */
+.enh-mid {
+  grid-area: mid;
+  display: grid;
+  /* 도토리 | 상태 | (타이머) | 상태 | 도토리 — 한 행 */
+  grid-template-columns: minmax(0, 1fr) auto var(--enh-timer-w) auto minmax(0, 1fr);
+  grid-template-rows: 100%;
+  column-gap: calc(var(--pf-w) * 0.008);
+  min-width: 0;
+  min-height: 0;
+}
+/* 열만 정하면 DOM 순서대로 자리를 채워 앞 열의 칸이 다음 행으로 밀린다 — 모두 1행에 못박는다 */
+.enh-mid > *,
+.enh-dots .m-dot-pair { grid-row: 1; }
+.enh-acorn-bar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  box-sizing: border-box;
+  justify-content: center;
+  padding: 0 0.6em;
+  border-radius: var(--cell-r);
+  border: 1.5px solid #c79a5e;
+  background: linear-gradient(180deg, rgba(42, 23, 8, 0.85), rgba(26, 14, 5, 0.85));
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  /* 배지 키(2.2em) = 창 높이의 72% */
+  font-size: calc(var(--enh-bar-h) * 0.72 / 2.2);
+  overflow: hidden;
+}
+.enh-acorn-bar[data-side='left'] { grid-column: 1; }
+.enh-acorn-bar[data-side='right'] { grid-column: 5; }
+.enh-acorn-bar .acorn-badges { flex-wrap: nowrap; width: 100%; justify-content: flex-start; }
+/* 고른 순서대로 가운데(타이머 쪽)에서 바깥으로 — 좌우 대칭 */
+.enh-acorn-bar[data-side='left'] .acorn-badges { flex-direction: row-reverse; }
+.enh-acorn-bar:empty::before { content: '도토리 카드'; color: rgba(255, 230, 180, 0.35); font-weight: 700; font-size: 1.1em; }
+/* 지속 효과 — 묶음을 풀어(display: contents) 내 쌍은 타이머 왼쪽, 상대 쌍은 오른쪽 칸에 앉힌다 */
+.enh-dots,
+.enh-dots .m-dot-hub { display: contents; }
+/* 창 높이 = 타이머 창, 아이콘(2.2em 상자) = 창 높이의 64%, 나머지는 여백(2026-11-08 요청) */
+.enh-dots .m-dot-pair {
+  box-sizing: border-box;
+  height: var(--enh-bar-h);
+  padding: 0 calc(var(--enh-bar-h) * 0.28);
+  gap: calc(var(--enh-bar-h) * 0.14);
+  font-size: calc(var(--enh-bar-h) * 0.64 / 2.2);
+}
+.enh-dots .m-dot-pair[data-tone='mine'] { grid-column: 2; }
+.enh-dots .m-dot-pair[data-tone='enemy'] { grid-column: 4; }
+
+/* ── 도토리 카드 장착 — 얻은 카드가 그 단계 빛으로 뭉쳐 도토리 카드 줄의 제자리로 날아가 앉는다(AcornLayer fly) ── */
+.acorn-badge[data-pending] { opacity: 0; transform: scale(0.3); }
+.acorn-badge[data-equip] { animation: acornEquip 0.6s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes acornEquip {
+  0% { transform: scale(1.8); filter: brightness(2.2) drop-shadow(0 0 8px #fff); }
+  100% { transform: scale(1); filter: none; }
+}
+.acorn-fly {
+  --tone: #f0b88a;
+  position: fixed;
+  z-index: 130;
+  pointer-events: none;
+  border-radius: 10%;
+  background: radial-gradient(circle, #fff 0%, var(--tone) 45%, transparent 72%);
+  box-shadow: 0 0 34px 14px var(--tone);
+  transform: translate(-50%, -50%);
+  animation: acornFly 800ms cubic-bezier(0.5, 0, 0.2, 1) forwards;
+}
+.acorn-fly[data-skin='silver'] { --tone: #e5ebf3; }
+.acorn-fly[data-skin='gold'] { --tone: #ffd666; }
+.acorn-fly[data-skin='rainbow'] { --tone: #d9a8ff; }
+.acorn-fly[data-skin='diamond'] { --tone: #4ff0ff; }
+@keyframes acornFly {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+  32% { transform: translate(-50%, -50%) scale(0.22); border-radius: 50%; opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(var(--end)); border-radius: 50%; opacity: 1; }
+}
+
+/* ── 체력 막대 — 다 깎였을 때 터짐 · 다 채웠을 때 별빛(MobileHpBar, 모바일 · PC 공용) ── */
+.m-hp-burst { position: absolute; top: 50%; width: 0; height: 0; z-index: 6; pointer-events: none; }
+.m-hp[data-side='left'] .m-hp-burst { right: 8%; }
+.m-hp[data-side='right'] .m-hp-burst { left: 8%; }
+.m-hp-burst::before {
+  content: '';
+  position: absolute;
+  left: -90px;
+  top: -90px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fde68a 20%, rgba(249, 115, 22, 0.9) 38%, rgba(244, 63, 94, 0.7) 52%, transparent 70%);
+  animation: mHpBoom 0.9s ease-out forwards;
+}
+.m-hp-burst i {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  border-radius: 2px;
+  background: linear-gradient(#fde68a, #f97316);
+  box-shadow: 0 0 6px #fb923c;
+  animation: mHpShard 0.85s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+@keyframes mHpBoom { 0% { transform: scale(0.2); opacity: 1; } 55% { opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes mHpShard {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--bx), var(--by)) rotate(var(--br)) scale(0.4); opacity: 0; }
+}
+.m-hp-stars { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.m-hp-stars i {
+  position: absolute;
+  bottom: 35%;
+  left: var(--sx);
+  width: var(--ss);
+  height: var(--ss);
+  background: radial-gradient(circle, #fff 0 22%, #fef08a 45%, rgba(253, 224, 71, 0) 70%);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  opacity: 0;
+  animation: mHpStar var(--sd) ease-out var(--sdl) infinite;
+}
+.m-hp[data-full] .m-hp-track { box-shadow: 0 0 14px 3px rgba(254, 240, 138, 0.75), inset 0 2px 4px rgba(0, 0, 0, 0.5); }
+@keyframes mHpStar {
+  0% { transform: translateY(0) scale(0.4) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: translateY(-28px) scale(1) rotate(90deg); opacity: 1; }
+  100% { transform: translateY(-60px) scale(0.3) rotate(180deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .acorn-fly { animation-duration: 0.01s; }
+  .m-hp-stars i { animation: none; opacity: 0.8; }
+}
+
+
+/* ── 쿨타임 기술 카드 — 카드 전체(.holo-cell, 마우스 기울기와 같은 상자)가 3D로 뒷면까지 뒤집히고, 끝나면 앞면으로 되뒤집힌다
+   (2026-11-08 요청 — 그 전에는 버튼 안에서 scale로 접혀 카드 칸 안에서만 뒤집히는 것처럼 보였다). 남은 턴은 뒷면(.skill-cool-back).
+   반 바퀴(90도)에서 뒷면이 켜지고 / 꺼지고 나머지 반을 -90도에서 0도로 돌아 거울상이 비치지 않는다.
+   ⚠️ 0.7초 동안은 이 애니메이션이 transform을 차지해 기울기(hover)가 멈춘다 — 그동안 차례가 아니라 기울기가 꺼져 있는 때다.
+   ⚠️ 클래스가 바뀔 때마다(뒷면 ↔ 앞면) 애니메이션이 한 번씩 돈다 — 같은 클래스로 다시 그려지면 다시 돌지 않는다 ── */
+/* 0.62초 지연 — 카드가 바닥에 다 내려앉은 뒤에 뒤집는다(2026-11-08 요청). SkillQuake의 내려찍기(최대 0.5초) + 잠금 해제 0.12초와 짝이다 */
+.holo-cell.holo-flip-back { animation: skillCoolFlip 0.7s ease-in-out 0.62s; } /* fill 없음 — 끝난 뒤에도 transform을 붙들면 마우스 기울기가 영영 먹지 않는다 */
+.holo-cell.holo-flip-front { animation: skillCoolFlipFront 0.7s ease-in-out; }
+/* 앞면으로 돌아온 카드도 끝낼 수 있으면 빨간 빛 — .holo-flip-front가 클래스 하나 더 구체적이라 .skill-card-lethal의 animation을 덮었다 */
+.holo-cell.holo-flip-front.skill-card-lethal { animation: skillCoolFlipFront 0.7s ease-in-out, lethalPulse 1.4s ease-in-out infinite; }
+/* 뒤집혀 가려질 때까지(지연 + 반 바퀴) 그림은 앞면 밝기 그대로 — 안 그러면 착지하는 동안 먼저 어두워진다 */
+.holo-flip-back .skill-choice-bg-disabled { animation: skillCoolFrontHold 0.97s step-end; }
+@keyframes skillCoolFrontHold { 0% { filter: brightness(0.78); } }
+.skill-cool-back {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3em;
+  border-radius: inherit;
+  color: #fde68a;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 6px, transparent 6px 12px),
+    radial-gradient(circle at 50% 42%, #5a3416 0%, #3a1f0c 60%, #24130a 100%);
+  box-shadow: inset 0 0 0 4px #5c3313, inset 0 0 0 6px #a8692f;
+  animation: skillCoolBackIn 0.7s step-end 0.62s both;
+}
+.skill-cool-icon { height: calc(var(--deco, 40px) * 1.4); width: auto; filter: drop-shadow(0 0 8px rgba(253, 230, 138, 0.6)); }
+.skill-cool-turns { font-size: calc(var(--deco, 40px) * 0.95); font-weight: 900; line-height: 1; }
+.skill-cool-sub { font-size: calc(var(--deco, 40px) * 0.42); font-weight: 800; opacity: 0.85; }
+@keyframes skillCoolFlip {
+  0%     { transform: perspective(900px) rotateY(0deg) scale(1); }
+  50%    { transform: perspective(900px) rotateY(90deg) scale(1.08); }
+  50.01% { transform: perspective(900px) rotateY(-90deg) scale(1.08); }
+  100%   { transform: perspective(900px) rotateY(0deg) scale(1); }
+}
+@keyframes skillCoolFlipFront {
+  0%     { transform: perspective(900px) rotateY(0deg) scale(1); }
+  50%    { transform: perspective(900px) rotateY(-90deg) scale(1.08); }
+  50.01% { transform: perspective(900px) rotateY(90deg) scale(1.08); }
+  100%   { transform: perspective(900px) rotateY(0deg) scale(1); }
+}
+.skill-cool-back[data-leaving] { animation: skillCoolBackOut 0.7s step-end both; }
+@keyframes skillCoolBackIn { 0% { opacity: 0; } 50% { opacity: 1; } }
+@keyframes skillCoolBackOut { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .holo-cell.holo-flip-back,
+  .holo-cell.holo-flip-front,
+  .holo-cell.holo-flip-front.skill-card-lethal,
+  .holo-flip-back .skill-choice-bg-disabled,
+  .skill-cool-back { animation: none; }
+  .skill-cool-back[data-leaving] { display: none; }
+}

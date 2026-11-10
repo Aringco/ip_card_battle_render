@@ -1,0 +1,280 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   게임 밖 화면 — 폰(로비 · 방 설정 폼 · 대기실 · 게임 방법) — MOBILE_RESPONSIVE_PROPOSAL.md
+   ══════════════════════════════════════════════════════════════════════════
+   두 조건은 lib/mobileLayout.ts의 PHONE_LANDSCAPE_QUERY · PHONE_PORTRAIT_QUERY와 **같은 문자열**이다 — 로비에서 가로 폰으로 보이던
+   화면이 게임에 들어가면 모바일 배치가 되도록 함께 고칠 것.
+   ⚠️ 데스크톱 규칙은 하나도 바꾸지 않는다 — 새 규칙은 전부 아래 미디어 쿼리 안에 있다(예외: 스테퍼의 기본 display: none).
+      데스크톱이 그대로인지는 measureLobby.mjs의 1280·1366·1920 줄이 이전 값과 같은지로 확인한다.
+   ⚠️ 조건부 렌더링을 늘리지 않았다 — 로비의 "모두 마운트하고 data-stage만 바꾼다"(CLAUDE.md)를 그대로 두고 CSS만 얹는다.
+      컴포넌트에 더한 것은 표식 클래스(waiting-* · howto-* · lobby-settings-hint)와 규칙 칸의 −/+ 버튼뿐이다. */
+
+/* 규칙 값 버튼(폰에서 숫자 칸 대신 보이는 값 — 누르면 입력 창 RuleEditDialog) — 데스크톱에서는 감춘다 */
+.rule-value-button { display: none; }
+/* 규칙 값 입력 창(RuleEditDialog — body로 portal) — 폰에서만 열린다. 화면을 어둡게 덮고 가운데에 입력 칸 · −/+ · [확인]. */
+.rule-dialog-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(12, 8, 4, 0.66);
+}
+.rule-dialog {
+  width: min(92vw, 340px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 3px solid #5a3a1a;
+  background: linear-gradient(180deg, #fff8e8 0%, #f6e3bd 100%);
+  color: #4a3728;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+.rule-dialog-title { font-size: 16px; font-weight: 900; }
+.rule-dialog-row { display: flex; align-items: center; gap: 8px; }
+/* −/+ — 기호를 버튼 한가운데에(글꼴의 기준선 때문에 위로 떠 보였다) */
+.rule-dialog-step { display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.rule-dialog-input { flex: 1; min-width: 0; height: 44px; text-align: center; font-size: 20px; font-weight: 800; }
+.rule-dialog-step {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1.5px solid #b08a5a;
+  background: linear-gradient(180deg, #fff6df 0%, #f2d9a6 100%);
+  color: #4a3728;
+  font-size: 22px;
+  font-weight: 900;
+  touch-action: manipulation;
+}
+.rule-dialog-step:active { transform: scale(0.92); }
+.rule-dialog-suffix { flex: none; font-weight: 800; color: #7d6a55; }
+.rule-dialog-range { font-size: 12px; color: #7d6a55; }
+.rule-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.rule-dialog-cancel { min-height: 44px; padding: 0 16px; font-weight: 800; color: #7d6a55; }
+.rule-dialog-ok { min-height: 44px; padding: 0 22px; font-size: 16px; font-weight: 900; }
+/* 창은 화면 가운데(2026-10-31 요청 — 한때 가로 폰에서 키보드를 피하려 위쪽에 붙였다) */
+
+/* ── 폰 공통(가로 · 세로) ── */
+@media (orientation: landscape) and (max-height: 500px), (orientation: portrait) and (max-width: 767px) {
+  /* 터치 대상 — 규칙 숫자 칸은 값만 보이는 버튼으로 바꾸고(누르면 입력 창 — 좁은 열에 −/+와 칸을 함께 넣었더니 글자가 잘리고 버튼이 컸다),
+     입력칸 · 주사위 · 뒤로가기는 손가락 크기로 */
+  .lobby-root .input-rule-num { display: none; }
+  .rule-value-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.4rem;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1.5px solid #b08a5a;
+    background: #fffaf0;
+    box-shadow: inset 0 1px 3px rgba(74, 55, 40, 0.15);
+    color: #4a3728;
+    font-size: 15px;
+    font-weight: 800;
+    touch-action: manipulation;
+  }
+  .rule-value-button:active { transform: scale(0.95); }
+  .lobby-root .stage-form .input-base:not(.input-rule-num) { min-height: 40px; }
+  .lobby-root .dice-button { width: 2.9rem; }
+  .lobby-back > span:first-child { width: 44px; height: 44px; }
+  /* 작은 글자의 바닥 12px — 데스크톱 기준 크기(10.8px)가 폰에서는 읽히지 않았다. 글씨 배수(--font-scale)는 그대로 곱한다 */
+  .lobby-root .text-xs,
+  .lobby-root .text-\[0\.6rem\] { font-size: max(12px, calc(0.75rem * var(--font-scale))); }
+  /* 아래 "글씨 크기/소리는 ⚙️" 안내 — 폰에서는 두 줄로 접혀 톱니와 겹쳤다 */
+  .lobby-settings-hint { display: none; }
+
+  /* 대기실 — 시작 · 준비 버튼을 스크롤 영역 바닥에 붙인다(내용이 길어도 늘 보인다). 작은 버튼은 손가락 크기로 */
+  .waiting-action {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding-block: 10px 6px;
+    background: linear-gradient(180deg, rgba(247, 239, 221, 0) 0%, rgba(247, 239, 221, 0.97) 30%);
+  }
+  .waiting-board button { min-height: 36px; min-width: 36px; }
+
+  /* 게임 방법 — 세로로 긴 포스터 대신 **한 장씩 넘기는 카드**(가로 스와이프, scroll-snap). 다음 장 끝이 살짝 보여 넘길 수 있다는 걸 알린다.
+     2·3단계를 묶은 칸(.howto-pair)은 display: contents로 풀어 한 장씩 따로 넘긴다. */
+  .howto-scroll { display: flex; flex-direction: column; overflow: hidden; padding-top: 0; }
+  .howto-steps {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    padding: 4px 6% 8px;
+    scroll-padding-inline: 6%;
+  }
+  .howto-pair { display: contents; }
+  .howto-steps > section,
+  .howto-pair > section {
+    flex: 0 0 88%;
+    min-height: 0;
+    overflow-y: auto;
+    scroll-snap-align: center;
+    padding-top: 0.75rem;
+  }
+  /* 번호 배지 — 칸 밖에 걸터앉던 것을 칸 안으로(칸이 스크롤하면 바깥 그림이 잘린다) */
+  .howto-steps section > span:first-child {
+    position: static;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    border-width: 3px;
+    margin-bottom: 4px;
+  }
+  .howto-cta { flex: 0 0 70%; align-items: center; scroll-snap-align: center; }
+  .howto-close {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ── 가로 폰 — 폼 · 대기실이 화면 전체를 쓴다 ── */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* 폼 단계 · 대기실 — 그림 좌표(안전영역)를 버리고 화면 전체. 높이는 지금 보이는 높이(--vvh — 키보드가 올라오면 줄어든다, page.tsx)다.
+     ⚠️ 위치를 px로 바로 적지 못한다 — 안전영역의 부모(.lobby-table)는 화면보다 큰 cover 상자를 transform으로 가운데에 둔 것이라
+        top: 0이 화면 위가 아니다. 그래서 대기실처럼 가운데(50%)에서 시작해 화면 높이의 절반만큼 올린다(= 화면 위 + 6px). */
+  .lobby-safe[data-stage="soloNormal"],
+  .lobby-safe[data-stage="soloEnhance"],
+  .lobby-safe[data-stage="createTeam"],
+  .lobby-safe[data-stage="createIndividual"],
+  .lobby-safe[data-stage="join"],
+  .lobby-safe[data-stage="event"],
+  .lobby-safe[data-stage="waiting"] {
+    left: 50%;
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, calc(-50dvh + 6px));
+    height: calc(var(--vvh, 100dvh) - 12px);
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    gap: 0;
+  }
+  /* 폼은 왼쪽에 뒤로가기 자리(52px)를 남긴다 */
+  .lobby-safe[data-stage="soloNormal"],
+  .lobby-safe[data-stage="soloEnhance"],
+  .lobby-safe[data-stage="createTeam"],
+  .lobby-safe[data-stage="createIndividual"],
+  .lobby-safe[data-stage="join"],
+  .lobby-safe[data-stage="event"] {
+    width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)) - 52px);
+    transform: translate(calc(-50% + 26px), calc(-50dvh + 6px));
+  }
+  .lobby-safe[data-stage="waiting"] {
+    width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)));
+  }
+  /* 뒤로가기 — 안전영역 왼쪽 바깥(위 52px 자리)에 원 하나로. 흐름에서 빼 스테이지가 그만큼 높아진다 */
+  .lobby-back { position: absolute; top: 0; left: -52px; z-index: 30; }
+  .lobby-back > span:last-child { display: none; }
+
+  /* 폼 판 — 배율 없이 화면에 꽉. 액자 · 장식은 얇게(세로 폰 규칙과 같은 값) */
+  .lobby-safe .lobby-form-wrap { padding: 4px; }
+  .lobby-safe[data-stage] .lobby-form-board {
+    --form-zoom: 1;
+    --board-edge: 12px;
+    --board-inner-pad: 10px;
+    --orn-size: 64px;
+    --orn-overhang: 3px;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+  }
+  /* 규칙이 있는 폼(혼자 놀기 · 강화 · 방 만들기 · 개인전 · 이벤트 개발자)은 2열 — 왼쪽 제목 · 이름, 오른쪽 규칙(처음부터 펼친다 —
+     GameRulesFields). 열마다 따로 스크롤하고 제출 버튼은 판 아래에 늘 보인다(B1 · B2).
+     ⚠️ 방 만들기의 "접힌 동안 스크롤 잠금"(.stage-form-create .lobby-form-scroll)을 여기서 덮는다 — 가로 폰에서는 접힌 상태도
+        넘쳐 두 번째 팀 이름 · 규칙 버튼에 닿을 수 없었다. */
+  .lobby-safe .stage-form .lobby-form-scroll:has(> .lobby-form-side) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 6px;
+    overflow: hidden;
+  }
+  .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-head { grid-column: 1; grid-row: 1; }
+  .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-fields { grid-column: 1; grid-row: 2; min-height: 0; overflow-y: auto; padding: 4px 6px; }
+  .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-side { grid-column: 2; grid-row: 1 / span 2; min-height: 0; overflow-y: auto; padding: 4px 6px; }
+  /* 규칙이 없는 폼(방 참가 · 이벤트 도전자)도 2열 — 입력칸(닉네임 · 방 코드 · PIN)은 나란히, 나머지(자리 고르기 · 도전 종류 · 버튼 · 안내)는
+     한 줄을 다 쓴다. 한 열로 두면 세로 380px를 17~71px 넘쳐 스크롤했다. 그래도 넘치면(글씨 크기를 키웠을 때) 스크롤한다. */
+  .lobby-safe .stage-form .lobby-form-scroll:not(:has(> .lobby-form-side)) { overflow-y: auto; }
+  .lobby-safe .stage-form .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 8px;
+  }
+  .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields > * { grid-column: 1 / -1; }
+  .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields > :has(input:not([type="hidden"])) { grid-column: auto; }
+  /* 그림 버튼(자리 고르기 · 선 플레이어)은 폭을 따라 커지는 그림이라 한 줄을 다 쓰면 거대해진다(방 참가 폼이 그래서 넘쳤다) — 한 장 9rem까지 */
+  .lobby-safe .stage-form .pick-image-button { flex: 0 1 9rem; }
+
+  /* 대기실 — 판을 얇게, 방 코드는 한 줄(라벨 · 안내 문구는 감춘다)로 줄여 팀 목록 · 채팅이 위로 올라오게 */
+  .lobby-safe .board-frame-split { --board-edge: 12px; --orn-size: 64px; --orn-overhang: 3px; }
+  .waiting-scroll { gap: 12px; }
+  .waiting-code { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; }
+  .waiting-code-label,
+  .waiting-code-hint { display: none; }
+  .waiting-code-id { font-size: 2.1rem; line-height: 1; }
+  .waiting-code-buttons { margin-top: 0; }
+  .waiting-code-buttons .wood-button { font-size: 14px; padding: 6px 12px; }
+}
+
+/* ── 세로 폰 — 폼은 화면 아래에 붙는 시트, 대기실은 게임이 가로라는 것을 미리 알린다 ── */
+@media (orientation: portrait) and (max-width: 767px) {
+  /* 폼 카드를 가운데가 아니라 아래에 붙인다(위 1/3이 비어 카드가 작게 떠 있었다). 규칙을 펼치면 카드가 위로 자란다 */
+  .lobby-safe[data-stage="soloNormal"] .lobby-form-wrap,
+  .lobby-safe[data-stage="soloEnhance"] .lobby-form-wrap,
+  .lobby-safe[data-stage="createTeam"] .lobby-form-wrap,
+  .lobby-safe[data-stage="createIndividual"] .lobby-form-wrap,
+  .lobby-safe[data-stage="join"] .lobby-form-wrap,
+  .lobby-safe[data-stage="event"] .lobby-form-wrap { align-items: flex-end; }
+  /* 게임 화면은 가로 전용(세로는 회전 안내) — 대기실에서 미리 알린다 */
+  .lobby-safe[data-stage="waiting"] .waiting-scroll::before {
+    content: '📱 게임이 시작되면 화면을 가로로 돌려 주세요';
+    display: block;
+    flex: none;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(63, 36, 16, 0.08);
+    color: #4a3728;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+  }
+}
+
+/* ── 화면 전체 스크롤바 막기 — 게임 화면 · 로비(2026-10-31 요청) ──────────────────────────────
+   흔들림 연출(.shake-combo — 화면 전체를 transform으로 흔든다)이 그 순간 화면 밖으로 몇 px 밀려나 문서가 넘치면, 브라우저가 전체
+   스크롤바를 그렸다 지웠다 한다(그 폭만큼 화면이 좌우로 덜컹인다). 게임 화면과 로비는 한 화면짜리라 문서가 스크롤할 일이 없다 —
+   스크롤이 필요한 곳(폼 · 대기실 · 채팅 · 상세 창)은 모두 **안쪽 상자**가 스크롤한다. 그래서 그 두 화면에서만 문서 스크롤을 잠근다.
+   결과 화면(.result-bg — 좁은 화면에서 세로로 스크롤한다) · 순위표 · 운영자 화면은 여기에 걸리지 않는다. */
+html:has(.play-bg),
+html:has(.lobby-root),
+body:has(.play-bg),
+body:has(.lobby-root) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* ── 중간 · 작은 창(T1 · T2)의 카드 강화 판 — 스택 카드의 얼굴을 되살린다 ──────────────────────────
+   T1 · T2 블록은 "줄이 이미 그 동물을 말하니 카드에는 숫자만"이라며 얼굴 그림을 지우는데, 카드 강화 판은 숫자를 감춘다([data-enhance]) —
+   둘이 겹쳐 창을 중간 크기로 키우면 카드가 **빈 흰 종이**가 됐다(2026-10-31 제보). 강화 판에서만 그림을 다시 보인다(숫자는 그대로 감춘다).
+   1366×768 이상의 데스크톱은 이 조건에 걸리지 않는다(MOBILE_ROADMAP.md §3-1). */
+@media (max-width: 1105px), (max-height: 626px) {
+  [data-enhance] .stack-card img { display: block; width: 80%; }
+}

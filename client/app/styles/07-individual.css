@@ -1,0 +1,553 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   개인전(순위전) 게임 화면 — `.play-frame-css` + `.ind-*`
+   (INDIVIDUAL_MODE_ROADMAP.md T5-2 · components/game/IndividualLayout.tsx)
+
+   팀전의 `.play-frame`은 칸막이까지 그려진 **그림 한 장**(play_frame.webp) 위에 칸 10개를 %로
+   얹는다. 개인전은 그 그림을 쓰지 않고 **CSS만으로** 갈색 나무와 크림 베이지 프레임을 다시 그린다 —
+   개인전 먼저 시범 적용이고, 팀전 화면은 한 픽셀도 건드리지 않는다(`.play-frame`·`.play-cell-*`는 그대로).
+
+   ⚠️ 크기는 팀전 프레임과 **같은 상자**(--pf-w × --pf-h)를 쓴다. 상단 바·`--stage-w` 계산이 이 높이를
+   전제로 "세로가 넘치지 않는" 폭을 정해 두었기 때문이다 — 여기서 비율을 바꾸면 화면 밖으로 밀린다.
+
+   칸 배치(grid-template-areas):
+        위:   me(내 동물) · board(카드 필드) · opp(상대 전원 — 두 줄에 걸친 한 열)
+        아래: hp(내 체력) · cards(기술 카드 5장)
+   **개인전 판은 팀전 액자보다 1.1배 넓다**(높이는 같다). 단위 폭 --pf-w는 "팀전 액자 하나의 폭"이고 판은
+   그 1.1배다. 오른쪽 열(상대 전원)은 0.19, 왼쪽 열(내 정보)은 **0.175** — 상대 한 칸의 실제 폭(0.19에서 목록
+   안여백 0.0075×2를 뺀 값)과 같게 맞춘 것이다(요청: 내 상태 창이 상대 상태 창보다 넓어 보였다). 남은 0.015는
+   가운데 열(카드 필드)이 받아 0.6672가 됐다. 기술 카드 띠는 아래 .ind-cards가 따로 넓혀 0.7206 그대로다. (한때 1.2배 판에 카드 띠 1.1배 + 카드 칸 안쪽 나무 틀을
+   두었다가, 판이 너무 넓어 1.1배로 줄이고 틀을 걷었다.)
+
+   ⚠️ 1.1배가 화면 폭을 넘으면 판 전체를 비율 그대로 줄인다(--pf-w가 작아진다). 브라우저 창은 보통 16:9보다
+      넓어서(주소창·탭만큼 세로가 짧다) 대개 그대로 들어간다. 꽉 찬 16:9 화면에서는 판이 조금 작아지고 아래가
+      남는다 — 세로를 다 채우면 가로가 화면을 넘기 때문이다.
+
+   ⚠️ 아래 숫자들은 한 묶음이다 — 안여백·열 폭·열 간격의 합이 정확히 1.1이어야 하고(세로는 1),
+      .play-frame-css .play-prompt-strip의 left/width/top이 이 값들에서 나온다. 하나를 고치면 함께 고칠 것.
+        가로: 0.02036 + 0.175 + 0.0125 + 0.6672 + 0.0125 + 0.19 + 0.02244 = 1.1
+        세로: 0.0472 + 0.50692 + 0.047 + 0.35168 + 0.0472 = 1   (위·아래 줄 비율은 팀전과 같은 49.3 : 34.2)
+   ══════════════════════════════════════════════════════════════════════════ */
+.play-frame-css {
+  /* 판 폭 = 팀전 액자의 1.1배, 단 화면 폭(양옆 --stage-pad)을 넘지 않는다. --pf-w는 그 1/1.1 */
+  --ind-frame-w: min(calc(var(--stage-w) * 1.1), calc(100vw - var(--stage-pad) * 2));
+  --pf-w: calc(var(--ind-frame-w) / 1.1);
+  --pf-h: calc(var(--pf-w) * 1000 / 1965);
+  /* 모서리 둥글기 — 거의 직각(22 → 5, 요청). 칸·카드·차례 링이 모두 이 값을 따른다. */
+  --cell-r: calc(var(--pf-w) * 5 / 1965);
+  /* 테두리 선 두께 — 0.0028의 0.7배(요청) */
+  --fr-line: calc(var(--pf-w) * 0.00196);
+
+  position: relative;
+  box-sizing: border-box;
+  width: var(--ind-frame-w);
+  height: var(--pf-h);
+  margin-inline: auto;
+  padding:
+    calc(var(--pf-h) * 0.0472)
+    calc(var(--pf-w) * 0.02244)
+    calc(var(--pf-h) * 0.0472)
+    calc(var(--pf-w) * 0.02036);
+
+  display: grid;
+  grid-template-columns:
+    calc(var(--pf-w) * 0.175)
+    calc(var(--pf-w) * 0.6672)
+    calc(var(--pf-w) * 0.19);
+  grid-template-rows: calc(var(--pf-h) * 0.50692) calc(var(--pf-h) * 0.35168);
+  column-gap: calc(var(--pf-w) * 0.0125);
+  row-gap: calc(var(--pf-h) * 0.047);
+  grid-template-areas:
+    "me board opp"
+    "hp cards opp";
+
+  /* 나무 — 결 무늬 위에 갈색 바탕. 안쪽으로 얇은 크림(베이지) 선과 짙은 선을 겹쳐 틀처럼 읽히게 한다. */
+  border-radius: calc(var(--pf-w) * 0.004);
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px),
+    linear-gradient(135deg, #8d5c2e 0%, #6f4521 46%, #85552a 100%);
+  box-shadow:
+    inset 0 0 0 var(--fr-line) #3a220f,
+    inset 0 0 0 calc(var(--fr-line) * 2.6) #c79a5e,
+    inset 0 0 0 calc(var(--fr-line) * 3.4) #3a220f,
+    inset 0 0 calc(var(--pf-w) * 0.03) rgba(0, 0, 0, 0.35),
+    0 calc(var(--pf-w) * 0.006) calc(var(--pf-w) * 0.02) rgba(0, 0, 0, 0.45);
+}
+
+/* 칸 하나 — 팀전의 .play-cell과 같은 생김새(양피지 + 둥근 모서리)인데, 자리는 grid가 정한다.
+   ⚠️ overflow: hidden과 border-radius는 짝이다(.play-cell 주석). 칸 둘레에는 크림 선과 짙은 선을 두른다. */
+.ind-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--cell-r);
+  background: var(--cell-paper, #fee9bb);
+  box-shadow:
+    0 0 0 var(--fr-line) #f3dfb4,
+    0 0 0 calc(var(--fr-line) * 2) #4a2d15;
+}
+.ind-cell-me    { grid-area: me; --exp-w: calc(var(--pf-w) * 0.175); }
+/* 지금 차례 표시(.play-panel-turn — 안쪽 링)가 칸의 둥근 모서리를 따라가게 한다. 둥글기가 없으면 링이
+   네모난 채로 칸에 잘려 모서리만 각져 보인다. */
+.ind-cell > .play-panel-body { border-radius: var(--cell-r); }
+/* 내 체력(목표 점수) 창은 판 폭의 0.1216(옛 열 폭 0.19의 64% — 0.8배를 두 번)만 쓰고, 열(0.175)에서 남는 0.0534는
+   오른쪽 기술 카드 띠가 가져간다(.ind-cards의 음수 margin-left). 위 칸(내 동물 패널)은 열 폭을 그대로 쓴다.
+   ⚠️ 퍼센트가 아니라 판 폭으로 잡는다 — 왼쪽 열을 0.175로 좁힐 때 체력 창까지 따라 줄지 않게 하려는 것이다. */
+.ind-cell-hp    { grid-area: hp; width: calc(var(--pf-w) * 0.1216); justify-self: start; }
+.ind-cell-opp   { grid-area: opp; }
+/* 보드 칸만 클립 경계를 바깥으로 넓힌다 — 장소를 짚는 손이 타일 위로 솟는다(.play-cell-board와 같은 이유). */
+.ind-cell-board { grid-area: board; overflow: clip; overflow-clip-margin: 48px; }
+
+/* 체력 숫자 — 액자 폭에 비례(.play-cell-hp-a와 같은 값) */
+.ind-cell-hp .hp-orb-value { font-size: calc(var(--pf-w) * 0.032); }
+
+/* 보드의 "내 차례" 맥동 링(.board-my-turn)도 칸 모서리를 따라 둥글게 */
+.ind-cell-board [data-board-root] { border-radius: var(--cell-r); }
+/* 기술 카드 띠의 "내가 고를 차례" 맥동 링(.skill-bar-my-turn — 띠 바깥 box-shadow)도 카드 모서리와 같은 둥글기로 */
+.ind-cards .play-cards-grid { border-radius: var(--cell-r); }
+
+/* 개인전 기술 카드: 카드 사이 **2px**(붙였다가 → 요청으로 2px 띄움). 테두리는 팀전과 **같은 6px 금색**이다
+   (.play-card-frame 그대로 — 여기서 덮어쓰지 않는다).
+   테두리 변천: 없앰 → 2px 금색 → 4px 고동색(#482001) → 2px 금색 → **팀전과 같은 6px 금색**(요청).
+   --card-side는 hover로 기울 때 드러나는 카드 옆면(.holo-edge)의 색 — 테두리가 금색이어도 **옆면은 고동색**으로 둔다(요청). */
+.ind-cards { --card-side: #5a2a06; }
+.ind-cards .play-cards-grid {
+  gap: 2px;
+}
+
+/* 기술 카드 띠 — 팀전의 .play-cards(절대배치) 대신 grid 칸이다. 안의 5칸 나눔은 그대로(.play-cards-grid).
+   틀 없이 카드 다섯 장이 바깥 판 위에 바로 놓인다(한때 안쪽 나무 틀을 둘렀다가 걷었다).
+   ⚠️ overflow를 잘라선 안 된다 — 카드가 hover로 커지며 칸 밖으로 나온다. */
+.ind-cards {
+  grid-area: cards;
+  min-width: 0;
+  min-height: 0;
+  /* 체력 창이 내준 0.0534(= 열 0.175 − 체력 창 0.1216)만큼 왼쪽으로 넓힌다 — 카드 띠 0.6672 → 0.7206.
+     ⚠️ 이 값은 .ind-cell-hp의 width(0.1216)·왼쪽 열 폭(0.175)과 짝이다. 한쪽만 고치면 체력 창과 카드가 겹치거나 틈이 벌어진다. */
+  margin-left: calc(var(--pf-w) * -0.0534);
+  /* 위아래로 칸 둘레선(크림 + 짙은 선, 각 --fr-line — .ind-cell의 바깥 box-shadow) 두께만큼 늘린다.
+     옆의 체력 창은 상자는 같은 높이지만 그 둘레선이 **상자 바깥에** 그려져 위아래로 2×--fr-line씩 커 보인다.
+     카드에는 둘레선이 없어 그대로 두면 카드 줄이 체력 창보다 짧아 보인다(요청: 체력 창 높이에 맞출 것).
+     grid 칸에 늘여 채워지는(stretch) 항목이라 음수 margin만큼 실제로 커진다. */
+  margin-block: calc(var(--fr-line) * -2);
+}
+
+/* 안내 쪽지는 보드 칸과 카드 줄 사이의 가로 들보 위에 앉는다 — 가운데 열에 맞춘다(위 .play-frame-css의 숫자 묶음).
+   판 폭(1.1)에 대한 비율이다: left = (0.02036 + 0.175 + 0.0125) / 1.1, width = 0.6672 / 1.1, top = 4.72 + 50.692 */
+.play-frame-css .play-prompt-strip {
+  left: 18.896%;
+  width: 60.655%;
+  top: 55.412%;
+  height: 4.7%;
+}
+
+/* 카드 필드의 빛(요구 G3) — 상대(또는 지금 차례인 사람)의 턴일 때 **그 사람이 고른 색**으로 은은하게
+   숨 쉰다. 안쪽 inset 그림자라 칸의 overflow에 잘리지 않는다. --glow-color는 레이아웃이 넘긴다. */
+.ind-board-glow {
+  position: relative;
+  height: 100%;
+}
+.ind-board-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: var(--cell-r);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  box-shadow:
+    inset 0 0 calc(var(--pf-w) * 0.03) calc(var(--pf-w) * 0.004) color-mix(in srgb, var(--glow-color, #888) 62%, transparent),
+    inset 0 0 0 calc(var(--pf-w) * 0.0022) color-mix(in srgb, var(--glow-color, #888) 80%, transparent);
+}
+.ind-board-glow[data-on]::after {
+  opacity: 1;
+  animation: indGlowBreath 2.6s ease-in-out infinite;
+}
+@keyframes indGlowBreath {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ind-board-glow[data-on]::after { animation: none; opacity: 0.85; }
+}
+
+/* 순위가 정해진 내 패널 — 조작은 잠겨 있고 정보만 남는다 */
+.ind-finished { filter: grayscale(0.35); }
+
+/* ── 오른쪽 열: 상대 전원(요구 G5) ────────────────────────────────────────────
+   한 칸 = [체력바 | 위: 색 칩+닉네임 / 아래: 동물 네 마리의 레벨·경험치]. 최대 7칸이 한 열에 들어가야 해서
+   글자·간격을 전부 액자 폭(--pf-w)에서 뽑는다(고정 px면 8명 판에서 넘친다). */
+.ind-opp-list {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--pf-w) * 0.0055);
+  /* 지금 차례인 칸의 바깥 그림자가 칸 가장자리에서 잘리지 않을 만큼의 여백(.ind-opp-card-active 참고) */
+  padding: calc(var(--pf-w) * 0.0075);
+}
+.ind-opp-empty {
+  margin: auto;
+  font-size: calc(var(--pf-w) * 0.0095 * var(--font-scale));
+  color: #7d6a55;
+}
+.ind-opp-card {
+  --opp-color: #8a8a8a;
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  /* 인원이 적을 때 칸이 열 전체로 늘어나 휑해지지 않게 상한을 둔다(7칸이 꽉 찼을 때의 높이 가까이) */
+  max-height: calc(var(--pf-w) * 0.0925);
+  display: flex;
+  gap: calc(var(--pf-w) * 0.004);
+  padding: calc(var(--pf-w) * 0.0032);
+  border-radius: calc(var(--pf-w) * 0.0035);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)),
+    color-mix(in srgb, var(--opp-color) 20%, #fff3d6);
+  box-shadow: inset 0 0 0 calc(var(--pf-w) * 0.0016) color-mix(in srgb, var(--opp-color) 60%, #4a2d15);
+  transition: box-shadow 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+}
+/* 지금 차례인 상대 — 안쪽 굵은 테두리 대신 **바깥으로 번지는 그 사람 색 그림자**만 둔다(요청). 평소의 얇은 선은 그대로.
+   ⚠️ 칸(.ind-cell-opp)이 overflow: hidden이라 그림자가 목록 안여백(.ind-opp-list padding) 너머로는 잘린다 —
+      번지는 폭을 그 안여백보다 크게 잡지 말 것. */
+.ind-opp-card-active {
+  box-shadow:
+    inset 0 0 0 calc(var(--pf-w) * 0.0016) color-mix(in srgb, var(--opp-color) 60%, #4a2d15),
+    0 0 calc(var(--pf-w) * 0.006) calc(var(--pf-w) * 0.0022) color-mix(in srgb, var(--opp-color) 85%, transparent);
+  animation: indOppPulse 2.2s ease-in-out infinite;
+}
+@keyframes indOppPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.08); }
+}
+/* 순위가 정해진 사람 — 칸은 남기되 흐리게(칸이 빠지면 나머지가 밀려 올라가 누가 떨어졌는지 따라가기 어렵다) */
+.ind-opp-card-finished {
+  opacity: 0.6;
+  filter: grayscale(0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ind-opp-card-active { animation: none; }
+}
+.ind-opp-hp {
+  flex: none;
+  width: calc(var(--pf-w) * 0.0205);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--pf-w) * 0.0012);
+}
+.ind-opp-hp-track {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 62%;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(60, 40, 20, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(60, 40, 20, 0.35);
+}
+.ind-opp-hp-fill {
+  width: 100%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--opp-color) 62%, #ffffff), var(--opp-color));
+  transition: height 0.5s ease;
+}
+.ind-opp-hp-surge,
+.ind-opp-hp-crack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ind-opp-hp-surge { background: linear-gradient(0deg, transparent, rgba(190, 255, 170, 0.85), transparent); animation: indHpSurge 0.7s ease-out both; }
+.ind-opp-hp-crack { background: rgba(220, 38, 38, 0.65); animation: indHpCrack 0.7s ease-out both; }
+@keyframes indHpSurge { from { transform: translateY(100%); opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+@keyframes indHpCrack { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+.ind-opp-hp-value {
+  font-size: calc(var(--pf-w) * 0.0088 * var(--font-scale));
+  font-weight: 800;
+  line-height: 1;
+  color: #4a2d15;
+}
+.ind-opp-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--pf-w) * 0.0018);
+}
+.ind-opp-name-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--pf-w) * 0.0036);
+  min-width: 0;
+}
+.ind-opp-chip {
+  flex: none;
+  width: calc(var(--pf-w) * 0.0078);
+  height: calc(var(--pf-w) * 0.0078);
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+.ind-opp-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(var(--pf-w) * 0.0094 * var(--font-scale));
+  font-weight: 800;
+  color: #3a2410;
+}
+.ind-opp-finish {
+  margin-left: auto;
+  flex: none;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: #6b4a2b;
+  color: #fff4d6;
+  white-space: nowrap;
+  font-size: calc(var(--pf-w) * 0.0076 * var(--font-scale));
+  font-weight: 800;
+}
+/* 개인전 강화 방 — 그 사람에게 걸린 지속 효과의 남은 턴(출혈 · 지속 회복 · 효과 감소). 이름 줄 오른쪽 끝에 작게 붙는다(OpponentList의 StatusMarks) */
+.ind-opp-status {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  gap: 0.25em;
+  font-size: calc(var(--pf-w) * 0.0072 * var(--font-scale));
+  font-weight: 800;
+  line-height: 1.2;
+}
+.ind-opp-status-mark {
+  padding: 0 0.35em;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: #fff4d6;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+.ind-opp-status-mark.is-bleed  { color: #b91c1c; }
+.ind-opp-status-mark.is-regen  { color: #15803d; }
+.ind-opp-status-mark.is-divide { color: #7e22ce; }
+.ind-opp-status-mark.is-healcut { color: #6b7280; }
+.ind-opp-status-mark.is-evade { color: #0e7490; }
+.ind-opp-animals {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 줄 높이를 내용이 아니라 칸 높이로 정해야 아래 얼굴이 남는 자리를 다 채울 수 있다 */
+  grid-template-rows: minmax(0, 1fr);
+  gap: calc(var(--pf-w) * 0.0028);
+}
+.ind-animal {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  line-height: 1;
+  border-radius: calc(var(--pf-w) * 0.0042);
+  background: rgba(255, 255, 255, 0.72);
+}
+/* 얼굴 — 고정 크기가 아니라 **칸에서 글자(Lv·경험치)와 막대를 뺀 나머지를 전부** 쓴다(가로는 칸 폭까지).
+   인원이 적어 칸이 크면 얼굴도 커지고, 8명 판처럼 칸이 작으면 작아진다 — 글자 크기는 그대로다.
+   flex-basis 0이라 얼굴이 칸을 밀어내지 않는다(measureIndividual.mjs의 "본문잘림"이 지킨다). */
+.ind-animal-face {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  object-fit: contain;
+}
+.ind-animal-lv {
+  font-size: calc(var(--pf-w) * 0.0078 * var(--font-scale));
+  font-weight: 900;
+  color: #2f6f2f;
+}
+.ind-animal-exp {
+  font-size: calc(var(--pf-w) * 0.0066 * var(--font-scale));
+  color: #6b5640;
+}
+.ind-animal-bar {
+  width: 88%;
+  height: calc(var(--pf-w) * 0.0028);
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.14);
+}
+.ind-animal-bar > div { height: 100%; background: #4caf50; transition: width 0.3s ease; }
+/* 인어 배율·양 예약 뽑기 스티커 */
+.ind-animal-badge {
+  position: absolute;
+  top: calc(var(--pf-w) * -0.0022);
+  right: calc(var(--pf-w) * -0.0016);
+  z-index: 2;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: calc(var(--pf-w) * 0.0068 * var(--font-scale));
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+/* ── "n위 확정!" 알림 ─────────────────────────────────────────────────────────
+   승리(1위로 확정)는 밝은 금색, 탈락·기권은 어두운 회갈색 — 색만이 아니라 글자("n위 확정!")가 말한다. */
+.ranked-banner {
+  position: fixed;
+  left: 50%;
+  top: 34%;
+  z-index: 75;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.9rem 2.4rem;
+  border: 4px solid;
+  border-radius: 1.4rem;
+  text-align: center;
+  animation: rankedPop 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.ranked-banner-good {
+  background: linear-gradient(180deg, #fff6d0, #fcd877);
+  border-color: #b8791a;
+  color: #6b3a06;
+  box-shadow: 0 16px 40px rgba(180, 120, 20, 0.5);
+}
+.ranked-banner-bad {
+  background: linear-gradient(180deg, #ddd6cc, #9b9086);
+  border-color: #4b4036;
+  color: #2b231b;
+  box-shadow: 0 16px 40px rgba(20, 12, 4, 0.5);
+}
+.ranked-banner-rank { font-size: calc(2.6rem * var(--font-scale)); font-weight: 900; line-height: 1.1; }
+.ranked-banner-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: calc(1.25rem * var(--font-scale));
+  font-weight: 800;
+}
+.ranked-banner-chip {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+@keyframes rankedPop {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  32%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  82%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.94); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranked-banner { animation: none; transform: translate(-50%, -50%); }
+}
+
+/* ── 특허랑이 상대 선택 화면(요구 G2) ───────────────────────────────────────────
+   화면을 어둡게(검정, 불투명도 0.5) 하고 상대 닉네임 버튼으로 고른다. 시연 4장의 결말 고르기
+   (.demo-scene-menu)를 본떴다. z-index 80은 배너들(75) 위, 일시정지 창(95~100) 아래 — 멈춘 동안에는
+   멈춤 창이 이 판을 덮는다. */
+.target-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.4vh, 24px);
+  padding: 4vh 16px;
+  background: rgba(0, 0, 0, 0.5);
+  animation: demoSceneFadeIn 200ms ease-out both;
+}
+.target-picker-title {
+  color: #fff6df;
+  font-size: calc(1.7rem * var(--font-scale));
+  font-weight: 900;
+  text-shadow: 0 2px 8px #000000cc;
+}
+.target-picker-sub {
+  color: #f7e6c2;
+  font-size: calc(1.05rem * var(--font-scale));
+  font-weight: 700;
+  text-shadow: 0 2px 6px #000000cc;
+}
+/* 4열 — 8명 판이면 상대 7명이 4 + 3의 두 줄이 된다. 넷보다 적으면 그 수만큼만 열을 만들어(--tp-cols)
+   한 줄이 가운데에 모인다. */
+.target-picker-list {
+  display: grid;
+  /* 한 칸은 닉네임(최대 12자)·체력이 한 줄에 들어갈 폭이어야 한다 — 12rem으로 두었더니 "체력 5"가 세로로
+     접히거나 닉네임이 두 글자만 남았다. 넷이 한 줄이라 전체 폭 상한도 그만큼 넓다. */
+  grid-template-columns: repeat(var(--tp-cols, 4), minmax(15rem, 18rem));
+  justify-content: center;
+  gap: clamp(10px, 1.4vw, 18px);
+  width: 100%;
+  max-width: min(100%, 78rem);
+}
+.target-picker-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0.85rem 1.2rem;
+  border: 3px solid #211505;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fdf3dc 0%, #efd9ad 100%);
+  color: #2a1a08;
+  box-shadow: 0 6px 0 #2115055c, 0 10px 22px #00000066;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+.target-picker-card:hover,
+.target-picker-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 9px 0 #2115055c, 0 14px 28px #00000077;
+  filter: brightness(1.05);
+}
+.target-picker-card:active { transform: translateY(1px); box-shadow: 0 3px 0 #2115055c, 0 6px 14px #00000066; }
+.target-picker-index {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: #3f2410;
+  color: #f7e6c2;
+  font-size: calc(0.9rem * var(--font-scale));
+  font-weight: 700;
+}
+.target-picker-chip {
+  flex: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 4px;
+  border: 2px solid rgba(0, 0, 0, 0.45);
+}
+.target-picker-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: calc(1.15rem * var(--font-scale)); white-space: nowrap; }
+.target-picker-hp { margin-left: auto; flex: none; white-space: nowrap; font-size: calc(0.95rem * var(--font-scale)); font-weight: 700; color: #6b4a2b; }
+.target-picker-cancel {
+  padding: 0.5rem 1.4rem;
+  border: 2px solid #f7e6c2aa;
+  border-radius: 999px;
+  background: transparent;
+  color: #f7e6c2;
+  font-size: calc(1rem * var(--font-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.target-picker-cancel:hover { background: #ffffff22; }
+@media (prefers-reduced-motion: reduce) {
+  .target-picker { animation: none; }
+  .target-picker-card { transition: none; }
+  .target-picker-card:hover,
+  .target-picker-card:focus-visible { transform: none; }
+}

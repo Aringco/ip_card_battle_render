@@ -227,7 +227,7 @@ function main() {
   log('뜻이므로 §8의 튜닝 대상으로 살펴볼 것.');
   log('');
 
-  const outPath = path.join(__dirname, '..', '..', 'SKILL_BALANCE_REPORT.md');
+  const outPath = path.join(__dirname, '..', '..', 'docs', 'SKILL_BALANCE_REPORT.md');
   fs.writeFileSync(outPath, lines.join('\n') + '\n', 'utf-8');
   console.log(`\n리포트 저장됨: ${outPath}`);
 }

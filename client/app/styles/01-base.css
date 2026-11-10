@@ -1,0 +1,259 @@
+:root {
+  /* ══ 플레이 화면 무대 치수 — 상단 바와 액자가 **같은 값 하나**를 쓴다 ═══════════
+     예전에는 둘이 각자 `min(100vw, …)`으로 폭을 정했다. 화면 비율에 따라 두 식의
+     승자가 갈려 **폭이 서로 달라졌고**, F11 전체화면에서는 둘 다 100vw에 붙어
+     화면 끝에서 끝까지 맞닿았다.
+
+     폭은 **세로 예산**이 정한다 — 둘을 쌓은 높이가 화면을 넘으면 안 되므로:
+       상단 바 보이는 높이   W × 189/2500 = 0.0756 W
+       액자 높이             W × 1000/1965 = 0.5089 W
+       합                                  ≈ 0.585 W  ≤ 98vh
+     가로로는 --stage-pad만큼 양옆을 비운다 — 화면을 꽉 채우지 않는다.
+
+     ⚠️ 액자 그림을 갈아끼우면 1000/1965와 0.585를 **함께** 고칠 것. 비율만 고치고
+     0.588을 두면 세로가 넘치거나 아래가 크게 남는다. */
+  /* 가로로 눕힌 노치 폰에서는 노치가 먹는 만큼을 대신 비운다 — 데스크톱에서 env()는
+     0이라 2.5vw가 그대로 이긴다(값이 바뀌지 않는다). viewportFit: 'cover'가 있어야
+     이 변수가 실제 값을 갖는다(layout.tsx). */
+  --stage-pad: max(2.5vw, env(safe-area-inset-left), env(safe-area-inset-right));
+  /* ⚠️ 높이 단위가 **svh**다(vh가 아니다). 모바일 브라우저의 `vh`는 주소창이 숨은
+     상태를 기준으로 잡혀, 주소창이 보이는 동안에는 무대가 화면보다 커져 아래가 잘린다.
+     `svh`는 "주소창이 보이는, 가장 작은 화면"이라 어느 순간에도 잘리지 않는다.
+     → 2026-11-01부터 `--app-h`(innerHeight를 JS가 px로 적은 값 — lib/fullscreen.ts)가 우선이고 svh는 그 값이
+       없을 때의 대체다. 문서 스크롤을 잠근 화면에서는 바가 영영 안 숨어 svh조차 앱 브라우저의 하단 바만큼 넘쳤다.
+     데스크톱에서는 vh = svh = dvh라 값이 그대로다(C1).
+     ⚠️ 이 단위를 바꾸면 `.play-progress-top`의 `--frame-top`도 **함께** 바꿔야 한다 —
+     그쪽이 같은 식을 따로 계산하기 때문이다(fixed 요소라 이 변수를 물려받지 못한다). */
+  --stage-w: min(calc(100vw - var(--stage-pad) * 2), calc(var(--app-h, 100svh) * 0.98 / 0.585));
+  /* 상단 바와 액자 사이 숨통 — 0이면 두 나무가 맞닿아 한 덩어리로 보인다 */
+  --stage-gap: 0.8vh;
+  /* ══ 무대 픽셀 `--sp` — "데스크톱을 안 바꾸고 작은 화면에서만 줄이는" 장치 ══════
+     무대(--stage-w)는 화면에 따라 통째로 커지고 작아지는데, 그 위에 얹힌 것 중에는
+     고정 px·rem이라 **함께 줄지 않는 것들**이 있었다. 데스크톱에서는 무대가 거의
+     안 줄어 티가 안 났지만, 폰 가로에서는 무대가 FHD의 1/3인데 그것들만 제 크기를
+     지켜 **서로 덮었다**(안내 띠가 보드를 가리고, 손가락이 장소 칸만 해졌다).
+
+     1286.6 = 1366×768에서의 무대폭. 즉 **1366×768에서 --sp는 정확히 1px**이다.
+     쓰는 법: 고정값 L을 `min(L, calc(L숫자 * var(--sp)))`로 바꾼다.
+       · 무대폭 ≥ 1286.6(1366×768 이상 16:9 전부) → L이 이겨 **값이 그대로**다
+       · 그보다 작은 무대 → 무대와 같은 비율로 함께 작아진다
+     `clamp(하한, 가운데, 상한)`은 하한을 이렇게 바꾸고, **가운데의 vh는 아래 `--sv`로** 바꾼다.
+
+     ⚠️ 글자에 쓸 때 `* var(--font-scale)`을 **양쪽에** 곱할 것. 한쪽만 곱하면 사용자가
+     고른 글씨 크기가 작은 화면에서만(또는 큰 화면에서만) 안 먹는다.
+     자세한 배경은 MOBILE_ROADMAP.md §3-2. */
+  --sp: calc(var(--stage-w) / 1286.6);
+  /* ══ 무대 vh `--sv` — 화면 높이 대신 **무대**를 따라가는 1vh ══════════════════════
+     무대폭 = min(폭 식, 98svh ÷ 0.585)라, 높이가 무대를 정하는 화면(16:9 데스크톱·폰 가로)에서는
+     무대폭 ÷ 167.52가 **정확히 1svh**다(0.585 × 167.52 = 98) — 그 화면들에서는 값이 그대로다.
+     차이가 나는 것은 **폭이 무대를 정하는 화면**(세운 태블릿·4:3·16:10·좁은 창)뿐인데, 그쪽에서 vh는
+     무대보다 크게 남아 타이머 창·카드 장식이 판에 비해 거대해졌다(2026-10-16 사용자 제보 —
+     MOBILE_ROADMAP.md M2b). 무대 위에 얹히는 크기에 vh를 쓰지 말고 `calc(N * var(--sv))`를 쓸 것.
+     ⚠️ 화면 전체를 덮는 겹침창(`position: fixed; inset: 0`)의 여백은 화면 기준이 맞으니 그대로 vh. */
+  --sv: calc(var(--stage-w) / 167.52);
+  --beam-h: calc(var(--stage-w) * 233 / 2500);
+  /* 상단 바가 **실제로 차지하는 높이** — 그림 아래 44/233은 비어 있어 음수 margin으로
+     걷어내므로, 그 몫을 뺀 189/233에 사이 숨통을 더한 만큼만 자리를 차지한다. */
+  --beam-vis: calc(var(--beam-h) * 189 / 233 + var(--stage-gap));
+  --background: #f0fdf4;
+  --foreground: #171717;
+  /* 글씨 크기 배수 — layout.tsx의 인라인 스크립트가 첫 페인트 전에 곧바로 덮어쓰므로
+     평소엔 이 값이 화면에 보일 일이 없다. 그래도 JS가 꺼져 있는 등 그 스크립트가
+     전혀 실행되지 못하는 극단적인 경우의 최후 폴백이므로, lib/uiSettings.ts의
+     DEFAULT_FONT_STEP(4단계)과 같은 값(FONT_SCALE_STEPS[3]=1.12)으로 맞춰둔다. */
+  /* ⚠️ 플레이 화면의 글자 중에는 이 배수를 **안 타는 것들**이 있었다 — 상단 바 알약,
+     타이머 창, 경험치 줄, 팻말처럼 **액자 크기에서 뽑는** 글자들이다. 그래서 설정에서
+     글씨를 키우면 일부만 커지고 나머지는 그대로라 화면이 어그러져 보였다.
+     지금은 그 글자들도 `* var(--font-scale)`을 함께 곱해 **고르게** 커진다(14곳).
+     대신 상자는 그대로이므로 배수의 폭이 넓으면 글자가 상자를 넘는다 —
+     그래서 lib/uiSettings.ts에서 단계 범위를 기본 대비 0.84~1.16배로 좁혔다. */
+  --font-scale: 1.12;
+  /* 사용자가 고른 글씨 크기를 그대로 비추는 거울. lib/uiSettings.ts가 --font-scale을
+     documentElement에 인라인으로 얹으므로, 같은 요소에서 참조하면 그 값이 들어온다.
+     로비 폼처럼 --font-scale을 자기 몫으로 다시 계산해야 하는 곳이 "원래 사용자 설정"을
+     잃지 않도록 하기 위한 것 — 폼은 이 값에 배수를 곱해 쓴다. */
+  --font-scale-user: var(--font-scale);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Divide Sign", var(--font-cafe24);
+  /* 이 프로젝트에는 **글꼴이 하나뿐이다.** 예전에는 방 코드·타이머 숫자에
+     Geist Mono를 썼는데, 화면에서 그 부분만 다른 글꼴로 튀어 보였다(2026-09-09).
+     `font-mono` 유틸리티가 남아 있어도 같은 글꼴이 나오도록 여기서도 Cafe24를 가리킨다. */
+  --font-mono: "Divide Sign", var(--font-cafe24);
+
+  /* 정글 팔레트 */
+  --color-jungle-50:  #f0fdf4;
+  --color-jungle-100: #dcfce7;
+  --color-jungle-200: #bbf7d0;
+  --color-jungle-300: #86efac;
+  --color-jungle-400: #4ade80;
+  --color-jungle-500: #22c55e;
+  --color-jungle-600: #16a34a;
+  --color-jungle-700: #15803d;
+  --color-jungle-800: #166534;
+  --color-jungle-900: #14532d;
+  --color-jungle-950: #052e16;
+
+  /* 나뭇가지 */
+  --color-bark-200: #fde68a;
+  --color-bark-500: #92400e;
+  --color-bark-700: #78350f;
+
+  /* 팀 색상 */
+  --color-team-a: #22c55e;
+  --color-team-b: #3b82f6;
+
+  /* 글씨 크기 5단계 (lib/uiSettings.ts) — Tailwind 기본 텍스트 스케일을 --font-scale
+     배수로 다시 정의한다. 텍스트 유틸리티(text-sm 등)만 이 값을 쓰므로 여백·카드
+     크기 같은 레이아웃은 그대로 두고 글자만 커지고 작아진다.
+     (줄 간격 변수 --text-*--line-height는 배수라 폰트 크기에 자동으로 비례한다) */
+  --text-xs:   calc(0.75rem  * var(--font-scale));
+  --text-sm:   calc(0.875rem * var(--font-scale));
+  --text-base: calc(1rem     * var(--font-scale));
+  --text-lg:   calc(1.125rem * var(--font-scale));
+  --text-xl:   calc(1.25rem  * var(--font-scale));
+  --text-2xl:  calc(1.5rem   * var(--font-scale));
+  --text-3xl:  calc(1.875rem * var(--font-scale));
+  --text-4xl:  calc(2.25rem  * var(--font-scale));
+  --text-5xl:  calc(3rem     * var(--font-scale));
+  --text-6xl:  calc(3.75rem  * var(--font-scale));
+  --text-7xl:  calc(4.5rem   * var(--font-scale));
+  --text-8xl:  calc(6rem     * var(--font-scale));
+  --text-9xl:  calc(8rem     * var(--font-scale));
+
+  /* 커스텀 애니메이션 */
+  --animate-glow-pulse: glowPulse 1.4s ease-in-out infinite;
+  --animate-hourglass-shake: hourglassShake 0.45s ease-in-out infinite;
+  --animate-leaf-sway: leafSway 1.2s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #052e16;
+    --foreground: #dcfce7;
+  }
+}
+
+/* 전반적으로 UI가 커서 "브라우저 줌 80%"가 맞는 것처럼 보인다는 피드백 — 대부분의
+   크기(rem 기반 Tailwind 클래스)가 루트 폰트 크기를 기준으로 계산되므로, 루트
+   폰트 크기 자체를 80%로 낮춰 모든 요소(글자·카드·아이콘·여백)를 한 번에
+   비례적으로 줄인다(각 컴포넌트를 일일이 손보는 대신 이 한 줄로 전체를 맞춘다). */
+html {
+  font-size: 80%;
+}
+
+/* text-xs보다 한 단계 작은 라벨용 크기 — 다른 텍스트와 똑같이 글씨 크기 설정을 따른다.
+   (임의값 text-[...] 로는 --font-scale 계산식이 유틸리티로 생성되지 않아 여기서 정의한다) */
+@utility text-2xs {
+  font-size: calc(0.65rem * var(--font-scale));
+  line-height: 1.4;
+}
+
+/* 기본 글꼴 — **한글·영문·숫자 모두 Cafe24 Ssurround** 한 벌로 그린다.
+   layout.tsx의 next/font/local이 --font-cafe24에 실어 준다. 그 뒤는 글꼴이 아직 안
+   왔거나 못 읽을 때의 대체 순서다.
+
+   한때 영문만 Comic Relief로 갈라 쓴 적이 있다(2026-09-08 밤 ~ 09-09). 목록 앞쪽에
+   한글 글리프가 없는 글꼴을 두면 브라우저가 글자마다 훑어 영문만 그쪽에서 가져오는
+   방식이었는데, **그쪽 영문이 이 글꼴의 영문보다 눈에 띄게 얇아** 같은 줄에서 한글과
+   굵기가 어긋나 보였다. 되돌렸다.
+
+   ⚠️ 여기 한 줄이 게임 전체의 글꼴이다 — 예전에는 '맑은 고딕'이었다.
+   ⚠️ 글꼴을 바꾸면 글자 폭·높이가 달라져 로비 폼이 움직인다. measureLobby로 다시 잴 것. */
+/* 나눗셈 기호(÷) 하나만 시스템 글꼴로 그린다(2026-10-30) — Cafe24 Ssurround의 ÷는 위아래 점이 너무 작아 "+"로 읽혔다
+   (기술 카드의 "상대 효과 ÷2"가 "+2"로 보였다). unicode-range로 그 한 글자만 이 글꼴이 맡고 나머지는 그대로 Cafe24다. */
+@font-face {
+  font-family: "Divide Sign";
+  src: local("Segoe UI"), local("Malgun Gothic"), local("Apple SD Gothic Neo"), local("Arial"), local("Roboto");
+  unicode-range: U+00F7;
+}
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Divide Sign", var(--font-cafe24), '맑은 고딕', 'Malgun Gothic', Arial, Helvetica, sans-serif;
+}
+
+/* ── 스크롤바 ───────────────────────────────────────────────────────────
+   배경이 일러스트라 기본 스크롤바(회색 홈 + 두꺼운 막대)가 그 위에 얹히면 눈에 띈다.
+   홈(track)은 투명하게 지우고, 손잡이(thumb)만 얇은 초록 알약으로 남긴다.
+   색은 버튼과 같은 계열(jungle-600/700)이라 화면에서 따로 놀지 않는다.
+
+   ⚠️ **표준 속성(`scrollbar-width`/`scrollbar-color`)은 WebKit에 주지 않는다.**
+   Chrome은 이 둘을 `::-webkit-scrollbar`와 **서로 배타적인 두 방식**으로 다룬다 —
+   표준 속성을 쓰는 스크롤러에서는 레거시 의사요소를 무시하는 것이 문서화된 동작이다
+   (버전에 따라 관대하게 넘어가기도 해서 눈으로는 잘 드러나지 않는다).
+   그래서 표준 속성은 `@supports not selector(::-webkit-scrollbar)`로 감싸
+   **WebKit이 아닌 브라우저에만** 준다. 한때 `* { scrollbar-width: thin }`을 조건 없이
+   얹어 뒀는데, 그 상태에서 아래 모양이 화면에 반영되지 않는다는 지적을 받았다.
+
+   보이는 굵기와 잡히는 폭을 따로 두는 것이 요령이다 — 손잡이를 정말 2px로 만들면
+   마우스로 잡을 수 없으므로, 스크롤바는 10px로 두고 손잡이에 **투명한 테두리**를
+   둘러 안쪽 색칠 영역만 2px로 보이게 한다(`background-clip: padding-box`가 있어야
+   테두리 자리에 배경이 안 칠해진다). hover하면 테두리가 2px로 줄어 색칠 영역이
+   6px이 되는데, 잡히는 폭 10px은 그대로라 커서가 흔들려도 놓치지 않는다.
+
+   양끝 화살표(scrollbar-button)는 크기를 0으로 둔다. `display: none`은 쓰지 않는다 —
+   일부 WebKit 버전에서 렌더링이 어긋난다고 알려져 있어 크기만 0으로 접는 편이 안전하다. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-jungle-600, #16a34a);
+  /* 10px - (4px x 2) = 2px 가 보인다 */
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  /* 10px - (2px x 2) = 6px. 끝은 그대로 둥글게 둔다 */
+  border-width: 2px;
+  background-color: var(--color-jungle-700, #15803d);
+}
+
+/* 팀 패널 안쪽의 세로 스크롤 칸(TeamPanel) — **가로 스크롤은 절대 생기면 안 된다.**
+   Tailwind의 `overflow-y-auto`는 세로축만 지정하는데, 한 축이 visible이 아니면 다른
+   축의 visible은 CSS 규정상 auto로 바뀐다. 그래서 overflow-x가 조용히 auto가 되고,
+   내용이 1px만 넘쳐도 **가로 스크롤바**가 칸 맨 아래에 그려진다 — 위에서 손잡이를
+   초록 알약으로 칠해 뒀으므로, 특허랑이 행 아래에 정체불명의 초록 띠가 생긴다
+   (hover하면 2px → 6px으로 굵어지며 더 도드라진다. 실제로 그렇게 보고됐다).
+
+   넘치는 범인은 실용신양 예약 뽑기 배지(.sheep-extra-draws-sticker)와 인어 배율
+   배지다. 일부러 행 밖으로 걸치게 만든 장식인데, B팀에서는 그 방향이 오른쪽
+   (`right: -0.4rem`)이라 **가로 스크롤이 실제로 가능한 쪽**으로 넘친다. 왼쪽으로
+   넘치는 A팀이 멀쩡했던 것은 LTR에서 시작 방향 넘침은 스크롤 영역에 잡히지 않아서다.
+   0.4rem 자체는 안여백(p-2) 안에 들어가지만, 배지에 걸린 `rotate(-12deg)`가 회전 후
+   상자를 넓혀 2px이 삐져나온다.
+
+   진짜 해결은 배지 쪽에서 했다 — --sticker-overhang을 안여백 안으로 줄여 **넘침
+   자체를 없앴다**(아래 그 주석 참고). 여기 clip은 그 뒤에 남겨 둔 안전장치다.
+   새 장식이 또 삐져나와도 스크롤바는 다시 생기지 않는다.
+
+   ⚠️ 이 clip은 **hidden으로 계산된다.** 규정상 한 축이 clip이고 다른 축이
+   clip/visible이 아니면(여기서는 overflow-y: auto) clip은 hidden이 된다. 그래서
+   같이 적은 overflow-clip-margin은 효력이 없고, 넘치는 부분은 안여백 끝에서 잘린다 —
+   즉 이 줄은 넘침을 **용서해 주지 않는다**. 장식이 잘려 보인다면 그것이 신호이니,
+   clip을 걷어낼 게 아니라 --sticker-overhang처럼 넘치는 값 쪽을 줄일 것. */
+.play-team-scroll {
+  overflow-x: clip;
+}
+
+/* WebKit이 아닌 브라우저(Firefox 등)용. 위 주석대로 **WebKit에는 주지 않는다.** */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-jungle-600, #16a34a) transparent;
+  }
+}
