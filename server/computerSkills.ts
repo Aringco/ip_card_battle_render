@@ -1,5 +1,5 @@
 import { eligibleAnimals, levelOf } from './engine/skills';
-import { enhanceAmount, enhanceDivisorOf, enhanceHealAfterCut, enhanceHealCutOf, enhanceOverMultiplier, enhanceSheepExp, enhanceSheepExpStack, enhanceValue, opponentsOf, skillMultiplier } from 'shared';
+import { enhanceAmount, enhanceDivisorOf, enhanceHealAfterCut, enhanceHealCutOf, enhanceOverMultiplier, enhanceSheepExp, enhanceSheepExpStack, enhanceValue, opponentsOf } from 'shared';
 import type { Animal, GameState, SideId, Team } from 'shared';
 
 /**
@@ -18,28 +18,12 @@ export function pickComputerSkill(state: GameState, team: Team): Animal | null {
 
   for (const animal of options) {
     if (animal === 'sheep' || animal === 'mermaid') continue;
-    const amount = levelOf(state, team, animal) * skillMultiplier(state, team, animal);
+    const amount = levelOf(state, team, animal) * state.teams[team].pendingMultiplier;
     if (animal === 'rabbit' && me.hp + amount >= winHp) return animal;
     if (animal === 'tiger' && amount >= foe.hp) return animal;
   }
 
   return options[Math.floor(Math.random() * options.length)];
-}
-
-/**
- * 이벤트 '목표점수 달성하기'의 컴퓨터 — **도전자의 점수를 깎는 쪽으로만** 둔다(2026-10-26 요청).
- * 상표토끼는 쓰지 않고, 특허랑이가 있으면(도전자에게 빼앗을 점수가 있을 때) 그것부터, 아니면 디자인어로 다음 특허랑이의
- * 배율을 쌓고, 그것도 없으면 실용신양으로 카드를 더 뽑는다. 쓸 것이 없으면 넘긴다(null).
- */
-export function pickScoreRaceComputerSkill(state: GameState, team: SideId): Animal | null {
-  const options = eligibleAnimals(state, team).filter(a => a !== 'rabbit');
-  if (options.length === 0) return null;
-  const foe = opponentsOf(state, team)[0];
-  const foeHp = foe === undefined ? 0 : (state.teams[foe]?.hp ?? 0);
-  if (options.includes('tiger') && foeHp > 0) return 'tiger';
-  if (options.includes('mermaid')) return 'mermaid';
-  if (options.includes('sheep')) return 'sheep';
-  return null;
 }
 
 /**

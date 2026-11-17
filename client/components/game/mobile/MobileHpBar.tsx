@@ -11,7 +11,7 @@ import { AcornBadges, ShieldGauge } from '../acorn/AcornBadges';
  * 화면 끝까지 뻗는다(PC의 체력 구슬 TeamTotalPanel 자리). 두 막대는 같은 길이다(아래 띠가 1fr · auto · 1fr).
  * 닉네임은 이 막대가 아니라 위 띠에 있다(2026-10-31 — 막대 옆에서는 잘 안 보였다).
  *
- * 가득 찬 막대 = 승리선(목표 점수 × 2, 목표점수 달성하기는 그 판의 목표). 시작 체력은 가운데 눈금으로 표시한다.
+ * 가득 찬 막대 = 승리선(목표 점수 × 2). 시작 체력은 가운데 눈금으로 표시한다.
  * 체력은 화면상 값(withDisplayedHp를 거친 gameState)이라 기술 효과 연출 순간에 움직인다.
  *
  * 연출 표식: 토끼떼가 날아오는 `data-rabbit-target`이 이 막대다(체력이 오르는 곳). 특허랑이에 맞으면 흔들리고, 오르면 초록 빛이 훑는다.
@@ -41,9 +41,9 @@ export function MobileHpBar({
   color?: string;
 }) {
   const hp = gameState.teams[team].hp;
-  const winHp = gameState.scoreRace?.target ?? gameState.settings.targetScore * 2;
+  const winHp = gameState.settings.targetScore * 2;
   const fillPct = Math.max(0, Math.min(100, (hp / winHp) * 100));
-  const startPct = Math.max(0, Math.min(100, ((gameState.scoreRace ? 0 : gameState.settings.targetScore) / winHp) * 100));
+  const startPct = Math.max(0, Math.min(100, (gameState.settings.targetScore / winHp) * 100));
   const pulse = animState.hpPulse.get(team) ?? null;
   const dot = animState.dotPulse.get(team) ?? null;
 

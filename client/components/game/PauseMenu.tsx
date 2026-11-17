@@ -109,7 +109,6 @@ export function PauseMenu({
   onLeave,
   individual = false,
   ended = false,
-  noPauseText,
 }: {
   paused: boolean;
   /** 멈춘 팀 — 이 팀만 다시 시작할 수 있다(서버가 같은 규칙으로 막는다). */
@@ -144,8 +143,6 @@ export function PauseMenu({
   individual?: boolean;
   /** 판이 끝났다 — 순위가 정해져도 "관전 모드" 안내를 띄우지 않는다(곧 결과 화면이 덮는다). */
   ended?: boolean;
-  /** 이 판은 일시정지가 아예 없다(이벤트 판) — 횟수 대신 이 문구를 보여 준다. */
-  noPauseText?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -256,7 +253,7 @@ export function PauseMenu({
             ? '게임 계속하기 요청'
             : `${pausedBy?.nickname ?? '상대'} 님이 멈췄어요`
       : outOfPauses
-        ? (noPauseText ?? '일시정지를 다 썼어요')
+        ? '일시정지를 다 썼어요'
         : pauseUnlimited
           ? '게임 일시정지'
           : `게임 일시정지 (${pauseLeft}회 남음)`;

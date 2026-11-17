@@ -39,8 +39,8 @@ describe('개인전 강화 — 시작', () => {
     for (const side of s.turnOrder) expect(s.teams[side].hp).toBe(100);
   });
 
-  it('목표 점수 상한은 강화 판의 것(2500)이다', () => {
-    expect(make(3, { targetScore: 2500 }).settings.targetScore).toBe(ENHANCE_TARGET_SCORE_MAX);
+  it('목표 점수 상한은 강화 판의 것이다', () => {
+    expect(make(3, { targetScore: 1e9 }).settings.targetScore).toBe(ENHANCE_TARGET_SCORE_MAX);
   });
 
   it('한 차례 기술 장수 — 4명은 1장부터, 5명 이상은 처음부터 2장(15턴마다 늘어나는 것과 큰 쪽)', () => {

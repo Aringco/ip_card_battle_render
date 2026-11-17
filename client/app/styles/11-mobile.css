@@ -562,27 +562,26 @@ body:has(.m-layout) .settings-fab { zoom: 0.72; bottom: max(3px, env(safe-area-i
 .m-hp[data-side='right'] .m-hp-holo { animation: mHoloToRight 3.2s linear infinite; }
 @keyframes mHoloToLeft  { 0% { background-position: 0% 0, 0 0; }   100% { background-position: 100% 0, 0 0; } }
 @keyframes mHoloToRight { 0% { background-position: 100% 0, 0 0; } 100% { background-position: 0% 0, 0 0; } }
-/* 오라 — 막대 뒤에 그 편 색 빛이 안쪽 끝(가운데)에서 번져 나가며 흐려진다. 두 막대가 거울이라 가운데에서 양쪽으로 퍼진다 */
+/* 오라 — 막대 둘레를 3px 두께로 감싸는 그 편 색 빛(2026-11-17 요청 — 크기가 변하던 번짐을 걷고 밝기만 숨쉰다) */
 .m-hp-aura {
   position: absolute;
-  /* 막대(트랙)보다 위아래로 넓게 — 트랙이 불투명해 그 안쪽에 그리면 빛이 보이지 않는다 */
-  inset: -4px 0;
+  top: 50%;
+  left: -3px;
+  right: -3px;
+  height: calc(22px + 6px);
+  transform: translateY(-50%);
   z-index: 0;
+  border: 3px solid var(--aura-c);
   border-radius: 999px;
+  box-shadow: 0 0 4px var(--aura-c);
   pointer-events: none;
-  filter: blur(4px);
-  opacity: 0;
-  animation: mHpAura 2.6s ease-out infinite;
+  animation: mHpAura 2.6s ease-in-out infinite;
 }
-.m-hp[data-tone='mine'] .m-hp-aura { background: linear-gradient(var(--aura-dir), rgba(190, 242, 100, 0.95), rgba(132, 204, 22, 0.55) 45%, transparent); }
-.m-hp[data-tone='enemy'] .m-hp-aura { background: linear-gradient(var(--aura-dir), rgba(253, 164, 175, 0.95), rgba(244, 63, 94, 0.55) 45%, transparent); }
-.m-hp[data-side='left'] .m-hp-aura { --aura-dir: 270deg; transform-origin: 100% 50%; }
-.m-hp[data-side='right'] .m-hp-aura { --aura-dir: 90deg; transform-origin: 0% 50%; }
-/* 안쪽 끝에서 막대 높이 그대로 시작해 바깥으로 길어지며 위아래로 부풀고, 다 퍼지면 흐려진다 — 막대보다 커지는 구간에 빛이 보인다 */
+.m-hp[data-tone='mine'] .m-hp-aura { --aura-c: rgba(163, 230, 53, 0.85); }
+.m-hp[data-tone='enemy'] .m-hp-aura { --aura-c: rgba(251, 113, 133, 0.85); }
 @keyframes mHpAura {
-  0%   { opacity: 0.95; transform: scale(0.2, 1); }
-  55%  { opacity: 0.6; }
-  100% { opacity: 0; transform: scale(1.04, 1.9); }
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
 }
 
 /* 지속 효과의 빛(MobileHpBar의 .m-hp-dotglow) — 걸려 있는 동안 막대 둘레의 그라데이션 빛이 **막대를 따라 돈다**(2026-10-31 요청).

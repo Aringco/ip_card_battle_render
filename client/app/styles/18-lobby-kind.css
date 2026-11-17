@@ -1,0 +1,144 @@
+/* ── 로비 첫 갈림길 — 일반전 / 강화전 (2026-11-11) ─────────────────────────────
+   .kind-picker는 스테이지(.lobby-stage) 위에 겹친 두 패널이다. 'kind' 단계에서만 보이고, 고르면 옅어지며 그 아래의
+   두 열(혼자 놀기 · 다같이 놀기)이 드러난다. 나머지 단계는 예전 그대로이고, 고른 쪽에 따라 건너뛰는 단계만 다르다
+   (LobbyStage.tsx — 혼자 놀기는 곧바로 폼, 강화전의 방 만들기는 곧바로 개인전 폼). */
+.lobby-stage { position: relative; }
+/* 고르면 혼자 놀기를 눌렀을 때처럼 **고른 패널이 판 전체로 커진 뒤**(--t-expand) 옅어지고(--t-reveal), 그 뒤에 두 열이
+   나타난다(2026-11-12 요청). 돌아올 때는 거꾸로 — 두 열이 다 옅어진 뒤 커진 채로 나타나 두 패널로 줄어든다.
+   ⚠️ transition은 "도착하는 상태"의 것이 쓰인다 — 그래서 기본값(.kind-picker)이 돌아올 때의 박자, 아래 :not(kind)가 들어갈 때의 박자다. */
+.kind-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--stage-gap);
+  transition:
+    opacity var(--t-reveal) ease var(--t-expand),
+    grid-template-columns var(--t-expand) ease calc(var(--t-expand) + var(--t-reveal)),
+    grid-template-rows var(--t-expand) ease calc(var(--t-expand) + var(--t-reveal)),
+    gap var(--t-expand) ease calc(var(--t-expand) + var(--t-reveal));
+}
+/* 줄어드는 열 안에서 패널이 찌그러지지 않고 바깥으로 밀려나게(.stage-col-solo · -multi와 같은 방향) */
+.kind-picker > .stage-col:first-child { justify-content: flex-end; }
+.kind-picker > .stage-col:last-child { justify-content: flex-start; }
+.kind-picker > .stage-col {
+  transition: opacity var(--t-expand) ease calc(var(--t-expand) + var(--t-reveal)), box-shadow 0.2s ease;
+}
+.lobby-stage:not([data-stage="kind"]) .kind-picker {
+  opacity: 0;
+  pointer-events: none;
+  gap: 0;
+  transition:
+    grid-template-columns var(--t-expand) ease,
+    grid-template-rows var(--t-expand) ease,
+    gap var(--t-expand) ease,
+    opacity var(--t-reveal) ease var(--t-expand);
+}
+.lobby-stage:not([data-stage="kind"])[data-kind="normal"] .kind-picker { grid-template-columns: 1fr 0fr; }
+.lobby-stage:not([data-stage="kind"])[data-kind="enhance"] .kind-picker { grid-template-columns: 0fr 1fr; }
+.lobby-stage:not([data-stage="kind"])[data-kind="normal"] .kind-picker > .stage-col:last-child,
+.lobby-stage:not([data-stage="kind"])[data-kind="enhance"] .kind-picker > .stage-col:first-child {
+  opacity: 0;
+  transition: opacity var(--t-expand) ease;
+}
+/* 갈림길에서는 아래 두 열을 감춘다. 들어갈 때는 갈림길이 커졌다 다 옅어진 뒤에 두 열이 나타난다 —
+   한때 반쯤 겹쳐 옅어지게 했더니 두 화면의 글자가 포개져 보였다(2026-11-11 제보) */
+.lobby-stage[data-stage="kind"] > .stage-col {
+  opacity: 0;
+  pointer-events: none;
+}
+.lobby-stage[data-stage="home"][data-from="kind"] > .stage-col { transition-delay: calc(var(--t-expand) + var(--t-reveal)); }
+
+/* 녹아 없어진 패널 · 폼 뒤의 패널에는 주사선(지직거림)을 켜지 않는다(2026-11-12 제보). 누른 패널은 커지며 투명해지는데
+   마우스를 움직이기 전까지 브라우저가 그 패널을 :hover로 두어, 주사선만 확장된 화면 전체에 남아 있었다. */
+.lobby-stage:not([data-stage="kind"]) .kind-picker .lobby-panel::after,
+.lobby-stage:not([data-stage="kind"], [data-stage="home"]) .stage-panel-solo::after,
+.lobby-stage:not([data-stage="kind"], [data-stage="home"]) .stage-panel-multi::after,
+.lobby-stage:is([data-stage="create"], [data-stage="createTeam"], [data-stage="createIndividual"]) .stage-panel-create::after,
+.lobby-stage:has(.stage-form:not([inert])) .lobby-panel::after {
+  animation: none;
+  opacity: 0;
+}
+
+@media (max-width: 767px) {
+  .kind-picker {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .lobby-stage:not([data-stage="kind"])[data-kind="normal"] .kind-picker { grid-template-columns: 1fr; grid-template-rows: 1fr 0fr; }
+  .lobby-stage:not([data-stage="kind"])[data-kind="enhance"] .kind-picker { grid-template-columns: 1fr; grid-template-rows: 0fr 1fr; }
+}
+
+/* 고르기 단계를 건너뛰는 폼(혼자 놀기 → 그 폼 · 강화전 방 만들기 → 개인전 폼) — 안쪽 두 열이 미끄러지며 드러나면
+   혼자 놀기 패널 · 일반 모드 · 강화 모드가 조각나 한꺼번에 보였다(2026-11-11 제보). 그래서 안쪽 열은 미끄러지지 않고
+   곧바로 고른 열만 남기며, 바깥 패널이 다 커진 뒤(--t-expand)에 드러난다 — 다같이 놀기 안쪽과 같은 박자다.
+   되돌아갈 때는 안쪽 층이 다 옅어진 뒤에(--t-reveal) 열을 원래대로 돌려 놓는다. */
+.solo-inner,
+.lobby-stage[data-kind="enhance"] .create-inner {
+  transition:
+    clip-path var(--t-reveal) ease,
+    opacity var(--t-reveal) ease,
+    grid-template-columns 0s linear var(--t-reveal),
+    grid-template-rows 0s linear var(--t-reveal),
+    gap 0s linear var(--t-reveal);
+}
+.solo-inner > .stage-col,
+.lobby-stage[data-kind="enhance"] .create-inner > .stage-col {
+  transition: opacity 0s linear var(--t-reveal), box-shadow 0.2s ease;
+}
+.lobby-stage[data-stage="soloNormal"] .solo-inner,
+.lobby-stage[data-stage="soloEnhance"] .solo-inner,
+.lobby-stage[data-kind="enhance"][data-stage="createIndividual"] .create-inner {
+  transition:
+    clip-path var(--t-reveal) ease var(--t-expand),
+    opacity var(--t-reveal) ease var(--t-expand),
+    grid-template-columns 0s, grid-template-rows 0s, gap 0s;
+}
+.lobby-stage[data-stage="soloNormal"] .solo-inner > .stage-col,
+.lobby-stage[data-stage="soloEnhance"] .solo-inner > .stage-col,
+.lobby-stage[data-kind="enhance"][data-stage="createIndividual"] .create-inner > .stage-col {
+  transition: none;
+}
+
+/* ── 패널 글자를 패널 폭에 맞춘다 (2026-11-11 — 가로 폰에서 부제가 "규/칙을"처럼 낱말 중간에서 꺾였다) ──────
+   글자 크기는 **패널 폭**에 비례하고(container query 단위 cqi — 화면이 아니라 그 패널이 기준이라 세 열 · 두 열 · 세로로 쌓인
+   패널 어디서든 같은 규칙이 맞는다) 원래 크기를 넘지 않으며 읽을 수 있는 하한 밑으로는 줄지 않는다. 나란한 패널은 폭이 같으니
+   글자 크기도 같다(패널마다 글자 수로 맞추면 "이벤트 방 참가하기"만 혼자 작아졌다).
+   - 제목: 가장 긴 한 줄("다같이 놀기" ≈ 5.4em)이 들어가는 크기 — 더 긴 제목은 띄어쓰기에서 두 줄로 접힌다.
+   - 부제: 패널이 좁으면(300px 미만) " — "에서 두 줄로 나눈다. 그래도 넘치는 줄은 낱말 단위로만 접힌다(keep-all). */
+.stage-panel-label {
+  container-type: inline-size;
+  padding-inline: 7%;
+}
+.stage-panel-title {
+  --title-base: calc(1.25rem * var(--font-scale, 1));
+  font-size: clamp(0.95rem, 100cqi / 5.4, var(--title-base));
+  line-height: 1.25;
+  word-break: keep-all;
+  text-wrap: balance;
+}
+.stage-panel-sub {
+  --sub-base: calc(0.75rem * var(--font-scale, 1));
+  font-size: clamp(0.8rem, 100cqi / 22, var(--sub-base));
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+@media (min-width: 768px) {
+  .stage-panel-title { --title-base: calc(1.5rem * var(--font-scale, 1)); }
+  .stage-panel-sub { --sub-base: calc(0.875rem * var(--font-scale, 1)); }
+}
+@container (max-width: 300px) {
+  /* 14 — 가장 긴 반쪽("방을 만들거나 코드로 참가해요")이 한 줄에 들어가는 값(글꼴의 한글이 1em보다 조금 넓다) */
+  .stage-panel-sub { font-size: clamp(0.8rem, 100cqi / 14, var(--sub-base)); }
+  .stage-panel-sub-sep { display: none; }
+  .stage-panel-sub-part { display: block; }
+}
+
+/* 위 건너뛰는 폼은 안쪽 층이 --t-expand 뒤에 --t-reveal 동안 드러나므로, 폼도 그 뒤에 나타나야 반쪽 폼이 비치지 않는다 */
+.lobby-stage[data-stage="soloNormal"] .stage-form-solo,
+.lobby-stage[data-stage="soloEnhance"] .stage-form-enhance,
+.lobby-stage[data-kind="enhance"][data-stage="createIndividual"] .stage-form-individual {
+  transition-delay: calc(var(--t-expand) + var(--t-reveal));
+}

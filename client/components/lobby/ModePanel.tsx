@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { PanelTone } from '@/lib/lobbyAssets';
 
 const PRESS_DUR = 180;
@@ -43,6 +43,8 @@ export function ModePanel({
   panelRef?: React.Ref<HTMLButtonElement>;
 }) {
   const [pressed, setPressed] = useState(false);
+  // 부제는 " — "에서 나눠 둔다 — 패널이 좁으면 그 자리에서 줄을 바꾼다(styles/18-lobby-kind.css)
+  const parts = subtitle.split(' — ');
 
   const handleClick = () => {
     if (disabled) return;
@@ -79,8 +81,15 @@ export function ModePanel({
             {emoji}
           </span>
         )}
-        <span className="stage-panel-title text-xl md:text-2xl font-extrabold drop-shadow">{title}</span>
-        <span className="text-xs md:text-sm text-white/85 leading-snug">{subtitle}</span>
+        <span className="stage-panel-title font-extrabold drop-shadow">{title}</span>
+        <span className="stage-panel-sub text-white/85 leading-snug">
+          {parts.map((p, i) => (
+            <Fragment key={i}>
+              {i > 0 && <span className="stage-panel-sub-sep"> — </span>}
+              <span className="stage-panel-sub-part">{p}</span>
+            </Fragment>
+          ))}
+        </span>
       </span>
     </button>
   );

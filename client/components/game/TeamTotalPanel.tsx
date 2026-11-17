@@ -54,8 +54,8 @@ export function TeamTotalPanel({
   acorns?: boolean;
 }) {
   const hp = gameState.teams[team].hp;
-  // 구슬이 가득 차는 점수 — 평소엔 승리선(targetScore × 2), 목표점수 달성하기는 그 판의 목표 점수(가득 차면 달성).
-  const winHp = gameState.scoreRace?.target ?? gameState.settings.targetScore * 2;
+  // 구슬이 가득 차는 점수 — 승리선(targetScore × 2).
+  const winHp = gameState.settings.targetScore * 2;
   const spectating = myTeam === null;
   const toneClass = spectating ? 'hp-orb-spectator' : myTeam === team ? 'hp-orb-mine' : 'hp-orb-enemy';
   const fillPct = Math.max(0, Math.min(100, (hp / winHp) * 100));
@@ -108,7 +108,7 @@ export function TeamTotalPanel({
 
   // 눈금선 — 지금 몇 칸째인지 한눈에 보이도록 반투명한 선을 긋는다(간격은 segmentStepOf).
   const segmentStep = segmentStepOf(winHp);
-  const startPct = gameState.scoreRace ? 0 : (gameState.settings.targetScore / winHp) * 100;
+  const startPct = (gameState.settings.targetScore / winHp) * 100;
   const segmentLines = Array.from({ length: Math.ceil(winHp / segmentStep) - 1 }, (_, i) => (((i + 1) * segmentStep) / winHp) * 100);
 
   const orb = (

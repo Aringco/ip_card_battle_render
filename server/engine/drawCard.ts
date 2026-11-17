@@ -95,15 +95,31 @@ function consumePendingExtraDraws(state: GameState, rng: RNG, place: Place): Gam
  * 한 장씩 뽑는 것과 경험치 · 짝(장수의 홀짝)이 똑같다 — 카드의 num이 그 카드가 뜻하는 장수다.
  * 작은 카드부터 놓는다(splitEnhanceCount) — 큰 카드가 마지막에 쿵 떨어진다.
  */
+const ROLL_EXACT_MAX = 100_000;
 function rollEnhanceDraws(state: GameState, place: Place, total: number, rng: RNG): GameEvent[] {
   const tally = new Map<string, { place: Place; animal: Animal; n: number }>();
-  for (let i = 0; i < total; i++) {
-    const options = PLACE_ANIMALS[place];
-    const animal = options[Math.floor(rng() * options.length)];
+  const options = PLACE_ANIMALS[place];
+  const add = (animal: Animal, n: number) => {
+    if (n <= 0) return;
     const key = `${place}:${animal}`;
     const t = tally.get(key) ?? { place, animal, n: 0 };
-    t.n++;
+    t.n += n;
     tally.set(key, t);
+  };
+  if (total <= ROLL_EXACT_MAX) {
+    for (let i = 0; i < total; i++) add(options[Math.floor(rng() * options.length)], 1);
+  } else {
+    // 상한이 없어 수억 장도 올 수 있다 — 한 장씩 굴리지 않고 동물마다 이항분포를 정규근사로 나눈다(장수가 커서 근사가 정확하다)
+    let rest = total;
+    options.forEach((animal, i) => {
+      const left = options.length - i;
+      if (left === 1) return add(animal, rest);
+      const p = 1 / left;
+      const z = Math.sqrt(-2 * Math.log(1 - rng())) * Math.cos(2 * Math.PI * rng());
+      const n = Math.max(0, Math.min(rest, Math.round(rest * p + z * Math.sqrt(rest * p * (1 - p)))));
+      add(animal, n);
+      rest -= n;
+    });
   }
   // 작은 카드들을 먼저 모두 놓고 큰 카드는 뒤로 — 동물이 섞여도 쿵 하는 카드가 마지막에 몰린다
   const cards: { place: Place; animal: Animal; num: number }[] = [];
@@ -139,9 +155,9 @@ function consumePendingFestivalDraws(state: GameState, rng: RNG): GameEvent[] {
 
 /**
  * 예약 뽑기(실용신양·도토리 축제) 한 번에 실제로 뽑는 수. 일반 판은 SHEEP_SAFETY_CAP(40)에서 자르고 나머지는 버린다.
- * 카드 강화 판은 ENHANCE_RESERVED_DRAW_CAP(512)에서 자른다 — 2026-10-29에 "디자인어 ×5 뒤 실용신양 100회가 40회만 뽑혔다"는 제보로 상한을
- * 걷었다가, 4차 표(2026-10-30)의 실용신양 Lv.Max 256장 × 디자인어 ×100이 수만 장이 되어 다시 걸었다(Lv.Max 기본 값의 두 배).
- * 화면은 많을수록 간격을 좁혀 재생한다(shared rollDrawStep — 512장이면 6초 남짓).
+ * 카드 강화 판은 상한이 없다(2026-11-17 요청 — 그 전 ENHANCE_RESERVED_DRAW_CAP 512). 수만 장이어도 1000 단위가 카드 한 장으로 묶여
+ * 이벤트 · 큰 카드 연출이 늘지 않고(splitEnhanceCount), 굴리기는 10만 장부터 근사로 한 번에 나눈다(rollEnhanceDraws).
+ * 화면은 많을수록 간격을 좁혀 재생한다(shared rollDrawStep).
  */
 function reservedDrawCount(state: GameState, pending: number): number {
   return Math.min(pending, state.enhance ? ENHANCE_RESERVED_DRAW_CAP : SHEEP_SAFETY_CAP);

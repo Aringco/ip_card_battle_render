@@ -15,6 +15,7 @@ import {
   enhanceOverMultiplier,
   enhanceRabbitCleanse,
   enhanceRabbitRegenTurns,
+  enhanceRabbitShieldPct,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
@@ -33,7 +34,6 @@ import {
   enhanceValue,
   opponentsOf,
   skillLevelFor,
-  skillMultiplier,
   ACORN_CAPS,
   acornAttackPct,
   acornBleedAmount,
@@ -55,28 +55,14 @@ export function levelOf(state: GameState, team: SideId, animal: Animal): number 
 }
 
 /**
- * 이벤트 '한 우물만 파기'의 잠금 — 그 편이 지금 쓸 수 있는 카드 목록. 잠금이 없는 편(일반 게임·CPU)은 null.
- * 처음 쓴 카드가 정해지기 전에는 allowed(상표토끼·특허랑이) 둘, 정해진 뒤에는 그 한 장이다.
- */
-export function oneWellOpen(state: GameState, team: SideId): readonly Animal[] | null {
-  const well = state.oneWell;
-  if (!well || well.side !== team) return null;
-  return well.locked ? [well.locked] : well.allowed;
-}
-
-/**
  * 레벨이 1 이상이라 지금 고를 수 있는 동물 목록.
  *
  * ⚠️ "지금 쓸 수 있는 기술"의 **단일 관문**이다 — 기술 선택 검증(processSkillChoice)·시간초과 대체 선택
- *    (randomEligibleSkill)·방의 "고를 행동이 없을 때" 짧은 타이머가 모두 여기를 본다. 한 우물만 파기의 잠금도
+ *    (randomEligibleSkill)·방의 "고를 행동이 없을 때" 짧은 타이머가 모두 여기를 본다. 카드 강화 판의 쿨타임도
  *    그래서 여기서 건다(다른 곳에 걸면 그 경로 중 하나가 잠금을 모른다).
  */
 export function eligibleAnimals(state: GameState, team: SideId): Animal[] {
-  const open = oneWellOpen(state, team);
-  // 카드 강화 판의 쿨타임도 여기서 건다 — 쿨타임 중인 카드는 레벨이 있어도 고를 수 없다.
-  return ANIMALS.filter(
-    a => levelOf(state, team, a) > 0 && (open === null || open.includes(a)) && enhanceCooldownLeft(state, team, a) === 0,
-  );
+  return ANIMALS.filter(a => levelOf(state, team, a) > 0 && enhanceCooldownLeft(state, team, a) === 0);
 }
 
 /**
@@ -93,7 +79,6 @@ export function eligibleAnimals(state: GameState, team: SideId): Animal[] {
  *   (기본 배율 1에 레벨 2를 두 번 쌓으면 1+2+2=5, 곱연산이 아니라 합연산이다).
  *
  * 배율은 토끼·호랑이·양을 쓰는 순간 1로 초기화된다("다음을 노리기"로는 소모되지 않는다).
- * 이벤트 '한 우물만 파기'의 도전자는 특허랑이에 기본 2배가 더 곱해진다(shared의 skillMultiplier — 화면 미리보기와 같은 함수).
  * 레벨이 0인 동물을 골랐다면(정상적인 클라이언트라면 UI에서 막힘) 아무 일도 일어나지 않는다.
  */
 export function applySkillChoice(
@@ -145,8 +130,7 @@ export function applySkillChoice(
     me.pendingMultiplier += level;
   } else {
     // ③ 나머지 셋은 지금까지 쌓인 배율을 곱해 쓰고, 쓴 뒤 1로 되돌린다.
-    //    (한 우물만 파기의 특허랑이는 기본 2배가 더 곱해진다 — skillMultiplier)
-    multiplierUsed = skillMultiplier(state, team, animal);
+    multiplierUsed = me.pendingMultiplier;
     const amount = level * multiplierUsed;
 
     if (animal === 'sheep') {
@@ -175,15 +159,6 @@ export function applySkillChoice(
   stat.totalHpGained += myHpDelta;
   stat.totalExtraDraws += extraDrawsQueued;
 
-  // ⑥ 한 우물만 파기 — 허용 카드를 처음 쓰는 순간 그 카드로 고정한다. **여기(엔진 안)에서** 세워야
-  //    시간초과로 서버가 대신 고른 기술(randomEligibleSkill → applySkillChoice)도 똑같이 고정된다.
-  let oneWellLocked: Animal | undefined;
-  const well = state.oneWell;
-  if (well && well.side === team && well.locked === null && well.allowed.includes(animal)) {
-    well.locked = animal;
-    oneWellLocked = animal;
-  }
-
   return {
     type: 'skillApplied',
     team,
@@ -198,7 +173,6 @@ export function applySkillChoice(
     hpAfter: hpSnapshot(state),
     // 대상은 개인전의 특허랑이에만 싣는다 — 팀전 이벤트의 모양은 예전과 똑같이 둔다.
     ...(state.mode === 'individual' && animal === 'tiger' && opponent !== undefined ? { target: opponent } : {}),
-    ...(oneWellLocked ? { oneWellLocked } : {}),
   };
 }
 
@@ -378,7 +352,9 @@ function applyEnhanceEffect(
     myHpDelta = enhanceHealAfterCut(raw, cut);
     if (cut > 0 && raw > 0) healCutUsed = cut;
     // 도토리 — 즉시 회복의 일부를 보호막으로
-    if (myAcorn.healShield > 0) shieldAdded = addShield(state, team, Math.round((myHpDelta * myAcorn.healShield) / 100));
+    // 즉시 회복의 일부를 보호막으로 — 카드 자신의 몫(등급마다, enhanceRabbitShieldPct) + 도토리 카드의 몫
+    const shieldPct = enhanceRabbitShieldPct(level) + myAcorn.healShield;
+    if (shieldPct > 0) shieldAdded = addShield(state, team, Math.round((myHpDelta * shieldPct) / 100));
     // 부정한 효과 줄이기(배율 무관) — 나에게 걸린 것 중 무작위 하나(효과 감소 ÷N · 출혈). 걸린 것이 없으면 아무 일도 없다.
     const cleanseTurns = enhanceRabbitCleanse(level);
     const bad: Array<'bleed' | 'divisor'> = [];

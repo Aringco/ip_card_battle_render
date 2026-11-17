@@ -3,6 +3,8 @@
 // 숫자는 모두 previewSkill(lib/skills.ts — 서버 엔진과 같은 공식)에서 온다. 여기서는 문장으로만 옮긴다.
 import type { Animal, ClientGameState, SideId } from 'shared';
 import {
+  acornStats,
+  enhanceRabbitShieldPct,
   ENHANCE_BLEED_MAX_TURNS,
   ENHANCE_DIVISOR_MAX_TURNS,
   ENHANCE_MERMAID_STACK,
@@ -91,6 +93,11 @@ export function skillDetailLines(gameState: ClientGameState, team: SideId, anima
       label: '즉시 회복',
       value: `내 체력 +${p.myHpDelta}`,
       note: multNote(base, mult, over, p.divisorAfter ?? divisor, cut, p.acornFactor ?? 1),
+    });
+    lines.push({
+      label: '보호막',
+      value: `+${p.shieldAdd ?? 0}`,
+      note: `즉시 회복의 ${enhanceRabbitShieldPct(level)}%${acornStats(gameState, team).healShield ? ` + 도토리 ${acornStats(gameState, team).healShield}%` : ''}`,
     });
     const had = enh.regen?.[team];
     const turnsNow = had?.turns ?? 0;

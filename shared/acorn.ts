@@ -114,8 +114,6 @@ export const ACORN_CAPS = {
   evade: 40,
   /** 추가 발동 확률 총합 */
   proc: 50,
-  /** 보호막 상한 = 시작 체력의 이 % */
-  shield: 20,
   /** 회복 효율 감소 총합 */
   healCut: 100,
 } as const;
@@ -527,9 +525,6 @@ export function acornStats(state: WithAcorn, side: SideId): AcornStats {
 /** 시작 체력의 pct% (반올림) — 회복 · 보호막 · 조건의 기준 */
 export function acornHpPct(state: WithAcorn, pct: number): number {
   return Math.round((state.settings.targetScore * pct) / 100);
-}
-export function acornShieldCap(state: WithAcorn): number {
-  return acornHpPct(state, ACORN_CAPS.shield);
 }
 
 /** 내 기술(배율을 받는 셋)의 도토리 배수 — 1 + (영구 % + 다음 기술 %)(상한 100%). 디자인어 배율에 **곱하지 않고** 그 배율 위에 더하는 몫이다 */

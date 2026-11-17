@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { GameMode, GameSettings, SettingsLimits, Team } from 'shared';
-import { DEFAULT_SETTINGS, SETTINGS_LIMITS } from 'shared';
+import { DEFAULT_SETTINGS, ENHANCE_SETTINGS_LIMITS, SETTINGS_LIMITS } from 'shared';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { PHONE_LANDSCAPE_QUERY } from '@/lib/mobileLayout';
@@ -98,10 +98,21 @@ const COMP_SUMMARY: Record<GameSettings['secondComp'], string | null> = { off: n
 // 혼자 놀기에서 감추는 두 항목 — 서버도 같은 이유로 제한을 걸지 않는다(Room.vsComputer).
 const PAUSE_KEYS: NumKey[] = ['pauseMaxCount', 'pauseMaxMin'];
 
-/** 입력값을 SETTINGS_LIMITS 범위로 자르는 공통 처리 — 두 입력 폼이 같은 규칙을 쓴다. */
+/**
+ * 목표 점수는 **채워야 하는 최종 점수**(승리선 = 저장값 targetScore × 2)로 보이고 입력받는다(2026-11-17 요청).
+ * 엔진 · 서버는 그대로 targetScore(= 시작 체력)를 쓰고, 화면에서만 ×2 · ÷2로 바꾼다. 강화 판은 100점 단위, 일반 판은 2점 단위
+ * (승리선이 짝수여야 시작 체력이 정수다).
+ */
+const shownScale = (key: NumKey) => (key === 'targetScore' ? 2 : 1);
+const stepOf = (key: NumKey, limits: SettingsLimits) => (key === 'targetScore' ? (limits === ENHANCE_SETTINGS_LIMITS ? 100 : 2) : 1);
+const shownLimit = (key: NumKey, limits: SettingsLimits) => ({ min: limits[key].min * shownScale(key), max: limits[key].max * shownScale(key) });
+
+/** 입력값(화면 단위)을 범위 · 단위에 맞춰 저장값으로 — 두 입력 폼이 같은 규칙을 쓴다. */
 function clampField(key: NumKey, raw: string, limits: SettingsLimits = SETTINGS_LIMITS): number {
-  const { min, max } = limits[key];
-  return Math.min(max, Math.max(min, Math.round(Number(raw) || DEFAULT_SETTINGS[key])));
+  const { min, max } = shownLimit(key, limits);
+  const step = stepOf(key, limits);
+  const n = Number(raw) || DEFAULT_SETTINGS[key] * shownScale(key);
+  return Math.min(max, Math.max(min, Math.round(n / step) * step)) / shownScale(key);
 }
 
 /** 방장(방을 만드는 쪽)만 보는 게임 규칙 입력 — 값을 비워두면 기본값 그대로 방을 만든다. */
@@ -110,10 +121,6 @@ export function GameRulesFields({
   onChange,
   hidePause = false,
   mode = 'team',
-  hideFirstTeam = false,
-  hideTargetScore = false,
-  heading = '게임 규칙 (방장이 정해요)',
-  extra,
   limits = SETTINGS_LIMITS,
   showSkillGrowth = false,
 }: {
@@ -123,21 +130,13 @@ export function GameRulesFields({
   hidePause?: boolean;
   /** 개인전이면 "선 플레이어(먼저 시작하는 팀)"가 없다 — 차례 순서는 시작할 때 섞어서 정한다. */
   mode?: GameMode;
-  /** 선 플레이어를 감춘다 — 이벤트 '개발자를 이겨라'는 언제나 도전자 선공이다(beatDevSettings가 고정). */
-  hideFirstTeam?: boolean;
-  /** 목표 점수 칸을 감춘다 — 이벤트 '목표점수 달성하기'는 목표를 범위에서 판마다 뽑아서 이 칸이 뜻이 없다(그 범위는 extra로 받는다). */
-  hideTargetScore?: boolean;
-  /** 접힌 버튼의 제목 — 이벤트 개발자 대기실은 "개발자가 정해요"다. */
-  heading?: string;
-  /** 펼친 몸통 맨 위에 끼우는 줄 — 이벤트 '목표점수 달성하기'의 목표 범위(최소~최대)처럼 이 목록에 없는 항목 */
-  extra?: React.ReactNode;
-  /** 입력 범위 — 카드 강화 판은 목표 점수 상한이 2500이다(ENHANCE_SETTINGS_LIMITS). 서버도 같은 범위로 다시 자른다. */
+  /** 입력 범위 — 카드 강화 판은 목표 점수가 100점 단위다(ENHANCE_SETTINGS_LIMITS). 서버도 같은 범위로 다시 자른다. */
   limits?: SettingsLimits;
   /** 카드 강화 판 — "사용 가능한 기술 카드 증가"(켜기/끄기 · 몇 턴마다 · 최대 몇 장)를 보인다 */
   showSkillGrowth?: boolean;
 }) {
   const renderRow = ({ key, label, title, suffix, hint }: RuleField) => {
-    const { min, max } = limits[key];
+    const { min, max } = shownLimit(key, limits);
     return (
       <div key={key} className="flex flex-col text-xs" title={title}>
         <div className="flex items-center justify-between gap-1">
@@ -147,15 +146,16 @@ export function GameRulesFields({
                 아래 숫자 칸이 그대로 보인다(globals.css .rule-value-button). 폰에서는 거꾸로 숫자 칸을 감춘다 — 좁은 열에서
                 −/+와 숫자 칸을 한 줄에 넣었더니 글자가 잘리고 버튼이 너무 컸다(2026-10-31 제보). */}
             <button type="button" className="rule-value-button tabular-nums" onClick={() => setEditing(key)} aria-label={`${title} 바꾸기`}>
-              {settings[key]}
+              {settings[key] * shownScale(key)}
             </button>
             <input
               type="number"
               min={min}
               max={max}
-              value={settings[key]}
+              step={stepOf(key, limits)}
+              value={settings[key] * shownScale(key)}
               onChange={e => {
-                const v = Number(e.target.value);
+                const v = Number(e.target.value) / shownScale(key);
                 onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
               }}
               onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
@@ -169,7 +169,7 @@ export function GameRulesFields({
     );
   };
   const fields = RULE_FIELDS.filter(
-    f => !(hidePause && PAUSE_KEYS.includes(f.key)) && !(hideTargetScore && f.key === 'targetScore'),
+    f => !(hidePause && PAUSE_KEYS.includes(f.key)),
   ).filter(f => !(showSkillGrowth && ENHANCE_HIDDEN.includes(f.key))).map(f => (showSkillGrowth ? enhanceField(f) : f));
   // 폰 — 지금 고치고 있는 항목(값 버튼을 누르면 열리는 입력 창)
   const [editing, setEditing] = useState<NumKey | null>(null);
@@ -218,7 +218,7 @@ export function GameRulesFields({
         }}
         className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-600"
       >
-        <span><UiIcon name="iconCog" /> {heading}</span>
+        <span><UiIcon name="iconCog" /> 게임 규칙 (방장이 정해요)</span>
         <span className="text-gray-400">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
       {open && (
@@ -227,9 +227,8 @@ export function GameRulesFields({
         // 한때 이 몸통을 절대배치해 카드를 아예 안 자라게 해봤지만, 몸통이 보이는 영역
         // 밖으로 나가 "펼치기를 눌러도 아무 일도 없는" 화면이 됐다(globals.css .lobby-rules 주석).
         <div ref={bodyRef} className="lobby-rules-body px-3 pb-2.5 border-t border-gray-100 pt-2 flex flex-col gap-1.5">
-          {extra}
           {/* 선 플레이어 — 숫자 입력이 아니라 3지선다라 격자 위에 한 줄로 둔다 */}
-          {mode === 'team' && !hideFirstTeam && (
+          {mode === 'team' && (
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-gray-500">선 플레이어 (먼저 시작하는 팀)</label>
             {/* 가운데 정렬 — 폰에서는 그림 버튼 폭을 9rem으로 묶어 남는 자리가 생긴다(데스크톱은 버튼이 줄을 다 채워 차이가 없다) */}
@@ -282,8 +281,9 @@ export function GameRulesFields({
       {editing && editingField && (
         <RuleEditDialog
           field={editingField}
-          value={settings[editing]}
-          limit={limits[editing]}
+          value={settings[editing] * shownScale(editing)}
+          limit={shownLimit(editing, limits)}
+          step={stepOf(editing, limits)}
           onCancel={() => setEditing(null)}
           onConfirm={raw => {
             onChange({ ...settings, [editing]: clampField(editing, raw, limits) });
@@ -304,23 +304,25 @@ function RuleEditDialog({
   field,
   value,
   limit,
+  step: unit,
   onCancel,
   onConfirm,
 }: {
   field: RuleField;
   value: number;
   limit: { min: number; max: number };
+  step: number;
   onCancel: () => void;
   onConfirm: (raw: string) => void;
 }) {
   const [draft, setDraft] = useState(String(value));
-  const step = (d: number) => setDraft(v => String(Math.max(limit.min, Math.min(limit.max, (Number(v) || value) + d))));
+  const step = (d: number) => setDraft(v => String(Math.max(limit.min, Math.min(limit.max, (Number(v) || value) + d * unit))));
   return createPortal(
     <div className="rule-dialog-dim" onClick={onCancel}>
       <div className="rule-dialog" role="dialog" aria-label={field.title} onClick={e => e.stopPropagation()}>
         <p className="rule-dialog-title">{field.title}</p>
         <div className="rule-dialog-row">
-          <button type="button" className="rule-dialog-step" aria-label="1 줄이기" onClick={() => step(-1)}>
+          <button type="button" className="rule-dialog-step" aria-label={`${unit} 줄이기`} onClick={() => step(-1)}>
             −
           </button>
           <input
@@ -328,6 +330,7 @@ function RuleEditDialog({
             inputMode="numeric"
             min={limit.min}
             max={limit.max}
+            step={unit}
             value={draft}
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => {
@@ -336,7 +339,7 @@ function RuleEditDialog({
             }}
             className="input-base rule-dialog-input tabular-nums"
           />
-          <button type="button" className="rule-dialog-step" aria-label="1 늘리기" onClick={() => step(1)}>
+          <button type="button" className="rule-dialog-step" aria-label={`${unit} 늘리기`} onClick={() => step(1)}>
             +
           </button>
           <span className="rule-dialog-suffix">{field.suffix}</span>
@@ -378,13 +381,13 @@ export function GameRulesInputs({
   onChange: (next: GameSettings) => void;
   /** 개인전이면 선 플레이어 줄이 없다(차례 순서는 시작할 때 섞어서 정한다). */
   mode?: GameMode;
-  /** 입력 범위 — 개인전 강화 방은 ENHANCE_SETTINGS_LIMITS(목표 점수 상한 2500). 서버도 같은 범위로 다시 자른다. */
+  /** 입력 범위 — 개인전 강화 방은 ENHANCE_SETTINGS_LIMITS(목표 점수 100점 단위). 서버도 같은 범위로 다시 자른다. */
   limits?: SettingsLimits;
   /** 카드 강화 판(개인전 강화 방) — "사용 가능한 기술 카드 증가" 묶음을 보인다 */
   showSkillGrowth?: boolean;
 }) {
   const renderRow = ({ key, title, suffix, hint }: RuleField) => {
-    const { min, max } = limits[key];
+    const { min, max } = shownLimit(key, limits);
     return (
       <div key={key} className="flex flex-col gap-0.5">
         <div className="flex items-center gap-2 text-lg">
@@ -395,9 +398,10 @@ export function GameRulesInputs({
             type="number"
             min={min}
             max={max}
-            value={settings[key]}
+            step={stepOf(key, limits)}
+            value={settings[key] * shownScale(key)}
             onChange={e => {
-              const v = Number(e.target.value);
+              const v = Number(e.target.value) / shownScale(key);
               onChange({ ...settings, [key]: Number.isFinite(v) ? v : DEFAULT_SETTINGS[key] });
             }}
             onBlur={e => onChange({ ...settings, [key]: clampField(key, e.target.value, limits) })}
@@ -510,7 +514,7 @@ export function RuleSummary({
         ) : (
           <span>🚩 선공 {firstTeamLabel}</span>
         )}
-        <span>🎯 목표 {settings.targetScore}점</span>
+        <span>🎯 목표 {settings.targetScore * 2}점</span>
         <span>🌰 축제 {settings.festivalTurn}턴부터 (뽑기 {settings.festivalDrawCount}회)</span>
       </div>
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">

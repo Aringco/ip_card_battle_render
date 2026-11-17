@@ -462,7 +462,6 @@ export function SkillChoiceBar({
   myTeamChoosing = false,
   demoAllowed = null,
   hideGuide = false,
-  wellOpen = null,
   tapFocus = false,
   onChoose,
   onPass,
@@ -492,11 +491,6 @@ export function SkillChoiceBar({
    */
   hideGuide?: boolean;
   /**
-   * 이벤트 '한 우물만 파기'에서 지금 쓸 수 있는 카드(lib/skills.ts의 oneWellOpen). null이면 잠금이 없는 평범한 판.
-   * 나머지 카드는 레벨이 있어도 🔒로 잠기고 누를 수 없다 — 서버(eligibleAnimals)도 같은 규칙으로 거부한다.
-   */
-  wellOpen?: readonly Animal[] | null;
-  /**
    * 모바일 배치 — 카드를 **한 번 누르면 고르고(1.3배 · 카드 중앙 기준으로 커지고 손가락이 그 카드만 짚는다), 고른 카드를 한 번 더 누르면** 쓴다.
    * 손가락 가이드는 고른 카드에만 뜬다(PC는 누를 수 있는 카드마다). 끄면 PC와 똑같다.
    */
@@ -523,9 +517,7 @@ export function SkillChoiceBar({
   const showSkillGuide = guideEnabled && !hideGuide && (interactive || spectatorGuideTeam !== null);
   // 시연은 대본이 열어 준 칸만 누를 수 있고, 손가락도 그 한 칸만 짚는다(빈 배열=전부 잠금).
   const demoOpen = (animal: Animal) => (demoAllowed ? demoAllowed.includes(animal) : true);
-  // 한 우물만 파기 — 잠긴 카드(🔒)는 레벨이 있어도 누를 수 없다(서버 eligibleAnimals와 같은 규칙).
-  const wellOk = (animal: Animal) => (wellOpen ? wellOpen.includes(animal) : true);
-  const open = (animal: Animal) => demoOpen(animal) && wellOk(animal);
+  const open = (animal: Animal) => demoOpen(animal);
   // [턴 마치기]는 평소 언제나 누를 수 있지만, 시연에서는 턴이 넘어가는 순간 대본이
   // 끊기므로(상대 차례가 온다) 아예 잠근다 — 서버도 같은 이유로 무시한다.
   const passable = interactive && demoAllowed === null;
@@ -602,9 +594,7 @@ export function SkillChoiceBar({
         // 상대 디자인어(Lv.Max)에 걸려 이 카드의 효과가 나뉘어 있다 · 상대 특허랑이에 걸려 회복이 줄어 있다 — 위 숫자는 이미 반영한 값이다
         if (preview.divisor && preview.divisor > 1) effectParts.push(`(÷${preview.divisor} 적용)`);
         if (preview.healCut) effectParts.push(`(회복 -${preview.healCut}% 적용)`);
-        const effectLabel = !wellOk(animal)
-          ? '🔒 사용 불가'
-          : cooling > 0
+        const effectLabel = cooling > 0
             ? coolingLabel(cooldownShownOf(gameState, team, animal))
             : eligible ? effectParts.join('\n') : '레벨 부족';
         // 강화 단계 0~1 — 카드의 밝은 그라데이션과 무지개 홀로가 이 값을 따라 짙어진다(globals.css의 .enh-*)

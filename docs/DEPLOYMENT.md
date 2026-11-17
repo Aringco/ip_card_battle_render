@@ -60,7 +60,6 @@ docker run -d --name card-battle \
   -e DOMAIN=tupd.site -e HTTPS_REDIRECT=1 \
   -v /home/ch_user/card-battle/letsencrypt:/etc/letsencrypt:ro \
   -v /home/ch_user/card-battle/certbot-www:/var/www/certbot:ro \
-  --env-file /etc/card-battle.env \
   --restart unless-stopped \
   card-battle-nginx
 
@@ -81,20 +80,6 @@ curl -I https://tupd.site/                 # HTTP/2 200
 | `HTTPS_REDIRECT` | `1`이면 인증서가 있을 때 HTTP 요청을 `https://`로 보낸다(301). **공유기의 443 포워딩이 되기 전에는 `0`** — 안 그러면 밖에서 접속하는 사람이 열리지 않는 443으로 보내진다 |
 
 `/.well-known/acme-challenge/`(인증서 갱신)와 `/healthz`(헬스체크)는 이동 없이 HTTP로 응답한다.
-
-### 비밀값 (`--env-file`)
-
-이미지에 넣지 말고 서버의 파일로 둔다(`chmod 600`, 저장소에 커밋 금지). 이벤트 모드를 안 쓰면 `--env-file` 줄을 빼도 게임은 돈다.
-
-```ini
-# /etc/card-battle.env
-DATABASE_URL=postgres://user:pass@host:5432/db   # 이벤트 기록 저장. 없으면 메모리에만(재시작하면 사라짐)
-EVENT_DEV_TOKEN=...       # 이벤트 '개발자' 입장 암호. 없으면 개발자 모드 꺼짐
-EVENT_ADMIN_TOKEN=...     # /admin 운영자 토큰. 없으면 운영자 화면 꺼짐
-EVENT_PIN_PEPPER=...      # 재도전 PIN 해시용. 한 번 정하면 바꾸지 말 것(바꾸면 기존 PIN이 전부 안 맞는다)
-```
-
-시작 로그에 `[event] ... 없음` 줄이 보이면 그 값이 비어 있는 것이다.
 
 ### 공유기 포트포워딩
 
@@ -171,14 +156,12 @@ docker image prune -f        # 이름 잃은 옛 이미지 정리
 
 - 운영 nginx가 `TEST_DOMAIN=test.tupd.site`로 온 요청을 테스트 컨테이너로 넘긴다(`deploy/gen-nginx-conf`). 테스트가 꺼져 있으면 test만 502이고 운영은 그대로다.
 - 운영 컨테이너는 그 생성기의 **호스트 사본**(`/home/ch_user/card-battle/gen-nginx-conf`)을 붙인다 — 생성기가 없던 옛 이미지로 되돌려도 test.tupd.site가 살아 있다.
-- **테스트 서버에는 `--env-file`(DATABASE_URL · EVENT_*)을 넘기지 않는다** — 테스트 판이 이벤트 순위표에 섞인다. 기록은 메모리에만 남는다.
 - 운영 반영은 여전히 운영 컨테이너를 다시 만드는 일이라 그 순간 열린 방이 사라진다. 테스트 재배포는 운영에 영향이 없다.
-- `/etc/card-battle.env`가 있으면 `promote.sh`가 운영에만 붙인다.
 - 홈 화면 앱 이름은 요청 주소로 가른다 — `test.`로 열면 `TUPD-test`(안드로이드 `app/manifest.ts` · iOS `FullscreenManager`), 그래서 같은 이미지를 올려도 운영은 `TUPD`다.
 
 ⚠️ **방 · 진행 중인 게임은 서버 메모리에만 있다.** 컨테이너를 내리면(재배포 · 재시작 · 서버 재부팅)
 모든 방이 사라지고 접속 중인 사람은 "방을 찾을 수 없습니다"를 보게 된다. 사람이 적은 시간에 재배포할 것.
-이벤트 기록만은 `DATABASE_URL`이 있으면 DB에 남는다. `HTTPS_REDIRECT` 같은 환경변수를 바꿀 때도 컨테이너를 다시 만들어야 한다.
+`HTTPS_REDIRECT` 같은 환경변수를 바꿀 때도 컨테이너를 다시 만들어야 한다.
 
 ## 6. 일상 운영
 
@@ -207,7 +190,7 @@ docker image prune -f        # 이름 잃은 옛 이미지 정리
 **자동 재시작** — `--restart unless-stopped`이므로 프로세스가 죽거나 서버가 재부팅돼도 다시 뜬다
 (재부팅 후에는 Docker 서비스가 자동 시작되도록 `systemctl enable docker`).
 
-**백업** — `/home/ch_user/card-battle/letsencrypt/`(인증서 · 계정)와 `/etc/card-battle.env`. 게임 상태는 메모리라 백업할 것이 없다.
+**백업** — `/home/ch_user/card-battle/letsencrypt/`(인증서 · 계정). 게임 상태는 메모리라 백업할 것이 없다(DB를 쓰지 않는다).
 
 ## 7. 문제 해결
 
@@ -223,7 +206,6 @@ docker image prune -f        # 이름 잃은 옛 이미지 정리
 | 포트 없는 주소만 안 열림 | 공유기 80 포워딩 · `www.` 붙인 주소는 DNS에 따로 등록해야 한다 |
 | 폰에서 전체화면이 안 됨 | 아이폰은 원래 불가 — 홈 화면에 추가로 연다(4절). 안드로이드는 첫 터치 뒤에 바뀐다. 빠져나왔으면 설정의 [전체화면] |
 | `unhealthy` | 시작 후 40초가 지났는데 `/healthz`나 Next.js가 응답하지 않음 — 로그에서 Next.js `Ready` 줄 확인 |
-| 이벤트 기록이 재시작 후 사라짐 | `DATABASE_URL` 미설정 |
 
 ## 8. 참고
 

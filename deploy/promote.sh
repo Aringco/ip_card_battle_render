@@ -8,7 +8,6 @@ set -e
 cd "$(dirname "$0")/.."
 TAG="${1:-test}"
 BASE=/home/ch_user/card-battle
-ENV_FILE=/etc/card-battle.env
 
 docker image inspect "card-battle-nginx:$TAG" >/dev/null
 docker network inspect tupd >/dev/null 2>&1 || docker network create tupd
@@ -28,6 +27,5 @@ set -- -d --name card-battle --network tupd \
   -v "$BASE/letsencrypt:/etc/letsencrypt:ro" \
   -v "$BASE/certbot-www:/var/www/certbot:ro" \
   -v "$BASE/gen-nginx-conf:/usr/local/bin/gen-nginx-conf:ro"
-[ -f "$ENV_FILE" ] && set -- "$@" --env-file "$ENV_FILE"
 docker run "$@" --restart unless-stopped card-battle-nginx:latest
 echo "운영 반영 — card-battle-nginx:$TAG → latest (되돌리기: ./deploy/promote.sh prev-…)"

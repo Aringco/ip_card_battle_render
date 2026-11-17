@@ -16,9 +16,6 @@ import { playBgm } from '@/lib/bgm';
 import { isFinished, mySideOf } from '@/lib/individual';
 import { duelMapOf, duelViewEvents, duelViewState } from '@/lib/duel';
 import { startPreload } from '@/lib/preload';
-import { markEventReturn } from '@/lib/eventSession';
-import { useBefore } from '@/lib/useBefore';
-import { ScoreRaceIntro } from '@/components/game/ScoreRaceIntro';
 import { MobileLayout } from '@/components/game/mobile/MobileLayout';
 import { MobileIndividualLayout } from '@/components/game/mobile/MobileIndividualLayout';
 import { useMobileLayout } from '@/lib/mobileLayout';
@@ -32,7 +29,7 @@ export default function GamePage() {
     gameState, turnDeadline, lastEvents, drawCard, chooseSkill, passSkill, pickAcorn, rerollAcorn, demoContinue, demoScene,
     error, connected, playerId,
     pauseRequest, pauseWaitingUntil, resumeVoteUntil, pauseUntil, pauseNotice, clearPauseNotice,
-    requestPause, respondPause, resumeGame, surrender, leaveGame, eventIntroUntil,
+    requestPause, respondPause, resumeGame, surrender, leaveGame,
     emotes, sendEmote,
   } = useWebSocket();
   const [myTeam, setMyTeam] = useState<SideId | null>(null);
@@ -50,8 +47,6 @@ export default function GamePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const viewEvents = useMemo(() => (duel ? duelViewEvents(lastEvents, duel) : lastEvents), [lastEvents, duelKey]);
   const animState = useAnimationQueue(viewEvents, viewState);
-  // 목표점수 달성하기의 시작 룰렛이 도는 중인가 — 그동안 판은 서버에서 멈춰 있다(ScoreRaceIntro 주석).
-  const introActive = useBefore(eventIntroUntil);
   // 가로로 눕힌 폰 — 혼자 놀기(아래 soloMobile)만 모바일 배치로 그린다(시범)
   const mobileScreen = useMobileLayout();
 
@@ -157,13 +152,6 @@ export default function GamePage() {
     setLeftSide(side);
   }, [gameState, playerId, leaveGame, handleLeave]);
 
-  // 이벤트 — 도전자는 이벤트 폼으로(로비가 그 폼을 연 채로 시작), 개발자는 로비로 돌아가 저절로 다시 대기한다
-  // (개발자 세션은 eventSession에 남아 있으므로 로비가 마운트되자마자 대기를 다시 알린다 — 상시 대기).
-  const handleEventBack = useCallback(() => {
-    markEventReturn();
-    handleLeave();
-  }, [handleLeave]);
-
   if (!gameState) {
     return (
       <div className="min-h-screen bg-jungle-50 flex flex-col items-center justify-center gap-3">
@@ -221,16 +209,13 @@ export default function GamePage() {
         // 시연 4장에서만 쓰인다 — 서버가 demo.replay로 "되돌아갈 곳이 있다"고
         // 알려줄 때만 버튼이 뜬다(GameEndScreen 주석 참고).
         onReplay={handleDemoContinue}
-        // 이벤트 판이면 도전자(A)는 [이벤트로 돌아가기], 개발자(B)는 [다음 도전자 받기](10초 뒤 저절로)
-        onEventBack={gameState.event && myTeam === 'A' ? handleEventBack : undefined}
-        onNextChallenger={gameState.event?.kind === 'beatDev' && myTeam === 'B' ? handleLeave : undefined}
       />
     );
   }
 
   // 모바일 배치(시범) — 혼자 놀기(컴퓨터 상대 팀전 · 일반/강화)에만. 서버가 "일시정지 무제한"으로 알려 주는 판이 곧 혼자 놀기다
-  // (이벤트의 컴퓨터 대전은 제외된다 — room.ts의 pause.unlimited). 시연은 대본 자막 · 장면 고르기가 PC 화면에만 있어 뺀다.
-  const soloMobile = mobileScreen && !individual && !duel && gameState.pauseUnlimited && !gameState.demo && !gameState.event;
+  // 시연은 대본 자막 · 장면 고르기가 PC 화면에만 있어 뺀다.
+  const soloMobile = mobileScreen && !individual && !duel && gameState.pauseUnlimited && !gameState.demo;
   // 개인전도 모바일 배치(2026-10-31) — 1:1은 팀전 화면으로 그리므로(lib/duel.ts) 팀전 모바일 배치를, 3명 이상은 개인전 모바일 배치를 쓴다.
   const duelMobile = mobileScreen && !!duel && !!viewState;
   const individualMobile = mobileScreen && individual && !duel;
@@ -322,7 +307,6 @@ export default function GamePage() {
         error={error}
         animState={animState}
         paused={gameState.paused}
-        eventIntro={introActive}
       />
       )}
       {/* 게임 중 메뉴(⏸) — 판 바깥에 둔다. GameLayout 안에 넣으면 결정타 연출의
@@ -355,20 +339,10 @@ export default function GamePage() {
         onRespond={respondPause}
         onSurrender={surrender}
         onLeave={handleMenuLeave}
-        noPauseText={gameState.event ? '이벤트 판은 일시정지가 없어요' : undefined}
       />
       {/* 세로로 든 폰에 "가로로 돌려 주세요"를 덮는다. **항상 마운트하고** 보이는 조건은
           CSS가 정한다(RotateHint 주석 — hydration과 회전 리렌더를 피하기 위해서다).
           결과 화면에는 뜨지 않는다 — 이 return 위에서 GameEndScreen이 먼저 돌아간다. */}
-      {/* 목표점수 달성하기 — 시작 룰렛. 일시정지 창보다 위에 덮는다(그동안은 메뉴도 누를 수 없다). */}
-      {introActive && gameState.scoreRace && gameState.phase === 'playing' && (
-        <ScoreRaceIntro
-          target={gameState.scoreRace.target}
-          until={eventIntroUntil}
-          maxTurn={gameState.scoreRace.maxTurn}
-          range={gameState.event?.targetRange}
-        />
-      )}
       {/* 도토리 축제 — 카드 고르기 · 얻는 연출 · 카드 보기(PC · 모바일 · 팀전 · 개인전 공용). 1:1 개인전은 화면 편(A/B)으로 본다 */}
       {gameState.enhance?.acorn && (
         <AcornLayer

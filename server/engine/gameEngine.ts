@@ -58,7 +58,7 @@ export function processSkillChoice(
 ): { state: GameState; events: GameEvent[] } {
   if (state.phase !== 'playing' || state.pendingChoice === null) return { state, events: [] };
   if (acornOfferOpen(state)) return { state, events: [] };
-  // 레벨이 0이거나 한 우물만 파기에서 잠긴 카드면 무시한다 — 둘 다 eligibleAnimals 한 곳이 판정한다.
+  // 레벨이 0이거나 쿨타임 중인 카드면 무시한다 — 둘 다 eligibleAnimals 한 곳이 판정한다.
   if (!eligibleAnimals(state, state.pendingChoice).includes(animal)) return { state, events: [] };
   if (state.mode === 'individual') return processIndividualSkill(state, animal, target);
 

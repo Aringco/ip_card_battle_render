@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { StackedCard } from 'shared';
+import { enhanceDenomTier } from 'shared';
 
 // 정산되어 팀 쪽으로 날아갈 때, 그 동물 칸이 어느 방향에 있는지조차 몰라도(폴백) 최소한
 // 자기 팀 쪽(왼쪽=A/오른쪽=B)으로는 날아가도록 뷰포트 기준 대략적인 좌표를 남겨둔다.
@@ -91,7 +92,7 @@ export function StackCardView({
       ref={elRef}
       data-stack-card-id={card.id}
       data-stack-card-ids={mergedIds ? ` ${mergedIds.join(' ')} ` : undefined}
-      className={`stack-card card-shadow ${bundle ? `stack-card-bundle stack-card-bundle-${bundle}` : ''} ${denom ? `stack-card-denom stack-card-denom-${denom}` : ''} ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
+      className={`stack-card card-shadow ${bundle ? `stack-card-bundle stack-card-bundle-${bundle}` : ''} ${denom ? `stack-card-denom stack-card-denom-${enhanceDenomTier(denom)}` : ''} ${flingClass} ${shakeClass} ${isNew ? 'stack-card-new' : ''}`}
       // ⚠️ 겹침 간격(예전 marginLeft: -46)은 이제 CSS(.stack-card + .stack-card)가 맡는다 —
       //    카드 크기가 무대를 따라 줄어들므로 겹침도 같은 비율로 줄어야 한다.
       style={{ zIndex: index, ...flingVars }}

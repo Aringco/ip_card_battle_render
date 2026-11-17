@@ -103,13 +103,23 @@ export const ENHANCE_USE_EXP: Record<Animal, number> = { sheep: 1, rabbit: 1, me
  * 배수 카드(2026-11-02 요청) — 카드 강화 판은 한 번에 나온 장수를 그대로 늘어놓지 않고 **큰 단위의 카드로 묶어** 내놓는다.
  * 128장이면 ×100 한 장 · ×10 두 장 · ×5 한 장 · 1 세 장. 카드의 num이 곧 그 카드가 뜻하는 장수다(짝 · 경험치 모두 num으로 센다 —
  * engine/drawCard.ts의 settleStacks). 수백 장이 한꺼번에 깔려 화면이 버벅이던 것을 없앤다.
- * 화면: ×5 구리 · ×10 은 · ×100 금 · ×1000 무지개, ×5부터 "쿵" 하고 떨어진다(BigCardSlam).
+ * 화면: ×5 구리 · ×10 은 · ×100 금 · ×1000 다이아 · ×10000 무지개, ×5부터 "쿵" 하고 떨어진다(BigCardSlam).
  */
 export const ENHANCE_CARD_DENOMS = [1000, 100, 10, 5, 1] as const;
-/** n장을 배수 카드 묶음으로 — **작은 것부터** 돌려준다(큰 카드가 마지막에 떨어져 줄의 끝에 선다) */
+/**
+ * n장을 배수 카드 묶음으로 — **작은 것부터** 돌려준다(큰 카드가 마지막에 떨어져 줄의 끝에 선다).
+ * 1000 단위 · 10000 단위는 **각각 한 장으로 합친다**(2026-11-17 — 예약 뽑기 상한을 걷으며): 5만 장이 ×1000 오십 장이면 큰 카드 연출이
+ * 장마다 이어져 수십 초가 걸린다. 합친 카드의 num은 그 단위의 배수(×3000 다이아 · ×50000 무지개 …)다(그림 등급은 enhanceDenomTier).
+ */
 export function splitEnhanceCount(n: number): number[] {
   const out: number[] = [];
   let rest = Math.max(0, Math.floor(n));
+  for (const unit of [10000, 1000]) {
+    if (rest >= unit) {
+      out.push(rest - (rest % unit));
+      rest %= unit;
+    }
+  }
   for (const d of ENHANCE_CARD_DENOMS) {
     while (rest >= d) {
       out.push(d);
@@ -118,6 +128,10 @@ export function splitEnhanceCount(n: number): number[] {
   }
   return out.reverse();
 }
+/** 배수 카드의 그림 등급(CSS .stack-card-denom-N) — ×1000 다이아(1000~9999) · ×10000 무지개(10000~)(2026-11-17) */
+export function enhanceDenomTier(num: number): number {
+  return num >= 10000 ? 10000 : num >= 1000 ? 1000 : num;
+}
 /** 화면에서 "쿵" 하고 떨어지는 카드인가 — ×5부터 */
 export const ENHANCE_SLAM_FROM = 5;
 /**
@@ -125,7 +139,7 @@ export const ENHANCE_SLAM_FROM = 5;
  * 다음 장은 앞 장이 닿은 뒤(enhanceSlamLandMs)에 떠오른다. 서버의 연출 유예(room.ts settleTimelineMs)도 이 값을 쓴다.
  */
 export function enhanceSlamMs(num: number): number {
-  return num >= 1000 ? 900 : num >= 100 ? 780 : num >= 10 ? 680 : 600;
+  return num >= 10000 ? 1000 : num >= 1000 ? 900 : num >= 100 ? 780 : num >= 10 ? 680 : 600;
 }
 /** 큰 카드가 제자리에 닿는 순간(연출 시작부터 ms) — 그때 카드가 줄에 나타나고 흙먼지 · 충격파가 퍼진다. 다음 큰 카드는 이때 떠오른다. */
 export function enhanceSlamLandMs(num: number): number {
@@ -191,6 +205,11 @@ export const ENHANCE_SHEEP_COOLDOWN_CUT: readonly number[] = [0, 0, 0, 0, 0, 1, 
 export const ENHANCE_SHEEP_COOLDOWN_CARDS: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2];
 /** 상표토끼 Lv.6부터 — 나에게 걸린 부정한 효과(효과 감소 ÷N · 출혈) 중 무작위 하나의 남은 턴을 이만큼 줄인다(Max는 정화) */
 export const ENHANCE_RABBIT_CLEANSE: readonly number[] = [0, 0, 0, 0, 0, 1, 1, 2, 2, 3, Infinity];
+/**
+ * 상표토끼 — 즉시 회복량(회복 효율 감소 뒤)의 이 %를 보호막으로 더한다(2026-11-17 상향). **등급(승격)마다 한 계단**이다 —
+ * 브론즈 Lv.1~3 · 실버 Lv.4~7 · 골드 Lv.8~10 · 무지개 Max. 보호막 상한(시작 체력의 20% — 도토리 카드와 같은 그릇)을 넘는 몫은 버린다.
+ */
+export const ENHANCE_RABBIT_SHIELD_PCT: readonly number[] = [20, 20, 20, 30, 30, 30, 30, 40, 40, 40, 60];
 /** 상표토끼 — 지속 회복에 더하는 턴 수(최대 ENHANCE_REGEN_MAX_TURNS) */
 export const ENHANCE_RABBIT_REGEN_TURNS: readonly number[] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4];
 /** 특허랑이 — 상대에게 쌓는 출혈 턴 수(최대 ENHANCE_BLEED_MAX_TURNS) */
@@ -218,7 +237,7 @@ export function enhanceDotTick(cardValue: number): number {
  * 실용신양에 디자인어 배율이 곱해지면 수천 장이 될 수 있다 — 그대로 뽑으면 한 갱신에 그만큼의 이벤트가 실리고
  * 화면의 롤 연출(rollDrawStep)이 몇 분을 넘는다.
  */
-export const ENHANCE_RESERVED_DRAW_CAP = 512;
+export const ENHANCE_RESERVED_DRAW_CAP = Infinity; // 2026-11-17 상한 해제(요청) — 큰 수는 1000 단위 카드 한 장으로 묶여 연출 길이가 늘지 않는다
 
 /**
  * 기본 쿨타임(내 차례 수) — **승격 때만** 오른다: 금 등급(Lv.6)에서 +1, 무지개 등급(Lv.Max)에서 또 +1(6차 표 — 2026-10-31).
@@ -282,6 +301,7 @@ export const enhanceMermaidDivideTurns = byLevel(ENHANCE_MERMAID_DIVIDE_TURNS);
 export const enhanceMermaidEvadePct = byLevel(ENHANCE_MERMAID_EVADE_PCT);
 export const enhanceRabbitCleanse = byLevel(ENHANCE_RABBIT_CLEANSE);
 export const enhanceRabbitRegenTurns = byLevel(ENHANCE_RABBIT_REGEN_TURNS);
+export const enhanceRabbitShieldPct = byLevel(ENHANCE_RABBIT_SHIELD_PCT);
 export const enhanceTigerBleedTurns = byLevel(ENHANCE_TIGER_BLEED_TURNS);
 export const enhanceTigerHealCut = byLevel(ENHANCE_TIGER_HEAL_CUT);
 /** 특허랑이 Lv.Max — 상대의 이로운 효과(지속 회복 · 쌓아 둔 배율 · 다음 턴 추가 뽑기 · 기술 회피)를 모두 걷어 낸다 */
@@ -465,10 +485,10 @@ export const ENHANCE_SETTINGS: GameSettings = {
  * 카드 강화 판의 목표 점수(= 시작 체력) 상한 — 2500(승리선 5000). 일반 판은 그대로 SETTINGS_LIMITS(1~500)다.
  * 같은 날 두 번 바뀌었다(2026-10-29): 500 → "한계치 제거"(10억) → 2500. 상한이 없을 때 일곱 자리 체력이 구슬 칸을 넘쳤다.
  */
-export const ENHANCE_TARGET_SCORE_MAX = 2500;
+export const ENHANCE_TARGET_SCORE_MAX = 50000; // 2026-11-17 — 화면의 목표 점수(승리선) 10만. 화면 입력은 100점 단위라 최소도 100(시작 체력 50)
 export const ENHANCE_SETTINGS_LIMITS: SettingsLimits = {
   ...SETTINGS_LIMITS,
-  targetScore: { min: SETTINGS_LIMITS.targetScore.min, max: ENHANCE_TARGET_SCORE_MAX },
+  targetScore: { min: 50, max: ENHANCE_TARGET_SCORE_MAX },
 };
 /** 카드 강화 판의 규칙 정리 — 방(Room.addSoloPlayer)과 엔진(initEnhanceGame)이 같은 범위로 자른다. */
 export function clampEnhanceSettings(input: Partial<GameSettings> | undefined): GameSettings {

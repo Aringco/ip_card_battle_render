@@ -37,7 +37,7 @@ function tapProps(onTap: () => void) {
 
 /** 상대 체력 막대의 만점 — 승리선(목표 점수 × 2) */
 function winHpOf(gameState: ClientGameState): number {
-  return gameState.scoreRace?.target ?? gameState.settings.targetScore * 2;
+  return gameState.settings.targetScore * 2;
 }
 
 /** 출혈 · 지속 회복 표시(남은 턴) — 걸려 있는 것만 */

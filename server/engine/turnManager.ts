@@ -52,7 +52,7 @@ function determineWinnerByHp(state: GameState): Team | 'draw' {
 }
 
 /** 게임 종료를 한 곳에서 처리한다 — phase/winner/pendingChoice를 모두 정리하고 gameEnd를 낸다. */
-function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' | 'turnLimit' | 'target'): GameEvent[] {
+function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' | 'turnLimit'): GameEvent[] {
   state.phase = 'ended';
   state.winner = winner;
   state.pendingChoice = null;
@@ -66,9 +66,6 @@ function endGame(state: GameState, winner: SideId | 'draw', reason: 'knockout' |
  */
 export function checkKnockout(state: GameState): GameEvent[] {
   if (state.phase !== 'playing') return [];
-  // 이벤트 '목표점수 달성하기'에는 즉시 승패가 없다 — 0점에서 시작하므로 그대로 두면 첫 턴에 넉아웃으로 끝나고,
-  // 판정은 마지막 턴이 끝났을 때 점수로만 한다(advanceTurn).
-  if (state.scoreRace) return [];
 
   const winHp = winHpOf(state);
   const aWins = state.teams.A.hp >= winHp || state.teams.B.hp <= LOSE_HP;
@@ -169,7 +166,7 @@ export function advanceTurn(state: GameState, rng: RNG = Math.random): GameEvent
     // 크게 설정돼 있으면(입력 자체는 막지 않는다 — SETTINGS_LIMITS 참고) 그 턴엔 아예
     // 도달할 수 없어 축제가 영영 안 열리므로, MAX_TURN을 넘는 값은 암묵적으로 MAX_TURN
     // 그 자체로 취급한다 — 마지막 턴에라도 축제가 열리게 하는 것이다.
-    // (턴 상한은 평소 MAX_TURN, 목표점수 달성하기는 그 판의 maxTurn — maxTurnOf)
+    // (턴 상한은 maxTurnOf — 평소 MAX_TURN, 카드 강화 판은 없음)
     const effectiveFestivalTurn = Math.min(state.settings.festivalTurn, maxTurnOf(state));
     // 카드 강화 판의 축제는 도토리 카드 고르기다(shared/acorn.ts) — 턴이 오를 때 턴마다 도는 도토리 효과를 먼저 들이고, 축제 턴이면 고르기를 연다.
     // 고르는 동안 판은 멈춘다(gameEngine이 장소 · 기술을 받지 않는다). 옛 축제(festival 이벤트 · 예약 뽑기)는 이 판에 없다.
@@ -196,13 +193,6 @@ export function advanceTurn(state: GameState, rng: RNG = Math.random): GameEvent
   // 종료 판정 — 턴 상한 초과 시 체력 비교. 개인전은 승패가 아니라 남은 사람들의 순위를 정한다.
   if (state.turn > maxTurnOf(state)) {
     if (state.mode === 'individual') return [...events, ...rankByHpAndEnd(state)];
-    // 목표점수 달성하기 — 마지막 턴이 끝난 순간의 점수가 목표 이상이면 그 편, 아니면 상대가 이긴다(체력 비교가 아니다).
-    if (state.scoreRace) {
-      const race = state.scoreRace;
-      const reached = (state.teams[race.side]?.hp ?? 0) >= race.target;
-      const winner = reached ? race.side : (opponentsOf(state, race.side)[0] ?? 'draw');
-      return [...events, ...endGame(state, winner, 'target')];
-    }
     return [...events, ...endGame(state, determineWinnerByHp(state), 'turnLimit')];
   }
 

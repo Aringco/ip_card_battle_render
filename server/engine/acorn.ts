@@ -4,7 +4,6 @@ import {
   acornEffectsOf,
   acornHpPct,
   acornLevelExp,
-  acornShieldCap,
   acornSideOf,
   acornStatsOf,
   cloneEnhanceStatus,
@@ -264,13 +263,13 @@ function cleanseOne(state: GameState, side: SideId, by: number, rng: RNG, only?:
   return '회복 효율 감소';
 }
 
-/** 보호막 더하기 — 시작 체력의 20%에서 자른다. 실제로 더한 양 */
+/** 보호막 더하기 — 상한 없음(2026-11-17 요청 — 그 전 시작 체력의 20%). 실제로 더한 양 */
 export function addShield(state: GameState, side: SideId, amount: number): number {
   const enh = state.enhance;
   if (!enh || amount <= 0) return 0;
   enh.shield ??= {};
   const before = enh.shield[side] ?? 0;
-  enh.shield[side] = Math.min(acornShieldCap(state), before + amount);
+  enh.shield[side] = before + amount;
   return enh.shield[side] - before;
 }
 

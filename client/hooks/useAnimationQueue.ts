@@ -223,7 +223,7 @@ export interface AnimationState {
   displayedActivePlayerIndex: number;
   isSettling: boolean; // 이번 액션의 정산 연출이 아직 재생 중인지
   decisiveHit: { winner: SideId } | null; // 체력 즉시 승패를 만든 그 행동 — "결정타!" 강조용
-  finisher: { id: number; side: SideId } | null; // 판을 끝낼 체력 변화 직전 — 그 체력 막대가 커지고 빛이 모였다 터진다(FinisherLayer)
+  finisher: { id: number; side: SideId; heal: boolean } | null; // 판을 끝낼 체력 변화 직전 — 그 체력 막대가 커지고 빛이 모였다 터진다(FinisherLayer). heal = 회복으로 끝내는 판(초록 빛)
   rankBanner: RankBanner | null; // 개인전 — 한 사람의 순위가 정해진 순간 "n위 확정!" 알림
   // 개인전 — 이번 액션에서 순위가 정해졌지만 그 "n위 확정!"이 아직 재생되지 않은 편. 화면은 이 편들의 finish(n위 · 탈락)를 가린다
   // (lib/individual.ts의 withDisplayedFinish) — 서버 진실을 그대로 그리면 체력이 0으로 내려가는 연출보다 먼저 "탈락"이 붙었다.
@@ -327,7 +327,7 @@ export function useAnimationQueue(
   const [shakingPile, setShakingPile] = useState<ShakingPile | null>(null);
   const [newCardId, setNewCardId] = useState<number | null>(null);
   const [decisiveHit, setDecisiveHit] = useState<{ winner: SideId } | null>(null);
-  const [finisher, setFinisher] = useState<{ id: number; side: SideId } | null>(null);
+  const [finisher, setFinisher] = useState<{ id: number; side: SideId; heal: boolean } | null>(null);
   const [rankBanner, setRankBanner] = useState<RankBanner | null>(null);
   const [sweepBanner, setSweepBanner] = useState<SweepBannerInfo | null>(null);
   // 실제 서버 경험치(gameState.teams[t].exp)는 페어가 맞는 즉시 반영되지만, 화면에는 그
@@ -765,7 +765,9 @@ export function useAnimationQueue(
       if (side === undefined) return;
       const at = cursor;
       const id = ++floatIdCounter;
-      sched(() => setFinisher({ id, side }), at);
+      // 회복으로 끝내는 판(상표토끼 · 지속 회복) — 빛을 주황이 아니라 초록으로(2026-11-17 요청)
+      const heal = (ev.type === 'skillApplied' && ev.animal === 'rabbit') || (ev.type === 'enhanceTick' && ev.kind === 'regen');
+      sched(() => setFinisher({ id, side, heal }), at);
       sched(() => {
         setScreenShakeLevel(3);
         playRandomSound('bomb');

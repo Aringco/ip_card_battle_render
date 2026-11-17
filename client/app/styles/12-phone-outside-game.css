@@ -152,7 +152,6 @@
   .lobby-safe[data-stage="createTeam"],
   .lobby-safe[data-stage="createIndividual"],
   .lobby-safe[data-stage="join"],
-  .lobby-safe[data-stage="event"],
   .lobby-safe[data-stage="waiting"] {
     left: 50%;
     right: auto;
@@ -170,8 +169,7 @@
   .lobby-safe[data-stage="soloEnhance"],
   .lobby-safe[data-stage="createTeam"],
   .lobby-safe[data-stage="createIndividual"],
-  .lobby-safe[data-stage="join"],
-  .lobby-safe[data-stage="event"] {
+  .lobby-safe[data-stage="join"] {
     width: calc(100vw - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right)) - 52px);
     transform: translate(calc(-50% + 26px), calc(-50dvh + 6px));
   }
@@ -209,7 +207,7 @@
   .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-head { grid-column: 1; grid-row: 1; }
   .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-fields { grid-column: 1; grid-row: 2; min-height: 0; overflow-y: auto; padding: 4px 6px; }
   .lobby-form-scroll:has(> .lobby-form-side) > .lobby-form-side { grid-column: 2; grid-row: 1 / span 2; min-height: 0; overflow-y: auto; padding: 4px 6px; }
-  /* 규칙이 없는 폼(방 참가 · 이벤트 도전자)도 2열 — 입력칸(닉네임 · 방 코드 · PIN)은 나란히, 나머지(자리 고르기 · 도전 종류 · 버튼 · 안내)는
+  /* 규칙이 없는 폼(방 참가)도 2열 — 입력칸(닉네임 · 방 코드)은 나란히, 나머지(자리 고르기 · 버튼 · 안내)는
      한 줄을 다 쓴다. 한 열로 두면 세로 380px를 17~71px 넘쳐 스크롤했다. 그래도 넘치면(글씨 크기를 키웠을 때) 스크롤한다. */
   .lobby-safe .stage-form .lobby-form-scroll:not(:has(> .lobby-form-side)) { overflow-y: auto; }
   .lobby-safe .stage-form .lobby-form-scroll:not(:has(> .lobby-form-side)) > .lobby-form-fields {
@@ -241,8 +239,7 @@
   .lobby-safe[data-stage="soloEnhance"] .lobby-form-wrap,
   .lobby-safe[data-stage="createTeam"] .lobby-form-wrap,
   .lobby-safe[data-stage="createIndividual"] .lobby-form-wrap,
-  .lobby-safe[data-stage="join"] .lobby-form-wrap,
-  .lobby-safe[data-stage="event"] .lobby-form-wrap { align-items: flex-end; }
+  .lobby-safe[data-stage="join"] .lobby-form-wrap { align-items: flex-end; }
   /* 게임 화면은 가로 전용(세로는 회전 안내) — 대기실에서 미리 알린다 */
   .lobby-safe[data-stage="waiting"] .waiting-scroll::before {
     content: '📱 게임이 시작되면 화면을 가로로 돌려 주세요';

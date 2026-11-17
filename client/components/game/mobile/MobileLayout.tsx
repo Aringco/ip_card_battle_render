@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS, enhanceCardTier, maxTurnOf } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
-import { canUseSkill, levelOf, oneWellOpen, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
+import { canUseSkill, levelOf, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SweepBanner } from '@/components/effects/SweepBanner';
@@ -300,7 +300,6 @@ export function MobileLayout({
             team={skillPreviewTeam}
             interactive={isMyChoiceTurn}
             myTeamChoosing={myTeamChoosing}
-            wellOpen={oneWellOpen(gameState, skillPreviewTeam)}
             tapFocus
             onChoose={handleChoose}
             onPass={handlePass}

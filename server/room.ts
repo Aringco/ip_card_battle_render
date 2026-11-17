@@ -42,27 +42,15 @@ import {
   clampSettings,
   ANIMALS,
   THRESHOLDS,
-  oneWellSettings,
-  skillPeakValue,
-  ONE_WELL_ALLOWED,
-  ONE_WELL_MULTIPLIERS,
-  SCORE_RACE_CPU_HP,
-  SCORE_RACE_INTRO_MS,
-  SCORE_RACE_INTRO_WAIT_MS,
-  SCORE_RACE_START_SCORE,
-  SCORE_RACE_TURNS,
-  timeAttackSettings,
-  beatDevSettings,
   clampEnhanceSettings,
 } from 'shared';
-import type { EventEndReason, EventInfo, EventKind } from 'shared';
 import { ACORN_PICK_SEC } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
 import { isDemoRequest } from './demo/trigger';
 import { DemoDirector } from './demo/director';
 import { DEMO_SETTINGS } from './demo/script';
 import { SETTLE_GRACE_MARGIN_MS, settleGraceMs } from './settleTiming';
-import { pickComputerSkill, pickEnhanceComputerSkill, pickScoreRaceComputerSkill } from './computerSkills';
+import { pickComputerSkill, pickEnhanceComputerSkill } from './computerSkills';
 
 // 싱글 모드 컴퓨터 플레이어는 실제 WebSocket 연결이 없으므로 고정 ID로 취급한다.
 const CPU_PLAYER_ID = 'CPU';
@@ -90,78 +78,6 @@ const CPU_SKILL_THINK_MAX_MS = 1500;
 function normalizeNickname(nickname: string): string {
   return nickname.trim().slice(0, NICKNAME_MAX_LEN) || randomNickname();
 }
-// ─── 이벤트 모드(EVENT_MODE_ROADMAP.md) ─────────────────────────────────────────
-// 이벤트 판은 새 엔진이 아니라 팀전 1:1 판에 프리셋·제약을 얹은 것이다. 도전자는 언제나 A팀이고, 상대는
-// 컴퓨터(목표점수 달성하기·한 우물만 파기) 또는 개발자(개발자를 이겨라, B팀)다.
-
-/** 이벤트 판이 끝났을 때 방이 밖(EventHub)으로 넘기는 결과 — 저장소의 한 행이 된다. */
-export interface EventGameResult {
-  kind: EventKind;
-  challengerName: string;
-  developerName: string | null;
-  won: boolean;
-  endReason: EventEndReason;
-  peakLevels: Record<Animal, number>;
-  /** 카드별 최대 경험치(CSV용) */
-  peakExp: Record<Animal, number>;
-  /** 카드별 기술 한 번의 최고 효과(skillPeakValue) — 순위표의 카드별 점수·동물의 왕(2026-10-27) */
-  peakSkill: Record<Animal, number>;
-  /** 목표점수 달성하기 — 그 판의 목표(10~20) */
-  target?: number;
-  /** 목표점수 달성하기·한 우물만 파기 — 판이 끝났을 때 도전자의 점수(체력). 한 우물만 파기는 순위표의 점수 칸이다 */
-  finalScore: number | null;
-  lockedAnimal: Animal | null;
-  devForfeit: boolean;
-  turns: number;
-  /** 판이 시작된 시각(ms) — 개발자가 순위표를 행사 시간대로 잘라 볼 때 쓴다(DB의 started_at) */
-  startedAt: number;
-  durationMs: number;
-}
-
-/** 이벤트 방을 세울 때 넘기는 값. onEnd는 결과를 저장하고 기록 번호를 돌려준다(저장 실패면 null). */
-export interface EventRoomSetup {
-  kind: EventKind;
-  /** 목표점수 달성하기 — 그 판의 목표(허브가 10~20에서 뽑아 넘긴다) */
-  target?: number;
-  /**
-   * 규칙 — 개발자를 이겨라는 그 개발자가 정한 것(beatDevSettings로 완성), 목표점수·한 우물은 행사 전체 규칙
-   * (EventConfig — timeAttackSettings·oneWellSettings로 완성). 없으면 각 도전의 기본값.
-   */
-  settings?: Partial<GameSettings>;
-  /** 목표점수 달성하기 — 목표를 뽑은 범위(시작 룰렛이 이 안의 숫자로 돈다) */
-  targetRange?: { min: number; max: number };
-  /** 한 우물만 파기 — 도전자 카드의 기본 배율(개발자가 정한 값). 없으면 ONE_WELL_MULTIPLIERS */
-  oneWellMultipliers?: { rabbit: number; tiger: number };
-  onEnd: (result: EventGameResult) => Promise<number | null>;
-}
-
-interface RoomEventState {
-  kind: EventKind;
-  challengerName: string;
-  developerName: string | null;
-  target?: number;
-  targetRange?: { min: number; max: number };
-  oneWellMultipliers?: { rabbit: number; tiger: number };
-  onEnd: (result: EventGameResult) => Promise<number | null>;
-  startedAt: number;
-  // 목표점수 달성하기 — 시작 룰렛이 끝나는 시각(이 방의 시계). 그때까지 판은 멈춰 있다(첫 턴 타이머가 늦게 걸리고 클릭은 거부). 없으면 0
-  introUntil: number;
-  // 룰렛이 실제로 시작됐는가 — 도전자의 게임 화면이 붙는 순간(handleReconnect) 켠다. 그 전에는 introUntil이 대기 상한까지 잡혀 있다
-  introStarted: boolean;
-  // 동물의 왕 — 그 판에서 도전자 편이 **도달했던** 최고 레벨(기술을 쓰면 경험치가 깎이므로 끝날 때 재면 안 된다)
-  peakLevels: Record<Animal, number>;
-  // 같은 이유로 카드별 최대 경험치도(CSV용)
-  peakExp: Record<Animal, number>;
-  // 카드별 기술 한 번의 최고 효과 — 도전자(A)가 쓴 skillApplied에서 잰다(trackEvent에 이벤트를 넘겨야 한다)
-  peakSkill: Record<Animal, number>;
-  // 엔진이 아니라 방이 끝낸 경우(항복·나가기) — 누가 왜 끝냈는지
-  forcedEnd: { reason: EventEndReason; by: SideId } | null;
-  finished: boolean;
-  success: boolean | null;
-  endReason: EventEndReason | null;
-  recordId: number | null;
-}
-
 interface PlayerConnection {
   ws: WebSocket;
   playerId: string;
@@ -227,11 +143,6 @@ export class Room {
    * 시나리오 전문은 저장소 루트의 `DEMO_MODE.md`.
    */
   private demo: DemoDirector | null = null;
-  /**
-   * 이벤트 판(EVENT_MODE_ROADMAP.md) — EventHub가 setupEventSolo / setupEventMatch로 세울 때만 생긴다.
-   * null이면 평범한 방이고 아래 어느 이벤트 분기에도 걸리지 않는다.
-   */
-  private event: RoomEventState | null = null;
   private computerTimer: ReturnType<typeof setTimeout> | null = null;
   // 컴퓨터 타이머가 터질 예정인 시각 — 일시정지할 때 "얼마나 남았는지"를 재려면
   // 핸들만으로는 알 수 없어 따로 기억해둔다.
@@ -567,232 +478,6 @@ export class Room {
     this.tryStartGame();
   }
 
-  // ─── 이벤트 방 ───────────────────────────────────────────────────────────
-
-  /**
-   * 이벤트 — 컴퓨터 대전(목표점수 달성하기 · 한 우물만 파기). 혼자 놀기처럼 도전자는 A팀, B팀은 CPU다.
-   * 규칙은 프리셋으로 덮어쓰고(누구도 바꿀 수 없다) clampSettings를 그대로 통과시킨다.
-   *
-   * ⚠️ 여기서 시작하지 않는다 — 부르는 쪽이 roomCreated를 먼저 보낸 뒤 startEventGame()을 부른다(addSoloPlayer와 같은 이유).
-   */
-  setupEventSolo(ws: WebSocket, playerId: string, name: string, setup: EventRoomSetup): void {
-    this.vsComputer = true;
-    this.settings = setup.kind === 'timeAttack' ? timeAttackSettings(setup.settings) : oneWellSettings(setup.settings);
-    const nickname = normalizeNickname(name);
-    this.players.set(playerId, {
-      ws, playerId, memberId: this.nextMemberId(), nickname, team: 'A',
-      ready: true, connected: true, lastChatAt: 0,
-    });
-    this.hostPlayerId = playerId;
-    this.teamPlayerIds.A.push(playerId);
-    this.teamPlayerIds.B.push(CPU_PLAYER_ID);
-    this.teamNames.A = nickname.slice(0, TEAM_NAME_MAX_LEN);
-    this.teamNames.B = CPU_TEAM_NAME;
-    this.event = this.makeEventState(setup, nickname, null);
-  }
-
-  /**
-   * 이벤트 — 개발자를 이겨라. 도전자는 A팀, 개발자는 B팀. 대기실을 거치지 않고 곧바로 시작한다.
-   * 규칙은 **개발자가 정한 것**(setup.settings — 대기실에서 바꾼 값)을 기본값 위에 얹는다(beatDevSettings — 일시정지는 언제나 0).
-   * ⚠️ 시작(startEventGame)은 부르는 쪽이 양쪽에 roomJoined를 보낸 **뒤**에 — 클라이언트는 방에 새로 들어오는
-   *    순간 들고 있던 게임 상태를 비우므로, gameStart가 먼저 가면 그 비우기에 새 게임이 지워진다.
-   */
-  setupEventMatch(
-    developer: { ws: WebSocket; playerId: string; name: string },
-    challenger: { ws: WebSocket; playerId: string; name: string },
-    setup: EventRoomSetup,
-  ): void {
-    this.settings = beatDevSettings(setup.settings);
-    const chName = normalizeNickname(challenger.name);
-    const devName = normalizeNickname(developer.name);
-    this.players.set(challenger.playerId, {
-      ws: challenger.ws, playerId: challenger.playerId, memberId: this.nextMemberId(), nickname: chName, team: 'A',
-      ready: true, connected: true, lastChatAt: 0,
-    });
-    this.players.set(developer.playerId, {
-      ws: developer.ws, playerId: developer.playerId, memberId: this.nextMemberId(), nickname: devName, team: 'B',
-      ready: true, connected: true, lastChatAt: 0,
-    });
-    this.hostPlayerId = developer.playerId;
-    this.teamPlayerIds.A.push(challenger.playerId);
-    this.teamPlayerIds.B.push(developer.playerId);
-    this.teamNames.A = chName.slice(0, TEAM_NAME_MAX_LEN);
-    this.teamNames.B = devName.slice(0, TEAM_NAME_MAX_LEN);
-    this.event = this.makeEventState(setup, chName, devName);
-  }
-
-  /** 이벤트 판 시작 — 규칙(잠금·목표)은 tryStartGame 안의 applyEventRules가 첫 스냅샷 전에 얹는다. */
-  startEventGame(): void {
-    this.tryStartGame();
-  }
-
-  /** 지금 판이 진행 중인지(이벤트 허브가 개발자를 다음 판에 넣어도 되는지 볼 때 쓴다). */
-  isInProgress(): boolean {
-    return this.state !== null && this.state.phase === 'playing';
-  }
-
-  private makeEventState(setup: EventRoomSetup, challengerName: string, developerName: string | null): RoomEventState {
-    return {
-      kind: setup.kind,
-      challengerName,
-      developerName,
-      ...(setup.target !== undefined ? { target: setup.target } : {}),
-      ...(setup.targetRange ? { targetRange: setup.targetRange } : {}),
-      ...(setup.oneWellMultipliers ? { oneWellMultipliers: setup.oneWellMultipliers } : {}),
-      onEnd: setup.onEnd,
-      startedAt: 0,
-      introUntil: 0,
-      introStarted: false,
-      peakLevels: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
-      peakExp: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
-      peakSkill: { sheep: 0, rabbit: 0, mermaid: 0, tiger: 0 },
-      forcedEnd: null,
-      finished: false,
-      success: null,
-      endReason: null,
-      recordId: null,
-    };
-  }
-
-  /** 엔진 상태에 이벤트 규칙을 얹는다 — initGame 직후, 첫 스냅샷을 보내기 **전에** 부른다. */
-  private applyEventRules(): void {
-    const ev = this.event;
-    if (!ev || !this.state) return;
-    ev.startedAt = Date.now();
-    if (ev.kind === 'oneWell') {
-      // 기본 배율(상표토끼·특허랑이)은 판이 시작될 때의 값을 실어 판 끝까지 쓴다 — 엔진·화면이 같은 값을 본다(skillMultiplier).
-      this.state.oneWell = {
-        side: 'A',
-        allowed: [...ONE_WELL_ALLOWED],
-        locked: null,
-        multipliers: { ...(ev.oneWellMultipliers ?? ONE_WELL_MULTIPLIERS) },
-      };
-    }
-    // 목표점수 달성하기 — 도전자는 0점에서, 컴퓨터는 SCORE_RACE_CPU_HP에서 시작하고, 10턴이 끝난 순간 목표 이상이면 승리.
-    // 엔진(scoreRace)이 넉아웃을 끄고 턴 상한을 바꾼다 — 체력을 여기서 바꾸는 것은 initGame이 목표 점수로 채워 두기 때문이다.
-    if (ev.kind === 'timeAttack' && ev.target !== undefined) {
-      this.state.scoreRace = { side: 'A', target: ev.target, maxTurn: SCORE_RACE_TURNS };
-      this.state.teams.A.hp = SCORE_RACE_START_SCORE;
-      this.state.teams.B.hp = SCORE_RACE_CPU_HP;
-      // 목표 룰렛 — 이 시간 동안 판을 멈춰 둔다. 첫 턴 타이머는 resetTimer가 이만큼 늦게 걸고(introGraceMs),
-      // 그 사이의 클릭은 rejectIfIntro가 막는다. 도전자가 선공이라 컴퓨터는 애초에 움직이지 않는다.
-      // ⚠️ 룰렛 자체는 여기서 시작하지 않는다 — 도전자는 이 순간 아직 로비에 있다. 게임 화면이 붙으면
-      //    startIntroIfWaiting이 그때부터 SCORE_RACE_INTRO_MS를 다시 잡는다. 여기 잡는 값은 그 화면을 기다리는 상한이다.
-      ev.introStarted = false;
-      ev.introUntil = Date.now() + SCORE_RACE_INTRO_WAIT_MS + SCORE_RACE_INTRO_MS;
-    }
-  }
-
-  /**
-   * 도전자의 게임 화면이 붙었다 — 지금부터 룰렛을 돌린다. 첫 턴 타이머도 그 길이에 맞춰 다시 건다
-   * (아직 아무도 두지 않은 첫 턴이라 다시 걸어도 잃는 시간이 없다). 한 번만 — F5로 다시 붙어도 처음부터 돌지 않는다.
-   */
-  private startIntroIfWaiting(p: PlayerConnection): void {
-    const ev = this.event;
-    if (!ev || ev.introStarted || p.team !== 'A' || this.introGraceMs() <= 0) return;
-    if (!this.state || this.state.phase !== 'playing') return;
-    ev.introStarted = true;
-    ev.introUntil = Date.now() + SCORE_RACE_INTRO_MS;
-    this.resetTimer();
-  }
-
-  /** 목표 룰렛이 끝날 때까지 남은 ms — 룰렛이 없거나 이미 끝났으면 0. */
-  private introGraceMs(): number {
-    return this.event ? Math.max(0, this.event.introUntil - Date.now()) : 0;
-  }
-
-  /** 목표 룰렛이 도는 동안의 조작은 거부한다(화면은 막으로 덮여 있지만, 직접 만든 클라이언트나 늦게 온 클릭이 있다). */
-  private rejectIfIntro(playerId: string): boolean {
-    if (this.introGraceMs() <= 0) return false;
-    this.sendTo(playerId, { type: 'error', code: 'GAME_NOT_STARTED', message: '목표 점수를 정하는 중입니다.' });
-    return true;
-  }
-
-  /**
-   * 상태가 바뀔 때마다(브로드캐스트 직전) 부른다 — 동물의 왕용 최고 레벨을 갱신하고, 판이 끝났으면 결과를 넘긴다.
-   * 정산 직후(pendingChoice가 선 상태)가 경험치가 가장 높은 순간이고 매 액션 뒤를 보므로 놓치지 않는다.
-   * events를 넘기면 그 안의 도전자(A) 기술 발동에서 카드별 최고 효과(peakSkill)도 갱신한다 — ⚠️ 엔진 결과를 내보내는 자리에서는
-   * 반드시 넘길 것(빠뜨리면 그 길로 쓴 기술이 순위표에서 빠진다).
-   */
-  private trackEvent(events?: readonly GameEvent[]): void {
-    const ev = this.event;
-    if (!ev || !this.state) return;
-    for (const e of events ?? []) {
-      if (e.type !== 'skillApplied' || e.team !== 'A' || e.level <= 0) continue;
-      const v = skillPeakValue(e);
-      if (v > ev.peakSkill[e.animal]) ev.peakSkill[e.animal] = v;
-    }
-    const exp = this.state.teams.A?.exp;
-    if (exp) {
-      for (const a of ANIMALS) {
-        const level = Math.floor(exp[a] / THRESHOLDS[a]);
-        if (level > ev.peakLevels[a]) ev.peakLevels[a] = level;
-        if (exp[a] > ev.peakExp[a]) ev.peakExp[a] = exp[a];
-      }
-    }
-    if (this.state.phase === 'ended' && !ev.finished) this.finishEvent();
-  }
-
-  private finishEvent(): void {
-    const ev = this.event!;
-    const state = this.state!;
-    ev.finished = true;
-
-    const won = state.winner === 'A';
-    const reason: EventEndReason = ev.forcedEnd
-      ? ev.forcedEnd.reason
-      : state.winner === 'A' ? 'win' : state.winner === 'B' ? 'lose' : 'draw';
-    ev.success = won;
-    ev.endReason = reason;
-
-    const result: EventGameResult = {
-      kind: ev.kind,
-      challengerName: ev.challengerName,
-      developerName: ev.developerName,
-      won,
-      endReason: reason,
-      peakLevels: { ...ev.peakLevels },
-      peakExp: { ...ev.peakExp },
-      peakSkill: { ...ev.peakSkill },
-      ...(ev.target !== undefined ? { target: ev.target } : {}),
-      finalScore: ev.kind === 'timeAttack' || ev.kind === 'oneWell' ? state.teams.A.hp : null,
-      lockedAnimal: state.oneWell?.locked ?? null,
-      devForfeit: ev.forcedEnd !== null && ev.forcedEnd.by === 'B',
-      turns: state.turn,
-      // 판이 시작되지 않은 채 끝났다면(시작 전 이탈) 시작 시각이 0이다 — 끝난 시각으로 둔다(판 길이 0).
-      startedAt: ev.startedAt || Date.now(),
-      durationMs: ev.startedAt ? Date.now() - ev.startedAt : 0,
-    };
-    // ⚠️ 저장은 게임 흐름을 막지 않는다 — 기록 번호가 생기면 그때 따로 알린다(결과 화면이 뜬 뒤일 수 있다).
-    ev.onEnd(result)
-      .then(id => {
-        if (id === null) return;
-        ev.recordId = id;
-        this.broadcast({ type: 'eventRecorded', recordId: id });
-      })
-      .catch(err => console.error('[event] 결과 저장 중 오류', err));
-  }
-
-  /** 화면으로 내려보내는 이벤트 정보. 목표점수 달성하기의 목표·턴 수는 엔진 상태(scoreRace)에 이미 실려 있다. */
-  private eventInfo(): EventInfo | undefined {
-    const ev = this.event;
-    if (!ev) return undefined;
-    return {
-      kind: ev.kind,
-      challengerName: ev.challengerName,
-      ...(ev.developerName ? { developerName: ev.developerName } : {}),
-      success: ev.success,
-      endReason: ev.endReason,
-      recordId: ev.recordId,
-      ...(ev.targetRange ? { targetRange: ev.targetRange } : {}),
-      // 룰렛이 아직 시작 전이면(도전자가 로비에 있다) 화면에는 한 바퀴 길이만 알린다 — 로비는 룰렛을 그리지 않고,
-      // 게임 화면이 붙는 순간 실제 남은 시간이 다시 온다.
-      ...(this.introGraceMs() > 0
-        ? { introRemainingMs: ev.introStarted ? this.introGraceMs() : SCORE_RACE_INTRO_MS }
-        : {}),
-    };
-  }
-
   setReady(playerId: string, ready = true): void {
     const p = this.players.get(playerId);
     if (!p || this.started) return;
@@ -1036,8 +721,6 @@ export class Room {
     this.state = this.enhance
       ? initEnhanceGame(nickA, nickB, Math.random, this.settings)
       : initGame(nickA, nickB, Math.random, this.settings);
-    // 이벤트 규칙(한 우물만 파기의 잠금 등)은 첫 스냅샷이 나가기 **전에** 얹는다 — 빠뜨리면 첫 화면에서 잠긴 카드가 열려 보인다.
-    this.applyEventRules();
     // ⚠️ 시연은 **빈 보드에서** 시작한다 — initGame이 깔아 둔 시작 공유 카드 2장을
     //    그대로 두면 대본의 짝수 계산이 통째로 어긋난다(director.start의 주석 참고).
     this.demo?.start(this.state);
@@ -1114,9 +797,7 @@ export class Room {
         ? { team: this.pauseRequest.team, nickname: this.pauseRequest.nickname, remainingMs: Math.max(0, this.pauseRequest.deadline - Date.now()) }
         : null,
       used: { ...this.pauseUsed },
-      // 혼자 놀기는 일시정지가 무제한이지만, 컴퓨터와 하는 **이벤트 판은 아예 못 쓴다**(목표점수 달성하기의 시계를
-      // 멈춰 두고 생각할 수 있게 되므로) — 그래서 "무제한" 표시도 끈다.
-      unlimited: this.vsComputer && !this.event,
+      unlimited: this.vsComputer,
       // 절대 시각이 아니라 **남은 ms**를 보낸다 — 턴 타이머와 같은 이유다(CLAUDE.md의
       // "턴 타이머를 화면에 그리는 규칙 3가지" 참고). 멈춰 있지 않으면 0.
       remainingMs: this.paused ? Math.max(0, this.pauseAutoResumeDeadline - Date.now()) : 0,
@@ -1124,8 +805,6 @@ export class Room {
     // ⚠️ 재접속(gameSnapshot)도 이 경로를 쓴다 — 여기서 빠뜨리면 시연 중 F5를 눌렀을 때
     //    화면만 평범한 게임으로 돌아가 장소가 전부 열린다.
     if (this.demo) snap.demo = this.demo.view();
-    // ⚠️ 이벤트 정보도 같은 이유로 여기서 싣는다 — 빠뜨리면 F5 뒤 배지·시계가 사라진다.
-    if (this.event) snap.event = this.eventInfo();
     return snap;
   }
 
@@ -1221,7 +900,6 @@ export class Room {
   handleDrawCard(playerId: string, place: Place): void {
     if (this.rejectIfSpectator(playerId)) return;
     if (this.rejectIfPaused(playerId)) return;
-    if (this.rejectIfIntro(playerId)) return;
     if (!this.state || this.state.phase !== 'playing') {
       this.sendTo(playerId, { type: 'error', code: 'GAME_NOT_STARTED', message: '게임이 시작되지 않았습니다.' });
       return;
@@ -1314,8 +992,7 @@ export class Room {
     // 개인전에서 받아들여지지 않은 요청(순위가 정해진 사람이나 자기 자신을 노린 특허랑이 등)은 이벤트가
     // 하나도 없다. 그대로 브로드캐스트하면 화면이 빈 갱신을 "재접속"으로 읽고, 타이머만 새로 걸려 시간을
     // 벌 수 있다 — 보낸 사람에게만 에러로 돌려준다. (팀전의 옛 동작은 건드리지 않는다.)
-    // 이벤트 판(한 우물만 파기에서 잠긴 카드)도 같은 이유로 에러로 돌려준다.
-    if ((state.mode === 'individual' || this.event) && events.length === 0) {
+    if (state.mode === 'individual' && events.length === 0) {
       this.sendTo(playerId, { type: 'error', code: 'CARD_NOT_AVAILABLE', message: '선택할 수 없는 기술이거나 대상입니다.' });
       return;
     }
@@ -1421,8 +1098,7 @@ export class Room {
         const animal = pickEnhanceComputerSkill(this.state, 'B');
         result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
       } else {
-        // 목표점수 달성하기의 컴퓨터는 도전자의 점수를 깎는 쪽으로만 둔다(상표토끼 없음, 특허랑이 우선).
-        const animal = this.state.scoreRace ? pickScoreRaceComputerSkill(this.state, 'B') : pickComputerSkill(this.state, 'B');
+        const animal = pickComputerSkill(this.state, 'B');
         result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
       }
     } else if (this.state.activeTeam === 'B' && this.state.pendingChoice === null) {
@@ -1463,7 +1139,6 @@ export class Room {
       this.clearTimer();
     }
 
-    this.trackEvent(events);
     const clientState = this.snapshot();
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
 
@@ -1472,7 +1147,6 @@ export class Room {
 
   private broadcastResult(events: ReturnType<typeof processPlayerAction>['events']): void {
     if (!this.state) return;
-    this.trackEvent(events);
     const clientEvents = serializeEvents(events);
     const clientState = this.snapshot();
     this.broadcast({ type: 'actionResult', events: clientEvents, state: clientState });
@@ -1519,8 +1193,7 @@ export class Room {
       : noEligibleChoice
       ? settings.noActionTimeSec * 1000
       : (baseSec + SHEEP_EXTRA_TIME_PER_DRAW_SEC * timerDraws) * 1000;
-    // 목표 룰렛이 도는 동안은 시계를 세지 않는다 — 그만큼 유예로 얹는다(화면 게이지는 turnTotalMs로 잘려 가득 찬 채 기다린다).
-    const durationMs = totalMs + settleGraceMs(events, !!this.state?.enhance) + SETTLE_GRACE_MARGIN_MS + this.introGraceMs();
+    const durationMs = totalMs + settleGraceMs(events, !!this.state?.enhance) + SETTLE_GRACE_MARGIN_MS;
 
     this.turnTotalMs = totalMs;
     this.turnDeadline = Date.now() + durationMs;
@@ -1584,11 +1257,6 @@ export class Room {
     // 개인전에서 순위가 정해진 사람은 이미 판에서 빠진 관전자와 같다 — 남은 사람들의 판을 멈출 수 없다.
     if (this.state.mode === 'individual' && this.state.teams[side]?.finish) {
       this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '순위가 정해진 뒤에는 일시정지를 쓸 수 없습니다.' });
-      return;
-    }
-    // 이벤트 판은 일시정지를 쓸 수 없다(§7-5) — 프리셋이 횟수를 0으로 두지만, 혼자 놀기의 "무제한"보다 먼저 막는다.
-    if (this.event) {
-      this.sendTo(playerId, { type: 'error', code: 'PAUSE_UNAVAILABLE', message: '이벤트 판은 일시정지를 쓸 수 없어요.' });
       return;
     }
     if (this.paused) return; // 이미 멈춰 있다 — 화면은 곧 pauseState로 맞춰진다
@@ -1901,11 +1569,8 @@ export class Room {
       const winner: Team = p.team === 'A' ? 'B' : 'A';
       this.clearPauseState();
       this.clearTimer();
-      // 이벤트 판 — 도전자의 항복·나가기는 실패로, 개발자의 항복은 도전자 승리로 남는다(결과 행의 devForfeit).
-      if (this.event) this.event.forcedEnd = { reason: leave ? 'left' : 'forfeit', by: p.team };
       this.state = { ...this.state, phase: 'ended', winner, forfeitedBy: p.team };
       const events: GameEvent[] = [{ type: 'gameEnd', winner, reason: 'forfeit' }];
-      this.trackEvent();
       this.broadcast({ type: 'actionResult', events: serializeEvents(events), state: this.snapshot() });
     }
 
@@ -2031,8 +1696,6 @@ export class Room {
       this.sendChatHistory(playerId);
       this.broadcastLobbyState();
     } else {
-      // 목표점수 달성하기 — 도전자의 게임 화면이 붙는 이 순간부터 시작 룰렛을 돌린다(스냅샷 **전에** — 남은 시간이 실려야 한다).
-      this.startIntroIfWaiting(p);
       const clientState = this.snapshot();
       this.sendTo(playerId, { type: 'gameSnapshot', state: clientState });
     }

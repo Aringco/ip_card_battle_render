@@ -446,21 +446,29 @@
   0%   { transform: translateX(-60%); }
   60%, 100% { transform: translateX(60%); }
 }
+/* PC 체력 구슬 — 구슬과 같은 둥근 상자로, 구슬보다 양옆 · 아래가 2px씩 크게 덮고 보호막 몫만큼 위로 자란다(2026-11-17 요청 — 폰 막대와 같은 형태).
+   구슬 밖으로 2px 걸치므로 보호막이 있는 동안 체력 칸(.play-cell, overflow hidden)을 연다 */
 .shield-band[data-dir='v'] {
-  left: 0;
-  right: 0;
-  bottom: calc(2px + (100% - 4px) * var(--from));
-  height: max(6px, calc((100% - 4px) * var(--len)));
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  height: max(10px, calc((100% + 4px) * var(--len)));
+  /* 체력 칸의 겉 윤곽(구슬 + 녹색 테두리 두 줄 --fr-line)과 같은 둥글기 — 구슬 자신의 둥글기만 쓰면 판 위에서 네모로 보였다(2026-11-17 제보) */
+  border-radius: calc(var(--cell-r, 1.5rem) + var(--fr-line, 1px) * 2);
 }
+.play-cell-hp-a:has(.shield-band),
+.play-cell-hp-b:has(.shield-band) { overflow: visible; }
+/* 폰 막대 — 체력 막대와 같은 알약 모양으로, 막대보다 위아래 · 양 끝이 2px씩 크게 덮는다(2026-11-17 요청).
+   막대 안쪽 끝(가운데 쪽)에서 2px 밖에서 시작해 보호막 몫만큼 — 다 차면 막대 전체를 2px 밖에서 감싼다 */
 .shield-band[data-dir^='h'] {
   top: 50%;
-  height: 22px;
+  height: calc(22px + 4px);
   transform: translateY(-50%);
-  width: max(6px, calc((100% - 4px) * var(--len)));
+  width: max(10px, calc((100% + 4px) * var(--len)));
   border-radius: 999px;
 }
-.shield-band[data-dir='h-left'] { right: calc(2px + (100% - 4px) * var(--from)); }
-.shield-band[data-dir='h-right'] { left: calc(2px + (100% - 4px) * var(--from)); }
+.shield-band[data-dir='h-left'] { right: -2px; }
+.shield-band[data-dir='h-right'] { left: -2px; }
 .shield-band-value {
   position: absolute;
   font-size: 10px;

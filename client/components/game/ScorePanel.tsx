@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { ANIMALS, ENHANCE_MAX_LEVEL, expProgressFor, skillMultiplier } from 'shared';
+import { ANIMALS, ENHANCE_MAX_LEVEL, expProgressFor } from 'shared';
 import { SKILL_TITLE, describeEnhanceSkillShort, describeSkillShort } from '@/lib/skillInfo';
 import { cooldownOf, cooldownShownOf } from '@/lib/skills';
 
@@ -34,13 +34,6 @@ function AnimalTable({
   const progressPct = need === null ? 100 : (expInLevel / need) * 100;
   const multiplier = gameState.teams[team].pendingMultiplier;
   const extraDraws = gameState.teams[team].pendingExtraDraws;
-  // 한 우물만 파기 — 도전자의 상표토끼·특허랑이에 걸린 기본 배율(기본 ×2·×3)을 인어 배율과 같은 스티커로 그 줄에 띄운다
-  // (2026-10-27 요청). 일반 판에서는 skillMultiplier가 인어 배율과 같아(이미 인어 줄에 떠 있다) 여기 띄우지 않는다.
-  // 다른 카드로 잠긴 뒤에는 그 카드를 쓸 수 없으니 감춘다.
-  const well = gameState.oneWell;
-  const wellOpen = (animal === 'rabbit' || animal === 'tiger') && well?.side === team && (well.locked === null || well.locked === animal);
-  const wellMultiplier = wellOpen ? skillMultiplier(gameState, team, animal) : 1;
-  const showWellSticker = wellMultiplier !== multiplier && wellMultiplier > 1;
   // 카드 강화 — 쿨타임 중인 카드는 얼굴을 흑백으로(모바일 AnimalRail의 data-cooling과 같다). 남은 턴은 얼굴 위 작은 숫자
   const cooling = enhance ? cooldownOf(gameState, team, animal) : 0;
   const coolShown = cooling > 0 ? cooldownShownOf(gameState, team, animal) : 0;
@@ -104,14 +97,6 @@ function AnimalTable({
       {animal === 'mermaid' && multiplier > 1 && (
         <span className={`mermaid-multiplier-sticker ${isTeamB ? 'sticker-flip-right' : ''}`}>
           ×{multiplier}
-        </span>
-      )}
-      {showWellSticker && (
-        <span
-          className={`mermaid-multiplier-sticker ${isTeamB ? 'sticker-flip-right' : ''}`}
-          title={`한 우물만 파기 — 이 카드는 기본 ${wellMultiplier}배`}
-        >
-          ×{wellMultiplier}
         </span>
       )}
       {animal === 'sheep' && extraDraws > 0 && (

@@ -1,5 +1,5 @@
 import type { Animal, ClientGameState, SideId } from 'shared';
-import { ENHANCE_MAX_LEVEL, enhanceLevelLabel, expProgressFor, skillMultiplier } from 'shared';
+import { ENHANCE_MAX_LEVEL, enhanceLevelLabel, expProgressFor } from 'shared';
 import { cooldownOf, cooldownShownOf } from '@/lib/skills';
 import { describeEnhanceSkillShort, describeSkillShort } from '@/lib/skillInfo';
 
@@ -16,7 +16,7 @@ export interface AnimalStatus {
   expText: string;
   /** 배율 · 예약 뽑기 · 별도 배수 · 쿨타임 — 해당하는 것만 */
   lines: string[];
-  /** 아이콘 스티커(디자인어 ×N · 실용신양 +N · 한 우물 기본 배율) */
+  /** 아이콘 스티커(디자인어 ×N · 실용신양 +N) */
   sticker: string | null;
   isMax: boolean;
   over: number;
@@ -31,16 +31,11 @@ export function animalStatus(gameState: ClientGameState, team: SideId, animal: A
   const isMax = enhance && level >= ENHANCE_MAX_LEVEL;
   const multiplier = gameState.teams[team].pendingMultiplier;
   const extraDraws = gameState.teams[team].pendingExtraDraws;
-  // 한 우물만 파기의 기본 배율 — ScorePanel의 스티커와 같은 조건(일반 판에서는 인어 배율과 같아 따로 띄우지 않는다)
-  const well = gameState.oneWell;
-  const wellOpen = (animal === 'rabbit' || animal === 'tiger') && well?.side === team && (well.locked === null || well.locked === animal);
-  const wellMultiplier = wellOpen ? skillMultiplier(gameState, team, animal) : 1;
   const cooling = enhance ? cooldownOf(gameState, team, animal) : 0;
 
   const lines: string[] = [];
   if (animal === 'mermaid') lines.push(`다음 행동 배율 ×${multiplier}`);
   if (animal === 'sheep') lines.push(`예약 뽑기 +${extraDraws}장`);
-  if (wellMultiplier > 1 && wellMultiplier !== multiplier) lines.push(`기본 배율 ×${wellMultiplier}`);
   if (isMax && over > 1) lines.push(`Lv.Max 별도 배수 ×${over}`);
   if (cooling > 0) lines.push(`쿨타임 ${cooldownShownOf(gameState, team, animal)}턴`);
 
@@ -49,9 +44,7 @@ export function animalStatus(gameState: ClientGameState, team: SideId, animal: A
       ? `×${multiplier}`
       : animal === 'sheep' && extraDraws > 0
         ? `+${extraDraws}`
-        : wellMultiplier !== multiplier && wellMultiplier > 1
-          ? `×${wellMultiplier}`
-          : null;
+        : null;
 
   return {
     level,

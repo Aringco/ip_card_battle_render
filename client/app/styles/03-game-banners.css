@@ -1030,13 +1030,26 @@
 .stack-card-bundle-100 .stack-card-bundle-count { color: #92400e; }
 
 /* 카드 강화의 배수 카드(2026-11-02 — shared/enhance.ts의 ENHANCE_CARD_DENOMS) — 한 장이 ×N장을 뜻한다.
-   ×5 구리 · ×10 은 · ×100 금 · ×1000 무지개(테두리가 돈다). 배수는 겹쳐도 남는 왼쪽 위에 쓴다(묶음 표시와 같은 자리).
+   ×5 구리 · ×10 은 · ×100 금 · ×1000 다이아(빛이 면을 훑는다) · ×10000 무지개(테두리가 돈다 — 2026-11-17, 그 전에는 ×1000이 무지개). 배수는 겹쳐도 남는 왼쪽 위에 쓴다(묶음 표시와 같은 자리).
    ⚠️ 낱장 숫자(.stack-card-num)를 감추는 [data-enhance] 규칙과 클래스가 다르다 — 배수는 감추지 않는다. */
 .stack-card-denom { border-width: max(2px, calc(var(--stack-card-w) * 4 / 88)); }
 .stack-card-denom-5 { border-color: #b87333; background: linear-gradient(160deg, #fff7ef 0%, #f3d2b3 100%); box-shadow: 0 0 0 1px #7a4419 inset; }
 .stack-card-denom-10 { border-color: #aeb6c2; background: linear-gradient(160deg, #ffffff 0%, #dfe4ec 100%); box-shadow: 0 0 6px rgba(200, 210, 225, 0.9); }
 .stack-card-denom-100 { border-color: #e0a800; background: linear-gradient(160deg, #fffbe6 0%, #fbe08a 100%); box-shadow: 0 0 10px rgba(255, 200, 40, 0.85); }
 .stack-card-denom-1000 {
+  border-color: #9be7ff;
+  background:
+    linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.95) 47%, rgba(190, 240, 255, 0.6) 52%, transparent 62%) 0 0 / 260% 100% no-repeat,
+    conic-gradient(from 45deg at 50% 45%, #ffffff, #c9f2ff, #8fdcff, #e8fbff, #b3e9ff, #ffffff, #a6e4ff, #ffffff);
+  box-shadow: 0 0 0 1px #3fb5e8 inset, 0 0 12px rgba(150, 230, 255, 0.95), 0 0 22px rgba(80, 190, 255, 0.55);
+  animation: denomDiamond 2.2s ease-in-out infinite;
+}
+@keyframes denomDiamond {
+  0%   { background-position: 130% 0, 0 0; }
+  60%, 100% { background-position: -40% 0, 0 0; }
+}
+.stack-card-denom-1000 .stack-card-denom-count { color: #0b6fa4; text-shadow: 0 0 3px #fff, 0 0 6px rgba(160, 235, 255, 0.95); }
+.stack-card-denom-10000 {
   border-color: transparent;
   background:
     linear-gradient(160deg, #ffffff 0%, #f6f0ff 100%) padding-box,
@@ -1058,7 +1071,7 @@
 .stack-card-denom-5 .stack-card-denom-count { color: #7a3b0c; }
 .stack-card-denom-10 .stack-card-denom-count { color: #374151; }
 .stack-card-denom-100 .stack-card-denom-count { color: #8a4b00; }
-.stack-card-denom-1000 .stack-card-denom-count {
+.stack-card-denom-10000 .stack-card-denom-count {
   background: linear-gradient(90deg, #ff3b3b, #ff9f1a, #d4b800, #19c24a, #1aa3ff, #7a3bff, #e63bc7);
   -webkit-background-clip: text;
   background-clip: text;
@@ -1069,7 +1082,8 @@
 /* 날아가는 사본(BigCardSlamLayer) — body에 portal된다. 크기는 줄의 카드를 잰 값(--slam-w)이다. */
 .big-slam { position: fixed; z-index: 96; pointer-events: none; will-change: translate, scale; }
 .big-slam .stack-card { --stack-card-w: var(--slam-w, 60px); width: 100%; height: 100%; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
-.big-slam .stack-card-denom-1000 { box-shadow: 0 0 18px #fff, 0 0 40px rgba(170, 120, 255, 0.9), 0 10px 30px rgba(0, 0, 0, 0.45); }
+.big-slam .stack-card-denom-1000 { box-shadow: 0 0 0 1px #3fb5e8 inset, 0 0 18px #fff, 0 0 36px rgba(110, 210, 255, 0.95), 0 10px 30px rgba(0, 0, 0, 0.45); }
+.big-slam .stack-card-denom-10000 { box-shadow: 0 0 18px #fff, 0 0 40px rgba(170, 120, 255, 0.9), 0 10px 30px rgba(0, 0, 0, 0.45); }
 .big-slam .stack-card img { width: 80%; }
 @keyframes stackCardPop {
   0%   { transform: scale(0.4) translateY(-10px); opacity: 0; }

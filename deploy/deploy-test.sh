@@ -3,7 +3,6 @@
 #   ./deploy/deploy-test.sh
 # 운영(card-battle)은 건드리지 않는다. 운영 nginx가 test.tupd.site를 이 컨테이너(Docker 네트워크 tupd)로 넘긴다.
 # 같은 공유기 안에서는 http://<서버 IP>:3100 으로도 바로 열린다.
-# ⚠️ 운영 DB · 비밀값(--env-file)은 넘기지 않는다 — 테스트 판이 이벤트 순위표에 섞인다(기록은 메모리에만).
 set -e
 cd "$(dirname "$0")/.."
 docker network inspect tupd >/dev/null 2>&1 || docker network create tupd

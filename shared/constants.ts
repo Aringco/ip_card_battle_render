@@ -41,7 +41,8 @@ export const DEFAULT_PAUSE_MAX_MIN = 5;
 
 // 방 생성 화면에서 입력값을 이 범위로 잘라낸다(서버도 방어적으로 다시 clamp한다).
 export const SETTINGS_LIMITS = {
-  targetScore: { min: 1, max: 500 }, // 카드 강화 판의 기본 목표가 200이다(shared/enhance.ts) — 그 값이 잘리지 않게 500까지
+  // 저장값은 시작 체력(화면에 보이는 목표 점수 = 승리선은 ×2 — 최대 10만, 2026-11-17 요청)
+  targetScore: { min: 1, max: 50000 },
   // MAX_TURN(20)보다 크게 입력해도 막지 않는다 — 그런 값은 engine/turnManager.ts가
   // 내부적으로 MAX_TURN으로 취급해(암묵적으로 clamp) 마지막 턴에 축제가 열리게 한다.
   festivalTurn: { min: 1, max: 999 },
@@ -145,7 +146,7 @@ export function festivalDrawInfoAt(turn: number, settings: GameSettings, maxTurn
   const { festivalDrawCount, festivalDrawIncreaseInterval } = settings;
   // MAX_TURN을 넘는 festivalTurn은 advanceTurn과 동일하게 MAX_TURN 그 자체로 취급한다
   // (그렇지 않으면 축제가 열렸는데도 매번 0회로 잘못 계산될 수 있다).
-  // maxTurn — 그 판의 턴 상한(평소 MAX_TURN, 목표점수 달성하기는 그 판의 maxTurn — shared/sides.ts의 maxTurnOf).
+  // maxTurn — 그 판의 턴 상한(shared/sides.ts의 maxTurnOf).
   const festivalTurn = Math.min(settings.festivalTurn, maxTurn);
   if (turn < festivalTurn) return { count: 0, turnsToNextStage: null, nextCount: null };
 

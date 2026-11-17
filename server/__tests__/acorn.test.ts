@@ -5,7 +5,6 @@ import {
   acornExpBonus,
   ENHANCE_SETTINGS,
   THRESHOLDS,
-  acornShieldCap,
   drawAcornOptions,
   emptyAcornSide,
   isAcornFestivalTurn,
@@ -182,7 +181,7 @@ describe('효과', () => {
     expect(s.teams.B.hp).toBe(479);
   });
 
-  it('보호막은 시작 체력의 20%까지 · 고른 순간 드는 회복 · 보호막', () => {
+  it('보호막은 상한 없이 쌓인다 · 고른 순간 드는 회복 · 보호막', () => {
     const s = newGame({ festivalTurn: 999 });
     s.teams.A.hp = 300;
     pickNow(s, 'A', 'r1a'); // 체력 +4% = 20
@@ -190,9 +189,8 @@ describe('효과', () => {
     pickNow(s, 'A', 'r4d', 4); // 보호막 8% = 40
     expect(s.enhance!.shield!.A).toBe(40);
     s.enhance!.shield!.A = 95;
-    pickNow(s, 'A', 'r1f'); // +20 → 상한 100
-    expect(s.enhance!.shield!.A).toBe(acornShieldCap(s));
-    expect(acornShieldCap(s)).toBe(100);
+    pickNow(s, 'A', 'r1f'); // +20 — 상한 없음(2026-11-17)
+    expect(s.enhance!.shield!.A).toBe(115);
   });
 
   it('쓰러짐 방지 — 처음 0이 될 피해에 1로 버티고 시작 체력의 10% 회복(판에 1회)', () => {

@@ -14,6 +14,7 @@ import {
   enhanceMermaidOppDivide,
   enhanceRabbitCleanse,
   enhanceRabbitRegenTurns,
+  enhanceRabbitShieldPct,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
@@ -78,10 +79,11 @@ export function describeEnhanceSkill(animal: Animal, level: number): SkillDescri
     }
     case 'rabbit': {
       const regen = enhanceRabbitRegenTurns(level);
+      const shield = Math.round((v * enhanceRabbitShieldPct(level)) / 100);
       if (enhanceRabbitCleanse(level) > 0) {
-        return { ...base, effect: `체력 +${v}, 지속 회복 +${regen}턴(턴당 +${enhanceDotTick(v)}),\n부정 효과 ${cutText(enhanceRabbitCleanse(level), '정화')}\n${cdLine}` };
+        return { ...base, effect: `체력 +${v}, 보호막 +${shield}, 지속 회복 +${regen}턴,\n턴당 +${enhanceDotTick(v)} · 부정 효과 ${cutText(enhanceRabbitCleanse(level), '정화')}\n${cdLine}` };
       }
-      return { ...base, effect: `즉시 내 체력 +${v},\n지속 회복 +${regen}턴(턴당 +${enhanceDotTick(v)})\n${cdLine}` };
+      return { ...base, effect: `즉시 내 체력 +${v}, 보호막 +${shield},\n지속 회복 +${regen}턴(턴당 +${enhanceDotTick(v)})\n${cdLine}` };
     }
     case 'mermaid': {
       const stackText = mermaidStackText(level);
@@ -147,7 +149,7 @@ export function describeEnhanceSkillShort(animal: Animal, level: number): string
     }
     case 'rabbit': {
       const cleanse = enhanceRabbitCleanse(level);
-      return `체력이 ${v}만큼 오릅니다, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(턴당 즉시 회복의 50%, 최대 ${ENHANCE_REGEN_MAX_TURNS}턴)${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
+      return `체력이 ${v}만큼 오르고 그 ${enhanceRabbitShieldPct(level)}%만큼 보호막이 생깁니다, 지속 회복 +${enhanceRabbitRegenTurns(level)}턴(턴당 즉시 회복의 50%, 최대 ${ENHANCE_REGEN_MAX_TURNS}턴)${cleanse > 0 ? `, 나에게 걸린 부정한 효과 하나 ${cutText(cleanse, '정화')}` : ''}.${cdText}`;
     }
     case 'mermaid': {
       const divide = enhanceMermaidDivide(level);

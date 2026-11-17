@@ -4,7 +4,6 @@ import {
   ENHANCE_PLACE_DRAWS,
   ENHANCE_SETTINGS,
   ENHANCE_USE_EXP,
-  ENHANCE_RESERVED_DRAW_CAP,
   ENHANCE_TARGET_SCORE_MAX,
   SHEEP_SAFETY_CAP,
   SETTINGS_LIMITS,
@@ -26,6 +25,7 @@ import {
   enhancePlaceDrawRange,
   enhanceSlamLandMs,
   splitEnhanceCount,
+  enhanceDenomTier,
 } from 'shared';
 import { settleStacks } from '../engine/drawCard';
 import { initEnhanceGame, initIndividualGame } from '../engine/turnManager';
@@ -184,7 +184,9 @@ describe('강화 판 시작', () => {
 
   it('나온 장수는 동물마다 배수 카드(×1000 · ×100 · ×10 · ×5 · 1)로 묶이고, 짝은 카드가 뜻하는 장수의 합으로 센다', () => {
     expect(splitEnhanceCount(128)).toEqual([1, 1, 1, 5, 10, 10, 100]);
-    expect(splitEnhanceCount(2345)).toEqual([5, 10, 10, 10, 10, 100, 100, 100, 1000, 1000]);
+    expect(splitEnhanceCount(2345)).toEqual([5, 10, 10, 10, 10, 100, 100, 100, 2000]);
+    expect(splitEnhanceCount(53210)).toEqual([10, 100, 100, 3000, 50000]);
+    expect([999, 1000, 9999, 10000, 50000].map(enhanceDenomTier)).toEqual([999, 1000, 1000, 10000, 10000]);
     expect(splitEnhanceCount(0)).toEqual([]);
 
     // 숲길에서 예약 201장 + 장소 4장 = 205장(홀수), rng0이면 모두 0번째 동물
@@ -273,6 +275,27 @@ describe('강화 판 기술', () => {
     const ev = processSkillChoice(s, 'rabbit').events[0];
     expect(s.teams.A.hp).toBe(200 + gain);
     expect(ev).toMatchObject({ regenAdded: { turns: regen, amount: tick } });
+  });
+
+  // 보호막 = 즉시 회복의 등급별 %(브론즈 20 · 실버 30 · 골드 40 · Max 60 — 2026-11-17), 상한 없음
+  it.each([
+    [1, 5], [3, 8], [4, 14], [7, 17], [8, 23], [10, 24], [11, 44],
+  ])('상표토끼 Lv.%i → 보호막 +%i', (level, shield) => {
+    const s = newGame({ targetScore: 200 });
+    setLevel(s, 'A', 'rabbit', level);
+    toChoice(s);
+    const ev = processSkillChoice(s, 'rabbit').events[0];
+    expect(ev).toMatchObject({ shieldAdded: shield });
+    expect(s.enhance!.shield!.A).toBe(shield);
+  });
+
+  it('상표토끼 보호막은 상한 없이 쌓인다', () => {
+    const s = newGame({ targetScore: 200 });
+    setLevel(s, 'A', 'rabbit', 11);
+    s.enhance!.shield = { A: 30, B: 0 };
+    toChoice(s);
+    expect(processSkillChoice(s, 'rabbit').events[0]).toMatchObject({ shieldAdded: 44 });
+    expect(s.enhance!.shield!.A).toBe(74);
   });
 
   it.each([
@@ -766,7 +789,7 @@ describe('강화 판 지속 효과 · 중첩 · 회복 효율 · 정화 · 쿨�
 });
 
 describe('강화 판 한계', () => {
-  it(`예약 뽑기는 일반 판의 SHEEP_SAFETY_CAP(${SHEEP_SAFETY_CAP})이 아니라 ENHANCE_RESERVED_DRAW_CAP(${ENHANCE_RESERVED_DRAW_CAP})에서 자른다`, () => {
+  it(`예약 뽑기는 일반 판의 SHEEP_SAFETY_CAP(${SHEEP_SAFETY_CAP})에서 자르지 않고, 상한도 없다(1000 단위는 카드 한 장)`, () => {
     const s = newGame();
     s.teams.A.pendingExtraDraws = 100;
     const { events } = processPlayerAction(s, 'house', rng0);
@@ -781,18 +804,29 @@ describe('강화 판 한계', () => {
     const t = newGame();
     t.teams.A.pendingExtraDraws = 256 * 100;
     const big = processPlayerAction(t, 'house', rng0).events;
-    expect(big.find(e => e.type === 'bonusDraws')).toMatchObject({ total: ENHANCE_RESERVED_DRAW_CAP });
+    // rng0이면 모두 토끼 — 25600장 = ×20000 무지개 + ×5000 다이아 + ×100 여섯 장
+    expect(big.find(e => e.type === 'bonusDraws')).toMatchObject({ total: 25600, count: 8 });
     expect(t.teams.A.pendingExtraDraws).toBe(0);
+
+    // 10만 장 넘게는 근사로 나눈다 — 합은 정확히 맞고, 카드 수는 동물마다 몇 장뿐이다
+    const u = newGame();
+    u.teams.A.pendingExtraDraws = 5_000_000;
+    let seed = 7;
+    const rngL = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    const huge = processPlayerAction(u, 'river_road', rngL).events;
+    const bd = huge.find(e => e.type === 'bonusDraws');
+    expect(bd).toMatchObject({ total: 5_000_000 });
+    expect(bd && bd.type === 'bonusDraws' && bd.count).toBeLessThan(60);
   });
 
-  it('목표 점수 상한은 일반 판(500)과 달리 2500 — 방과 엔진이 같은 범위로 자른다', () => {
-    expect(SETTINGS_LIMITS.targetScore.max).toBe(500);
-    expect(ENHANCE_TARGET_SCORE_MAX).toBe(2500);
+  it('목표 점수 상한 — 시작 체력 5만(화면의 목표 점수 = 승리선 10만) · 방과 엔진이 같은 범위로 자른다', () => {
+    expect(SETTINGS_LIMITS.targetScore.max).toBe(50000);
+    expect(ENHANCE_TARGET_SCORE_MAX).toBe(50000);
     expect(clampEnhanceSettings({ targetScore: 2000 }).targetScore).toBe(2000);
-    expect(clampEnhanceSettings({ targetScore: 1e12 }).targetScore).toBe(2500);
-    const s = initEnhanceGame(['나'], ['CPU'], rng0, { ...ENHANCE_SETTINGS, targetScore: 9999 });
-    expect(s.settings.targetScore).toBe(2500);
-    expect(s.teams.A.hp).toBe(2500);
+    expect(clampEnhanceSettings({ targetScore: 1e12 }).targetScore).toBe(50000);
+    const s = initEnhanceGame(['나'], ['CPU'], rng0, { ...ENHANCE_SETTINGS, targetScore: 99999 });
+    expect(s.settings.targetScore).toBe(50000);
+    expect(s.teams.A.hp).toBe(50000);
   });
 });
 

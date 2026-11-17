@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { enhanceDenomTier } from 'shared';
 import type { BigSlamItem } from '@/hooks/useAnimationQueue';
 import { hop, useQuakeDust } from '@/components/game/SkillQuake';
 import { playRandomSound } from '@/lib/sounds';
@@ -16,13 +17,13 @@ import { playRandomSound } from '@/lib/sounds';
  * 시간은 item.dur · item.land(shared enhanceSlamMs · enhanceSlamLandMs — 서버 연출 유예도 같은 값을 쓴다).
  */
 
-// 배수별 세기 — 0(×5) ~ 1(×1000). 가운데에서 커지는 배율 · 흙먼지 · 흔들림이 이것을 따른다.
+// 배수별 세기 — 0(×5) ~ 1(×10000 무지개). 가운데에서 커지는 배율 · 흙먼지 · 흔들림이 이것을 따른다.
 function strengthOf(num: number): number {
-  return num >= 1000 ? 1 : num >= 100 ? 0.65 : num >= 10 ? 0.38 : 0.15;
+  return num >= 10000 ? 1 : num >= 1000 ? 0.85 : num >= 100 ? 0.65 : num >= 10 ? 0.38 : 0.15;
 }
-// 가운데에 떠 있을 때의 크기(카드 높이 대비 화면 높이의 비율) — ×1000이 가장 크다
+// 가운데에 떠 있을 때의 크기(카드 높이 대비 화면 높이의 비율) — ×10000이 가장 크다
 function centerHeightOf(num: number): number {
-  return num >= 1000 ? 0.62 : num >= 100 ? 0.5 : num >= 10 ? 0.4 : 0.32;
+  return num >= 10000 ? 0.68 : num >= 1000 ? 0.62 : num >= 100 ? 0.5 : num >= 10 ? 0.4 : 0.32;
 }
 
 const OVERLAP_RATIO = 46 / 88; // AnimalStackArea · globals.css와 같은 겹침 비율
@@ -156,7 +157,7 @@ function SlamCard({ item, onLand }: { item: BigSlamItem; onLand: (x: number, y: 
 
   return (
     <div ref={ref} className="big-slam" aria-hidden>
-      <div className={`stack-card big-slam-card stack-card-denom stack-card-denom-${item.num}`}>
+      <div className={`stack-card big-slam-card stack-card-denom stack-card-denom-${enhanceDenomTier(item.num)}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={`/howto/face_${item.animal}.webp`} alt="" className="w-[68%] h-auto object-contain" />
         <span className="stack-card-denom-count font-black tabular-nums">×{item.num}</span>

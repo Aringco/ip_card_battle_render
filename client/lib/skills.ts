@@ -25,6 +25,7 @@ import {
   enhanceMermaidEvadePct,
   enhanceRabbitCleanse,
   enhanceRabbitRegenTurns,
+  enhanceRabbitShieldPct,
   enhanceSheepCooldownCards,
   enhanceSheepCooldownCut,
   enhanceSheepExp,
@@ -38,7 +39,6 @@ import {
   ENHANCE_REGEN_MAX_TURNS,
   opponentsOf,
   skillLevelFor,
-  skillMultiplier,
 } from 'shared';
 import type { Animal, ClientGameState, EnhanceStatus, SideId } from 'shared';
 
@@ -112,30 +112,11 @@ export function cooldownShownOf(gameState: ClientGameState, team: SideId, animal
 }
 
 /**
- * 지금 이 카드를 쓸 수 있는가 — 레벨 · 한 우물만 파기 잠금 · 카드 강화 쿨타임을 한꺼번에 본다
+ * 지금 이 카드를 쓸 수 있는가 — 레벨 · 카드 강화 쿨타임을 한꺼번에 본다
  * (서버 engine/skills.ts의 eligibleAnimals와 같은 규칙). "고를 게 없으면 자동 패스"도 이 값으로 판단한다.
  */
 export function canUseSkill(gameState: ClientGameState, team: SideId, animal: Animal): boolean {
-  return levelOf(gameState, team, animal) > 0 && isSkillOpen(gameState, team, animal) && cooldownOf(gameState, team, animal) === 0;
-}
-
-/**
- * 이벤트 '한 우물만 파기'의 잠금 — 그 편이 지금 쓸 수 있는 카드(서버 engine/skills.ts의 oneWellOpen과 같은 규칙).
- * 잠금이 없는 편(일반 게임·상대 CPU)은 null. 처음 쓴 카드가 정해지기 전엔 상표토끼·특허랑이 둘, 정해진 뒤엔 한 장.
- *
- * ⚠️ 화면에서 이 잠금을 반영할 자리가 셋이다 — 기술 카드(SkillChoiceBar) · "고를 게 없으면 자동 패스" 타이머(GameLayout) ·
- *    끝낼 수 있는 수 표시(finishingMove). 한 곳만 빠뜨려도 서버와 화면이 어긋난다(EVENT_MODE_ROADMAP.md §3-3).
- */
-export function oneWellOpen(gameState: ClientGameState, team: SideId): readonly Animal[] | null {
-  const well = gameState.oneWell;
-  if (!well || well.side !== team) return null;
-  return well.locked ? [well.locked] : well.allowed;
-}
-
-/** 이 카드가 잠겨 있지 않은가(잠금이 없는 판이면 언제나 true). */
-export function isSkillOpen(gameState: ClientGameState, team: SideId, animal: Animal): boolean {
-  const open = oneWellOpen(gameState, team);
-  return open === null || open.includes(animal);
+  return levelOf(gameState, team, animal) > 0 && cooldownOf(gameState, team, animal) === 0;
 }
 
 export interface SkillPreview {
@@ -164,6 +145,8 @@ export interface SkillPreview {
   bleedTurns?: number;
   // 카드 강화 — 상표토끼 지속 회복 · 특허랑이 출혈의 한 턴의 양(그 카드 수치의 50% — 서버 addDot과 같은 계산)
   regenTick?: number;
+  // 카드 강화 — 상표토끼가 더할 보호막(서버 addShield와 같은 계산 — 상한 없음)
+  shieldAdd?: number;
   bleedTick?: number;
   // 카드 강화 — 디자인어 Lv.Max의 기술 회피(%)
   evadePct?: number;
@@ -202,10 +185,6 @@ export function finishingMove(
 ): { finishes: boolean; targets: SideId[] } {
   const none = { finishes: false, targets: [] as SideId[] };
   if (animal !== 'rabbit' && animal !== 'tiger') return none;
-  // 한 우물만 파기에서 잠긴 카드로는 끝낼 수 없다 — 잠긴 호랑이에 빨간 빛이 뜨면 누를 수 없는 카드를 가리키게 된다.
-  if (!isSkillOpen(gameState, team, animal)) return none;
-  // 목표점수 달성하기에는 즉시 승패가 없다 — 판은 마지막 턴이 끝나야 판정된다(엔진의 scoreRace).
-  if (gameState.scoreRace) return none;
   const me = gameState.teams[team];
   if (!me) return none;
   const level = levelOf(gameState, team, animal);
@@ -236,8 +215,7 @@ export function finishingMove(
     });
     return { finishes: targets.length > 0, targets };
   }
-  // 한 우물만 파기의 특허랑이 기본 2배까지 — 서버 엔진과 같은 함수(skillMultiplier)
-  const amount = level * skillMultiplier(gameState, team, animal);
+  const amount = level * me.pendingMultiplier;
   // 개인전에서 승리선 도달이 "1위 확정"인 것은 아직 아무도 승리하지 않았을 때뿐이다.
   const reachingWinIsFirst =
     gameState.mode !== 'individual' || !Object.values(gameState.teams).some(t => t.finish?.reason === 'win');
@@ -259,8 +237,7 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   const opponent = opponentsOf(gameState, team)[0];
   const level = levelOf(gameState, team, animal);
   const mult = gameState.teams[team].pendingMultiplier;
-  // 특허랑이는 한 우물만 파기의 기본 2배까지 곱한 값(서버 엔진과 같은 함수 — skillMultiplier)
-  const tigerMult = skillMultiplier(gameState, team, 'tiger');
+  const tigerMult = mult;
 
   let myHpDelta = 0;
   let oppHpDelta = 0;
@@ -315,6 +292,9 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
       regenTurns: animal === 'rabbit' ? dotRoom(enhanceRabbitRegenTurns(level) + ac.regenTurns, myRegen?.turns, ENHANCE_REGEN_MAX_TURNS + ac.regenCap) : 0,
       bleedTurns: animal === 'tiger' ? dotRoom(enhanceTigerBleedTurns(level) + ac.bleedTurns, foeBleed?.turns, ENHANCE_BLEED_MAX_TURNS) : 0,
       regenTick: animal === 'rabbit' ? acornRegenAmount(enhanceDotTick(value), ac) : 0,
+      shieldAdd: animal === 'rabbit'
+        ? Math.round((myHpDelta * (enhanceRabbitShieldPct(level) + ac.healShield)) / 100)
+        : 0,
       bleedTick: animal === 'tiger' ? acornBleedAmount(enhanceDotTick(value), ac.bleed, ac.bleedFlat) : 0,
       evadePct: animal === 'mermaid' ? enhanceMermaidEvadePct(level) : 0,
       healCut,

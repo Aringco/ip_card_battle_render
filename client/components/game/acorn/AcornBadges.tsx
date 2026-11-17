@@ -78,7 +78,7 @@ export function AcornBadges({ gameState, side, className = '' }: { gameState: Cl
 export function ShieldGauge({ gameState, side, dir }: { gameState: ClientGameState; side: SideId; dir: 'v' | 'h-left' | 'h-right' }) {
   const shield = gameState.enhance?.shield?.[side] ?? 0;
   if (shield <= 0) return null;
-  const winHp = gameState.scoreRace?.target ?? gameState.settings.targetScore * 2;
+  const winHp = gameState.settings.targetScore * 2;
   // 체력 막대와 같은 시작점에서 보호막 양만큼 덮는다(2026-11-07 — 체력 끝에 붙이던 것을 바꿨다)
   const from = 0;
   const len = Math.max(0, Math.min(1, shield / winHp));

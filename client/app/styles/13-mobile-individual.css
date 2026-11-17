@@ -19,9 +19,7 @@
     var(--hp-color) 48%,
     color-mix(in srgb, var(--hp-color) 70%, black) 100%);
 }
-.m-hp[data-color] .m-hp-aura {
-  background: linear-gradient(var(--aura-dir), color-mix(in srgb, var(--hp-color) 85%, white), color-mix(in srgb, var(--hp-color) 55%, transparent) 45%, transparent);
-}
+.m-hp[data-color] .m-hp-aura { --aura-c: color-mix(in srgb, var(--hp-color) 85%, transparent); }
 
 /* ── 상대 목록 창(오른쪽 → 왼쪽 스와이프) — 오른쪽에서 미끄러져 나온다. 한 줄 = 한 사람, 세로로 스크롤 ── */
 .m-opp-list {

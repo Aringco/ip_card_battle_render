@@ -2,24 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { EventConfig, EventKind, GameSettings, Seat } from 'shared';
-import { DEFAULT_SETTINGS, ENHANCE_SETTINGS, beatDevSettings, isPlayingSeat, randomNickname } from 'shared';
+import type { GameSettings, Seat } from 'shared';
+import { DEFAULT_SETTINGS, ENHANCE_SETTINGS, isPlayingSeat, randomNickname } from 'shared';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import type { EventView } from '@/components/lobby/EventForm';
-import {
-  clearDevSession,
-  loadDevSession,
-  loadEventName,
-  saveDevSession,
-  saveEventName,
-  takeEventReturn,
-} from '@/lib/eventSession';
 import { playBgm } from '@/lib/bgm';
 import { HowToPlayModal } from '@/components/ui/HowToPlayModal';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { LOBBY_ASSETS, TABLE_IS_STANDIN } from '@/lib/lobbyAssets';
 import { LobbyHero } from '@/components/lobby/LobbyHero';
-import { LobbyStage, BACK_OF, type Stage } from '@/components/lobby/LobbyStage';
+import { LobbyStage, backOf, type Stage } from '@/components/lobby/LobbyStage';
 import type { IndividualKind } from '@/components/lobby/IndividualRoomForm';
 import { BackButton } from '@/components/lobby/BackButton';
 import { WaitingRoom } from '@/components/lobby/WaitingRoom';
@@ -95,124 +86,12 @@ export default function LobbyPage() {
   const [joinRoomId, setJoinRoomId] = useState('');
   // 초대 링크로 들어왔는지 — 참가 화면에 "방 코드는 이미 채워뒀다"는 안내를 띄우는 용도
   const [arrivedByInvite, setArrivedByInvite] = useState(false);
-  const [stage, setStage] = useState<Stage>('home');
+  const [stage, setStage] = useState<Stage>('kind');
   const [showHowTo, setShowHowTo] = useState(false);
   // 방장(방을 만드는 쪽)만 정하는 게임 규칙 — 방 생성/싱글 모드 시작 화면에서 함께 입력받는다.
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   // 혼자 놀기 → 강화 모드의 규칙 — 기본값이 일반 모드와 달라(shared/enhance.ts의 ENHANCE_SETTINGS) 따로 기억한다
   const [enhanceSettings, setEnhanceSettings] = useState<GameSettings>(ENHANCE_SETTINGS);
-
-  // ─ 이벤트 방 참가하기(EVENT_MODE_ROADMAP.md) ─
-  const [eventView, setEventView] = useState<EventView>('role');
-  const [eventKind, setEventKind] = useState<EventKind>('beatDev');
-  const [eventPin, setEventPin] = useState('');
-  const [devName, setDevName] = useState('');
-  const [devToken, setDevToken] = useState('');
-  // 개발자가 정하는 '개발자를 이겨라' 규칙 — 서버가 devId별로 기억하고, 서버가 다시 켜졌을 때를 위해 세션에도 둔다.
-  const [devSettings, setDevSettings] = useState<GameSettings>(() => beatDevSettings());
-  // 목표점수 달성하기·한 우물만 파기의 규칙(행사 전체) — 서버가 대기실에 들어온 개발자에게 내려 준 값에서 시작한다.
-  const [devConfig, setDevConfig] = useState<EventConfig | null>(null);
-  // 개발자 대기를 서버에 알렸는가 — 연결이 다시 붙으면 다시 알린다(상시 대기)
-  const devStandbyWanted = useRef(false);
-
-  // 이벤트에서 돌아온 경우 이벤트 폼을 연 채로 시작한다 — 개발자는 저절로 다시 대기하고(상시 대기),
-  // 도전자는 마지막 닉네임이 채워진 도전 폼으로 돌아온다.
-  useEffect(() => {
-    const dev = loadDevSession();
-    if (dev) {
-      setDevName(dev.name);
-      setDevToken(dev.token);
-      if (dev.settings) setDevSettings(beatDevSettings(dev.settings));
-      setEventView('devWait');
-      devStandbyWanted.current = true;
-      setStage('event');
-      return;
-    }
-    if (takeEventReturn()) {
-      setNickname(loadEventName());
-      setEventView('challenger');
-      setStage('event');
-    }
-  }, []);
-
-  // 개발자 대기 — 연결될 때마다(처음·재연결) 서버에 알린다. devId로 같은 개발자(전적)에 이어 붙는다.
-  useEffect(() => {
-    if (!ws.connected || !devStandbyWanted.current) return;
-    const dev = loadDevSession();
-    if (dev) ws.eventDevStandby(dev.token, dev.name, dev.devId, dev.settings);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ws.connected]);
-
-  // 서버가 내려준 devId를 기억해 둔다(판이 끝나 돌아와도 같은 개발자로 이어 붙게).
-  useEffect(() => {
-    const st = ws.eventDevStatus;
-    if (!st) return;
-    const dev = loadDevSession();
-    if (dev && dev.devId !== st.devId) saveDevSession({ ...dev, devId: st.devId });
-  }, [ws.eventDevStatus]);
-
-  // 대기 중 규칙을 고치면 잠시 뒤 서버에 알린다 — 숫자를 치는 중간값(예: 15를 치려다 1)이 그대로 판에 실리지 않게
-  // 입력이 멈춘 뒤에 보낸다. 서버가 범위를 다시 잘라 내므로 화면 값은 서버 상태로 덮어쓰지 않는다(치는 중에 튀지 않게).
-  const { eventDevSettings } = ws;
-  const devSettingsSent = useRef<string | null>(null);
-  useEffect(() => {
-    if (eventView !== 'devWait' || !ws.eventDevStatus) return;
-    const key = JSON.stringify(devSettings);
-    if (devSettingsSent.current === null) { devSettingsSent.current = key; return; } // 대기 시작 때 이미 보냈다
-    if (devSettingsSent.current === key) return;
-    const t = setTimeout(() => {
-      devSettingsSent.current = key;
-      eventDevSettings(devSettings);
-      const dev = loadDevSession();
-      if (dev) saveDevSession({ ...dev, settings: devSettings });
-    }, 600);
-    return () => clearTimeout(t);
-  }, [devSettings, eventView, ws.eventDevStatus, eventDevSettings]);
-
-  // 행사 전체 규칙 — 서버 값이 바뀌면(처음 받을 때 · 다른 개발자가 고쳤을 때 · 서버가 범위를 잘라 돌려줬을 때) 그 값을 쓴다.
-  // 내가 고친 값은 입력이 멈춘 뒤 보낸다(위 devSettings와 같은 이유). 보낸 값과 서버 값을 같은 열쇠로 기억해, 서버가 그대로
-  // 돌려준 값을 다시 보내거나 서버 값으로 치는 중인 칸을 덮지 않는다.
-  const { eventDevConfig } = ws;
-  const serverConfig = ws.eventDevStatus?.config ?? null;
-  const serverConfigKey = serverConfig ? JSON.stringify(serverConfig) : null;
-  const devConfigSent = useRef<string | null>(null);
-  useEffect(() => {
-    if (!serverConfig || serverConfigKey === null) return;
-    devConfigSent.current = serverConfigKey;
-    setDevConfig(serverConfig);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverConfigKey]);
-  useEffect(() => {
-    if (eventView !== 'devWait' || !devConfig) return;
-    const key = JSON.stringify(devConfig);
-    if (devConfigSent.current === key) return;
-    const t = setTimeout(() => {
-      devConfigSent.current = key;
-      eventDevConfig(devConfig);
-    }, 600);
-    return () => clearTimeout(t);
-  }, [devConfig, eventView, eventDevConfig]);
-
-  // 암호가 틀렸으면 대기실이 아니라 입력 화면에 머문다.
-  useEffect(() => {
-    if (ws.eventError?.code === 'EVENT_AUTH' && eventView === 'devWait') {
-      devStandbyWanted.current = false;
-      clearDevSession();
-      setEventView('devAuth');
-    }
-  }, [ws.eventError, eventView]);
-
-  // 매칭되면 게임 화면이 "내 팀"을 알 수 있게 미리 적어 둔다 — 도전자는 A, 개발자는 B.
-  useEffect(() => {
-    if (ws.eventMatched) sessionStorage.setItem('cardBattle_team', ws.eventMatched.role === 'developer' ? 'B' : 'A');
-  }, [ws.eventMatched]);
-
-  // 서버가 확정한 닉네임(비워 두면 서버가 지어 준 이름)을 폼에도 반영하고 다음 재도전을 위해 기억한다.
-  useEffect(() => {
-    if (!ws.eventRegistered) return;
-    setNickname(ws.eventRegistered.name);
-    saveEventName(ws.eventRegistered.name);
-  }, [ws.eventRegistered]);
 
   // 초대 링크(`/?room=ABCD`)로 들어온 경우 — 참가 폼을 열고 방 코드를 미리 채운다.
   // useSearchParams 대신 window.location을 읽는 이유: 이 페이지는 전부 클라이언트
@@ -223,7 +102,7 @@ export default function LobbyPage() {
     if (!code) return;
     setJoinRoomId(code.trim().toUpperCase().slice(0, 4));
     setArrivedByInvite(true);
-    setStage(s => (s === 'home' ? 'join' : s));
+    setStage(s => (s === 'kind' || s === 'home' ? 'join' : s));
     // 주소창에서 쿼리를 지워, 나중에 새로고침하거나 방을 나갔을 때 다시 끌려가지 않게 한다.
     window.history.replaceState(null, '', window.location.pathname);
   }, []);
@@ -256,29 +135,15 @@ export default function LobbyPage() {
     if (meInLobby) sessionStorage.setItem('cardBattle_team', meInLobby.team);
   }, [ws.lobbyPlayers, ws.memberId]);
 
-  /** 뒤로가기 — 한 단계씩(create/join/event → multi → home). */
-  const { eventDevStatus, eventQueue, eventDevLeave, eventCancel } = ws;
+  /** 뒤로가기 — 한 단계씩(폼 → 고르기 → home → 첫 갈림길). */
   const goBack = useCallback(() => {
-    // 이벤트 폼을 떠나면 개발자 대기와 대기 줄도 함께 정리한다 — 화면에서 사라졌는데 서버에는 남아 있으면
-    // 아무도 보지 않는 화면으로 도전자가 매칭된다.
-    if (stage === 'event') {
-      if (eventDevStatus || devStandbyWanted.current) {
-        devStandbyWanted.current = false;
-        clearDevSession();
-        eventDevLeave();
-      }
-      if (eventQueue) eventCancel();
-      setEventView('role');
-    }
-    setStage(s => (s === 'home' ? s : BACK_OF[s]));
-  }, [stage, eventDevStatus, eventQueue, eventDevLeave, eventCancel]);
+    setStage(s => (s === 'kind' ? s : backOf(s, individualKind)));
+  }, [individualKind]);
 
-  // 이벤트 판은 대기실을 거치지 않는다 — 방에 들어간 순간(roomJoined/roomCreated) 곧바로 gameStart가 따라오므로
-  // 그 사이 한 프레임이라도 빈 대기실이 그려지지 않게, 이벤트 단계에서는 대기실로 넘어가지 않는다.
-  const inWaitingRoom = ws.roomId !== null && stage !== 'event';
+  const inWaitingRoom = ws.roomId !== null;
 
   useEffect(() => {
-    if (stage === 'home' || inWaitingRoom) return;
+    if (stage === 'kind' || inWaitingRoom) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !showHowTo) goBack();
     };
@@ -336,39 +201,6 @@ export default function LobbyPage() {
     sessionStorage.setItem('cardBattle_team', 'A');
     ws.createSoloRoom(effectiveNickname, undefined, enhanceSettings, true);
   };
-
-  // ─ 이벤트 ─
-  const handleEventView = (v: EventView) => {
-    ws.clearEventError();
-    setEventView(v);
-  };
-
-  const handleChallenge = () => {
-    if (eventPin.length !== 4) return;
-    // 도전자는 언제나 A팀이다(개발자를 이겨라의 개발자가 B팀). 보이는 이름(빈칸이면 placeholder)을 그대로 보낸다.
-    sessionStorage.setItem('cardBattle_team', 'A');
-    ws.eventChallenge(eventKind, effectiveNickname, eventPin);
-  };
-
-  const handleDevStandby = () => {
-    if (!devToken) return;
-    const name = devName.trim() || '개발자';
-    saveDevSession({ name, token: devToken, settings: devSettings });
-    sessionStorage.setItem('cardBattle_team', 'B');
-    devStandbyWanted.current = true;
-    devSettingsSent.current = JSON.stringify(devSettings);
-    setEventView('devWait');
-    ws.eventDevStandby(devToken, name, undefined, devSettings);
-  };
-
-  const handleDevLeave = () => {
-    devStandbyWanted.current = false;
-    clearDevSession();
-    ws.eventDevLeave();
-    setEventView('role');
-  };
-
-  const handleShowBoard = () => router.push('/events');
 
   // 준비 상태는 서버가 로비 목록(LobbyPlayer.ready)으로 알려주므로 화면이 따로
   // 기억하지 않는다 — 방장이 나를 다른 팀으로 옮기거나 방장 자리를 넘겨줘도 표시가
@@ -451,8 +283,8 @@ export default function LobbyPage() {
                 stage={stage}
                 blocked={blocked}
                 onGo={setStage}
-                individualKind={individualKind}
-                onIndividualKind={setIndividualKind}
+                kind={individualKind}
+                onKind={setIndividualKind}
                 nickname={nickname}
                 onNickname={setNickname}
                 nicknameHint={nicknameHint}
@@ -477,37 +309,8 @@ export default function LobbyPage() {
                 onCreateTeamRoom={handleCreateTeamRoom}
                 onCreateIndividualRoom={handleCreateIndividualRoom}
                 onJoinRoom={handleJoinRoom}
-                event={{
-                  view: eventView,
-                  onView: handleEventView,
-                  error: ws.eventError,
-                  matched: ws.eventMatched,
-                  onShowBoard: handleShowBoard,
-                  nickname,
-                  onNickname: v => { setNickname(v); if (ws.eventError?.code === 'NICKNAME_TAKEN') ws.clearEventError(); },
-                  nicknameHint,
-                  pin: eventPin,
-                  onPin: v => { setEventPin(v); if (ws.eventError?.code === 'EVENT_PIN') ws.clearEventError(); },
-                  kind: eventKind,
-                  onKind: setEventKind,
-                  onChallenge: handleChallenge,
-                  queue: ws.eventQueue,
-                  onCancelQueue: ws.eventCancel,
-                  devName,
-                  onDevName: setDevName,
-                  devToken,
-                  onDevToken: v => { setDevToken(v); if (ws.eventError?.code === 'EVENT_AUTH') ws.clearEventError(); },
-                  onDevStandby: handleDevStandby,
-                  devSettings,
-                  onDevSettings: setDevSettings,
-                  devStatus: ws.eventDevStatus,
-                  devConfig: eventView === 'devWait' ? devConfig : null,
-                  onDevConfig: setDevConfig,
-                  onDevAway: ws.eventDevAway,
-                  onDevLeave: handleDevLeave,
-                }}
               />
-              <BackButton hidden={stage === 'home'} onClick={goBack} />
+              <BackButton hidden={stage === 'kind'} onClick={goBack} />
             </>
           )}
         </div>

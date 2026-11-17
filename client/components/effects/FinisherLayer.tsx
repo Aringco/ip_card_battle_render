@@ -14,7 +14,7 @@ const SPARKS = Array.from({ length: 14 }, (_, i) => {
   return { dx: Math.cos(a) * r, dy: Math.sin(a) * r, delay: (i % 5) * 120 };
 });
 
-export function FinisherLayer({ finisher }: { finisher: { id: number; side: SideId } | null }) {
+export function FinisherLayer({ finisher }: { finisher: { id: number; side: SideId; heal?: boolean } | null }) {
   const [pt, setPt] = useState<{ x: number; y: number; r: number; id: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -57,6 +57,7 @@ export function FinisherLayer({ finisher }: { finisher: { id: number; side: Side
     <div
       key={pt.id}
       className="finisher-layer"
+      data-heal={finisher?.heal ? '' : undefined}
       aria-hidden
       style={{
         ['--fx' as string]: `${pt.x}px`,

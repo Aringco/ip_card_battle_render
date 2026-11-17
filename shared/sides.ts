@@ -3,13 +3,12 @@ import { MAX_TURN } from './constants';
 import { enhanceMermaidOppDivide } from './enhance';
 
 /**
- * 이 판의 턴 상한 — 평소에는 MAX_TURN(20), 이벤트 '목표점수 달성하기'(scoreRace)에서는 그 판의 maxTurn(10)이다.
+ * 이 판의 턴 상한 — 평소에는 MAX_TURN(20)이다.
  * 혼자 놀기 '카드 강화'(enhance)는 **상한이 없다**(Infinity) — 목표 체력·상대 체력 0으로만 끝난다. 화면은 이때 "n턴"만 쓴다.
  * 서버의 종료 판정(turnManager)과 화면의 "n / 20턴" 표시가 같은 값을 써야 하므로 여기 한 곳에 둔다.
  */
-export function maxTurnOf(state: Pick<GameState, 'scoreRace' | 'enhance'>): number {
-  if (state.enhance) return Infinity;
-  return state.scoreRace?.maxTurn ?? MAX_TURN;
+export function maxTurnOf(state: Pick<GameState, 'enhance'>): number {
+  return state.enhance ? Infinity : MAX_TURN;
 }
 
 // "상대가 누구인가"를 구하는 유일한 길 — 팀전은 편이 둘이라 `team === 'A' ? 'B' : 'A'`로 뒤집으면
