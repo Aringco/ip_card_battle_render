@@ -50,3 +50,15 @@ export function needsTarget(state: Pick<GameState, 'mode' | 'enhance'>, animal: 
   if (animal === 'tiger') return true;
   return animal === 'mermaid' && !!state.enhance && enhanceMermaidOppDivide(level) > 1;
 }
+
+/**
+ * 승리 방식(2026-11-17, 방 규칙 winMode — 강화 판 · 일반 개인전 폼에서 고른다, 팀전 일반 판은 기본값 그대로) — 무엇으로 판이 끝나는가.
+ * 섬멸전: 승리선에 닿아도 끝나지 않는다(체력 0으로만) · 번영전: 체력 0이어도 지지 않는다(승리선 도달로만 — 0에 머문 채 계속 둔다).
+ * 서버 판정(checkKnockout · resolveRanks · tickEnhanceStatus) · 컴퓨터 · 화면의 "끝내는 수" 표시가 모두 이 둘을 거친다.
+ */
+export function winsByReach(state: { settings: { winMode?: string } }): boolean {
+  return state.settings.winMode !== 'annihilate';
+}
+export function losesAtZero(state: { settings: { winMode?: string } }): boolean {
+  return state.settings.winMode !== 'recovery';
+}

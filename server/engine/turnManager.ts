@@ -18,7 +18,7 @@ import { dealOpeningSharedCards, initStacks } from './places';
 import type { RNG } from './places';
 import { rankByHpAndEnd, resolveRanks } from './ranking';
 import { acornBleed, acornRoundStart, addShield, attachAcorn, openAcornFestivalIfDue } from './acorn';
-import { acornSideOf, acornStatsOf } from 'shared';
+import { acornSideOf, acornStatsOf, losesAtZero, winsByReach } from 'shared';
 
 /** 체력이 움직인 뒤의 승패 판정 — 팀전은 즉시 승패(checkKnockout), 개인전은 순위(resolveRanks). */
 export function judgeHp(state: GameState): GameEvent[] {
@@ -68,8 +68,10 @@ export function checkKnockout(state: GameState): GameEvent[] {
   if (state.phase !== 'playing') return [];
 
   const winHp = winHpOf(state);
-  const aWins = state.teams.A.hp >= winHp || state.teams.B.hp <= LOSE_HP;
-  const bWins = state.teams.B.hp >= winHp || state.teams.A.hp <= LOSE_HP;
+  const reach = winsByReach(state);
+  const zero = losesAtZero(state);
+  const aWins = (reach && state.teams.A.hp >= winHp) || (zero && state.teams.B.hp <= LOSE_HP);
+  const bWins = (reach && state.teams.B.hp >= winHp) || (zero && state.teams.A.hp <= LOSE_HP);
   if (!aWins && !bWins) return [];
   if (aWins && bWins) return endGame(state, 'draw', 'knockout');
   return endGame(state, aWins ? 'A' : 'B', 'knockout');
@@ -237,7 +239,7 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
       ...(hit.blocked ? { blocked: true as const } : {}),
       ...(hit.rescue.length > 0 ? { rescue: hit.rescue } : {}),
     });
-    if (team.hp <= LOSE_HP) return events;
+    if (team.hp <= LOSE_HP && losesAtZero(state)) return events;
   }
   if (bleed) bleed.fresh = 0;
 
@@ -291,6 +293,8 @@ export function initGame(
   limits?: SettingsLimits,
 ): GameState {
   const resolvedSettings = clampSettings(settings, limits);
+  // 팀전 일반 판은 승리 방식을 고르지 않는다(폼에 없다) — 강화 판만 범위(limits)를 넘긴다
+  if (!limits) resolvedSettings.winMode = 'normal';
 
   // settings.firstTeam이 'random'이면 여기서 딱 한 번 추첨해 확정한다 — 이후로는
   // state.startingTeam이 그 결과를 그대로 담고 있으므로, 다시 추첨하거나 매번

@@ -1,6 +1,7 @@
 import { initIndividualGame } from '../engine/turnManager';
+import { resolveRanks } from '../engine/ranking';
 import { processPass, processPlayerAction, processSkillChoice } from '../engine/gameEngine';
-import { ENHANCE_SETTINGS, ENHANCE_TARGET_SCORE_MAX, PLAYER_COLORS, THRESHOLDS, maxTurnOf, needsTarget } from 'shared';
+import { DEFAULT_SETTINGS, ENHANCE_SETTINGS, ENHANCE_TARGET_SCORE_MAX, PLAYER_COLORS, THRESHOLDS, maxTurnOf, needsTarget } from 'shared';
 import type { Animal, GameEvent, GameState, ServerMessage, SideId } from 'shared';
 import { Room } from '../room';
 
@@ -163,5 +164,34 @@ describe('개인전 강화 방', () => {
     room.addPlayer(host.ws, 'h', '방장', 'A', undefined, undefined, undefined, 'team', true);
     const lobby = host.sent.filter(m => m.type === 'lobbyState').at(-1) as Extract<ServerMessage, { type: 'lobbyState' }>;
     expect(lobby.enhance).toBe(false);
+  });
+});
+
+describe('개인전 강화 — 승리 방식(2026-11-17)', () => {
+  it('번영전: 체력 0인 사람은 탈락하지 않는다 · 섬멸전: 승리선에 닿아도 1위가 정해지지 않는다', () => {
+    const s = make(3, { winMode: 'recovery' });
+    for (const side of s.turnOrder) s.teams[side].hp = 0;
+    expect(resolveRanks(s)).toEqual([]);
+    expect(s.phase).toBe('playing');
+
+    const t = make(3, { winMode: 'annihilate' });
+    t.teams[t.turnOrder[0]].hp = 10_000;
+    expect(resolveRanks(t)).toEqual([]);
+    t.teams[t.turnOrder[1]].hp = 0;
+    expect(resolveRanks(t)).toEqual([expect.objectContaining({ type: 'ranked', team: t.turnOrder[1], rank: 3, reason: 'out' })]);
+  });
+});
+
+describe('일반 개인전 — 승리 방식(2026-11-17)', () => {
+  it('강화가 아닌 개인전에서도 번영전 · 섬멸전이 먹는다', () => {
+    const players = [0, 1, 2].map(i => ({ side: `p${i + 1}`, nickname: `P${i}`, color: PLAYER_COLORS[i].id }));
+    const s = initIndividualGame(players, rng0, { ...DEFAULT_SETTINGS, targetScore: 100, winMode: 'recovery' }, false);
+    expect(s.enhance).toBeFalsy();
+    s.teams[s.turnOrder[1]].hp = 0;
+    expect(resolveRanks(s)).toEqual([]);
+
+    const t = initIndividualGame(players, rng0, { ...DEFAULT_SETTINGS, targetScore: 100, winMode: 'annihilate' }, false);
+    t.teams[t.turnOrder[0]].hp = 10_000;
+    expect(resolveRanks(t)).toEqual([]);
   });
 });

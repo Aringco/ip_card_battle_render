@@ -167,7 +167,8 @@
   left: 50%;
   bottom: 14%;
   translate: -50% 0;
-  font-size: calc(var(--pf-w, 1200px) * 0.0125);
+  /* 문구가 길면(증감량 · 내역) 구슬 폭의 94% 안에 들도록 줄인다(+1.1em은 좌우 여백) */
+  font-size: min(calc(var(--pf-w, 1200px) * 0.0125), calc(94cqw / (var(--fit-em, 1) + 1.1)));
 }
 .hp-forecast-label.is-gain,
 .m-hp-forecast-label.is-gain { color: #bef264; }

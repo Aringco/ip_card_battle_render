@@ -349,15 +349,16 @@ export function enhanceAmount(base: number, mult: number, divisor: number = 1): 
  * 디자인어를 쓴 뒤의 배율. 배율이 걸려 있지 않으면(1) 그 레벨의 배율이 되고, 이미 걸려 있으면 그 위에 증가량을 더하거나
  * 곱한다(ENHANCE_MERMAID_STACK_MULTIPLY_FROM부터 — 6차 표는 곱하는 레벨이 없다). 다만 **새로 거는 것보다 작아지지는 않는다** —
  * ×2가 걸린 채 Lv.1(×2, 겹치면 +1)이면 ×3, ×2가 걸린 채 Lv.6(×3, +1)이면 ×3, ×3이 걸린 채 Max(×3, +2)면 ×5다.
- * Lv.Max의 별도 배수는 디자인어에 걸리지 않는다(5차 표 — 배율을 받는 것은 장수 · 즉시 회복 · 공격력뿐).
+ * 디자인어 자신의 Lv.Max 별도 배수(over ≥ 2)는 곱하지 않고 **더한다**(2026-11-17 — 그 전에는 버려져 ×1000 카드를 써도 ×8만 걸렸다).
  */
-export function enhanceMermaidAfter(pending: number, level: number): number {
+export function enhanceMermaidAfter(pending: number, level: number, over = 1): number {
   const lv = clampLevel(level);
   const base = enhanceValue('mermaid', lv);
-  if (pending <= 1) return base;
+  const bonus = over > 1 ? over : 0;
+  if (pending <= 1) return base + bonus;
   const stack = ENHANCE_MERMAID_STACK[lv - 1];
   const stacked = lv >= ENHANCE_MERMAID_STACK_MULTIPLY_FROM ? pending * stack : pending + stack;
-  return Math.max(base, stacked);
+  return Math.max(base, stacked) + bonus;
 }
 
 function clampLevel(level: number): number {
@@ -479,6 +480,7 @@ export const ENHANCE_SETTINGS: GameSettings = {
   drawGrowthTurns: 1,
   expGainMult: 2,
   secondComp: 'strong',
+  winMode: 'normal',
 };
 
 /**

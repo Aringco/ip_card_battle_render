@@ -302,7 +302,7 @@ function applyEnhanceEffect(
   };
 
   if (animal === 'mermaid') {
-    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level);
+    me.pendingMultiplier = enhanceMermaidAfter(me.pendingMultiplier, level, over);
     if (enhanceMermaidOppDivide(level) > 1 && foe) {
       const before = foe.pendingMultiplier;
       foe.pendingMultiplier = enhanceOppMultiplierAfter(before, level);
@@ -424,7 +424,7 @@ function applyEnhanceEffect(
     ...(oppMultiplierCut !== undefined ? { oppMultiplierCut } : {}),
     ...(oppDivisor !== undefined ? { oppDivisor } : {}),
     ...(oppDivisorTurns !== undefined ? { oppDivisorTurns } : {}),
-    ...(over > 1 && animal !== 'mermaid' ? { overMultiplier: over } : {}),
+    ...(over > 1 ? { overMultiplier: over } : {}),
     ...(cooldownCuts.length > 0 ? { cooldownCuts } : {}),
     ...(cleanse ? { cleanse } : {}),
     ...(regenAdded ? { regenAdded } : {}),

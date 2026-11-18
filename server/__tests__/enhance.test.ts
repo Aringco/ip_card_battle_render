@@ -26,9 +26,10 @@ import {
   enhanceSlamLandMs,
   splitEnhanceCount,
   enhanceDenomTier,
+  DEFAULT_SETTINGS,
 } from 'shared';
 import { settleStacks } from '../engine/drawCard';
-import { initEnhanceGame, initIndividualGame } from '../engine/turnManager';
+import { checkKnockout, initEnhanceGame, initGame, initIndividualGame } from '../engine/turnManager';
 import { processPass, processPlayerAction, processSkillChoice, processTimeout } from '../engine/gameEngine';
 import { applySkillChoice, eligibleAnimals, levelOf } from '../engine/skills';
 import { Room } from '../room';
@@ -753,13 +754,14 @@ describe('강화 판 지속 효과 · 중첩 · 회복 효율 · 정화 · 쿨�
     expect(ev).toMatchObject({ overMultiplier: 3, extraDrawsQueued: 14 * 21, randomExp: { animal: 'sheep', amount: 36 } });
   });
 
-  it('Lv.Max 별도 배수는 디자인어 자신에게는 걸리지 않는다', () => {
+  it('디자인어의 Lv.Max 별도 배수는 배율에 더해진다(2026-11-17 — 그 전에는 버려졌다)', () => {
     const s = newGame({ targetScore: 2500 });
     s.teams.A.exp.mermaid = 20 * 11; // ×2
     toChoice(s);
-    const mermaid = processSkillChoice(s, 'mermaid').events[0];
-    expect(mermaid).toMatchObject({ multiplierAfter: 8 });
-    expect(mermaid).not.toHaveProperty('overMultiplier');
+    expect(processSkillChoice(s, 'mermaid').events[0]).toMatchObject({ multiplierAfter: 8 + 2, overMultiplier: 2 });
+    // 걸린 배율 1000 + 겹치기 8 + 별도 배수 1000
+    expect(enhanceMermaidAfter(1000, 11, 1000)).toBe(2008);
+    expect(enhanceMermaidAfter(1000, 11)).toBe(1008);
   });
 
   it('Lv.Max 별도 배수는 그 카드를 쓰면 ×1로 돌아간다 — 다음 배수까지 쌓던 나머지는 남는다', () => {
@@ -1095,5 +1097,49 @@ describe('후공 보상 (secondComp)', () => {
   it('잘못된 값은 끔으로 — 강화 판 기본값은 강', () => {
     expect(clampSettings({ secondComp: 'max' as never }).secondComp).toBe('off');
     expect(clampEnhanceSettings(undefined).secondComp).toBe('strong');
+  });
+});
+
+describe('승리 방식 — 섬멸전 · 번영전(2026-11-17)', () => {
+  it('섬멸전: 상표토끼로 승리선에 닿아도 끝나지 않고, 특허랑이로 체력 0이면 끝난다', () => {
+    const s = newGame({ targetScore: 200, winMode: 'annihilate' });
+    setLevel(s, 'A', 'rabbit', 11);
+    s.teams.A.hp = 399;
+    toChoice(s);
+    processSkillChoice(s, 'rabbit');
+    expect(s.teams.A.hp).toBeGreaterThan(400);
+    expect(s.phase).toBe('playing');
+
+    const t = newGame({ targetScore: 200, winMode: 'annihilate' });
+    setLevel(t, 'A', 'tiger', 11);
+    t.teams.B.hp = 10;
+    toChoice(t);
+    const { events } = processSkillChoice(t, 'tiger');
+    expect(t.phase).toBe('ended');
+    expect(events.find(e => e.type === 'gameEnd')).toMatchObject({ winner: 'A' });
+  });
+
+  it('번영전: 체력 0이어도 지지 않고(지속 회복도 든다), 승리선 도달로만 끝난다', () => {
+    const s = newGame({ targetScore: 200, winMode: 'recovery' });
+    setLevel(s, 'A', 'tiger', 11);
+    s.teams.B.hp = 10;
+    toChoice(s);
+    processSkillChoice(s, 'tiger');
+    expect(s.teams.B.hp).toBe(0);
+    expect(s.phase).toBe('playing');
+
+    const t = newGame({ targetScore: 200, winMode: 'recovery' });
+    setLevel(t, 'A', 'rabbit', 11);
+    t.teams.A.hp = 390;
+    toChoice(t);
+    const { events } = processSkillChoice(t, 'rabbit');
+    expect(t.phase).toBe('ended');
+    expect(events.find(e => e.type === 'gameEnd')).toMatchObject({ winner: 'A' });
+  });
+
+  it('일반 판은 승리 방식을 읽지 않는다', () => {
+    const s = initGame(['나'], ['상대'], rng0, { ...DEFAULT_SETTINGS, winMode: 'recovery' });
+    s.teams.B.hp = 0;
+    expect(checkKnockout(s)).toEqual([expect.objectContaining({ type: 'gameEnd', winner: 'A' })]);
   });
 });

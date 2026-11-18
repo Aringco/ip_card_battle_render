@@ -39,6 +39,8 @@ import {
   ENHANCE_REGEN_MAX_TURNS,
   opponentsOf,
   skillLevelFor,
+  losesAtZero,
+  winsByReach,
 } from 'shared';
 import type { Animal, ClientGameState, EnhanceStatus, SideId } from 'shared';
 
@@ -195,7 +197,8 @@ export function finishingMove(
   if (gameState.enhance) {
     const preview = previewSkill(gameState, team, animal);
     const firstWin = !Object.values(gameState.teams).some(t => t.finish?.reason === 'win');
-    if (animal === 'rabbit') return { finishes: firstWin && me.hp + preview.myHpDelta >= winHp, targets: [] };
+    if (animal === 'rabbit') return { finishes: winsByReach(gameState) && firstWin && me.hp + preview.myHpDelta >= winHp, targets: [] };
+    if (!losesAtZero(gameState)) return none; // 번영전 — 체력 0으로는 끝나지 않는다
     // 대상마다 서버 acornHit과 같은 순서로 센다 — 도토리 기술 % · 공격 % → 대상의 피해 감소(관통만큼 덜어 냄) · 다음 공격 −% → 보호막.
     // 이것을 빼면 도토리 공격 카드로 끝낼 수 있는데 빨간 빛이 안 뜨고, 보호막에 막히는데 뜬다(2026-11-07).
     // shortcut: 추가 발동 · 쓰러짐 방지(확률)는 넣지 않는다, 확률을 화면에 보이게 되면 다시 볼 것.
@@ -249,7 +252,8 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   if (gameState.enhance) {
     // 서버와 같은 계산 — 기본값 × 배율 × Max 별도 배수 ÷ 나눗셈(상대 디자인어 Lv.Max), 반올림. 디자인어 자신은 나누지도 곱하지도 않는다.
     const divisor = animal === 'mermaid' ? 1 : enhanceDivisorOf(gameState, team);
-    const over = animal === 'mermaid' ? 1 : overMultiplierOf(gameState, team, animal);
+    // 디자인어는 Max 별도 배수를 곱하지 않고 배율에 더한다(enhanceMermaidAfter)
+    const over = overMultiplierOf(gameState, team, animal);
     // 도토리 카드 — 내 기술 효과 %(배율 위에 더하는 몫) · 효과 감소 덜어 내기 · 특허랑이 공격 피해 %(서버 applyEnhanceEffect와 같은 계산)
     const acornF = animal === 'mermaid' ? 1 : acornSkillFactor(gameState, team);
     const divEff = animal === 'mermaid' ? 1 : acornDivisor(gameState, team, divisor);
@@ -269,7 +273,7 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
       // 상대가 하나뿐이면 그 상대가 가진 만큼으로 자른다. 여럿이면 대상이 정해지기 전이라 "최대"로 보인다.
       oppHpIsMax = soleFoe === undefined;
       oppHpDelta = -(oppHpIsMax ? value : Math.min(value, Math.max(0, gameState.teams[soleFoe!]?.hp ?? 0)));
-    } else multiplierAfter = enhanceMermaidAfter(mult, level);
+    } else multiplierAfter = enhanceMermaidAfter(mult, level, over);
     const sheep = animal === 'sheep';
     const oppDivisor = animal === 'mermaid' ? enhanceMermaidDivide(level) : 1;
     const myRegen = gameState.enhance.regen?.[team];

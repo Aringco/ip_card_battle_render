@@ -94,6 +94,18 @@ const COMP_OPTIONS = [
 ] as const satisfies ReadonlyArray<{ value: GameSettings['secondComp']; label: string }>;
 const COMP_TITLE = '후공 보상 — 늦게 두는 자리일수록 시작 경험치를 더 받는다';
 const COMP_SUMMARY: Record<GameSettings['secondComp'], string | null> = { off: null, weak: '약', strong: '강' };
+// 카드 강화 판 — 승리 방식(2026-11-17, shared/sides.ts winsByReach · losesAtZero)
+const WIN_MODE_OPTIONS = [
+  { value: 'normal', label: '기본' },
+  { value: 'annihilate', label: '섬멸전' },
+  { value: 'recovery', label: '번영전' },
+] as const satisfies ReadonlyArray<{ value: GameSettings['winMode']; label: string }>;
+const WIN_MODE_TITLE = '승리 방식 — 섬멸전: 상대 체력 0으로만 이긴다 · 번영전: 목표 점수 도달로만 이긴다';
+const WIN_MODE_SUMMARY: Record<GameSettings['winMode'], string | null> = {
+  normal: null,
+  annihilate: '⚔️ 섬멸전 — 상대 체력을 0으로 만들어야만 승리',
+  recovery: '🌱 번영전 — 목표 점수에 닿아야만 승리(체력 0이어도 계속)',
+};
 
 // 혼자 놀기에서 감추는 두 항목 — 서버도 같은 이유로 제한을 걸지 않는다(Room.vsComputer).
 const PAUSE_KEYS: NumKey[] = ['pauseMaxCount', 'pauseMaxMin'];
@@ -274,6 +286,12 @@ export function GameRulesFields({
                 <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} />
               </div>
             </>
+          )}
+          {(showSkillGrowth || mode === 'individual') && (
+              <div className="flex items-center justify-between gap-1 text-xs" title={WIN_MODE_TITLE}>
+                <label className="text-gray-500 truncate min-w-0">승리 방식</label>
+                <ModeToggle options={WIN_MODE_OPTIONS} value={settings.winMode} onChange={v => onChange({ ...settings, winMode: v })} label={WIN_MODE_TITLE} />
+              </div>
           )}
           </div>
         </div>
@@ -463,6 +481,13 @@ export function GameRulesInputs({
             </div>
           </>
         )}
+        {(showSkillGrowth || mode === 'individual') && (
+            <div className="flex items-center gap-2 text-lg">
+              <label className="text-board-muted whitespace-nowrap">승리 방식</label>
+              <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
+              <ModeToggle options={WIN_MODE_OPTIONS} value={settings.winMode} onChange={v => onChange({ ...settings, winMode: v })} label={WIN_MODE_TITLE} />
+            </div>
+        )}
       </div>
     </div>
   );
@@ -505,6 +530,7 @@ export function RuleSummary({
           {settings.drawGrowthTurns > 0 && <span>🌰 {settings.drawGrowthTurns}턴마다 장소 카드 +1장</span>}
           {settings.expGainMult > 1 && <span>✨ 승격 전 획득 경험치 {settings.expGainMult}배</span>}
           {COMP_SUMMARY[settings.secondComp] && <span>⚖️ 후공 보상 {COMP_SUMMARY[settings.secondComp]}</span>}
+          {WIN_MODE_SUMMARY[settings.winMode] && <span>{WIN_MODE_SUMMARY[settings.winMode]}</span>}
         </div>
       )}
       <div className="flex flex-wrap gap-x-6 gap-y-1.5 justify-center">

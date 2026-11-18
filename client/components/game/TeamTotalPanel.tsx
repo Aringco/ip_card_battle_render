@@ -181,9 +181,12 @@ export function TeamTotalPanel({
           ))}
         </div>
       )}
-      <p className="hp-orb-value tabular-nums">{hp}</p>
+      <p className="hp-orb-value tabular-nums" style={{ '--fit-em': fitEm(String(hp)) } as React.CSSProperties}>{hp}</p>
       {forecast && (
-        <p className={`hp-forecast-label ${forecast.delta > 0 ? 'is-gain' : forecast.delta < 0 ? 'is-loss' : 'is-none'} tabular-nums`}>
+        <p
+          className={`hp-forecast-label ${forecast.delta > 0 ? 'is-gain' : forecast.delta < 0 ? 'is-loss' : 'is-none'} tabular-nums`}
+          style={{ '--fit-em': fitEm(hpForecastText(forecast)) } as React.CSSProperties}
+        >
           {hpForecastText(forecast)}
         </p>
       )}
@@ -234,4 +237,9 @@ export function TeamTotalPanel({
       {acorns && <AcornBadges gameState={gameState} side={team} className="hp-acorn-pill play-pill play-pill-wood" />}
     </div>
   );
+}
+
+/** 글자 폭 어림(em) — 구슬 폭에 맞춰 글자를 줄이는 CSS(.hp-orb-value · .hp-forecast-label의 --fit-em)가 쓴다. 한글 1 · 공백 0.3 · 그 밖 0.62 */
+function fitEm(text: string): number {
+  return [...text].reduce((w, c) => w + (/[\u3131-\ud79d]/.test(c) ? 1 : c === ' ' ? 0.3 : 0.62), 0);
 }

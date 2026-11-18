@@ -69,7 +69,7 @@ export function skillDetailLines(gameState: ClientGameState, team: SideId, anima
   // 카드 강화 판 — 배율(디자인어 · Lv.Max 별도 배수)과 상대 디자인어의 ÷N은 실용신양의 장수 · 상표토끼의 즉시 회복 · 특허랑이의 공격력에만 든다
   const level = p.level;
   const base = enhanceValue(animal, level);
-  const over = animal === 'mermaid' ? 1 : overMultiplierOf(gameState, team, animal);
+  const over = overMultiplierOf(gameState, team, animal);
   const divisor = p.divisor ?? 1;
   const foes = opponentsOf(gameState, team);
   const soleFoe = foes.length === 1 ? foes[0] : undefined;
@@ -113,7 +113,10 @@ export function skillDetailLines(gameState: ClientGameState, team: SideId, anima
       label: '다음 기술 배율',
       value: `×${mult} → ×${p.multiplierAfter}`,
       // 겹치면 걸린 배율 + 증가량(새로 거는 값보다 작아지지는 않는다 — enhanceMermaidAfter)
-      note: mult > 1 && p.multiplierAfter === mult + stack ? `${mult}(걸린 배율)+${stack}(겹치기)` : `${base}(기본)`,
+      note: [
+        mult > 1 && p.multiplierAfter - (over > 1 ? over : 0) === mult + stack ? `${mult}(걸린 배율)+${stack}(겹치기)` : `${base}(기본)`,
+        over > 1 ? `+${over}(Max 별도 배수)` : '',
+      ].join(''),
     });
     if (p.oppMultiplierDivide && p.oppMultiplierDivide > 1) {
       const foeMult = soleFoe ? gameState.teams[soleFoe]?.pendingMultiplier ?? 1 : null;

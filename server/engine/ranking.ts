@@ -1,4 +1,4 @@
-import { LOSE_HP, activeSides } from 'shared';
+import { LOSE_HP, activeSides, losesAtZero, winsByReach } from 'shared';
 import type { FinishReason, GameEvent, GameState, SideId } from 'shared';
 
 // 개인전(순위전)의 순위 판정 — INDIVIDUAL_MODE_ROADMAP.md §2-4와 부록 D가 규칙의 전부다.
@@ -67,7 +67,7 @@ export function resolveRanks(state: GameState): GameEvent[] {
   for (const side of state.turnOrder) {
     const t = state.teams[side];
     if (t.finish) continue;
-    if (t.hp >= winHp) {
+    if (winsByReach(state) && t.hp >= winHp) {
       events.push(record(state, side, 1 + countByReason(state, 'win'), 'win'));
     }
   }
@@ -76,7 +76,7 @@ export function resolveRanks(state: GameState): GameEvent[] {
   for (const side of state.turnOrder) {
     const t = state.teams[side];
     if (t.finish) continue;
-    if (t.hp <= LOSE_HP) {
+    if (losesAtZero(state) && t.hp <= LOSE_HP) {
       events.push(record(state, side, total - countByReason(state, 'out', 'forfeit'), 'out'));
     }
   }

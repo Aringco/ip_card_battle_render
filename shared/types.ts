@@ -119,10 +119,14 @@ export interface GameSettings {
   expGainMult: number;
   // 카드 강화 판 — 후공 보상(2026-11-11): 늦게 두는 자리일수록 시작 경험치를 더 받는다(shared/enhance.ts enhanceSecondCompExp). 일반 판은 읽지 않는다
   secondComp: SecondComp;
+  // 카드 강화 판 — 승리 방식(2026-11-17): 기본 · 섬멸전(체력 0으로만 끝) · 번영전(승리선 도달로만 끝). 일반 판은 읽지 않는다(shared/sides.ts winsByReach)
+  winMode: WinMode;
 }
 
 /** 후공 보상 세기 — 끔 · 약 · 강 */
 export type SecondComp = 'off' | 'weak' | 'strong';
+/** 승리 방식 — 기본(둘 다) · 섬멸전(상대 체력 0만) · 번영전(내 체력 승리선만) */
+export type WinMode = 'normal' | 'annihilate' | 'recovery';
 
 export interface GameState {
   phase: GamePhase;

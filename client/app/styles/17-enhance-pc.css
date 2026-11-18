@@ -79,10 +79,10 @@ body:has(.enh-top) .pause-fab {
   width: var(--stage-w);
   padding: calc(var(--pf-h) * 0.035) calc(var(--pf-w) * 0.016);
   grid-template-columns: var(--enh-side) minmax(0, 1fr) var(--enh-side);
-  /* 기술 카드 줄을 값으로 정한다 — 카드 폭을 높이에서 계산해야 1:1.258이 어느 해상도에서나 유지된다(2026-11-08 요청) */
+  /* 기술 카드 줄을 값으로 정한다 — 카드 폭을 높이에서 계산해야 1:1.358이 어느 해상도에서나 유지된다(2026-11-08 요청 · 1.258 → 1.358 2026-11-17) */
   --enh-cards-h: calc(var(--pf-h) * 0.3576);
   --enh-card-pad: calc(var(--pf-h) * 0.014);
-  --enh-card-w: calc((var(--enh-cards-h) - var(--enh-card-pad) * 2) / 1.258);
+  --enh-card-w: calc((var(--enh-cards-h) - var(--enh-card-pad) * 2) / 1.358);
   grid-template-rows: minmax(0, 1fr) var(--enh-bar-h) var(--enh-cards-h);
   column-gap: calc(var(--pf-w) * 0.012);
   row-gap: calc(var(--pf-h) * 0.016);
@@ -122,7 +122,10 @@ body:has(.enh-top) .pause-fab {
 .enh-frame > .play-cell-hp-b { grid-area: hpb; width: 80%; justify-self: end; }
 /* 체력 — 입체 유리관(2026-11-08 요청): 위쪽 왼편의 광원 · 왼쪽 세로 반사광 · 양옆이 어두운 원통 음영 · 아래 반사. 눈금은 시작 체력 하나(모바일과 같다) */
 .enh-frame .hp-orb {
-  background: linear-gradient(90deg, rgba(214, 232, 238, 0.82), rgba(248, 253, 255, 0.76) 34%, rgba(248, 253, 255, 0.7) 66%, rgba(208, 226, 234, 0.84));
+  /* 빈 칸은 흰색이 아니라 그 체력 색의 파스텔(2026-11-18) — 양옆이 조금 짙은 원통 음영은 그대로 */
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--orb-tint) 40%, white), color-mix(in srgb, var(--orb-tint) 22%, white) 34%,
+    color-mix(in srgb, var(--orb-tint) 22%, white) 66%, color-mix(in srgb, var(--orb-tint) 40%, white));
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4), 0 0 14px rgba(190, 230, 255, 0.22);
 }
@@ -149,6 +152,9 @@ body:has(.enh-top) .pause-fab {
   border-radius: 999px;
   filter: blur(1.5px);
 }
+.enh-frame .hp-orb-mine { --orb-tint: #3fb80a; }
+.enh-frame .hp-orb-enemy { --orb-tint: #e8083a; }
+.enh-frame .hp-orb-spectator { --orb-tint: var(--spec-base); }
 .enh-frame .hp-orb-liquid { box-shadow: 0 -2px 10px rgba(255, 255, 255, 0.35); }
 .enh-frame .hp-orb-mine .hp-orb-liquid { background: linear-gradient(180deg, #9bf01a 0%, #3fb80a 100%); }
 .enh-frame .hp-orb-enemy .hp-orb-liquid { background: linear-gradient(180deg, #ff5c7a 0%, #e8083a 100%); }
@@ -178,7 +184,7 @@ body:has(.enh-top) .pause-fab {
     0 0 0 var(--fr-line) #c79a5e,
     0 0 0 calc(var(--fr-line) * 2) #2a1708;
 }
-/* 다섯 장은 1:1.258 고정 폭으로 천 위에 고르게 벌린다 */
+/* 다섯 장은 1:1.358 고정 폭으로 천 위에 고르게 벌린다 */
 .enh-frame .play-cards-grid { grid-template-columns: repeat(5, var(--enh-card-w)); justify-content: space-evenly; gap: 0; }
 .enh-frame > .play-prompt-strip { grid-area: mid; justify-self: center; align-self: stretch; width: var(--enh-timer-w); height: auto; }
 /* 타이머 창은 제 칸을 넘지 않는다 — 막대는 30%까지만, 긴 문구(첫 턴 안내)는 한 줄에서 말줄임(양옆 칸을 덮지 않게) */

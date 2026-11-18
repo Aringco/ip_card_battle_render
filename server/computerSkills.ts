@@ -1,5 +1,5 @@
 import { eligibleAnimals, levelOf } from './engine/skills';
-import { enhanceAmount, enhanceDivisorOf, enhanceHealAfterCut, enhanceHealCutOf, enhanceOverMultiplier, enhanceSheepExp, enhanceSheepExpStack, enhanceValue, opponentsOf } from 'shared';
+import { enhanceAmount, enhanceDivisorOf, enhanceHealAfterCut, enhanceHealCutOf, enhanceOverMultiplier, enhanceSheepExp, enhanceSheepExpStack, enhanceValue, losesAtZero, opponentsOf, winsByReach } from 'shared';
 import type { Animal, GameState, SideId, Team } from 'shared';
 
 /**
@@ -46,8 +46,8 @@ export function pickEnhanceComputerSkill(state: GameState, side: SideId): Animal
   // 상표토끼 — 즉시 회복에 상대 특허랑이가 건 회복 효율 감소를 거친 값(엔진 applyEnhanceEffect와 같은 계산)
   const rabbitHeal = () => enhanceHealAfterCut(value('rabbit'), enhanceHealCutOf(state, side));
 
-  if (options.includes('tiger') && value('tiger') >= foeHp) return 'tiger';
-  if (options.includes('rabbit') && me.hp + rabbitHeal() >= winHp) return 'rabbit';
+  if (options.includes('tiger') && losesAtZero(state) && value('tiger') >= foeHp) return 'tiger';
+  if (options.includes('rabbit') && winsByReach(state) && me.hp + rabbitHeal() >= winHp) return 'rabbit';
   if (options.includes('mermaid') && mult === 1 && options.length > 1 && Math.random() < 0.35) return 'mermaid';
 
   const gain = (a: Animal): number => {

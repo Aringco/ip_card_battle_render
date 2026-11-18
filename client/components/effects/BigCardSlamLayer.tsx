@@ -135,7 +135,9 @@ function SlamCard({ item, onLand }: { item: BigSlamItem; onLand: (x: number, y: 
         document.querySelectorAll(`[data-stack-area]:not([data-stack-area="${item.animal}"]) .stack-card`).forEach((c, i) => {
           hop(c as HTMLElement, (c as HTMLElement).getBoundingClientRect().height * 0.2 * q, 60 + ((i * 47) % 120), i % 2 ? 1 : -1, q * 0.6);
         });
-        const field = row?.closest('.play-frame, .play-frame-css, .m-board') as HTMLElement | null;
+        // 화면 전체(.play-bg — 화면 왼쪽 위에 붙어 있다)를 흔든다. 판(.play-frame · .m-board)을 translate로 흔들면 그동안 판이 fixed 연출의
+        // 기준 상자가 되어, 판 안에 그리는 뽑기 슬롯 · 털실 공이 판의 위치만큼 엉뚱한 자리로 튀었다(×100부터 — 2026-11-17)
+        const field = row?.closest('.play-bg') as HTMLElement | null;
         if (field) {
           const amp = 3 + 9 * q;
           const ks = [0, -1, 0.8, -0.55, 0.35, -0.18, 0];

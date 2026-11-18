@@ -321,6 +321,8 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18), inset 0 2px 3px rgba(255, 255, 255, 0.4);
+  /* 숫자 · 예상 체력 문구가 구슬 폭(cqw)에 맞춰 줄어든다(--fit-em — TeamTotalPanel이 글자 폭을 어림해 싣는다, 2026-11-17) */
+  container-type: inline-size;
 }
 /* ⚠️ 세 구슬 모두 **원래 그라디언트를 반투명으로 낮추고** 그 밑에 양피지를 깐다(요청 3).
    불투명한 채로 두면 질감이 한 점도 안 보인다.
@@ -399,7 +401,10 @@
 .hp-orb-value {
   position: relative;
   z-index: 2;
-  font-size: 2.75rem;
+  /* 기본 크기는 --orb-fs로 받고(칸마다 다시 정한다), 자릿수가 늘면 구슬 폭의 88% 안에 들도록 줄인다 */
+  --orb-fs: 2.75rem;
+  font-size: min(var(--orb-fs), calc(88cqw / var(--fit-em, 1)));
+  white-space: nowrap;
   font-weight: 900;
   color: #14532d;
   text-shadow: 0 1px 4px rgba(255, 255, 255, 0.7);

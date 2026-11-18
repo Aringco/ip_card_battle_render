@@ -99,7 +99,7 @@
 .ind-cell-board { grid-area: board; overflow: clip; overflow-clip-margin: 48px; }
 
 /* 체력 숫자 — 액자 폭에 비례(.play-cell-hp-a와 같은 값) */
-.ind-cell-hp .hp-orb-value { font-size: calc(var(--pf-w) * 0.032); }
+.ind-cell-hp .hp-orb-value { --orb-fs: calc(var(--pf-w) * 0.032); }
 
 /* 보드의 "내 차례" 맥동 링(.board-my-turn)도 칸 모서리를 따라 둥글게 */
 .ind-cell-board [data-board-root] { border-radius: var(--cell-r); }

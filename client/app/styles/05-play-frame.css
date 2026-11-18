@@ -846,7 +846,7 @@
 /* 체력 숫자 — 고정 2.75rem이면 칸이 넓어진 만큼 숫자만 작아 보인다. 액자 폭에 비례시킨다
    (1920에서 58px, 1366에서 41px). 칸 밖에서 쓰는 .hp-orb-value는 원래 값 그대로다. */
 .play-cell-hp-a .hp-orb-value,
-.play-cell-hp-b .hp-orb-value { font-size: calc(var(--pf-w) * 0.032); }
+.play-cell-hp-b .hp-orb-value { --orb-fs: calc(var(--pf-w) * 0.032); }
 /* 체력 구슬의 둥글기 — 칸(나무 구멍)과 **같게**. 구슬 기본값 1.5rem(24px)은 고정이라, 액자가 작아질수록
    구멍(그림에서 잰 r ≈ 22/1965 — --cell-r)보다 훨씬 둥글어져 모서리가 구멍과 어긋나 보였다(1366에서 24 대 15px). */
 .play-cell-hp-a .hp-orb,
