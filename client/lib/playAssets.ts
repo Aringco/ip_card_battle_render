@@ -88,18 +88,6 @@ export const PLAY_ASSETS = {
    */
   playFrame: '/play/play_frame.webp',
 
-  /** 나무 액자 + 양피지 — 9분할로 늘린다. 네 귀퉁이에 잎 덩어리가 함께 그려져 있다 */
-  boardH: '/play/board_h.webp',   // 가로형 큰 판 (754×550)
-  boardSq: '/play/board_sq.webp', // 정사각에 가까운 판 (503×456)
-  boardV: '/play/board_v.webp',   // 세로형 작은 판 (271×376)
-
-  /** 줄이 그어진 노트 — 팀 패널·체력판 */
-  noteGreen: '/play/note_green.webp',
-  notePink: '/play/note_pink.webp',
-  /** 알약 줄이 네 칸 그려진 노트 — 동물 4종 표와 칸 수가 맞는다 */
-  noteGreenRows: '/play/note_green_rows.webp',
-  notePinkRows: '/play/note_pink_rows.webp',
-
   /** 알약 — 단계 표시·플레이어 이름표. 글씨가 들어가므로 가로 3분할.
    *
    *  `pillGreen`/`pillRed`는 팀 이름표로, **다른 시트**(`team_pills.png`)에서 한 벌로
@@ -109,17 +97,11 @@ export const PLAY_ASSETS = {
   pillRed: '/play/pill_red.webp',
   pillGold: '/play/pill_gold.webp',
   pillWood: '/play/pill_wood.webp',
-  pillLeaf: '/play/pill_leaf.webp',
-  pillSmGreen: '/play/pill_sm_green.webp',
-  pillSmWood: '/play/pill_sm_wood.webp',
-  pillSmGold: '/play/pill_sm_gold.webp',
 
   /** 도토리 두 알이 달린 짙은 나무 바 — 도토리 축제 안내 */
   acornBar: '/play/acorn_bar.webp',
-  /** 나무 띠 3종 — 해설판·진행도처럼 가로로 긴 자리 */
+  /** 나무 띠 — 해설판·진행도처럼 가로로 긴 자리 */
   barDark: '/play/bar_dark.webp',
-  barLight: '/play/bar_light.webp',
-  barSm: '/play/bar_sm.webp',
   plank: '/play/plank.webp',
   labelSmall: '/play/label_small.webp',
 
@@ -129,76 +111,16 @@ export const PLAY_ASSETS = {
   gaugeTrack: '/play/gauge_track.webp',
   gaugeFill: '/play/gauge_fill.webp',
 
-  arrowGreen: '/play/arrow_green.webp',
   arrowWood: '/play/arrow_wood.webp',
-  badgeCrown: '/play/badge_crown.webp',
-  iconLock: '/play/icon_lock.webp',
   iconAcorn: '/play/icon_acorn.webp',
   /** 타이머 창의 모래시계 — 원본이 960×1316이라 자를 때 256px로 줄였다(cutPlaySheet의 resizeH) */
   iconHourglass: '/play/icon_hourglass.webp',
   iconCog: '/play/icon_cog.webp',
 
-  decorLog: '/play/decor_log.webp',
-  decorBush: '/play/decor_bush.webp',
-  decorGrass: '/play/decor_grass.webp',
-  decorStump: '/play/decor_stump.webp',
-  decorCattail: '/play/decor_cattail.webp',
-  decorStones: '/play/decor_stones.webp',
-  decorMushroom: '/play/decor_mushroom.webp',
-
-  /**
-   * 카드(기술 칸)를 감싸는 **금색 액자** — 별도 시트(`card_frame_sheet.png`)에서 잘랐다.
-   *
-   * ⚠️ 액자와 모서리 장식을 **합치지 않는다.** 액자는 9분할로 늘어나야 하는데, 장식을
-   * 거기 합쳐 넣으면 모서리 조각(두께 × 두께 = 11px)에 통째로 눌려 금색 얼룩이 된다.
-   * 장식은 고정 크기 배경으로 따로 얹는다(globals.css의 `.play-card-frame`).
-   *
-   * ⚠️ 이 시트의 액자는 **안쪽이 막혀 있어** 테두리에서 출발하는 flood fill이 닿지
-   * 못했다 — 가운데에서 한 번 더 뚫었다(cutPlaySheet의 `hollow`).
-   */
-  cardFrame: '/play/card_frame.webp',
-  cardCornerTL: '/play/card_corner_tl.webp',
-  cardCornerTR: '/play/card_corner_tr.webp',
-  cardCornerBL: '/play/card_corner_bl.webp',
-  cardCornerBR: '/play/card_corner_br.webp',
-  /** 잎 데칼 4종 — 액자 변 한가운데에 얹는 작은 장식 */
-  leafDecal1: '/play/leaf_decal_1.webp',
-  leafDecal2: '/play/leaf_decal_2.webp',
-  leafDecal3: '/play/leaf_decal_3.webp',
-  leafDecal4: '/play/leaf_decal_4.webp',
-  /** 금색 액자에 딸린 이름표 칸 — **아직 쓰지 않는다**(요청에 따라 에셋만 만들어 둠) */
-  cardPlaque: '/play/card_plaque.webp',
-
-  /**
-   * 나무 액자 3종 + 양피지 3종 (`frames_sheet.png`).
-   *
-   * **액자와 종이가 따로** 그려져 있고, 가로/정사각/세로 세 비율이 한 벌씩이라
-   * 쓸 자리의 비율에 가까운 것을 골라야 9분할로 조금만 늘리고 끝난다.
-   *
-   * ⚠️ 이 액자는 **모서리 잎 덩어리가 나무 개구부보다 훨씬 크다**(정사각 기준 215 vs 125).
-   * 그래서 요소의 `border`로 그리면 내용이 필요 이상으로 밀린다 — 액자는 `::after`로
-   * 띄워 그리고 내용이 시작하는 자리는 `padding`이 따로 정한다.
-   * 자세한 계산은 globals.css의 `.wood-panel` 절에 있다.
-   *
-   * ⚠️ 액자는 자를 때 **가운데를 뚫어야 한다**(cutPlaySheet의 `hollow`) —
-   * 나무가 사방을 막고 있어 테두리에서 출발하는 flood fill이 안쪽에 닿지 못한다.
-   */
-  /** ⚠️ 액자 셋은 **더 이상 화면에 쓰이지 않는다.** 팀 패널·카드판을 따로 두르던
-   *  방식이 통짜 액자(`playFrame`) 한 장으로 대체됐다. 양피지 색(#fee9bb)을 여기서
-   *  뽑았고 되돌릴 여지가 있어 조각은 남겨 둔다. */
-  frameWide: '/play/frame_wide.webp',     // 1153×752 — (미사용)
-  frameSquare: '/play/frame_square.webp', // 703×782 — (미사용)
-  frameTall: '/play/frame_tall.webp',     // 482×861 — (예비)
-  paperWide: '/play/paper_wide.webp',
-  paperSquare: '/play/paper_square.webp',
-  paperTall: '/play/paper_tall.webp',     // (예비)
-
   /** 양피지만 따로 있는 예전 시트(`frame_sheet.png`). 나무테(`wf_*`)와 통나무 바는
-   *  위 액자 3종으로 대체돼 걷어냈고, 종이 여섯 장만 남아 아직 쓰인다. */
+   *  걷어냈고, 종이 넷만 남아 쓰인다. */
   pgCard: '/play/pg_card.webp',
-  pgBarLg: '/play/pg_bar_lg.webp',
   pgBarMd: '/play/pg_bar_md.webp',    // 가운데 스택 네 줄이 쓴다
-  pgBarSm: '/play/pg_bar_sm.webp',
   pgSquare: '/play/pg_square.webp',
   pgStrip: '/play/pg_strip.webp',     // 해설판이 쓴다(가늘고 긴 종이)
 } as const;

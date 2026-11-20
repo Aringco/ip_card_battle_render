@@ -12,3 +12,8 @@ play-shots/
 individual-shots/
 play-shots-mobile/
 play-shots-before/
+
+# 테스트 서버 자동 배포(deploy/README.md) — 서버에만 있는 설정 · 상태 · 기록
+deploy/deploy.env
+deploy/.state/
+deploy/deploy.log

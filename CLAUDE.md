@@ -196,12 +196,14 @@ npm run build
 - **개발자는 연결이 아니라 `devId`로 기억한다**(`server/events/hub.ts`). 로비 → 게임 화면으로 갈 때마다 새 WebSocket이 열리므로, 연결로 기억하면 매칭되는 순간 "나간" 것이 된다. 판이 끝나면 결과 화면이 10초 뒤 로비로 보내고, 로비는 `client/lib/eventSession.ts`의 개발자 세션으로 **저절로 다시 대기**한다(상시 대기). ⚠️ 매칭 메시지 순서는 **`roomJoined` → `gameStart`**(뒤집히면 새 게임이 지워진다 — `Room.detach` 절과 같은 이유).
 - **기록은 `server/records/store.ts` — 메모리가 1차 사본, DB(Postgres, `DATABASE_URL`)는 붙드는 쪽이다.** 순위표·닉네임 검사는 메모리로 하고, 쓰기는 비동기 + 재시도 큐다(게임 흐름에서 await하지 말 것). 서버가 켜질 때 DB가 없으면 메모리로 돌면서 다시 붙을 때까지 재시도하고, **다 읽은 뒤에야** 쌓인 것을 넣는다(먼저 넣으면 같은 행이 두 번 잡힌다). DB 없이도 로컬 개발·테스트가 돈다.
 - **닉네임은 행사 전체에서 유일하다**(`normalizeNameKey` — 공백·대소문자·NFC). 재도전은 같은 닉네임 + 처음 정한 4자리 PIN. 겹침 안내·암호 오류는 전역 배너가 아니라 **폼의 설명 줄을 갈아끼운다**(`useWebSocket`의 `eventError` — 로비 폼 높이 규칙).
-- **비밀값은 서버 환경변수로만**(`EVENT_DEV_TOKEN` · `EVENT_ADMIN_TOKEN` · `EVENT_PIN_PEPPER` · `DATABASE_URL`, `render.yaml`에는 `sync: false`로 이름만). 프로덕션에서 비워 두면 그 기능이 꺼지고, 개발 빌드는 `dev1234`/`admin1234`를 쓴다. `shared/`에 두지 말 것(번들에 박힌다).
+- **비밀값은 서버 환경변수로만**(`EVENT_DEV_TOKEN` · `EVENT_ADMIN_TOKEN` · `EVENT_PIN_PEPPER` · `DATABASE_URL` — 저장소에는 넣지 않는다). 프로덕션에서 비워 두면 그 기능이 꺼지고, 개발 빌드는 `dev1234`/`admin1234`를 쓴다. `shared/`에 두지 말 것(번들에 박힌다).
 - **로비 세 열**: `.multi-inner`가 `1fr 1fr 1fr`이고 안쪽 패널의 원래 폭은 `(100cqw − 2·gap) / 3`이다. 가운데 열(방 참가하기)만 고른 쪽에 따라 밀려날 방향이 바뀐다(`data-stage="event"`면 왼쪽). 이벤트 폼 상태 8가지는 `measureLobby.mjs`가 함께 잰다(서버가 떠 있어야 대기 줄·중복·암호 화면이 뜬다).
 - 화면: 순위표 `/events`, 부스 대형 화면 `/events/board`(30초 갱신), 운영자 `/admin`(현황 · 무효 처리 · CSV · 일괄 삭제 — 토큰 검사는 서버). 게임 화면의 머리표는 `EventHud`(fixed 오버레이 — 액자 배치에 끼우지 않는다).
 
 ### 배포 — 루트 `server.ts` / `Dockerfile`
-Render처럼 서비스당 포트를 하나만 외부로 공개하는 플랫폼에서는 WS용 포트를 따로 열 수 없으므로(브라우저가 WS 서버에 직접 접속하는 구조라, 그 포트가 공개되지 않으면 접속 자체가 안 됨), 루트 `server.ts`가 Next.js 커스텀 서버 위에 같은 HTTP 서버·같은 포트(`$PORT`, 기본 3000)로 `/ws` 경로의 WebSocket을 함께 띄운다. 로컬 개발 시에는 이 파일을 쓰지 않는다 — 위의 "개발 명령어"대로 서버(8080)와 클라이언트(3000)를 분리 실행하는 방식을 그대로 쓴다. `npm run start`(루트, `ts-node --transpile-only server.ts`) 또는 `docker build -t ip-card-battle .` && `docker run -p 3000:3000 ip-card-battle`로 실행한다. Render는 `render.yaml`(Blueprint)이 서비스를 정의하며, 대시보드에서 한 번 연결하면 그 뒤로는 `main` push마다 자동 재배포된다.
+배포 서버는 포트를 하나만 외부로 공개하므로(nginx 뒤) WS용 포트를 따로 열 수 없다(브라우저가 WS 서버에 직접 접속하는 구조라, 그 포트가 공개되지 않으면 접속 자체가 안 됨). 그래서 루트 `server.ts`가 Next.js 커스텀 서버 위에 같은 HTTP 서버·같은 포트(`$PORT`, 기본 3000)로 `/ws` 경로의 WebSocket을 함께 띄운다. 로컬 개발 시에는 이 파일을 쓰지 않는다 — 위의 "개발 명령어"대로 서버(8080)와 클라이언트(3000)를 분리 실행하는 방식을 그대로 쓴다. `npm run start`(루트, `ts-node --transpile-only server.ts`) 또는 `docker build -t ip-card-battle .` && `docker run -p 3000:3000 ip-card-battle`로 실행한다.
+
+**테스트 서버(test.tupd.site)는 `main` push로 다시 배포된다** — 서버의 cron이 1분마다 `deploy/deploy.sh`를 불러 `origin/main`에 새 커밋이 있으면 받아서 빌드 · 재시작한다(서버가 **받아 가는** 방식이라 GitHub에 서버 접속 정보가 없다. 설치 · 운영은 [`deploy/README.md`](deploy/README.md)). 서버에서 코드를 고치지 않는다 — 커밋되지 않은 수정이 있으면 스크립트가 지우지 않고 멈춘다. ⚠️ 스크립트 본문이 `{ … }` 한 덩어리인 것은 실행 중 `git reset`이 스크립트 자신을 바꿔도 옛 파일 위치에서 새 내용을 이어 읽지 않게 하려는 것이다 — 풀지 말 것. `.gitattributes`가 `*.sh`를 LF로 고정한다(CRLF면 서버에서 깨진다).
 
 **배포에 WS 주소를 넣지 않는다.** `client/hooks/useWebSocket.ts`의 `resolveWsUrl`이 ① `NEXT_PUBLIC_WS_URL`이 있으면 그것 → ② 개발 빌드면 `ws://localhost:8080` → ③ 프로덕션 빌드면 **이 페이지와 같은 호스트의 `/ws`** 순으로 정한다. 통합 서버가 Next.js와 WS를 같은 포트에 얹으므로 ③이 언제나 맞고, 그래서 배포 도메인을 빌드 전에 알 필요가 없다 (`NEXT_PUBLIC_*`는 런타임 환경변수가 아니라 빌드 시점에 번들로 박히는 값이라, 도메인을 미리 못 박는 방식은 한 글자만 어긋나도 게임이 조용히 연결되지 않는다 — 화면은 멀쩡히 뜨고 방만 안 만들어진다). **갈림길이 호스트가 아니라 빌드 모드인 것이 요령이다** — 로컬에서 Docker 이미지를 띄우면 브라우저 주소가 개발 때와 똑같은 `localhost:3000`인데 WS는 8080이 아니라 같은 포트의 `/ws`에 있어, 호스트 이름으로는 둘을 가를 수 없다.
 
@@ -231,12 +233,11 @@ woff 906KB / **woff2 392KB**) 있지만 **woff2를 쓴다** — 한글 글꼴은
 첫 접속 대기시간에 그대로 얹힌다. woff는 woff2를 못 읽는 브라우저용 보험이라 평소 비용이 0이다.
 **글꼴을 바꾸면 글자 높이가 달라져 로비 폼이 몇 px 움직인다 — `measureLobby.mjs`로 다시 잴 것.**
 
-그림으로 그리는 버튼이 셋이고 쓰임이 다르다. 새 버튼을 만들 때 어느 쪽인지부터 고른다.
+그림으로 그리는 버튼이 둘이고 쓰임이 다르다. 새 버튼을 만들 때 어느 쪽인지부터 고른다.
 
 | | 그림 | 글씨 | 크기 지정 |
 | --- | --- | --- | --- |
 | `IconButton`(`.icon-button`) | 아이콘 한 장 | 그림에 없음 → `aria-label`만 | 정사각형 한 변(px) |
-| `BarButton`(`.bar-button`) | 글씨까지 그려진 완성 팻말 | **그림 안에 있음** → 라벨을 쓰면 두 번 보인다 | 가로만, 세로는 비율 |
 | `PlankButton`(`.plank-button`) | 빈 나무판(9분할) | **HTML로 얹는다** | 글자 길이를 따라 늘어남 |
 
 문구가 상태에 따라 바뀌는 자리("준비" ↔ "준비 완료 ✓")는 `PlankButton`뿐이다 — 글씨가 박힌

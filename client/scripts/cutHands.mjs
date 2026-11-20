@@ -31,7 +31,6 @@ const MAP = [
   { src: 'hand_02.png', out: 'hand_sheep.webp', who: '실용신양 — 양털 + 가죽 벨트' },
   { src: 'hand_03.png', out: 'hand_mermaid.webp', who: '디자인어 — 초록 손수건 + 산호' },
   { src: 'hand_04.png', out: 'hand_rabbit.webp', who: '상표토끼 — 분홍 털 + 도토리' },
-  { src: 'hand_05.png', out: 'hand_computer.webp', who: '모이퓨터 — 금속 손' },
   { src: 'hand_06.png', out: 'hand_point.webp', who: '기본 — 주인 없는 자리(👇 대체)' },
 ];
 

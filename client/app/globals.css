@@ -2141,7 +2141,7 @@ body {
 
 /* ── 그림으로 고르는 버튼 (자리 선택 · 선 플레이어) ──────────────────────
    글씨가 그림 안에 있으므로 HTML 라벨을 겹쳐 쓰지 않는다 — 이름은 aria-label로만
-   싣는다(`BarButton`과 같은 규칙).
+   싣는다.
 
    고른 것과 안 고른 것을 **색으로** 가른다. 안 고른 쪽은 흑백으로 눌러 두고, 고른
    쪽만 제 색으로 살아나며 살짝 떠오른다. 테두리나 링을 더하지 않는 이유는 그림에
@@ -3443,8 +3443,7 @@ body {
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
   transition: transform 0.18s ease, filter 0.18s ease;
 }
-.icon-button > img,
-.bar-button > img {
+.icon-button > img {
   display: block;
   width: 100%;
   height: 100%;
@@ -3453,56 +3452,27 @@ body {
 }
 /* ⚠️ 커서가 있는 기기에서만 — 터치에서는 방금 누른 버튼이 커진 채로 굳는다. */
 @media (any-hover: hover) {
-  .icon-button:hover:not(:disabled),
-  .bar-button:hover:not(:disabled) {
+  .icon-button:hover:not(:disabled) {
     transform: scale(1.06);
     filter: drop-shadow(0 5px 11px rgba(0, 0, 0, 0.45)) brightness(1.07);
   }
 }
-.icon-button:active:not(:disabled),
-.bar-button:active:not(:disabled) {
+.icon-button:active:not(:disabled) {
   transform: scale(0.96);
 }
-.icon-button:disabled,
-.bar-button:disabled {
+.icon-button:disabled {
   filter: grayscale(1) opacity(0.45);
   cursor: not-allowed;
 }
 @media (prefers-reduced-motion: reduce) {
   .icon-button,
   .icon-button:hover:not(:disabled),
-  .icon-button:active:not(:disabled),
-  .bar-button,
-  .bar-button:hover:not(:disabled),
-  .bar-button:active:not(:disabled) { transform: none; }
+  .icon-button:active:not(:disabled) { transform: none; }
 }
-
-/* 가로형 나무 팻말 버튼 — 그림 한 장이 통째로 버튼이고 글씨까지 그려져 있다.
-   `.icon-button`과 두 가지가 다르다.
-
-   ① **가로만 정한다.** 팻말은 3.1:1쯤 되는 가로로 긴 그림이라, 정사각형처럼 한 변을
-      주면 눌린다. 폭만 주고 세로는 `height: auto`로 그림 비율을 따라가게 둔다.
-   ② **자리를 다 쓰되 상한이 있다.** `width: 100%`라 좁은 화면에서는 알아서 줄고,
-      넓은 곳에서는 `--bar-btn`에서 멈춘다 — 안 그러면 대기실처럼 넓은 카드에서
-      팻말이 카드 폭만큼 커져 세로로도 그만큼 자란다(폭 700px이면 키가 226px이다).
-
-   hover·active·비활성 처리는 위 `.icon-button`과 같은 선언을 공유한다. */
-.bar-button {
-  display: block;
-  width: 100%;
-  max-width: var(--bar-btn, 420px);
-  padding: 0;
-  border: 0;
-  background: none;
-  line-height: 0;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
-  transition: transform 0.18s ease, filter 0.18s ease;
-}
-.bar-button > img { height: auto; }
 
 /* ── 나무 팻말 버튼 ─────────────────────────────────────────────────────
    빈 나무판 그림 한 장(950×245)을 9분할해 그리고, 글씨는 HTML로 그 위에 얹는다.
-   `.bar-button`(글씨까지 그려진 완성 그림)과 달리 **문구를 코드에서 바꿀 수 있고**,
+   그림에 글씨가 없어 **문구를 코드에서 바꿀 수 있고**,
    버튼마다 글자 길이가 달라도 판이 그만큼 늘어난다.
 
    왜 배경 이미지가 아니라 border-image인가 —

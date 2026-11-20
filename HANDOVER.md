@@ -304,7 +304,6 @@ upstream/main 7개 커밋을 병합해 `origin/main`에 반영했다(`ede6b49..8
 | `back_board.png` | **원본 PNG를 손대지 않고** 그대로 쓴다(444KB) |
 | `corner_{tl,bl}.webp` | 2026-09-04에 새 그림으로 교체 |
 | `corner_{tr,br}.webp` | 아직 이전 스타일 — 교체 요청이 없었다 |
-| `score_board.webp` | 점수판용. 아직 미사용 |
 
 ### 되돌리면 조용히 깨지는 것 — 다섯 가지
 
@@ -683,7 +682,7 @@ server test 63/63, server build, 루트 `tsc --noEmit`, client build 통과.
 
 **세 번째가 이겼다.** 문구가 상태에 따라 바뀌는 버튼("준비" ↔ "준비 완료 ✓ (누르면 취소)",
 "규칙 적용" ↔ "적용됨 ✓")은 글씨가 박힌 그림으로는 만들 수 없기 때문이다. 그 결과
-`btn_start_bar`·`btn_solo_bar`·`icon_start` 세 에셋과 `BarButton` 컴포넌트가 **미아가 됐다**
+`btn_start_bar`·`btn_solo_bar`·`icon_start` 세 에셋과 `BarButton` 컴포넌트가 **미아가 됐다**(2026-11-21에 모두 지웠다)
 (되돌릴 수 있게 남겨 뒀지만 174KB가 매 접속마다 프리로드된다 — §16 참조).
 
 ### 되돌리면 조용히 깨지는 것 — 다섯 가지
@@ -797,16 +796,14 @@ server test 63/63, server build, 루트 `tsc --noEmit`, client build 통과.
 
 ---
 
-## 15. Render 배포 구성 (2026-09-08)
+## 15. 배포 구성 — WS 주소를 스스로 찾기 (2026-09-08)
 
 `Dockerfile`·`.dockerignore`·`docker-compose.yml` 셋은 **upstream과 완전히 동일**해
 손댈 것이 없었다(`git diff upstream/main`이 비어 있다). 배포를 막고 있던 것은 다른 데 있었다.
 
 ### `NEXT_PUBLIC_*`는 빌드 시점에 번들로 박힌다
 
-런타임 환경변수가 아니다. 그래서 기존 구조는 **배포 도메인을 빌드 전에 알아야 했는데**,
-Render는 서비스 이름이 이미 쓰이고 있으면 도메인 뒤에 임의 문자열을 붙인다
-(`ip-card-battle-render.onrender.com`은 이미 upstream이 쓰고 있다).
+런타임 환경변수가 아니다. 그래서 기존 구조는 **배포 도메인을 빌드 전에 알아야 했다**.
 한 글자만 어긋나면 **화면은 멀쩡히 뜨는데 방만 안 만들어진다** — 찾기 가장 어려운 고장이다.
 
 그래서 클라이언트가 주소를 스스로 찾게 했다(`client/hooks/useWebSocket.ts`의 `resolveWsUrl`):
@@ -835,21 +832,6 @@ NODE_ENV=production NEXT_DIST_DIR=.next-verify PORT=3300 \
 
 클라이언트가 `ws://localhost:3300/ws`로 붙고, 방 생성·대기실·혼자 놀기 게임 화면까지
 정상, 콘솔 에러 0건.
-
-### 남은 한 단계 — 사람이 해야 한다
-
-`render.yaml`(Blueprint)은 저장소에 있지만 **Render 쪽에서 그 저장소를 "선택"하는 단계는
-대시보드에서 직접 해야 한다.** Render는 GitHub를 훑어 `render.yaml`을 찾아내지 않는다 —
-사용자가 Render에게 "이 저장소를 봐라"라고 알려줘야 한다.
-
-> 아직 연결 전이라는 근거: `gh api repos/Aringco/ip_card_battle_render/hooks`가 빈 배열이다.
-> Render는 저장소를 연결할 때 push 알림용 웹훅을 등록한다.
-
-**New + → Blueprint → `Aringco/ip_card_battle_render` → Apply** 한 번이면 되고,
-그 뒤로는 `main`에 push할 때마다 자동 재배포된다. 넣을 환경변수는 없다.
-
-> ⚠️ `plan: free`로 적어 뒀다. 무료 플랜은 15분간 요청이 없으면 잠들고 깨어나는 데 1분쯤
-> 걸리며, **그때 WebSocket 연결이 끊긴다.** 실시간 대전 게임에는 체감이 크다.
 
 ---
 
@@ -1003,8 +985,7 @@ Cafe24로 그려진다.**
 
 플레이 화면 작업의 전체 이력은 [`PLAY_UI_ROADMAP.md`](PLAY_UI_ROADMAP.md)와
 [`client/public/play/README.md`](client/public/play/README.md)에 있다. 여기에는
-**다음 사람이 모르고 건드리면 조용히 깨지는 것**만 적는다. 경위는
-[`오늘의_명령어/오늘의_명령어_2026-09-18.txt`](오늘의_명령어/오늘의_명령어_2026-09-18.txt).
+**다음 사람이 모르고 건드리면 조용히 깨지는 것**만 적는다. 경위는 git 이력(2026-09-18 커밋)에 있다.
 
 ### 액자(`play_frame.webp`)를 다시 갈아끼울 때
 
@@ -1053,7 +1034,4 @@ Cafe24로 그려진다.**
 - `ASSET_IDEAS.md` — 앞으로 넣으면 좋을 이미지 아이디어
 - `PLAY_UI_ROADMAP.md` — **플레이 화면 UI 입히기** 계획과 결과(2026-09-11~)
 - `client/public/play/README.md` — 플레이 화면 조각별 분할 값과 되돌린 선택들
-- `render.yaml` — Render Blueprint (대시보드에서 한 번 연결하면 push마다 자동 배포)
-- **[`오늘의_명령어/`](오늘의_명령어/)** — 날짜별 요청 기록. 2026-09-11에 루트에
-  흩어져 있던 것을 이 폴더로 모았다. 목록과 한 줄 요약은
-  [`오늘의_명령어/README.md`](오늘의_명령어/README.md)에 있다
+- `deploy/README.md` — 테스트 서버(test.tupd.site) 자동 재배포(서버 cron이 `main`을 받아 간다)

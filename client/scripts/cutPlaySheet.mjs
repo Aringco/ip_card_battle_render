@@ -58,8 +58,8 @@ const OUT_DIR = path.join(__dirname, '..', 'public', 'play');
  */
 const SHEETS = [
   {
-    // 마스터 시트 v2(2026-10-30) — 1711×919, 알파 있음. 예전 master_sheet.png(2560×1339)와 **같은 배치의 새 그림**이라 조각 36개를
-    // 모두 여기서 다시 자른다(예전 시트는 assets-src에 기록으로만 남아 있다).
+    // 마스터 시트 v2(2026-10-30) — 1711×919, 알파 있음. 예전 master_sheet.png(2560×1339)와 **같은 배치의 새 그림**이라 쓰는 조각을
+    // 모두 여기서 자른다(예전 시트는 지웠다).
     // ⚠️ minAlpha 128 — 새 시트는 조각 둘레에 알파가 낮은 색 번짐(빨강 · 노랑 · 초록)이 있어 기본값(16)으로 성분을 묶으면 이웃 조각이
     //    번짐으로 이어져 한 덩어리가 된다(board_h와 acorn_bar가 685×475 한 성분으로 잡혔다). 128로 묶은 뒤 경계 2px만 다시 넓혀
     //    가장자리의 부드러운 알파는 살린다(loadSheet의 grow).
@@ -71,28 +71,11 @@ const SHEETS = [
       // 맨 윗줄 통째 = 상단 바(팻말 + 들보 + 덩굴 마무리가 한 몸)
       { name: 'upper_bar', at: [19, 9, 1677, 159], size: [2500, 233] },
 
-      // ── 나무 액자 + 양피지 (9분할) ──
-      { name: 'board_h', at: [14, 159, 506, 365], size: [752, 552] },
-      { name: 'board_sq', at: [1056, 262, 332, 305], size: [502, 459] },
-      { name: 'board_v', at: [517, 294, 180, 249], size: [271, 378] },
-
-      // ── 줄 노트 (9분할) ──
-      { name: 'note_green', at: [426, 642, 177, 248], size: [266, 370] },
-      { name: 'note_pink', at: [614, 644, 185, 248], size: [272, 377] },
-      { name: 'note_green_rows', at: [17, 631, 193, 265], size: [289, 406] },
-      { name: 'note_pink_rows', at: [220, 630, 197, 267], size: [293, 407] },
-
       // ── 알약·띠 (가로 3분할) ──
       { name: 'pill_gold', at: [1056, 170, 131, 77], size: [194, 118] },
       { name: 'pill_wood', at: [1200, 173, 164, 68], size: [248, 101] },
-      { name: 'pill_leaf', at: [1377, 159, 185, 86], size: [278, 125] },
-      { name: 'pill_sm_green', at: [711, 510, 108, 55], size: [156, 81] },
-      { name: 'pill_sm_wood', at: [830, 510, 104, 54], size: [154, 80] },
-      { name: 'pill_sm_gold', at: [944, 506, 98, 57], size: [146, 84] },
       { name: 'acorn_bar', at: [21, 515, 417, 108], size: [619, 164] },
       { name: 'bar_dark', at: [704, 286, 342, 123], size: [510, 186] },
-      { name: 'bar_light', at: [703, 404, 344, 96], size: [518, 146] },
-      { name: 'bar_sm', at: [451, 550, 243, 81], size: [373, 119] },
       { name: 'plank', at: [525, 164, 355, 129], size: [535, 196] },
       { name: 'label_small', at: [1524, 410, 163, 123], size: [256, 182] },
 
@@ -102,66 +85,21 @@ const SHEETS = [
       { name: 'gauge_track', at: [1246, 581, 114, 38], size: [170, 53] },
 
       // ── 고정 크기 ──
-      { name: 'arrow_green', at: [1575, 173, 129, 77], size: [197, 113] },
       { name: 'arrow_wood', at: [1434, 262, 237, 143], size: [362, 221] },
-      { name: 'badge_crown', at: [1391, 419, 121, 128], size: [183, 186] },
-      { name: 'icon_lock', at: [920, 821, 66, 81], size: [94, 114] },
       { name: 'icon_acorn', at: [831, 830, 52, 67], size: [75, 100], clearLight: [44, 10, 16, 13] },
       { name: 'icon_cog', at: [1126, 830, 69, 71], size: [100, 103] },
 
-      // ── 귀퉁이 장식 ──
-      { name: 'decor_log', at: [811, 637, 273, 89], size: [407, 138] },
-      { name: 'decor_bush', at: [1414, 656, 113, 99], size: [171, 152] },
-      { name: 'decor_grass', at: [817, 727, 132, 92], size: [203, 137] },
-      { name: 'decor_stump', at: [1486, 566, 93, 81], size: [141, 120] },
-      { name: 'decor_cattail', at: [1590, 538, 107, 114], size: [167, 173] },
-      { name: 'decor_stones', at: [1597, 843, 100, 48], size: [152, 73] },
-      { name: 'decor_mushroom', at: [1356, 809, 85, 92], size: [127, 138] },
     ],
   },
   {
-    // 카드(기술 칸)를 감싸는 금색 액자 시트 — 1920×1040
-    src: 'card_frame_sheet.png',
-    pieces: [
-      { name: 'card_frame', at: [202, 145, 826, 687], hollow: true }, // 금색 사각 액자 (9분할·fill 없음)
-      { name: 'card_corner_tl', at: [42, 43, 216, 189] },   // 네 모서리 장식 — 고정 크기
-      { name: 'card_corner_tr', at: [977, 43, 211, 188] },
-      { name: 'card_corner_bl', at: [50, 735, 191, 229] },
-      { name: 'card_corner_br', at: [991, 738, 187, 225] },
-      { name: 'card_plaque', at: [1161, 282, 696, 331] },   // 이름표 칸 — **보류**(에셋만 만들어 둔다)
-      { name: 'leaf_decal_1', at: [1266, 731, 150, 212] },  // 잎 데칼 4종
-      { name: 'leaf_decal_2', at: [1448, 732, 124, 201] },
-      { name: 'leaf_decal_3', at: [1602, 776, 109, 170] },
-      { name: 'leaf_decal_4', at: [1746, 762, 126, 176] },
-    ],
-  },
-  {
-    // 양피지 시트 — 2560×1360. 여기 있던 나무테(`wf_*`)와 통나무 바(`log_bar`)는
-    // `frames_sheet.png`의 액자 3종으로 대체돼 걷어냈다. 지금은 종이만 남는다.
+    // 양피지 시트 — 2560×1360. 여기 있던 나무테(`wf_*`)와 통나무 바(`log_bar`)는 걷어냈다. 지금은 종이만 남는다.
     src: 'frame_sheet.png',
     pieces: [
       // 양피지(내부 영역)
       { name: 'pg_card', at: [46, 135, 310, 509] },     // 세로 카드
-      { name: 'pg_bar_lg', at: [384, 135, 895, 164] },  // 가로 넓은 띠
       { name: 'pg_bar_md', at: [384, 317, 895, 151] },
-      { name: 'pg_bar_sm', at: [384, 487, 601, 155] },
       { name: 'pg_square', at: [1014, 487, 257, 262] }, // 작은 정사각
       { name: 'pg_strip', at: [50, 668, 930, 87] },     // 가늘고 긴 띠
-    ],
-  },
-  {
-    // 나무 액자 3종 + 양피지 3종 — 2560×1856. **액자와 종이가 따로** 그려져 있고,
-    // 가로/정사각/세로 세 비율이 한 벌씩이라 **쓸 자리의 비율에 맞춰 고른다**
-    // (늘여서 맞추는 게 아니라 비슷한 비율을 골라 9분할로 조금만 늘리기 위해서다).
-    // ⚠️ 액자는 전부 `hollow` — 나무가 사방을 막아 테두리발 flood fill이 안쪽에 못 닿는다.
-    src: 'frames_sheet.png',
-    pieces: [
-      { name: 'frame_wide', at: [27, 127, 1153, 752], hollow: true },
-      { name: 'frame_square', at: [1234, 94, 703, 782], hollow: true },
-      { name: 'frame_tall', at: [2053, 51, 482, 861], hollow: true },
-      { name: 'paper_wide', at: [51, 999, 1100, 729] },
-      { name: 'paper_square', at: [1258, 1003, 643, 737] },
-      { name: 'paper_tall', at: [2050, 991, 453, 759] },
     ],
   },
   {

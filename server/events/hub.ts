@@ -492,7 +492,7 @@ export class EventHub {
 
 /**
  * 환경변수로 허브를 만든다(배포·로컬 공통). 개발 빌드에서 암호를 안 정했으면 기본값을 쓰고 콘솔에 알린다 —
- * 프로덕션(NODE_ENV=production)에서는 기본값을 쓰지 않으므로 Render 대시보드에 반드시 넣어야 한다.
+ * 프로덕션(NODE_ENV=production)에서는 기본값을 쓰지 않으므로 배포 서버의 환경변수에 반드시 넣어야 한다.
  */
 export function eventTokensFromEnv(env: NodeJS.ProcessEnv = process.env): { devToken: string | null; adminToken: string | null } {
   const production = env.NODE_ENV === 'production';

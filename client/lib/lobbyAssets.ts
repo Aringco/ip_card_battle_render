@@ -93,27 +93,14 @@ export const LOBBY_ASSETS = {
   cornerTR: '/ui/corner_tr.webp',
   cornerBL: '/ui/corner_bl.webp',
   cornerBR: '/ui/corner_br.webp',
-  /** 가로형 백보드 원본(나무 팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
-  scoreBoard: '/ui/score_board.webp',
   /**
-   * UI 아이콘 5종 — 한 장짜리 시트(2행 4열, 8개)에서 잘라낸 것.
+   * UI 아이콘 4종 — 한 장짜리 시트(2행 4열, 8개)에서 잘라낸 것.
    *
    * 시트에는 글씨가 없고 아이콘만 들어 있다 — 라벨은 항상 HTML로 따로 쓴다
    * (글꼴을 바꾸거나 문구를 고칠 때 그림을 다시 만들지 않아도 되고, 스크린리더도 읽는다).
    * 자른 좌표와 절차는 client/public/ui/README.md 참조.
    *
    * 이 중 셋(create·cog·help)은 그림 자체가 버튼이다(`IconButton`) — 배경·테두리 없이 그림만 놓인다.
-   */
-  /**
-   * 가로형 나무 팻말 버튼 두 장 — **그림 안에 글씨가 이미 그려져 있다.**
-   *
-   * 아이콘 5종과 규칙이 정반대다. 저쪽은 그림에 글씨가 없어 라벨을 HTML로 따로 쓰지만,
-   * 이 둘은 팻말·그림·글씨가 한 장으로 그려진 완성된 버튼이라 **HTML 라벨을 겹쳐 쓰면
-   * 글씨가 두 번 보인다.** 그래서 `BarButton`은 화면에 글자를 내지 않고 `aria-label`과
-   * `title`로만 이름을 싣는다(스크린리더·툴팁은 그대로 읽힌다).
-   *
-   * 받은 원본은 투명 PNG였지만 세션에는 JPEG로 도착해 투명한 자리가 어두운 글로우로
-   * 칠해져 있었다 — 되살린 방법은 client/public/ui/README.md 참조.
    */
   /**
    * 행동(기술) 칸을 짚어 주는 **캐릭터별 손** 4종.
@@ -130,7 +117,6 @@ export const LOBBY_ASSETS = {
   handMermaid: '/ui/hand_mermaid.webp',  // 디자인어 — 초록 손수건 + 산호
   handRabbit: '/ui/hand_rabbit.webp',    // 상표토끼 — 분홍 털 + 도토리
   handTiger: '/ui/hand_tiger.webp',      // 특허랑이 — 줄무늬 + 톱니
-  handComputer: '/ui/hand_computer.webp', // 모이퓨터 — 금속 손 (**아직 쓰는 곳 없음**)
   /** 주인이 없는 자리(장소 타일)가 쓰는 기본 손 — 예전 👇 이모지를 대신한다.
    *  이모지는 OS마다 모양이 달라 보는 사람에 따라 화면이 달라졌다. */
   handPoint: '/ui/hand_point.webp',
@@ -139,8 +125,7 @@ export const LOBBY_ASSETS = {
    * 자리·선 플레이어를 고르는 **그림 버튼** 4종.
    *
    * 셋(팀 1·팀 2·관전자)은 한 시트에서, 무작위는 따로 받은 그림에서 잘랐다.
-   * **글씨가 그림 안에 있으므로** HTML 라벨을 겹쳐 쓰지 않는다 — 팻말(`BarButton`)과
-   * 같은 규칙이다. 고르지 않은 버튼은 CSS가 흑백으로 눌러 구분한다.
+   * **글씨가 그림 안에 있으므로** HTML 라벨을 겹쳐 쓰지 않는다. 고르지 않은 버튼은 CSS가 흑백으로 눌러 구분한다.
    */
   btnTeamA: '/ui/btn_team_a.webp',        // 팀 1 — 실용신양 + 디자인어
   btnTeamB: '/ui/btn_team_b.webp',        // 팀 2 — 상표토끼 + 특허랑이
@@ -149,11 +134,6 @@ export const LOBBY_ASSETS = {
   /** 닉네임·팀 이름을 다시 뽑는 주사위 버튼. 나무틀까지 그려져 있어 CSS로 상자를 두르지 않는다. */
   btnDice: '/ui/btn_dice.webp',
 
-  barStart: '/ui/btn_start_bar.webp',   // "게임 시작" — 대기실 시작 버튼
-  barSolo: '/ui/btn_solo_bar.webp',     // "컴퓨터와 대전하기" — 혼자 놀기 폼의 시작 버튼
-  /** 놀이터 재생 버튼. 대기실 시작 버튼에 쓰다가 가로 팻말 `barStart`에 자리를 내주어
-      **지금은 어디서도 쓰이지 않는다**(되돌릴 수 있게 파일과 경로는 남겨 둔다). */
-  iconStart: '/ui/icon_start.webp',
   iconCreate: '/ui/icon_create.webp',  // 방 만들기 — 통나무집+. 방 만들기 폼의 제출 버튼 그 자체
   iconCog: '/ui/icon_cog.webp',        // 설정 — 톱니바퀴+렌치. 설정 버튼 그 자체 + 규칙 접기/펼치기 라벨 2곳
   iconRank: '/ui/icon_rank.webp',      // 순위 — 왕관 쓴 토끼 방패. 결과 화면 **왼쪽(팀별 점수)** 판의 문장
