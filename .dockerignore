@@ -13,5 +13,7 @@
 # (`**/.next-*`가 client/.next-verify를 잡는다 — `**/.next`는 정확히 `.next`만 잡는다.)
 client/lobby-shots
 
-# 서버 배포 스크립트(deploy/README.md) — 이미지와 무관하고, 서버의 deploy.env가 딸려 들어가지 않게
-deploy
+# 서버 배포 스크립트(deploy/README.md) — 서버의 deploy.env · 상태가 딸려 들어가지 않게.
+# ⚠️ deploy/gen-nginx-conf는 Dockerfile.nginx가 이미지에 넣으므로 남긴다
+deploy/*
+!deploy/gen-nginx-conf
