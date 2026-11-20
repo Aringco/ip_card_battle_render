@@ -3,7 +3,7 @@
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 
 /** 시트에서 잘라낸 UI 아이콘 이름 — lobbyAssets.ts의 키와 같다. */
-export type UiIconName = 'iconStart' | 'iconCreate' | 'iconCog' | 'iconRank' | 'iconHelp';
+export type UiIconName = 'iconCreate' | 'iconCog' | 'iconRank' | 'iconHelp';
 
 /**
  * 버튼·제목 앞에 붙는 그림 아이콘.
@@ -80,47 +80,3 @@ export function IconButton({
   );
 }
 
-/** 가로형 나무 팻말 버튼 이름 — lobbyAssets.ts의 키와 같다. */
-export type BarButtonName = 'barStart' | 'barSolo';
-
-/**
- * 팻말 그림 한 장이 통째로 버튼인 자리 — 대기실 "게임 시작", 혼자 놀기 "컴퓨터와 대전하기".
- *
- * `IconButton`과 **글씨를 다루는 방식이 정반대다.** 아이콘 쪽은 그림에 글씨가 없어 라벨을
- * HTML로 따로 쓰지만, 이 팻말은 글씨까지 한 장으로 그려져 있다 — 그래서 화면에 글자를
- * 내지 않고 `label`을 `aria-label`·`title`로만 싣는다. 여기에 눈에 보이는 글자를 덧붙이면
- * 같은 말이 두 번 보인다.
- *
- * 크기는 **가로만** 정한다(`maxWidth`). 세로는 `height: auto`라 그림 비율(약 3.1:1)을
- * 그대로 따라간다 — 가로세로를 둘 다 고정하면 팻말이 눌리거나 늘어난다.
- */
-export function BarButton({
-  name,
-  label,
-  maxWidth,
-  onClick,
-  disabled,
-  className = '',
-}: {
-  name: BarButtonName;
-  label: string;
-  /** 팻말의 최대 가로폭. 좁은 자리에서는 그보다 작아지고, 세로는 비율대로 따라온다. */
-  maxWidth: number | string;
-  onClick?: () => void;
-  disabled?: boolean;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={`bar-button ${className}`}
-      style={{ '--bar-btn': typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth } as React.CSSProperties}
-    >
-      <img src={LOBBY_ASSETS[name]} alt="" aria-hidden draggable={false} />
-    </button>
-  );
-}

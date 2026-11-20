@@ -16,3 +16,8 @@ play-shots-before/
 # graphify 산출물 — 다시 만들 수 있다
 graphify-out/
 *.log
+
+# 테스트 서버 자동 배포(deploy/README.md) — 서버에만 있는 설정 · 상태 · 기록
+deploy/deploy.env
+deploy/.state/
+deploy/deploy.log

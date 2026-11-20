@@ -92,7 +92,6 @@ export const LOBBY_ASSETS = {
   cornerBL: '/ui/corner_bl.webp',
   cornerBR: '/ui/corner_br.webp',
   /** 가로형 백보드 원본(나무 팻말 포함) — 점수판용. 아직 어디에도 쓰이지 않는다. */
-  scoreBoard: '/ui/score_board.webp',
   /**
    * UI 아이콘 5종 — 한 장짜리 시트(2행 4열, 8개)에서 잘라낸 것.
    *
@@ -128,7 +127,6 @@ export const LOBBY_ASSETS = {
   handMermaid: '/ui/hand_mermaid.webp',  // 디자인어 — 초록 손수건 + 산호
   handRabbit: '/ui/hand_rabbit.webp',    // 상표토끼 — 분홍 털 + 도토리
   handTiger: '/ui/hand_tiger.webp',      // 특허랑이 — 줄무늬 + 톱니
-  handComputer: '/ui/hand_computer.webp', // 모이퓨터 — 금속 손 (**아직 쓰는 곳 없음**)
   /** 주인이 없는 자리(장소 타일)가 쓰는 기본 손 — 예전 👇 이모지를 대신한다.
    *  이모지는 OS마다 모양이 달라 보는 사람에 따라 화면이 달라졌다. */
   handPoint: '/ui/hand_point.webp',
@@ -147,11 +145,8 @@ export const LOBBY_ASSETS = {
   /** 닉네임·팀 이름을 다시 뽑는 주사위 버튼. 나무틀까지 그려져 있어 CSS로 상자를 두르지 않는다. */
   btnDice: '/ui/btn_dice.webp',
 
-  barStart: '/ui/btn_start_bar.webp',   // "게임 시작" — 대기실 시작 버튼
-  barSolo: '/ui/btn_solo_bar.webp',     // "컴퓨터와 대전하기" — 혼자 놀기 폼의 시작 버튼
   /** 놀이터 재생 버튼. 대기실 시작 버튼에 쓰다가 가로 팻말 `barStart`에 자리를 내주어
       **지금은 어디서도 쓰이지 않는다**(되돌릴 수 있게 파일과 경로는 남겨 둔다). */
-  iconStart: '/ui/icon_start.webp',
   iconCreate: '/ui/icon_create.webp',  // 방 만들기 — 통나무집+. 방 만들기 폼의 제출 버튼 그 자체
   iconCog: '/ui/icon_cog.webp',        // 설정 — 톱니바퀴+렌치. 설정 버튼 그 자체 + 규칙 접기/펼치기 라벨 2곳
   iconRank: '/ui/icon_rank.webp',      // 순위 — 왕관 쓴 토끼 방패. 결과 화면 **왼쪽(팀별 점수)** 판의 문장

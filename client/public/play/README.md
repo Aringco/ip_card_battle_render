@@ -5,17 +5,17 @@
 
 | 시트 | 무엇이 들어 있나 |
 | --- | --- |
-| `master_sheet_v2.png` | 상단 바 · 알약 · 게이지 · 노트 · 화살표 · 장식 (36조각) — **2026-10-30 ~** 새 그림(1711×919, 알파 있음). 조각마다 예전 출력 크기(`size`)로 맞춰 CSS 슬라이스 값을 그대로 쓴다 |
-| `master_sheet.png` | (예전) 같은 배치의 색 보정본(2560×1339) — 2026-10-30에 v2로 갈았다. 이제 자르지 않는다 |
+| `master_sheet_v2.png` | 상단 바 · 알약 · 띠 · 게이지 · 아이콘 — **2026-10-30 ~** 새 그림(1711×919, 알파 있음). 조각마다 예전 출력 크기(`size`)로 맞춰 CSS 슬라이스 값을 그대로 쓴다 |
 | `team_pills.png` | 팀 이름표 알약 두 장 (연두·빨강) |
 | `play_frame.png` | (예전) 플레이 화면 통짜 액자 — 2026-09-18 ~ 10-30에 썼다. 이제 cutPlaySheet가 자르지 않는다 |
 | `play_frame_v2.png` | 플레이 화면 통짜 액자(2026-10-30 ~) — 1700×925, 알파 있음. `scripts/fitPlayFrame.mjs`가 칸 구간만 늘여 1965×1000 · 예전 칸 좌표에 맞추고 채도를 낮춘다(0.75배 · 밝기 1.06배) |
-| `frames_sheet.png` | **나무 액자 3종 + 양피지 3종** — 가로·정사각·세로 한 벌씩 |
-| `frame_sheet.png` | 양피지(`pg_*`) 여섯 장. 여기 있던 나무테(`wf_*`)·통나무 바는 걷어냈다 |
-| `card_frame_sheet.png` | 기술 카드 금색 액자와 모서리 장식 |
+| `frame_sheet.png` | 양피지(`pg_*`) 네 장. 여기 있던 나무테(`wf_*`)·통나무 바는 걷어냈다 |
 
-> ⚠️ `master_sheet.png`는 예전 `play_ui_sheet.png`·`upper_bar_sheet.png` 두 장을
-> 대체한 **깨끗한 재수출본**입니다(알파가 제대로 살아 있습니다). 예전 두 장은 지웠습니다.
+> **2026-11-21 정리** — 화면에서 쓰지 않던 조각 41개(`board_*` · `note_*` · `frame_*` · `paper_*` · `decor_*` · `leaf_decal_*` · `card_*` 등)와
+> 그 조각만 담고 있던 시트(`master_sheet.png` · `frames_sheet.png` · `card_frame_sheet.png`)를 지웠습니다. 매 접속마다 미리 받아
+> 로딩만 늘리고 있었습니다. 아래 본문에 그 이름이 나오는 곳은 지난 기록입니다 — 다시 필요하면 git 이력에서 파일과
+> `cutPlaySheet.mjs`의 자르기 좌표를 되살립니다.
+
 경로는 `client/lib/playAssets.ts`, 분할 값은 `client/app/globals.css`의
 **"플레이 화면 — 나무 UI"** 절에 있습니다. 설계 배경은 `PLAY_UI_ROADMAP.md`.
 
@@ -386,11 +386,4 @@ overflow: hidden;                          /* ← 없으면 그림 귀가 둥근
 
 ## 아직 쓰지 않은 조각
 
-`board_h` · `board_sq` · `board_v` · `note_*` 4종 · `bar_dark` · `bar_light` · `bar_sm` · `plank` ·
-`pill_leaf` · `pill_sm_*` 3종 · `arrow_green` · `arrow_wood` · `badge_crown` ·
-`icon_lock` · `icon_acorn` · `icon_cog` · `decor_*` 7종 ·
-`card_plaque`(요청에 따라 **보류** — 에셋만 만들어 둠) · `leaf_decal_*` 4종 ·
-`card_frame`(CSS 테두리로 대체됐지만 되돌릴 수 있게 남겨 둠).
-
-쓸 자리는 `PLAY_UI_ROADMAP.md` §4 표에 적혀 있습니다. 특히 `icon_lock`은 장소
-금지 마크(지금은 SVG 원+사선)를, `decor_*`는 화면 네 귀퉁이를 위한 것입니다.
+없습니다 — 2026-11-21에 쓰지 않던 조각을 모두 지웠습니다(맨 위 정리 기록 참고).

@@ -12,3 +12,6 @@
 # 딸려 들어간다. 둘이 합쳐 30MB가 넘어 빌드가 느려지고 이미지와도 무관하다.
 # (`**/.next-*`가 client/.next-verify를 잡는다 — `**/.next`는 정확히 `.next`만 잡는다.)
 client/lobby-shots
+
+# 서버 배포 스크립트(deploy/README.md) — 이미지와 무관하고, 서버의 deploy.env가 딸려 들어가지 않게
+deploy
