@@ -482,6 +482,37 @@
 .shield-band-icon { width: 1em; height: 1em; color: #64748b; }
 .shield-band[data-dir='v'] .shield-band-value { bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
 .shield-band[data-dir^='h'] .shield-band-value { bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
+/* 보호막이 0이 되는 순간 — 띠가 하얗게 번쩍이며 사라지고 은빛 조각이 바깥으로 튄다(2026-11-18, ShieldGauge의 broken) */
+.shield-band.is-shatter { background: none; border-color: transparent; box-shadow: none; }
+.shield-band.is-shatter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(203, 213, 225, 0.8));
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.95);
+  animation: shieldFlash 0.35s ease-out forwards;
+}
+@keyframes shieldFlash {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+.shield-shard {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  background: linear-gradient(135deg, #fff, #94a3b8);
+  clip-path: polygon(50% 0, 100% 70%, 20% 100%);
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
+  animation: shieldShard 0.8s cubic-bezier(0.2, 0.7, 0.4, 1) both;
+}
+.shield-shard:nth-child(even) { width: 8px; height: 8px; margin: -4px 0 0 -4px; clip-path: polygon(0 20%, 100% 0, 60% 100%); }
+@keyframes shieldShard {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + 14px)) rotate(var(--r)); opacity: 0; }
+}
 /* PC 쿨타임 — 상대(또는 내)가 쓴 뒤 쿨타임 중인 카드는 동물 표의 얼굴이 흑백(모바일 .m-icon[data-cooling]과 같다) · 남은 턴 숫자 */
 .exp-row-face[data-cooling] img { filter: grayscale(1) brightness(0.8); }
 .exp-row-cool {
@@ -509,4 +540,5 @@
 @media (prefers-reduced-motion: reduce) {
   .acorn-pick-flip, .acorn-rise, .card-back-acorn { animation-duration: 0.01s; animation-delay: 0s; }
   .shield-band-shine::after { animation: none; }
+  .shield-shard, .shield-band.is-shatter::before { animation-duration: 0.2s; }
 }

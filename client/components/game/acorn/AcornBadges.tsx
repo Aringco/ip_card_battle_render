@@ -69,6 +69,20 @@ export function AcornBadges({ gameState, side, className = '' }: { gameState: Cl
   );
 }
 
+// 깨진 보호막 조각 — 띠 안의 자리(%)에서 바깥으로 튄다. 마지막 조각이 가장 늦게 끝나야 한다(그 끝에 층을 걷는다)
+const SHIELD_SHARDS = [
+  { x: 10, y: 12, dx: -34, dy: -26, r: -160, delay: 0 },
+  { x: 55, y: 8, dx: 30, dy: -38, r: 200, delay: 20 },
+  { x: 80, y: 30, dx: 42, dy: -10, r: 140, delay: 10 },
+  { x: 25, y: 40, dx: -44, dy: 6, r: -220, delay: 30 },
+  { x: 60, y: 50, dx: 36, dy: 18, r: 180, delay: 0 },
+  { x: 12, y: 70, dx: -30, dy: 34, r: -120, delay: 40 },
+  { x: 45, y: 78, dx: 6, dy: 44, r: 240, delay: 15 },
+  { x: 78, y: 82, dx: 38, dy: 36, r: -200, delay: 25 },
+  { x: 38, y: 22, dx: -8, dy: -46, r: 160, delay: 35 },
+  { x: 68, y: 65, dx: 48, dy: 4, r: -140, delay: 50 },
+];
+
 /**
  * 보호막 — 체력 막대에 **겹쳐** 그리는 반투명 은빛 띠(2026-11-07). 체력 끝(지금 체력)에서 보호막만큼 안쪽으로 덮고,
  * 체력 채움보다 위아래(PC는 좌우)로 2px 크다. 빛 반사가 띠 위를 훑는다. 막대 눈금은 체력과 같은 척도(승리선)다.
@@ -77,8 +91,29 @@ export function AcornBadges({ gameState, side, className = '' }: { gameState: Cl
  */
 export function ShieldGauge({ gameState, side, dir }: { gameState: ClientGameState; side: SideId; dir: 'v' | 'h-left' | 'h-right' }) {
   const shield = gameState.enhance?.shield?.[side] ?? 0;
-  if (shield <= 0) return null;
   const winHp = gameState.settings.targetScore * 2;
+  // 보호막이 0이 되는 순간 깨지는 연출 — 렌더 도중 보정(이펙트 · 타이머는 StrictMode가 지운다), 끝은 onAnimationEnd
+  const [prev, setPrev] = useState(shield);
+  const [broken, setBroken] = useState<{ len: number; key: number } | null>(null);
+  if (prev !== shield) {
+    setPrev(shield);
+    setBroken(prev > 0 && shield <= 0 ? { len: Math.max(0, Math.min(1, prev / winHp)), key: (broken?.key ?? 0) + 1 } : null);
+  }
+  if (shield <= 0) {
+    if (!broken) return null;
+    return (
+      <div key={broken.key} className="shield-band is-shatter" data-dir={dir} style={{ ['--len' as string]: broken.len } as React.CSSProperties} aria-hidden>
+        {SHIELD_SHARDS.map((sh, i) => (
+          <span
+            key={i}
+            className="shield-shard"
+            style={{ left: `${sh.x}%`, top: `${sh.y}%`, ['--dx' as string]: `${sh.dx}px`, ['--dy' as string]: `${sh.dy}px`, ['--r' as string]: `${sh.r}deg`, animationDelay: `${sh.delay}ms` } as React.CSSProperties}
+            onAnimationEnd={i === SHIELD_SHARDS.length - 1 ? () => setBroken(null) : undefined}
+          />
+        ))}
+      </div>
+    );
+  }
   // 체력 막대와 같은 시작점에서 보호막 양만큼 덮는다(2026-11-07 — 체력 끝에 붙이던 것을 바꿨다)
   const from = 0;
   const len = Math.max(0, Math.min(1, shield / winHp));
