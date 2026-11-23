@@ -31,6 +31,8 @@ DEPLOY_BUILD_CMD=""                # command 모드: 빌드 명령
 DEPLOY_RESTART_CMD=""              # command 모드: 재시작 명령
 DEPLOY_HEALTH_URL=http://localhost:3000/
 DEPLOY_HEALTH_TIMEOUT_SEC=180
+DEPLOY_CI_CHECK=test               # 기다릴 CI 작업 이름(ci.yml의 jobs 키) — 비우면 CI를 보지 않는다
+DEPLOY_CI_REPO="$(git remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##')"
 [ -f deploy/deploy.env ] && . deploy/deploy.env
 
 STATE_DIR="$REPO_DIR/deploy/.state"
@@ -58,6 +60,37 @@ fi
 # 같은 커밋에서 실패한 배포를 1분마다 되풀이하지 않는다 — 새 커밋이 오거나 --force일 때만 다시 시도
 if [ "$FORCE" = 0 ] && [ -f "$STATE_DIR/failed" ] && [ "$(cat "$STATE_DIR/failed")" = "$REMOTE" ]; then
   exit 0
+fi
+
+# CI(.github/workflows/ci.yml)가 이 커밋에서 성공해야 배포한다 — 진행 중이면 다음 cron에 다시 본다, --force는 건너뛴다.
+# 저장소가 공개라 인증 없이 읽는다(시간당 60회 — 새 커밋이 있을 때만 묻는다). 응답을 못 받으면 "진행 중"으로 친다.
+ci_state() {
+  curl -fsS -H 'Accept: application/vnd.github+json' \
+    "https://api.github.com/repos/$DEPLOY_CI_REPO/commits/$1/check-runs?check_name=$DEPLOY_CI_CHECK" 2>/dev/null |
+    python3 -c '
+import json, sys
+runs = json.load(sys.stdin).get("check_runs", [])
+if not runs or any(r["status"] != "completed" for r in runs): print("pending")
+elif all(r["conclusion"] in ("success", "neutral", "skipped") for r in runs): print("success")
+else: print("failure")' 2>/dev/null || echo pending
+}
+if [ "$FORCE" = 0 ] && [ -n "$DEPLOY_CI_CHECK" ]; then
+  case "$(ci_state "$REMOTE")" in
+    success) ;;
+    pending)
+      # 기다리는 동안 1분마다 같은 줄을 남기지 않는다
+      if [ "$(cat "$STATE_DIR/waiting" 2>/dev/null)" != "$REMOTE" ]; then
+        log "CI 대기: ${REMOTE:0:7} — 검사가 끝나면 배포한다"
+        echo "$REMOTE" > "$STATE_DIR/waiting"
+      fi
+      exit 0
+      ;;
+    *)
+      log "배포 안 함: ${REMOTE:0:7}의 CI가 실패했다 — 고쳐서 새 커밋을 push하거나 --force"
+      echo "$REMOTE" > "$STATE_DIR/failed"
+      exit 1
+      ;;
+  esac
 fi
 
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then

@@ -1,8 +1,13 @@
 # 테스트 서버(test.tupd.site) 자동 재배포
 
 ```
-로컬에서 수정 → git push (main) → 서버 cron이 1분마다 확인 → 새 커밋이면 받아서 빌드 · 재시작
+로컬에서 수정 → git push (main) → GitHub Actions CI(타입 검사 · 서버 테스트)
+                              → 서버 cron이 1분마다 확인 → 새 커밋의 CI가 성공이면 받아서 빌드 · 재시작
 ```
+
+- **CI**(`.github/workflows/ci.yml`)는 모든 브랜치의 push · PR에서 돈다. 결과는 GitHub 커밋 옆 ✅/❌와 실패 메일로 보인다.
+  서버는 main 커밋의 `test` 작업이 성공일 때만 배포한다 — 진행 중이면 기다리고(로그에 "CI 대기" 한 줄), 실패면 그 커밋은 건너뛴다.
+  `--force`는 CI를 보지 않는다. CI를 끄려면 deploy.env에 `DEPLOY_CI_CHECK=`.
 
 - 서버가 GitHub에서 **받아 가는** 방식이다. 저장소가 공개라 서버에 GitHub 인증이 필요 없고,
   GitHub에도 서버 접속 정보(SSH 키 등)를 두지 않는다.
