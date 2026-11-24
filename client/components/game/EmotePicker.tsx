@@ -48,37 +48,54 @@ const MIN_PANEL_W = 220;
 export function EmotePicker({
   onSend,
   cellSelector = '.ind-cell',
+  opens = 'below',
+  panelWidth,
+  className = '',
 }: {
   onSend: (emoteId: string) => void;
   /** 고르기 창이 그 폭 그대로 겹칠 칸 — PC는 내 정보창(.ind-cell), 모바일은 판(.m-view)이다(아이콘 열은 창을 펴기엔 좁다) */
   cellSelector?: string;
+  /** 창을 버튼 아래('below', 기본)로 열지 위('above')로 열지 — 화면 아래쪽에 앉은 버튼(카드 강화 판의 왼쪽 아래)은 위로 연다 */
+  opens?: 'below' | 'above';
+  /** 창 폭(px) — 주면 칸(cellSelector)을 찾지 않고 버튼 왼쪽에 맞춰 이 폭으로 연다 */
+  panelWidth?: number;
+  /** 버튼에 덧붙일 클래스 — 자리는 그 화면의 CSS가 정한다 */
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<EmoteCategory['id']>('default');
   const [cooling, setCooling] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => (typeof window === 'undefined' ? [] : loadFavorites()));
-  const [box, setBox] = useState<{ left: number; top: number; width: number; maxHeight: number } | null>(null);
+  const [box, setBox] = useState<{ left: number; top?: number; bottom?: number; width: number; maxHeight: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const coolTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (coolTimer.current) clearTimeout(coolTimer.current); }, []);
 
-  // 창 자리 — 버튼 바로 아래, 정보창 칸의 폭 그대로. 화면 아래로 넘치면 그만큼 칸 영역이 스크롤된다.
+  // 창 자리 — 버튼 바로 아래(위로 열면 바로 위), 정보창 칸의 폭 그대로(panelWidth가 있으면 그 폭으로 버튼 왼쪽에 맞춘다).
+  // 화면 밖으로 넘치면 그만큼 칸 영역이 스크롤된다.
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
       const b = buttonRef.current?.getBoundingClientRect();
-      const cell = (buttonRef.current?.closest(cellSelector) ?? document.querySelector(cellSelector))?.getBoundingClientRect();
-      if (!b || !cell) return;
-      const width = Math.max(cell.width, MIN_PANEL_W);
-      const left = Math.max(VIEW_MARGIN, Math.min(cell.left, window.innerWidth - width - VIEW_MARGIN));
-      const top = b.bottom + 6;
-      setBox({ left, top, width, maxHeight: Math.max(160, window.innerHeight - top - VIEW_MARGIN) });
+      const cell = panelWidth
+        ? null
+        : (buttonRef.current?.closest(cellSelector) ?? document.querySelector(cellSelector))?.getBoundingClientRect();
+      if (!b || (!panelWidth && !cell)) return;
+      const width = Math.min(Math.max(panelWidth ?? cell!.width, MIN_PANEL_W), window.innerWidth - VIEW_MARGIN * 2);
+      const left = Math.max(VIEW_MARGIN, Math.min(panelWidth ? b.left : cell!.left, window.innerWidth - width - VIEW_MARGIN));
+      if (opens === 'above') {
+        const bottom = window.innerHeight - b.top + 6;
+        setBox({ left, bottom, width, maxHeight: Math.max(160, b.top - 6 - VIEW_MARGIN) });
+      } else {
+        const top = b.bottom + 6;
+        setBox({ left, top, width, maxHeight: Math.max(160, window.innerHeight - top - VIEW_MARGIN) });
+      }
     };
     place();
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
-  }, [open, cellSelector]);
+  }, [open, cellSelector, opens, panelWidth]);
 
   const pick = (id: string) => {
     if (cooling) return;
@@ -126,7 +143,7 @@ export function EmotePicker({
       <button
         ref={buttonRef}
         type="button"
-        className="emote-button"
+        className={`emote-button${className ? ` ${className}` : ''}`}
         aria-label={open ? '감정표현 창 닫기' : '감정표현'}
         title={open ? '감정표현 창 닫기 (I)' : '감정표현 (I)'}
         aria-keyshortcuts="I"
@@ -143,7 +160,7 @@ export function EmotePicker({
           aria-label="감정표현 고르기"
           className="emote-panel"
           style={box
-            ? { left: box.left, top: box.top, width: box.width, maxHeight: box.maxHeight }
+            ? { left: box.left, top: box.top, bottom: box.bottom, width: box.width, maxHeight: box.maxHeight }
             : { left: -9999, top: -9999 }}
         >
           <div role="tablist" className="emote-tabs">

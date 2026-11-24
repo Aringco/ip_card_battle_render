@@ -46,6 +46,12 @@ export default function GamePage() {
   const viewState = useMemo(() => (gameState && duel ? duelViewState(gameState, duel) : gameState), [gameState, duelKey]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const viewEvents = useMemo(() => (duel ? duelViewEvents(lastEvents, duel) : lastEvents), [lastEvents, duelKey]);
+  // 감정표현의 편 id도 같은 규칙으로 바꾼다(카드 강화 1:1 — GameLayout · MobileLayout이 'A'·'B' 칸에 풍선을 띄운다)
+  const viewEmotes = useMemo(
+    () => (duel ? emotes.map(e => ({ ...e, side: e.side === duel.left ? 'A' : e.side === duel.right ? 'B' : e.side })) : emotes),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [emotes, duelKey],
+  );
   const animState = useAnimationQueue(viewEvents, viewState);
   // 가로로 눕힌 폰 — 혼자 놀기(아래 soloMobile)만 모바일 배치로 그린다(시범)
   const mobileScreen = useMobileLayout();
@@ -234,6 +240,8 @@ export default function GamePage() {
           error={error}
           animState={animState}
           paused={gameState.paused}
+          emotes={viewEmotes}
+          onEmote={sendEmote}
         />
       ) : individualMobile ? (
         <MobileIndividualLayout
@@ -262,6 +270,8 @@ export default function GamePage() {
           error={error}
           animState={animState}
           paused={gameState.paused}
+          emotes={viewEmotes}
+          onEmote={sendEmote}
         />
       ) : duel && viewState ? (
         <GameLayout
@@ -277,6 +287,8 @@ export default function GamePage() {
           error={error}
           animState={animState}
           paused={gameState.paused}
+          emotes={viewEmotes}
+          onEmote={sendEmote}
         />
       ) : individual ? (
         <IndividualLayout
@@ -307,6 +319,8 @@ export default function GamePage() {
         error={error}
         animState={animState}
         paused={gameState.paused}
+        emotes={viewEmotes}
+        onEmote={sendEmote}
       />
       )}
       {/* 게임 중 메뉴(⏸) — 판 바깥에 둔다. GameLayout 안에 넣으면 결정타 연출의

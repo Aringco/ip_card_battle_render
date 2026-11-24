@@ -1,10 +1,11 @@
 'use client';
 
 import { openAcornShelf } from '../acorn/AcornLayer';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
-import { ANIMALS, enhanceCardTier, maxTurnOf } from 'shared';
-import type { AnimationState } from '@/hooks/useAnimationQueue';
+import { ANIMALS, emoteById, enhanceCardTier, maxTurnOf } from 'shared';
+import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
+import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { canUseSkill, levelOf, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { EffectLayer } from '@/components/effects/EffectLayer';
@@ -20,6 +21,7 @@ import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { GameBoard } from '../GameBoard';
 import { SkillChoiceBar } from '../SkillChoiceBar';
 import { ActionPrompt } from '../ActionPrompt';
+import { EmotePicker } from '../EmotePicker';
 import { AnimalRail } from './AnimalRail';
 import { MobileDotHub, MobileHpBar } from './MobileHpBar';
 import { MobilePhase, PHASE_HERO_MS } from './MobilePhase';
@@ -70,6 +72,8 @@ export function MobileLayout({
   error,
   animState,
   paused,
+  emotes = [],
+  onEmote,
 }: {
   gameState: ClientGameState;
   turnDeadline: number;
@@ -81,6 +85,10 @@ export function MobileLayout({
   error: string | null;
   animState: AnimationState;
   paused: boolean;
+  /** 카드 강화 판의 감정표현 — 서버가 방 전체에 되돌려 준 것(편 id는 이 화면의 'A'·'B'로 바꿔서 넘긴다) */
+  emotes?: ReceivedEmote[];
+  /** 감정표현 보내기 — 없으면 버튼을 그리지 않는다 */
+  onEmote?: (emoteId: string) => void;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
   useGameHotkeys(paused);
@@ -104,6 +112,17 @@ export function MobileLayout({
   const boardTurnGlow = animState.displayedActiveTeam === myTeam && !choiceStageVisible;
   const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedStatus);
   const hpState = withDisplayedHp(viewState, animState.displayedHp);
+
+  // 감정표현 — 카드 강화 판만(2026-11-25). 버튼은 아래 띠 왼쪽 끝(설정 톱니와 마주 보는 빈 자리), 고르기 창은 그 위로 판 폭만큼 연다.
+  // 풍선은 연출 표정과 같은 줄에 세운다(id는 음수 — 연출 쪽 순번과 겹치지 않게).
+  const canEmote = !!gameState.enhance && !!onEmote && myTeam !== null && gameState.phase === 'playing';
+  const bubbleItems = useMemo<PlayerEmoticon[]>(() => {
+    const fromPlayers = emotes.flatMap(e => {
+      const item = emoteById(e.emoteId);
+      return item ? [{ id: -e.id, team: e.side, playerIndex: 0, src: item.src, emote: true }] : [];
+    });
+    return fromPlayers.length ? [...animState.emoticons, ...fromPlayers] : animState.emoticons;
+  }, [emotes, animState.emoticons]);
   const enhance = !!gameState.enhance;
 
   // ── 단계 표시 — 내 차례의 장소 선택 · 행동 선택, 그 밖은 상대 차례. 연출 중(isSettling)에는 직전 단계를 그대로 둔다.
@@ -321,6 +340,7 @@ export function MobileLayout({
         <MobileHpBar team="A" side="left" gameState={hpState} animState={animState} mine={myTeam === 'A'} />
         {gameState.enhance && <MobileDotHub gameState={hpState} left="A" right="B" />}
         <MobileHpBar team="B" side="right" gameState={hpState} animState={animState} mine={myTeam === 'B'} />
+        {canEmote && <EmotePicker onSend={onEmote!} cellSelector=".m-view" opens="above" className="emote-fab" />}
       </footer>
 
       {/* 연출 층 — PC와 같은 것을 띄운다(진행 문구 · 축제 시작 안내는 오른쪽 위 MobileNotice가 대신한다) */}
@@ -331,7 +351,7 @@ export function MobileLayout({
       {/* 풍선은 이 층에 가둔다 — 카드 띠가 올라오면 카드가 그 위에 온다(globals.css .m-emotes) */}
       <div className="m-emotes">
         {/* 꼬리 달린 풍선('left' 배치 — 꼬리가 그 사람의 열을 가리킨다), 크기는 0.7배 */}
-        <PlayerEmoticonLayer items={animState.emoticons} placement="left" scale={0.7} fit={4} />
+        <PlayerEmoticonLayer items={bubbleItems} placement="left" scale={0.7} fit={4} />
       </div>
       <RabbitFlightLayer flights={animState.rabbitFlights} />
       {animState.tigerImpact && <div className="tiger-vignette" />}

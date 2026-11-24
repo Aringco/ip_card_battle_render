@@ -1068,6 +1068,23 @@ describe('방 — 카드 강화 혼자 놀기', () => {
     expect(lastState(ws).activeTeam).toBe('A');
     expect(ws.sent.some(m => m.type === 'error')).toBe(false);
   });
+
+  it('감정표현 — 강화 판은 내 편(A)으로 되돌려 주고, 일반 혼자 놀기는 조용히 버린다', () => {
+    const ws = fakeSocket();
+    const room = new Room('ENH4', () => {});
+    room.addSoloPlayer(ws as never, 'me', '나', undefined, { ...ENHANCE_SETTINGS }, true);
+    room.startSoloGame();
+    room.handleEmote('me', 'default/tiger_happy');
+    expect(ws.sent.filter(m => m.type === 'emote')).toEqual([{ type: 'emote', side: 'A', emoteId: 'default/tiger_happy' }]);
+
+    const plain = fakeSocket();
+    const normal = new Room('ENH5', () => {});
+    normal.addSoloPlayer(plain as never, 'me', '나', undefined, undefined, false);
+    normal.startSoloGame();
+    normal.handleEmote('me', 'default/tiger_happy');
+    expect(plain.sent.some(m => m.type === 'emote')).toBe(false);
+    expect(plain.sent.some(m => m.type === 'error')).toBe(false);
+  });
 });
 
 describe('후공 보상 (secondComp)', () => {

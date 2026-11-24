@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
-import { ANIMALS } from 'shared';
-import type { AnimationState } from '@/hooks/useAnimationQueue';
+import { ANIMALS, emoteById } from 'shared';
+import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
+import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { canUseSkill, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
@@ -30,6 +31,7 @@ import { TeamTotalPanel } from './TeamTotalPanel';
 import { ActionPrompt } from './ActionPrompt';
 import { DemoCaption } from './DemoCaption';
 import { DemoSceneMenu } from './DemoSceneMenu';
+import { EmotePicker } from './EmotePicker';
 
 // screenShakeLevel(임의의 정수) → 진동 강도 스케일. 숫자가 클수록 세게 흔들린다 —
 // 카드가 쌓일 때/예약 뽑기 롤 진입 시(약하게=1, 강하게=4), 특허랑이·결정타 등 다른
@@ -51,6 +53,8 @@ export function GameLayout({
   error,
   animState,
   paused,
+  emotes = [],
+  onEmote,
 }: {
   gameState: ClientGameState;
   // 턴 제한시간 만료 시각 — 서버 시계가 아니라 내 브라우저 시계 기준으로 환산된 값이
@@ -72,6 +76,10 @@ export function GameLayout({
   animState: AnimationState;
   /** 일시정지 중 — 타이머 표시와 "고를 게 없을 때의 자동 턴 종료"를 함께 멈춘다. */
   paused: boolean;
+  /** 카드 강화 판의 감정표현 — 서버가 방 전체에 되돌려 준 것(편 id는 이 화면의 'A'·'B'로 바꿔서 넘긴다) */
+  emotes?: ReceivedEmote[];
+  /** 감정표현 보내기 — 없으면 버튼을 그리지 않는다 */
+  onEmote?: (emoteId: string) => void;
 }) {
   const isShaking = animState.screenShakeLevel > 0;
   // 단축키 — 장소 1~4 · 기술 Q·W·E·R · 턴 마치기 스페이스/T(개인전과 같다 — lib/useGameHotkeys.ts).
@@ -135,6 +143,17 @@ export function GameLayout({
   const enhPc = !!gameState.enhance;
   const hpState = withDisplayedHp(viewState, animState.displayedHp);
   const skillPreviewGameState = withDisplayedExp(viewState, skillPreviewTeam, animState.displayedExp[skillPreviewTeam]);
+
+  // 감정표현 — 카드 강화 판만(2026-11-25). 버튼은 화면 왼쪽 아래(.emote-fab), 풍선은 그 편의 팀 칸 옆에 꼬리 달린 풍선으로 뜬다.
+  // 한 편에 한 사람(혼자 놀기 · 1:1)이라 줄 번호는 0이다. id는 음수로 둬 연출 표정(양수)과 겹치지 않게 한다(React key).
+  const canEmote = enhPc && !!onEmote && myTeam !== null && gameState.phase === 'playing' && !gameState.demo;
+  const emoteItems = useMemo<PlayerEmoticon[]>(
+    () => emotes.flatMap(e => {
+      const item = emoteById(e.emoteId);
+      return item ? [{ id: -e.id, team: e.side, playerIndex: 0, src: item.src, emote: true }] : [];
+    }),
+    [emotes],
+  );
 
   // 게임 템포가 늘어지지 않도록, 고를 수 있는 행동이 하나도 없으면 방에서 정한
   // noActionTimeSec 뒤에 "아무것도 하지 않음"이 자동으로 눌린 것처럼 처리한다(서버
@@ -341,6 +360,9 @@ export function GameLayout({
 
       {/* 플레이어 프로필 옆 반응 이모티콘 (fixed, 화면 전역) */}
       <PlayerEmoticonLayer items={animState.emoticons} />
+      {/* 플레이어가 고른 감정표현 — 팀 칸 옆에 꼬리 달린 풍선(내 칸은 왼쪽이 화면 밖이라 판 쪽으로 넘어간다) */}
+      {emoteItems.length > 0 && <PlayerEmoticonLayer items={emoteItems} placement="left" />}
+      {canEmote && <EmotePicker onSend={onEmote!} opens="above" panelWidth={360} className="emote-fab" />}
 
       {/* 실용신양 추가 뽑기 진행도 */}
       <SheepProgressBar progress={animState.sheepProgress} />

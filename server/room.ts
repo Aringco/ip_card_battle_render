@@ -315,12 +315,14 @@ export class Room {
   }
 
   /**
-   * 개인전 게임 중 감정표현 — 보낸 사람의 편과 함께 방 전체에 그대로 전한다(게임 상태는 바꾸지 않는다).
-   * 목록에 없는 그림·관전자·팀전·너무 잦은 전송은 **에러 없이 버린다**(채팅과 같은 이유 — 화면이 먼저 막는다).
+   * 게임 중 감정표현 — 보낸 사람의 편과 함께 방 전체에 그대로 전한다(게임 상태는 바꾸지 않는다).
+   * 개인전과 **카드 강화 판**(혼자 놀기 강화 · 팀전 1:1 — 2026-11-25)만 받는다. 일반 팀전은 화면에 버튼이 없다.
+   * 목록에 없는 그림·관전자·일반 팀전·너무 잦은 전송은 **에러 없이 버린다**(채팅과 같은 이유 — 화면이 먼저 막는다).
    * 순위가 정해져 판에서 빠진 사람도 보낼 수 있다(아직 그 판을 보고 있다).
    */
   handleEmote(playerId: string, emoteId: string): void {
-    if (this.mode !== 'individual' || !this.state || this.state.phase !== 'playing') return;
+    if (!this.state || this.state.phase !== 'playing') return;
+    if (this.mode !== 'individual' && !this.state.enhance) return;
     const p = this.players.get(playerId);
     if (!p || !emoteById(emoteId)) return;
     const side = this.sideOf(p);
