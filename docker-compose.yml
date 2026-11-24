@@ -7,6 +7,8 @@ services:
         # 그대로 맞으므로 보통은 손댈 일이 없다. 클라이언트와 WS가 서로 다른 호스트에
         # 있는 특수한 배치에서만 wss://<도메인>/ws 를 적는다.
         NEXT_PUBLIC_WS_URL: ""
+        # 이 이미지의 커밋 — /version이 돌려준다. deploy/deploy.sh가 환경변수로 넘기고, 손으로 빌드하면 비어 있다.
+        GIT_COMMIT: ${GIT_COMMIT:-}
     ports:
       - "3000:3000"
     restart: unless-stopped

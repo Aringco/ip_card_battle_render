@@ -31,6 +31,7 @@ DEPLOY_BUILD_CMD=""                # command 모드: 빌드 명령
 DEPLOY_RESTART_CMD=""              # command 모드: 재시작 명령
 DEPLOY_HEALTH_URL=http://localhost:3000/
 DEPLOY_HEALTH_TIMEOUT_SEC=180
+DEPLOY_VERSION_URL=""              # 비우면 DEPLOY_HEALTH_URL 자리의 /version — 새 커밋이 실제로 떴는지 본다
 DEPLOY_CI_CHECK=test               # 기다릴 CI 작업 이름(ci.yml의 jobs 키) — 비우면 CI를 보지 않는다
 DEPLOY_CI_REPO="$(git remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##')"
 [ -f deploy/deploy.env ] && . deploy/deploy.env
@@ -109,6 +110,9 @@ fail() {
   exit 1
 }
 
+# 이미지에 적을 커밋 — /version이 돌려준다(docker-compose.yml의 build args · deploy-test.sh가 읽는다)
+export GIT_COMMIT="$REMOTE"
+
 case "$DEPLOY_MODE" in
   docker)
     # 이미지를 먼저 다 만든 뒤에 컨테이너를 갈아 끼운다 — 빌드가 실패하면 옛 컨테이너가 그대로 돈다
@@ -133,6 +137,16 @@ if [ -n "$DEPLOY_HEALTH_URL" ]; then
     [ "$(date +%s)" -ge "$deadline" ] && fail "${DEPLOY_HEALTH_TIMEOUT_SEC}초 안에 $DEPLOY_HEALTH_URL 이 200을 주지 않음"
     sleep 3
   done
+fi
+
+# 새 커밋이 실제로 떴는지 — /version의 commit과 견준다. 이 주소가 없던 옛 이미지 · 다른 배치일 수 있어
+# 맞지 않으면 실패로 치지 않고 로그만 남긴다.
+VERSION_URL="${DEPLOY_VERSION_URL:-${DEPLOY_HEALTH_URL%/}/version}"
+if [ -n "$DEPLOY_HEALTH_URL$DEPLOY_VERSION_URL" ]; then
+  RUNNING="$(curl -fsS "$VERSION_URL" 2>/dev/null | sed -nE 's/.*"commit":"([^"]*)".*/\1/p' || true)"
+  if [ "$RUNNING" != "$REMOTE" ]; then
+    log "경고: $VERSION_URL 의 커밋이 '${RUNNING:-응답 없음}' — 배포한 ${REMOTE:0:7}와 다르다"
+  fi
 fi
 
 rm -f "$STATE_DIR/failed"

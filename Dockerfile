@@ -59,6 +59,12 @@ COPY --from=build /app/client/next.config.ts  ./client/
 COPY --from=build /app/client/public          ./client/public
 COPY --from=build /app/client/.next           ./client/.next
 
+# 이 이미지가 어느 커밋인지 — server.ts의 /version이 돌려준다(이미지에는 .git이 없다).
+# deploy/deploy.sh가 docker-compose를 거쳐 넘긴다. 맨 끝에 두는 이유: 값이 커밋마다 바뀌므로
+# 앞에 두면 그 뒤의 COPY 층 캐시가 매번 깨진다.
+ARG GIT_COMMIT=
+ENV GIT_COMMIT=$GIT_COMMIT
+
 # Next.js + WS 서버를 한 프로세스, 한 포트($PORT)로 함께 띄운다.
 EXPOSE 3000
 CMD ["npx", "ts-node", "--transpile-only", "server.ts"]
