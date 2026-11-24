@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { BotLevel } from 'shared';
 import type {
   Animal,
   ClientGameEvent,
@@ -92,6 +93,8 @@ export interface UseWebSocketReturn {
   lobbyMode: GameMode;
   /** 개인전 '강화' 방인지 — 대기실의 규칙 요약 · 규칙 입력 범위가 달라진다 */
   lobbyEnhance: boolean;
+  /** 혼자 놀기 대기실(봇 방) — 방 코드 · 초대 · 채팅을 감추고 [봇 추가]를 보인다 */
+  lobbySolo: boolean;
   hostMemberId: string | null;
   isHost: boolean;
   // 추방당했거나 스스로 나가서 방을 벗어났을 때의 안내문(없으면 null)
@@ -137,6 +140,9 @@ export interface UseWebSocketReturn {
   // 방장 명령 (movePlayer만 "나 자신"을 대상으로 할 땐 누구나 쓸 수 있다)
   movePlayer: (targetMemberId: string, team: Seat) => void;
   kickPlayer: (targetMemberId: string) => void;
+  /** 혼자 놀기 대기실 — 봇 넣기(빼기는 kickPlayer) · 난이도 바꾸기 */
+  addBot: (level?: BotLevel) => void;
+  setBotLevel: (targetMemberId: string, level: BotLevel) => void;
   transferHost: (targetMemberId: string) => void;
   setTeamName: (team: Team, name: string) => void;
   /** 개인전 대기실에서 자기 색을 고른다 — 남이 쓰는 색이면 서버가 COLOR_TAKEN 에러를 준다 */
@@ -185,6 +191,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [lobbySettings, setLobbySettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [lobbyMode, setLobbyMode] = useState<GameMode>('team');
   const [lobbyEnhance, setLobbyEnhance] = useState(false);
+  const [lobbySolo, setLobbySolo] = useState(false);
   const [hostMemberId, setHostMemberId] = useState<string | null>(null);
   const [roomNotice, setRoomNotice] = useState<string | null>(null);
   const [chatLog, setChatLog] = useState<LobbyChatMessage[]>([]);
@@ -306,6 +313,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setLobbySettings(msg.settings);
           setLobbyMode(msg.mode ?? 'team');
           setLobbyEnhance(msg.enhance === true);
+          setLobbySolo(msg.solo === true);
           setHostMemberId(msg.hostMemberId);
           break;
 
@@ -335,6 +343,7 @@ export function useWebSocket(): UseWebSocketReturn {
           setLobbyTeamNames({ A: null, B: null });
           setLobbyMode('team');
           setLobbyEnhance(false);
+          setLobbySolo(false);
           setHostMemberId(null);
           setChatLog([]);
           setRoomNotice(msg.type === 'kicked' ? msg.message : null);
@@ -479,7 +488,8 @@ export function useWebSocket(): UseWebSocketReturn {
 
   const createSoloRoom = useCallback((nickname: string, teamName?: string, settings?: Partial<GameSettings>, enhance?: boolean) => {
     setError(null);
-    send({ type: 'createSoloRoom', nickname, teamName, settings, ...(enhance ? { enhance: true } : {}) });
+    // lobby — 혼자 놀기는 대기실을 연다(봇을 넣고 빼며 시작한다 — 2026-11-24). 시연 이름 짝이면 서버가 곧바로 시작한다.
+    send({ type: 'createSoloRoom', nickname, teamName, settings, lobby: true, ...(enhance ? { enhance: true } : {}) });
   }, [send]);
 
   const sendReady = useCallback((ready = true) => send({ type: 'ready', ready }), [send]);
@@ -492,6 +502,11 @@ export function useWebSocket(): UseWebSocketReturn {
 
   const kickPlayer = useCallback((targetMemberId: string) => {
     send({ type: 'kickPlayer', targetMemberId });
+  }, [send]);
+
+  const addBot = useCallback((level?: BotLevel) => send({ type: 'addBot', level }), [send]);
+  const setBotLevel = useCallback((targetMemberId: string, level: BotLevel) => {
+    send({ type: 'setBotLevel', targetMemberId, level });
   }, [send]);
 
   const transferHost = useCallback((targetMemberId: string) => {
@@ -572,13 +587,13 @@ export function useWebSocket(): UseWebSocketReturn {
 
   return {
     connected, roomId, playerId, memberId,
-    lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, lobbyEnhance, hostMemberId,
+    lobbyPlayers, lobbyTeamNames, lobbySettings, lobbyMode, lobbyEnhance, lobbySolo, hostMemberId,
     isHost: memberId !== null && memberId === hostMemberId,
     roomNotice, clearRoomNotice, chatLog, emotes,
     gameState, turnDeadline, lastEvents, error,
     pauseRequest, pauseWaitingUntil, resumeVoteUntil, pauseUntil, pauseNotice, clearPauseNotice,
     createRoom, joinRoom, createSoloRoom, sendReady, leaveRoom,
-    movePlayer, kickPlayer, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat, sendEmote,
+    movePlayer, kickPlayer, addBot, setBotLevel, transferHost, setTeamName, selectColor, updateSettings, startGame, sendChat, sendEmote,
     drawCard, chooseSkill, passSkill, pickAcorn, rerollAcorn, demoContinue, demoScene,
     requestPause, respondPause, resumeGame, surrender, leaveGame,
   };

@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { RoomManager } from './roomManager';
 import { createConnectionHandler } from './gameServer';
+import { startBotPoolIfEnabled } from './ai/pool';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
 const wss = new WebSocketServer({ port: PORT });
@@ -31,3 +32,5 @@ wss.on('listening', () => {
 });
 
 wss.on('connection', createConnectionHandler(roomManager));
+// 탐색 봇(AI_BOT=on|shadow) — worker를 미리 띄운다. 꺼져 있으면(기본) 아무것도 하지 않는다 — server/ai/pool.ts
+startBotPoolIfEnabled();

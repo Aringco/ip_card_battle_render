@@ -19,7 +19,6 @@ import type { GameEvent, GameSettings, GameState, LobbyChatMessage } from 'share
 import {
   SHEEP_EXTRA_TIME_PER_DRAW_SEC,
   SHEEP_TIMER_EXTRA_DRAW_CAP,
-  PLACES,
   randomNickname,
   randomTeamName,
   NICKNAME_MAX_LEN,
@@ -44,13 +43,15 @@ import {
   THRESHOLDS,
   clampEnhanceSettings,
 } from 'shared';
-import { ACORN_PICK_SEC } from 'shared';
+import { ACORN_PICK_SEC, BOT_LEVEL_LABEL, DEFAULT_BOT_LEVEL, isBotLevel } from 'shared';
+import type { BotLevel } from 'shared';
 import { serializeEvents, serializeState } from './serializer';
 import { isDemoRequest } from './demo/trigger';
 import { DemoDirector } from './demo/director';
 import { DEMO_SETTINGS } from './demo/script';
 import { SETTLE_GRACE_MARGIN_MS, settleGraceMs } from './settleTiming';
-import { pickComputerSkill, pickEnhanceComputerSkill } from './computerSkills';
+import { aiMode, getBotPool } from './ai/pool';
+import { heuristicDecision, isLegalDecision, type BotDecision } from './ai/searchBot';
 
 // 싱글 모드 컴퓨터 플레이어는 실제 WebSocket 연결이 없으므로 고정 ID로 취급한다.
 const CPU_PLAYER_ID = 'CPU';
@@ -100,6 +101,23 @@ interface PlayerConnection {
   color?: PlayerColorId;
 }
 
+/**
+ * 혼자 놀기 대기실의 봇(2026-11-24, docs/AI_ROADMAP.md §3-2). ⚠️ 연결 목록(players)에 섞지 않는다 — 그 목록을 도는 코드
+ * (브로드캐스트 · 재접속 · 끊김 · 준비 · 방장 승계 · 일시정지 투표 · 빈 방 정리)가 연결 없는 항목을 모른다. 봇은 자리 목록
+ * (teamPlayerIds · sidePlayerIds)과 대기실 목록(buildLobbyPlayers)에만 실린다 — 그래서 언제나 준비 완료, 투표에서 빠지고,
+ * 사람이 모두 나가면 방이 그대로 정리된다.
+ */
+interface BotMember {
+  botId: string;     // 자리 목록에 들어가는 id — 'bot:1' …(사람의 playerId(UUID)와 겹치지 않는다)
+  memberId: string;
+  nickname: string;
+  color: PlayerColorId;
+  level: BotLevel;
+}
+
+/** 혼자 놀기 봇 방에서 유일한 사람이 멈춘 채 떠났을 때 방을 붙들어 두는 시간 — 지나면 방을 정리한다 */
+export const SOLO_ABANDON_MS = 30 * 60_000;
+
 /** 대기실에서 연결이 끊긴 사람의 자리를 붙들어 두는 시간 — 다른 앱(카카오톡 등)에 다녀올 만큼 */
 export const LOBBY_RECONNECT_GRACE_MS = 90_000;
 
@@ -147,6 +165,16 @@ export class Room {
   // 컴퓨터 타이머가 터질 예정인 시각 — 일시정지할 때 "얼마나 남았는지"를 재려면
   // 핸들만으로는 알 수 없어 따로 기억해둔다.
   private computerDeadline = 0;
+  // 탐색 봇(AI_BOT=on|shadow) — 컴퓨터가 "생각하는 척" 기다리는 동안 worker에서 미리 계산해 둔 답.
+  // seq는 결정 지점마다 오른다 — 늦게 온 지난 지점의 답을 지금 지점에 쓰지 않는다.
+  private aiSeq = 0;
+  private aiResult: { seq: number; side: SideId; decision: BotDecision | null } | null = null;
+  // 혼자 놀기 대기실(봇 방) — 개인전 방에 사람은 방장 한 명, 나머지는 봇(BotMember). 다른 사람은 들어올 수 없다.
+  private soloLobby = false;
+  private bots = new Map<string, BotMember>(); // botId → 봇
+  private botSeq = 0;
+  // 봇 방에서 유일한 사람이 멈춘 채 떠났을 때의 정리 타이머(SOLO_ABANDON_MS)
+  private abandonTimer: ReturnType<typeof setTimeout> | null = null;
 
   // ─── 일시정지 ────────────────────────────────────────────────────────────
   // 멈춰 있는 동안 서버에는 **타이머가 하나도 걸려 있지 않다.** 남은 시간을 아래 두
@@ -328,8 +356,10 @@ export class Room {
     mode?: GameMode,
     // 방을 처음 만드는 사람만 — 개인전 '강화' 방(팀전 방에서는 무시한다)
     enhance = false,
-  ): 'ok' | 'game_started' | 'nickname_taken' {
+  ): 'ok' | 'game_started' | 'nickname_taken' | 'solo_room' {
     if (this.state !== null) return 'game_started';
+    // 혼자 놀기 대기실에는 다른 사람이 들어올 수 없다(방 코드도 화면에 없다)
+    if (this.soloLobby) return 'solo_room';
 
     nickname = normalizeNickname(nickname);
     for (const p of this.players.values()) {
@@ -401,10 +431,129 @@ export class Room {
     return 'ok';
   }
 
-  /** 개인전 — 아직 아무도 쓰지 않는 첫 색(PLAYER_COLORS 순서). 12색 > 8명이라 항상 하나는 남는다. */
+  /** 개인전 — 아직 아무도 쓰지 않는 첫 색(PLAYER_COLORS 순서, 봇 포함). 12색 > 8명이라 항상 하나는 남는다. */
   private firstFreeColor(): PlayerColorId {
-    const used = new Set([...this.players.values()].map(p => p.color));
+    const used = new Set<PlayerColorId | undefined>([...this.players.values()].map(p => p.color));
+    for (const b of this.bots.values()) used.add(b.color);
     return (PLAYER_COLORS.find(c => !used.has(c.id)) ?? PLAYER_COLORS[0]).id;
+  }
+
+  // ─── 혼자 놀기 대기실 · 봇 ───────────────────────────────────────────────
+
+  /**
+   * 혼자 놀기 — 대기실을 연다(2026-11-24). 개인전 방에 나 혼자(방장)와 봇 하나(보통)를 앉히고, 내가 봇을 넣고 빼며 시작한다.
+   * 시연 이름 짝이면(일반 판만) 예전 혼자 놀기(팀전 컴퓨터 · 곧바로 시작)로 간다 — 시연 대본은 그 판 위에 짜여 있다.
+   * true를 돌려주면 곧바로 시작하는 판이라 부르는 쪽이 roomCreated를 보낸 뒤 startSoloGame()을 부른다.
+   */
+  addSoloLobbyPlayer(
+    ws: WebSocket,
+    playerId: string,
+    nickname: string,
+    teamName?: string,
+    settings?: Partial<GameSettings>,
+    enhance = false,
+  ): boolean {
+    if (!enhance && isDemoRequest(nickname, teamName)) {
+      this.addSoloPlayer(ws, playerId, nickname, teamName, settings, false);
+      return true;
+    }
+    this.vsComputer = true;   // 일시정지 무제한 · 자동 재개 시계 없음 — 기다리게 할 사람이 없다
+    this.soloLobby = true;
+    this.mode = 'individual';
+    this.enhance = enhance;
+    this.settings = enhance ? clampEnhanceSettings(settings) : clampSettings(settings ?? {});
+    this.players.set(playerId, {
+      ws, playerId, memberId: this.nextMemberId(), nickname: normalizeNickname(nickname), team: PLAYER_SEAT,
+      ready: true, connected: true, lastChatAt: 0, color: this.firstFreeColor(),
+    });
+    this.hostPlayerId = playerId;
+    this.teamPlayerIds[PLAYER_SEAT].push(playerId);
+    this.createBot(DEFAULT_BOT_LEVEL);
+    this.broadcastLobbyState();
+    return false;
+  }
+
+  private createBot(level: BotLevel): BotMember {
+    const taken = new Set<string>([...this.players.values()].map(p => p.nickname));
+    for (const b of this.bots.values()) taken.add(b.nickname);
+    let n = 1;
+    while (taken.has(`🤖 봇 ${n}`)) n++;
+    const bot: BotMember = {
+      botId: `bot:${++this.botSeq}`,
+      memberId: this.nextMemberId(),
+      nickname: `🤖 봇 ${n}`,
+      color: this.firstFreeColor(),
+      level,
+    };
+    this.bots.set(bot.botId, bot);
+    this.teamPlayerIds[PLAYER_SEAT].push(bot.botId);
+    return bot;
+  }
+
+  private findBotByMemberId(memberId: string): BotMember | undefined {
+    for (const b of this.bots.values()) if (b.memberId === memberId) return b;
+    return undefined;
+  }
+
+  /** 봇 넣기 — 혼자 놀기 대기실의 방장만, 플레이어석이 남아 있을 때만 */
+  addBot(playerId: string, level?: BotLevel): void {
+    if (!this.soloLobby || !this.requireHost(playerId)) return;
+    if (this.teamPlayerIds[PLAYER_SEAT].length >= INDIVIDUAL_MAX_PLAYERS) {
+      this.sendTo(playerId, { type: 'error', code: 'ROOM_FULL', message: `플레이어석이 가득 찼어요(최대 ${INDIVIDUAL_MAX_PLAYERS}명).` });
+      return;
+    }
+    const bot = this.createBot(isBotLevel(level) ? level : DEFAULT_BOT_LEVEL);
+    this.pushSystem(`${bot.nickname}(${BOT_LEVEL_LABEL[bot.level]})을 넣었어요`);
+    this.broadcastLobbyState();
+  }
+
+  /** 봇 난이도 바꾸기 */
+  setBotLevel(playerId: string, targetMemberId: string, level: BotLevel): void {
+    if (!this.soloLobby || !this.requireHost(playerId) || !isBotLevel(level)) return;
+    const bot = this.findBotByMemberId(targetMemberId);
+    if (!bot || bot.level === level) return;
+    bot.level = level;
+    this.broadcastLobbyState();
+  }
+
+  /** 봇 빼기 — kickPlayer가 봇의 memberId를 받으면 여기로 온다 */
+  private removeBot(bot: BotMember): void {
+    this.bots.delete(bot.botId);
+    const seat = this.teamPlayerIds[PLAYER_SEAT];
+    const idx = seat.indexOf(bot.botId);
+    if (idx !== -1) seat.splice(idx, 1);
+    this.pushSystem(`${bot.nickname}을 뺐어요`);
+    this.broadcastLobbyState();
+  }
+
+  /** 그 편을 봇이 두는가 — 옛 혼자 놀기(팀전 컴퓨터)는 B, 봇 방은 그 편의 자리 주인이 봇인지 */
+  private isBotSide(side: SideId): boolean {
+    if (this.soloLobby) {
+      const id = this.sidePlayerIds?.[side]?.[0];
+      return id !== undefined && this.bots.has(id);
+    }
+    return this.vsComputer && side === 'B';
+  }
+
+  /** 그 편을 두는 봇의 난이도 — 옛 혼자 놀기 컴퓨터는 보통 */
+  private botLevelOf(side: SideId): BotLevel {
+    const id = this.sidePlayerIds?.[side]?.[0];
+    return (id !== undefined ? this.bots.get(id)?.level : undefined) ?? 'normal';
+  }
+
+  /** 지금 봇이 두어야 하는 편 — 도토리 카드 고르기(모두 동시)면 아직 안 고른 봇 하나, 아니면 차례인 편이 봇일 때 */
+  private botSideNow(): SideId | null {
+    const state = this.state;
+    if (!state || state.phase !== 'playing') return null;
+    const offer = state.enhance?.acorn?.offer;
+    if (offer) {
+      for (const side of Object.keys(offer.picked)) {
+        if (offer.picked[side] === null && this.isBotSide(side)) return side;
+      }
+      return null;
+    }
+    const waiting = state.pendingChoice ?? state.activeTeam;
+    return this.isBotSide(waiting) ? waiting : null;
   }
 
   /** 개인전 대기실에서 색을 고른다. 남이 쓰는 색이면 COLOR_TAKEN, 게임이 시작된 뒤에는 무시. */
@@ -414,7 +563,8 @@ export class Room {
     if (!p || p.team !== PLAYER_SEAT) return;
     if (!PLAYER_COLORS.some(c => c.id === color)) return;
     if (p.color === color) return;
-    const owner = [...this.players.values()].find(q => q.color === color && q.playerId !== playerId);
+    const owner = [...this.players.values()].find(q => q.color === color && q.playerId !== playerId)
+      ?? [...this.bots.values()].find(b => b.color === color);
     if (owner) {
       this.sendTo(playerId, { type: 'error', code: 'COLOR_TAKEN', message: `${owner.nickname} 님이 쓰고 있는 색이에요.` });
       return;
@@ -555,6 +705,8 @@ export class Room {
   /** 참가자를 방에서 내보낸다. 대상에게는 kicked를 보내 클라이언트가 홈으로 돌아가게 한다. */
   kickPlayer(playerId: string, targetMemberId: string): void {
     if (!this.requireHost(playerId)) return;
+    const bot = this.findBotByMemberId(targetMemberId);
+    if (bot) { this.removeBot(bot); return; }
     const target = this.findByMemberId(targetMemberId);
     if (!target) {
       this.sendTo(playerId, { type: 'error', code: 'PLAYER_NOT_FOUND', message: '대상 참가자를 찾을 수 없습니다.' });
@@ -738,9 +890,14 @@ export class Room {
    * 차례 순서는 엔진이 시작할 때 한 번 섞는다(initIndividualGame).
    */
   private startIndividualGame(): void {
+    // 봇도 자리 주인이다(봇 방) — 사람과 같은 모양으로 맞춘다
+    type Seated = { playerId: string; nickname: string; color?: PlayerColorId };
     const seated = this.teamPlayerIds[PLAYER_SEAT]
-      .map(id => this.players.get(id))
-      .filter((p): p is PlayerConnection => p !== undefined);
+      .map((id): Seated | undefined => {
+        const b = this.bots.get(id);
+        return b ? { playerId: b.botId, nickname: b.nickname, color: b.color } : this.players.get(id);
+      })
+      .filter((p): p is Seated => p !== undefined);
     if (seated.length < INDIVIDUAL_MIN_PLAYERS || seated.length > INDIVIDUAL_MAX_PLAYERS) return;
 
     const sides = seated.map((p, i) => ({
@@ -760,6 +917,8 @@ export class Room {
 
     this.resetTimer();
     this.broadcast({ type: 'gameStart', state: this.snapshot() });
+    // 봇 방 — 첫 차례(또는 첫 도토리 카드 고르기)가 봇이면 곧바로 생각을 시작한다
+    this.scheduleComputerActionIfNeeded();
   }
 
   /** 이 연결이 게임에서 맡은 편 — 팀전은 앉은 팀, 개인전은 시작할 때 붙은 'p1'… 관전자는 null. */
@@ -1045,27 +1204,72 @@ export class Room {
     if (this.demo) return;
     if (!this.vsComputer || !this.state || this.state.phase !== 'playing') return;
     if (this.computerTimer !== null) return;
-    // 도토리 카드 고르기 — 컴퓨터는 고르기 창이 뜬 뒤(직전 연출이 끝난 뒤) 잠시 생각하고 고른다
-    const offer = this.state.enhance?.acorn?.offer;
-    if (offer) {
-      if (offer.picked.B !== null || !('B' in offer.picked)) return;
+    // 지금 봇이 둘 편(옛 혼자 놀기는 B, 봇 방은 자리 주인이 봇인 편) — 없으면 사람 차례다
+    const side = this.botSideNow();
+    if (side === null) return;
+    // 도토리 카드 고르기 — 봇은 고르기 창이 뜬 뒤(직전 연출이 끝난 뒤) 잠시 생각하고 고른다(여럿이면 하나씩 차례로)
+    if (this.state.enhance?.acorn?.offer) {
       const graceMs = lastActionEvents ? settleGraceMs(lastActionEvents, true) : 0;
-      this.startComputerTimer(graceMs + CPU_SKILL_THINK_MIN_MS + Math.floor(Math.random() * (CPU_THINK_MAX_MS - CPU_SKILL_THINK_MIN_MS)));
+      const acornDelay = graceMs + CPU_SKILL_THINK_MIN_MS + Math.floor(Math.random() * (CPU_THINK_MAX_MS - CPU_SKILL_THINK_MIN_MS));
+      this.requestAiDecision(side, acornDelay);
+      this.startComputerTimer(acornDelay);
       return;
     }
-    const waitingTeam = this.state.pendingChoice ?? this.state.activeTeam;
-    if (waitingTeam !== 'B') return;
 
     // 행동 선택은 자기가 방금 뽑은 카드의 연출이 끝난 뒤부터 시간을 센다. 장소 선택은
     // 직전 액션이 이미 상대 턴에 끝나 있으므로 기존대로 처리 시각부터 그대로 센다.
-    const isSkillChoice = this.state.pendingChoice === 'B';
+    // ⚠️ 개인전은 봇끼리 차례가 이어지므로 장소 선택도 직전 연출(앞 봇의 기술 등)을 기다린다 — 안 그러면 연출 도중에 다음 봇이 뽑는다.
+    const isSkillChoice = this.state.pendingChoice === side;
     const [minMs, maxMs] = isSkillChoice
       ? [CPU_SKILL_THINK_MIN_MS, CPU_SKILL_THINK_MAX_MS]
       : [CPU_THINK_MIN_MS, CPU_THINK_MAX_MS];
-    const graceMs = isSkillChoice && lastActionEvents ? settleGraceMs(lastActionEvents, !!this.state.enhance) : 0;
+    const needsGrace = isSkillChoice || this.soloLobby;
+    const graceMs = needsGrace && lastActionEvents ? settleGraceMs(lastActionEvents, !!this.state.enhance) : 0;
 
     const delay = graceMs + minMs + Math.floor(Math.random() * (maxMs - minMs));
+    this.requestAiDecision(side, delay);
     this.startComputerTimer(delay);
+  }
+
+  /**
+   * 이 편의 수를 탐색 봇에게 묻는가 — 봇 방은 '어려움' 봇, 옛 혼자 놀기 컴퓨터는 AI_BOT(on · shadow)이 켜져 있을 때.
+   * 쉬움 · 보통은 규칙형이라 묻지 않는다.
+   */
+  private usesSearch(side: SideId): 'on' | 'shadow' | null {
+    if (this.soloLobby) return this.botLevelOf(side) === 'hard' ? 'on' : null;
+    const mode = aiMode();
+    return mode === 'off' ? null : mode;
+  }
+
+  /**
+   * 탐색 봇에게 이 결정 지점의 수를 묻는다 — 컴퓨터가 어차피 기다리는 시간(연출 + 생각하는 척) 안에서 worker가 계산하므로
+   * 사람이 느끼는 지연은 늘지 않는다. 그 시간 안에 답이 없으면(바쁨 · 늦음) performComputerAction이 규칙형(보통)으로 둔다.
+   */
+  private requestAiDecision(side: SideId, waitMs: number): void {
+    const seq = ++this.aiSeq;
+    this.aiResult = null;
+    if (!this.state || this.usesSearch(side) === null) return;
+    void getBotPool().decide(this.state, side, waitMs).then(decision => {
+      if (seq === this.aiSeq) this.aiResult = { seq, side, decision };
+    });
+  }
+
+  /** 이번 수 — 탐색 봇을 쓰는 편이고 쓸 수 있는 답이 있으면 그것, 아니면 규칙형의 수(heuristic) */
+  private chooseComputerDecision(side: SideId, heuristic: BotDecision): BotDecision {
+    const mode = this.usesSearch(side);
+    const r = this.aiResult;
+    this.aiResult = null;
+    this.aiSeq++;
+    if (mode === null || !this.state) return heuristic;
+    const pool = getBotPool();
+    if (!r || r.side !== side || r.decision === null) { pool.note('notReady'); return heuristic; }
+    if (!isLegalDecision(this.state, side, r.decision)) { pool.note('illegal'); return heuristic; }
+    if (mode === 'shadow') {
+      pool.note(JSON.stringify(r.decision) === JSON.stringify(heuristic) ? 'shadowSame' : 'shadowDiff');
+      return heuristic;
+    }
+    pool.note('used');
+    return r.decision;
   }
 
   /** 컴퓨터가 다음 수를 두기까지의 대기 타이머 — 일시정지 재개에서도 같은 길을 쓴다. */
@@ -1081,35 +1285,32 @@ export class Room {
     if (!this.state || this.state.phase !== 'playing') return;
 
     let result: { state: GameState; events: ReturnType<typeof processPlayerAction>['events'] };
-    const offer = this.state.enhance?.acorn?.offer;
-    if (offer) {
-      // 도토리 카드 — 컴퓨터는 후보 중 무작위 하나. 고르기가 닫히지 않았으면(사람이 아직) 타이머는 그대로 둔다
-      const opts = offer.options.B;
-      if (!opts || offer.picked.B !== null) return;
-      result = processAcornPick(this.state, 'B', opts[Math.floor(Math.random() * opts.length)]);
+    // 먼저 기존 컴퓨터의 수를 정해 두고(탐색 봇이 꺼져 있거나 답이 없을 때 그대로 쓴다), chooseComputerDecision이 최종 수를 고른다
+    // (도토리 카드 고르기가 떠 있는데 봇이 모두 골랐으면 null — 사람이 고를 때까지 기다린다)
+    const side = this.botSideNow();
+    if (side === null) return;
+    // 어려움 봇이 답을 못 받으면 보통으로 대신 둔다(쉬움으로 떨어지지 않게)
+    const level = this.botLevelOf(side) === 'easy' ? 'easy' : 'normal';
+    const heuristic = heuristicDecision(this.state, side, Math.random, level);
+    if (heuristic === null) return;
+    const decision = this.chooseComputerDecision(side, heuristic);
+
+    if (decision.kind === 'acorn') {
+      // 고르기가 닫히지 않았으면(사람 · 다른 봇이 아직) 타이머는 그대로 둔다
+      result = processAcornPick(this.state, side, decision.id);
       this.state = result.state;
       if (!acornOfferOpen(this.state)) this.resetTimer(result.events);
       this.broadcastResult(result.events);
       if (this.state.phase === 'playing') this.scheduleComputerActionIfNeeded(result.events);
       return;
     }
-    if (this.state.pendingChoice === 'B') {
-      if (this.state.enhance) {
-        const animal = pickEnhanceComputerSkill(this.state, 'B');
-        result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
-      } else {
-        const animal = pickComputerSkill(this.state, 'B');
-        result = animal === null ? processPass(this.state) : processSkillChoice(this.state, animal);
-      }
-    } else if (this.state.activeTeam === 'B' && this.state.pendingChoice === null) {
-      // 컴퓨터도 "직전 장소 금지" 규칙을 지켜야 한다 — 안 그러면 거부당한 뒤 다시
-      // 무작위로 고르느라 한 텀을 허비한다(화면엔 아무 변화 없이 몇 초가 그냥 지나감).
-      const options = PLACES.filter(p => p !== this.state!.lastPlace);
-      const place = options[Math.floor(Math.random() * options.length)];
-      result = processPlayerAction(this.state, place);
-    } else {
-      return;
+    if (decision.kind === 'skill') {
+      result = processSkillChoice(this.state, decision.animal, decision.target);
+      // 엔진이 받지 않았으면(대상이 틀렸다 등) 이벤트가 없다 — 빈 actionResult는 화면이 "재접속"으로 읽으므로 턴을 마친다
+      if (result.events.length === 0) result = processPass(this.state);
     }
+    else if (decision.kind === 'pass') result = processPass(this.state);
+    else result = processPlayerAction(this.state, decision.place);
 
     this.state = result.state;
     if (this.state.phase === 'ended') this.clearTimer();
@@ -1606,6 +1807,8 @@ export class Room {
       else this.resetTimer(events);
     }
     this.broadcast({ type: 'actionResult', events: serializeEvents(events), state: this.snapshot() });
+    // 봇 방 — 항복한 사람의 차례가 봇에게 넘어갔으면 봇이 이어서 둔다(resetTimer가 컴퓨터 타이머도 걷었다)
+    if (state.phase === 'playing') this.scheduleComputerActionIfNeeded(events);
   }
 
   /**
@@ -1672,6 +1875,23 @@ export class Room {
     // 20초짜리 창만 덩그러니 남지 않도록 곧바로 걷는다. 개인전에서 답할 사람이 사라지면 그 사람만 빼고 센다.
     this.dropFromPauseVote(playerId);
 
+    // 혼자 놀기(옛 혼자 놀기 · 봇 방) — 기다리게 할 사람이 없으므로 끊겨도 **일시정지를 풀지 않는다**(2026-11-24 요청 —
+    // 폰에서 다른 앱에 다녀오면 브라우저가 연결을 끊어, 돌아오면 판이 흐르고 있었다). 풀 수 있는 것은 [게임 계속하기]뿐이다.
+    // 대신 아무도 돌아오지 않으면 방이 영영 남으므로, SOLO_ABANDON_MS 뒤에 정리한다(돌아오면 handleReconnect가 걷는다).
+    if (this.vsComputer) {
+      if (this.paused && ![...this.players.values()].some(q => q.connected)) {
+        if (this.abandonTimer !== null) clearTimeout(this.abandonTimer);
+        this.abandonTimer = setTimeout(() => {
+          this.abandonTimer = null;
+          if ([...this.players.values()].some(q => q.connected)) return;
+          this.clearTimer();
+          this.clearPauseState();
+          this.onEmpty();
+        }, SOLO_ABANDON_MS);
+      }
+      return;
+    }
+
     // 멈춘 팀에 아무도 남지 않으면 **아무도 다시 시작할 수 없다**(재개는 그 팀만
     // 할 수 있으므로). 판이 영영 멈춘 채로 남지 않도록 여기서 대신 풀어준다.
     if (this.paused && this.pausedBy && this.connectedHumansOf(this.pausedBy.team).length === 0) {
@@ -1687,6 +1907,10 @@ export class Room {
     p.connected = true;
     clearTimeout(this.lobbyDropTimers.get(playerId));
     this.lobbyDropTimers.delete(playerId);
+    if (this.abandonTimer !== null) {
+      clearTimeout(this.abandonTimer);
+      this.abandonTimer = null;
+    }
 
     if (this.state === null) {
       // 대기실 화면이 "내가 누구인지"(memberId)와 방장 여부를 다시 알 수 있도록,
@@ -1729,6 +1953,7 @@ export class Room {
       hostMemberId: this.hostPlayerId ? this.memberIdOf(this.hostPlayerId) : null,
       mode: this.mode,
       enhance: this.enhance,
+      ...(this.soloLobby ? { solo: true } : {}),
     });
   }
 
@@ -1740,6 +1965,14 @@ export class Room {
       ready: p.ready,
       connected: p.connected,
       ...(p.color !== undefined ? { color: p.color } : {}),
-    }));
+    })).concat([...this.bots.values()].map(b => ({
+      memberId: b.memberId,
+      nickname: b.nickname,
+      team: PLAYER_SEAT as Seat,
+      ready: true,
+      connected: true,
+      color: b.color,
+      bot: b.level,
+    })));
   }
 }

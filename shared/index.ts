@@ -7,3 +7,4 @@ export * from './emotes';
 export * from './enhance';
 export * from './acorn';
 export * from './finisher';
+export * from './bots';

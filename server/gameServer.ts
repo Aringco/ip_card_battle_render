@@ -83,14 +83,17 @@ export function createConnectionHandler(roomManager: RoomManager) {
         case 'createSoloRoom': {
           const { roomId, room } = roomManager.createRoom();
           const playerId = randomUUID();
-          room.addSoloPlayer(ws, playerId, msg.nickname, msg.teamName, msg.settings, msg.enhance === true);
+          // lobby(2026-11-24) — 대기실을 연다(봇 방). 시연 이름 짝이면 false가 아니라 true(곧바로 시작하는 옛 혼자 놀기)를 돌려준다.
+          let instant = true;
+          if (msg.lobby) instant = room.addSoloLobbyPlayer(ws, playerId, msg.nickname, msg.teamName, msg.settings, msg.enhance === true);
+          else room.addSoloPlayer(ws, playerId, msg.nickname, msg.teamName, msg.settings, msg.enhance === true);
           detachFromPreviousRoom(roomId);
           currentRoomId = roomId;
           currentPlayerId = playerId;
           ws.send(JSON.stringify({ type: 'roomCreated', roomId, playerId, memberId: room.memberIdOf(playerId) }));
           // ⚠️ 시작은 roomCreated를 보낸 **뒤**여야 한다 — 클라이언트는 방에 새로 들어온
           // 순간 옛 게임 상태를 비우므로, gameStart가 먼저 오면 그 비우기에 함께 지워진다.
-          room.startSoloGame();
+          if (instant) room.startSoloGame();
           break;
         }
 
@@ -104,6 +107,10 @@ export function createConnectionHandler(roomManager: RoomManager) {
           const result = room.addPlayer(ws, playerId, msg.nickname, msg.team, msg.teamName);
           if (result === 'game_started') {
             ws.send(JSON.stringify({ type: 'error', code: 'GAME_ALREADY_STARTED', message: '이미 게임이 시작된 방입니다.' }));
+            return;
+          }
+          if (result === 'solo_room') {
+            ws.send(JSON.stringify({ type: 'error', code: 'ROOM_FULL', message: '혼자 놀기 방이라 들어갈 수 없어요.' }));
             return;
           }
           if (result === 'nickname_taken') {
@@ -144,6 +151,18 @@ export function createConnectionHandler(roomManager: RoomManager) {
         case 'kickPlayer': {
           if (!currentRoomId || !currentPlayerId) return;
           roomManager.getRoom(currentRoomId)?.kickPlayer(currentPlayerId, msg.targetMemberId);
+          break;
+        }
+
+        case 'addBot': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.addBot(currentPlayerId, msg.level);
+          break;
+        }
+
+        case 'setBotLevel': {
+          if (!currentRoomId || !currentPlayerId) return;
+          roomManager.getRoom(currentRoomId)?.setBotLevel(currentPlayerId, msg.targetMemberId, msg.level);
           break;
         }
 

@@ -1,5 +1,6 @@
 import type { Animal, GameEvent, GameMode, GameSettings, GameState, Place, Seat, SideId, Team } from './types';
 import type { PlayerColorId } from './constants';
+import type { BotLevel } from './bots';
 
 // ─── 클라이언트 → 서버 ───────────────────────────────────────────────────────
 
@@ -18,7 +19,12 @@ export type ClientMessage =
   // enhance는 개인전 방에서만 쓴다 — '강화' 방(혼자 놀기 카드 강화의 규칙을 개인전에 얹는다, 2026-10-30). 팀전 방에서는 무시한다.
   | { type: 'createRoom'; nickname: string; team: Seat; teamName?: string; otherTeamName?: string; settings?: Partial<GameSettings>; mode?: GameMode; enhance?: boolean }
   | { type: 'joinRoom'; roomId: string; nickname: string; team: Seat; teamName?: string }
-  | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings>; enhance?: boolean } // 싱글 모드 — 컴퓨터(랜덤 클릭)와 즉시 대전. enhance면 '카드 강화' 판(shared/enhance.ts)
+  // 혼자 놀기 — lobby면(2026-11-24) 대기실을 연다: 개인전 방에 나 혼자 + 봇 하나(보통)로 시작하고, 방장인 내가 봇을 넣고 빼며 시작한다.
+  // lobby가 없으면 예전처럼 컴퓨터 하나(팀전 B)와 곧바로 대전(옛 클라이언트 호환). 시연 이름 짝이면 lobby여도 시연(곧바로 시작). enhance면 '카드 강화' 판
+  | { type: 'createSoloRoom'; nickname: string; teamName?: string; settings?: Partial<GameSettings>; enhance?: boolean; lobby?: boolean }
+  // 혼자 놀기 대기실의 봇(방장만 · 시작 전만) — 빼기는 kickPlayer(봇의 memberId)로 한다
+  | { type: 'addBot'; level?: BotLevel }
+  | { type: 'setBotLevel'; targetMemberId: string; level: BotLevel }
   // ready는 토글이다 — 값을 생략하면 "준비 완료"로 본다(옛 클라이언트 호환).
   | { type: 'ready'; ready?: boolean }
   | { type: 'leaveRoom' } // 대기실에서 스스로 나가기(연결은 유지한 채 방만 벗어난다)
@@ -81,6 +87,7 @@ export type ServerMessage =
       hostMemberId: string | null;
       mode: GameMode; // 방이 살아 있는 동안 바뀌지 않는다
       enhance: boolean; // 개인전 '강화' 방인지(규칙 입력 범위 · 대기실 표시) — 이것도 바뀌지 않는다
+      solo?: boolean; // 혼자 놀기 대기실(봇 방) — 방 코드 · 초대 · 채팅을 감추고 [봇 추가]를 보인다. 다른 사람은 들어올 수 없다
     }
   | { type: 'kicked'; message: string }   // 방장에게 추방당해 방에서 나갔음
   | { type: 'leftRoom' }                  // 스스로 나가기(leaveRoom) 완료
@@ -110,6 +117,7 @@ export interface LobbyPlayer {
   color?: PlayerColorId; // 개인전 플레이어석에 앉은 사람의 색 — 관전석·팀전에는 없다
   ready: boolean;  // 관전자는 준비할 것이 없으므로 서버가 항상 true로 유지한다
   connected: boolean;
+  bot?: BotLevel;  // 혼자 놀기의 봇이면 그 난이도(사람이면 없다) — 언제나 준비 완료 · 연결됨
 }
 
 /**

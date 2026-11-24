@@ -394,9 +394,12 @@ export function GameRulesInputs({
   mode = 'team',
   limits = SETTINGS_LIMITS,
   showSkillGrowth = false,
+  hidePause = false,
 }: {
   settings: GameSettings;
   onChange: (next: GameSettings) => void;
+  /** 혼자 놀기 대기실 — 일시정지가 무제한이라 두 항목을 감춘다(로비 폼의 hidePause와 같다) */
+  hidePause?: boolean;
   /** 개인전이면 선 플레이어 줄이 없다(차례 순서는 시작할 때 섞어서 정한다). */
   mode?: GameMode;
   /** 입력 범위 — 개인전 강화 방은 ENHANCE_SETTINGS_LIMITS(목표 점수 100점 단위). 서버도 같은 범위로 다시 자른다. */
@@ -458,7 +461,7 @@ export function GameRulesInputs({
       </div>
       )}
       <div className="flex flex-col gap-3">
-        {RULE_FIELDS.filter(f => !(showSkillGrowth && ENHANCE_HIDDEN.includes(f.key))).map(f => (showSkillGrowth ? enhanceField(f) : f)).map(renderRow)}
+        {RULE_FIELDS.filter(f => !(showSkillGrowth && ENHANCE_HIDDEN.includes(f.key)) && !(hidePause && PAUSE_KEYS.includes(f.key))).map(f => (showSkillGrowth ? enhanceField(f) : f)).map(renderRow)}
         {showSkillGrowth && (
           <>
             <div className="flex items-center gap-2 text-lg">
@@ -499,9 +502,12 @@ export function RuleSummary({
   teamNames,
   mode = 'team',
   enhance = false,
+  pauseUnlimited = false,
 }: {
   settings: GameSettings;
   teamNames: Record<Team, string | null>;
+  /** 혼자 놀기 대기실 — 일시정지 제한이 없다 */
+  pauseUnlimited?: boolean;
   mode?: GameMode;
   /** 개인전 '강화' 방 — 규칙이 다르다는 것을 맨 앞에 알린다(턴 제한도 없다) */
   enhance?: boolean;
@@ -551,11 +557,12 @@ export function RuleSummary({
             늦다). ⚠️ **0은 "0회"가 아니라 "쓸 수 없음"이다** — 그 방에서는 일시정지가
             아예 막히므로(Room.pauseMaxCount) 숫자 대신 그 사실을 적고, 함께 무의미해지는
             최대 시간도 감춘다. 횟수가 **팀마다**인 것도 적는다(합산이 아니다).
-            혼자 놀기는 이 요약을 지나지 않는다 — 대기실 없이 곧바로 게임으로 가고,
-            서버도 vsComputer면 두 제한을 걸지 않는다. */}
+            혼자 놀기 대기실(pauseUnlimited)은 두 제한이 없다 — 서버도 vsComputer면 걸지 않는다. */}
         <span>
           ⏸{' '}
-          {settings.pauseMaxCount > 0
+          {pauseUnlimited
+            ? '일시정지 무제한'
+            : settings.pauseMaxCount > 0
             ? `일시정지 ${individual ? '사람' : '팀'}마다 ${settings.pauseMaxCount}회 (최대 ${settings.pauseMaxMin}분)`
             : '일시정지 없음'}
         </span>

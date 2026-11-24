@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { GameMode, GameSettings, LobbyChatMessage, LobbyPlayer, PlayerColorId, Seat, Team } from 'shared';
+import type { BotLevel, GameMode, GameSettings, LobbyChatMessage, LobbyPlayer, PlayerColorId, Seat, Team } from 'shared';
 import {
+  BOT_LEVELS,
+  BOT_LEVEL_LABEL,
   ENHANCE_SETTINGS_LIMITS,
   INDIVIDUAL_MAX_PLAYERS,
   INDIVIDUAL_MIN_PLAYERS,
@@ -66,6 +68,10 @@ export interface WaitingRoomProps {
   mode: GameMode;
   /** 개인전 '강화' 방 — 규칙 요약에 알리고, 방장의 규칙 입력은 강화 범위(목표 상한 2500)를 쓴다 */
   enhance?: boolean;
+  /** 혼자 놀기 대기실(봇 방) — 방 코드 · 초대 · 관전석 · 채팅을 감추고, 방장(나)에게 봇 넣기 · 빼기 · 난이도를 보인다 */
+  solo?: boolean;
+  onAddBot?: (level?: BotLevel) => void;
+  onSetBotLevel?: (targetMemberId: string, level: BotLevel) => void;
   players: LobbyPlayer[];
   teamNames: Record<Team, string | null>;
   settings: GameSettings;
@@ -91,7 +97,7 @@ export interface WaitingRoomProps {
 const PLANK_MAX_PX = 420;
 
 export function WaitingRoom({
-  roomId, mode, enhance = false, players, teamNames, settings,
+  roomId, mode, enhance = false, solo = false, onAddBot, onSetBotLevel, players, teamNames, settings,
   myMemberId, hostMemberId, isHost, chatLog, connected, onSendChat,
   onReady, onStart, onLeave, onMove, onKick, onTransferHost, onRenameTeam, onSelectColor, onUpdateSettings,
 }: WaitingRoomProps) {
@@ -141,7 +147,14 @@ export function WaitingRoom({
       {/* waiting-* 클래스는 폰 배치의 표식이다(globals.css "게임 밖 화면 — 폰" — 방 코드 한 줄로 줄이기 · 시작/준비 버튼 바닥 고정).
           데스크톱에는 규칙이 없다. */}
       <div className="waiting-scroll flex-1 min-h-0 overflow-y-auto flex flex-col gap-6 pr-1 [&>*]:shrink-0">
-      <RoomCodeHeader roomId={roomId} />
+      {solo ? (
+        <div className="waiting-code text-center">
+          <p className="text-3xl font-bold text-green-700">🎮 혼자 놀기</p>
+          <p className="text-base text-board-muted mt-1">봇을 넣고 빼고, 봇마다 난이도를 골라 상대를 정하세요.</p>
+        </div>
+      ) : (
+        <RoomCodeHeader roomId={roomId} />
+      )}
 
       {individual ? (
         // 개인전 — 플레이어 전원을 **한 블록** 안에 둔다. 색 고르기도 이 안에 있다.
@@ -155,6 +168,9 @@ export function WaitingRoom({
           onKick={onKick}
           onTransferHost={onTransferHost}
           onSelectColor={onSelectColor}
+          solo={solo}
+          onAddBot={onAddBot}
+          onSetBotLevel={onSetBotLevel}
         />
       ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -177,7 +193,7 @@ export function WaitingRoom({
       </div>
       )}
 
-      <SpectatorRow
+      {!solo && <SpectatorRow
         individual={individual}
         players={spectators}
         myMemberId={myMemberId}
@@ -186,15 +202,18 @@ export function WaitingRoom({
         onMove={onMove}
         onKick={onKick}
         onTransferHost={onTransferHost}
-      />
+      />}
 
-      <ChatPanel
-        messages={chatLog}
-        myMemberId={myMemberId}
-        connected={connected}
-        onSend={onSendChat}
-        colorOf={individual ? (id => players.find(p => p.memberId === id)?.color) : undefined}
-      />
+      {/* 혼자 놀기에는 말할 상대가 없다 */}
+      {!solo && (
+        <ChatPanel
+          messages={chatLog}
+          myMemberId={myMemberId}
+          connected={connected}
+          onSend={onSendChat}
+          colorOf={individual ? (id => players.find(p => p.memberId === id)?.color) : undefined}
+        />
+      )}
 
       {/* 준비/시작 버튼이 규칙 패널보다 먼저 온다 — 대화창이 생기면서 화면이 길어진 뒤로,
           규칙을 아래에 두지 않으면 정작 가장 자주 누르는 버튼이 스크롤 밖으로 밀려난다. */}
@@ -239,13 +258,13 @@ export function WaitingRoom({
       )}
 
       {isHost ? (
-        <HostRulesPanel mode={mode} enhance={enhance} settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
+        <HostRulesPanel mode={mode} enhance={enhance} solo={solo} settings={settings} teamNames={teamNames} onApply={onUpdateSettings} />
       ) : (
-        <RuleSummary mode={mode} enhance={enhance} settings={settings} teamNames={teamNames} />
+        <RuleSummary mode={mode} enhance={enhance} pauseUnlimited={solo} settings={settings} teamNames={teamNames} />
       )}
 
       <button onClick={onLeave} className="text-lg text-board-muted hover:text-board-ink">
-        ← 방 나가기
+        {solo ? '← 나가기' : '← 방 나가기'}
       </button>
       </div>
     </BoardFrame>
@@ -431,7 +450,11 @@ function SpectatorRow({
  */
 function IndividualRoster({
   players, me, myMemberId, hostMemberId, isHost, onMove, onKick, onTransferHost, onSelectColor,
+  solo = false, onAddBot, onSetBotLevel,
 }: {
+  solo?: boolean;
+  onAddBot?: (level?: BotLevel) => void;
+  onSetBotLevel?: (targetMemberId: string, level: BotLevel) => void;
   players: LobbyPlayer[];
   me: LobbyPlayer | null;
   myMemberId: string | null;
@@ -469,9 +492,25 @@ function IndividualRoster({
               onMove={onMove}
               onKick={onKick}
               onTransferHost={onTransferHost}
+              onSetBotLevel={onSetBotLevel}
             />
           ))}
         </div>
+      )}
+
+      {/* 혼자 놀기 — 봇 넣기(기본 보통, 넣은 뒤 줄의 드롭다운으로 난이도를 바꾼다) */}
+      {solo && isHost && onAddBot && (
+        players.length < INDIVIDUAL_MAX_PLAYERS ? (
+          <button
+            type="button"
+            onClick={() => onAddBot()}
+            className="wood-button text-base px-4 py-2 mt-2 self-start"
+          >
+            🤖 + 봇 추가
+          </button>
+        ) : (
+          <p className="text-base text-board-muted mt-2">자리가 가득 찼어요(최대 {INDIVIDUAL_MAX_PLAYERS}명).</p>
+        )
       )}
 
       {iAmPlayer && (
@@ -576,8 +615,10 @@ function TeamNameRow({
 
 function PlayerRow({
   player, isMe, isTheHost, viewerIsHost, seats = SEATS,
-  onMove, onKick, onTransferHost,
+  onMove, onKick, onTransferHost, onSetBotLevel,
 }: {
+  /** 봇 줄의 난이도 드롭다운 — 혼자 놀기 대기실의 방장만 */
+  onSetBotLevel?: (targetMemberId: string, level: BotLevel) => void;
   player: LobbyPlayer;
   isMe: boolean;
   isTheHost: boolean;
@@ -599,7 +640,9 @@ function PlayerRow({
 
   // 자리 이동은 방장이 아무나, 그 외에는 자기 자신만 할 수 있다(서버도 같은 규칙).
   // 지금 앉아 있는 자리를 뺀 나머지(다른 팀 + 관전석)가 옮겨갈 수 있는 곳이다.
-  const canMove = viewerIsHost || isMe;
+  const isBot = player.bot !== undefined;
+  // 봇은 자리를 옮기거나 방장을 넘겨받지 않는다 — 빼기와 난이도만
+  const canMove = !isBot && (viewerIsHost || isMe);
   const canManage = viewerIsHost && !isMe;
   const moveTargets = seats.filter(s => s !== player.team);
   const isSpectator = !isPlayingSeat(player.team);
@@ -637,7 +680,34 @@ function PlayerRow({
 
       <span className="flex-1" />
 
-      {confirming !== null ? (
+      {isBot ? (
+        <div className="flex items-center gap-1 shrink-0">
+          {viewerIsHost && onSetBotLevel ? (
+            <select
+              value={player.bot}
+              onChange={e => onSetBotLevel(player.memberId, e.target.value as BotLevel)}
+              aria-label={player.nickname + " 난이도"}
+              title="봇 난이도"
+              className="input-base !py-1 !px-2 text-base"
+            >
+              {BOT_LEVELS.map(l => <option key={l} value={l}>{BOT_LEVEL_LABEL[l]}</option>)}
+            </select>
+          ) : (
+            <span className="text-base text-board-muted">{BOT_LEVEL_LABEL[player.bot!]}</span>
+          )}
+          {viewerIsHost && (
+            // 봇 빼기는 되돌릴 수 있으니(다시 넣으면 된다) 한 번 더 묻지 않는다
+            <button
+              onClick={() => onKick(player.memberId)}
+              title="봇 빼기"
+              aria-label={player.nickname + " 빼기"}
+              className="wood-button wood-button-sm text-sm px-2 py-1 !text-red-700"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ) : confirming !== null ? (
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => {
@@ -711,10 +781,12 @@ function PlayerRow({
 // ─── 방장용 규칙 편집 ────────────────────────────────────────────────────────
 
 function HostRulesPanel({
-  mode, enhance, settings, teamNames, onApply,
+  mode, enhance, solo = false, settings, teamNames, onApply,
 }: {
   mode: GameMode;
   enhance: boolean;
+  /** 혼자 놀기 대기실 — 일시정지 두 항목을 감춘다(무제한) */
+  solo?: boolean;
   settings: GameSettings;
   teamNames: Record<Team, string | null>;
   onApply: (next: GameSettings) => void;
@@ -743,7 +815,7 @@ function HostRulesPanel({
 
       {open ? (
         <div className="px-4 pb-4 border-t border-board-line/60 pt-3 flex flex-col gap-3">
-          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} limits={enhance ? ENHANCE_SETTINGS_LIMITS : undefined} showSkillGrowth={enhance} />
+          <GameRulesInputs settings={draft} onChange={setDraft} mode={mode} limits={enhance ? ENHANCE_SETTINGS_LIMITS : undefined} showSkillGrowth={enhance} hidePause={solo} />
           <div className="flex gap-2">
             <PlankButton
               onClick={() => onApply(draft)}
@@ -766,7 +838,7 @@ function HostRulesPanel({
         </div>
       ) : (
         <div className="px-2 pb-3">
-          <RuleSummary mode={mode} enhance={enhance} settings={settings} teamNames={teamNames} />
+          <RuleSummary mode={mode} enhance={enhance} pauseUnlimited={solo} settings={settings} teamNames={teamNames} />
         </div>
       )}
     </div>

@@ -257,6 +257,9 @@ export default function LobbyPage() {
                 roomId={ws.roomId}
                 mode={ws.lobbyMode}
                 enhance={ws.lobbyEnhance}
+                solo={ws.lobbySolo}
+                onAddBot={ws.addBot}
+                onSetBotLevel={ws.setBotLevel}
                 players={ws.lobbyPlayers}
                 teamNames={ws.lobbyTeamNames}
                 settings={ws.lobbySettings}
