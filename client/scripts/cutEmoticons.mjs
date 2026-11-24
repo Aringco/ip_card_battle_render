@@ -3,7 +3,7 @@
 //   assets-src/emoticons/spticon/*.{bmp,png}   → public/emoticon/spticon/{slug}.webp
 //   assets-src/emoticons/hand_emoticons.png    → public/emoticon/hands/{slug}.webp  (한 장에 다섯 손을 잘라 낸다)
 //
-// '기본' 묶음(public/emoticon/default/*.png)은 원래 있던 그림을 그대로 쓴다 — 여기서 만들지 않는다.
+// '기본' 묶음(public/emoticon/default/*.png)은 여기서 만들지 않는다 — scripts/cutDefaultEmoticons.mjs가 시트 한 장에서 자른다.
 // 파일 이름(slug)과 화면에 보일 이름은 shared/emotes.ts의 목록과 짝이다 — 한쪽만 고치면 그림이 안 뜬다.
 //
 // 왜 BMP를 변환하나: 받은 SP 그림 대부분이 BMP(무압축, 장당 수백 KB~1MB)라 그대로 두면 로딩 화면이
