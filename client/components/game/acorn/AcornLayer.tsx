@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { AcornOwned, AcornTier, ClientGameEvent, ClientGameState, SideId } from 'shared';
-import { ACORN_FAMILY_NAME, ACORN_PICK_SEC, ACORN_TIER_NAME, ACORN_TIER_SKIN, acornCard, acornCardLines, acornSkinOf } from 'shared';
+import type { AcornOwned, AcornSide, AcornTier, ClientGameEvent, ClientGameState, SideId } from 'shared';
+import { ACORN_FAMILY_NAME, ACORN_PICK_SEC, ACORN_TIER_NAME, ACORN_TIER_SKIN, acornCard, acornCardLines, acornSkinOf, acornSummary } from 'shared';
 import { AcornGlyph } from '@/lib/acornIcons';
 import { AcornCard, CardBack } from './AcornCard';
 import { AcornIcon } from '@/components/ui/AcornIcon';
@@ -231,7 +231,7 @@ export function AcornLayer({ state, me, events, turnDeadline, settling, paused, 
   } else if (viewing !== null) {
     const owned = acorn.sides[viewing]?.owned ?? [];
     const name = state.teamNames?.[viewing] ?? state.teams[viewing]?.members[0] ?? '';
-    layer = <AcornShelf title={`${name}의 도토리 카드`} owned={owned} onClose={() => setViewing(null)} />;
+    layer = <AcornShelf title={`${name}의 도토리 카드`} owned={owned} side={acorn.sides[viewing]} onClose={() => setViewing(null)} />;
   }
   const flyEl = fly && (
     <span
@@ -274,15 +274,19 @@ function PickTimer({ deadline }: { deadline: number | null }) {
  * 도토리 카드 자리 — 기술 카드 띠처럼 늘어선 판. 빈 자리 없이 가운데부터 네 장까지 나란히, **다섯 장부터는 같은 폭 안에서 겹친다**(가로 스크롤 없음 —
  * 2026-11-07). 겹친 카드는 마우스를 올리거나(PC) 누르면(폰 — 초점) 앞으로 나온다. 새로 얻은 카드는 언제나 맨 끝 · 맨 앞이다.
  * incoming이 있으면 마지막 칸으로 그 카드가 아래에서 올라오며 [승격]처럼 단계 색으로 빛났다 걷힌다.
- * onClose가 있으면 보기 창(닫기 버튼 · 바깥 누르기로 닫힌다)이고 [카드] · [목록] 보기를 고를 수 있다.
+ * onClose가 있으면 보기 창(닫기 버튼 · 바깥 누르기로 닫힌다)이고 [카드] · [목록] · [요약] 보기를 고를 수 있다.
+ * [요약](2026-11-25)은 같은 효과끼리 합산해 지금 유효한 효과만 보인다(shared의 acornSummary — 상한이 있는 것은 상한까지).
  */
-function AcornShelf({ title, owned, incoming, onClose }: {
+function AcornShelf({ title, owned, side, incoming, onClose }: {
   title: string;
   owned: AcornOwned[];
+  /** 보기 창의 그 편 도토리 상태 — [요약]의 남은 효과(충전 · 턴마다)를 읽는다 */
+  side?: AcornSide;
   incoming?: { id: string; tier: AcornTier };
   onClose?: () => void;
 }) {
-  const [list, setList] = useState(false);
+  const [mode, setMode] = useState<'cards' | 'list' | 'summary'>('cards');
+  const list = mode === 'list';
   const cards = incoming ? owned.filter(o => o.id !== incoming.id) : owned;
   // 빈 자리는 만들지 않는다 — 얻은 카드만 가운데부터(CSS .acorn-shelf-row)
   const slots = cards.length + (incoming ? 1 : 0);
@@ -295,8 +299,9 @@ function AcornShelf({ title, owned, incoming, onClose }: {
           {onClose && (
             <>
               <span className="acorn-shelf-modes" role="group" aria-label="보기 방식">
-                <button type="button" aria-pressed={!list} onClick={() => setList(false)}>카드</button>
-                <button type="button" aria-pressed={list} onClick={() => setList(true)}>목록</button>
+                <button type="button" aria-pressed={mode === 'cards'} onClick={() => setMode('cards')}>카드</button>
+                <button type="button" aria-pressed={mode === 'list'} onClick={() => setMode('list')}>목록</button>
+                <button type="button" aria-pressed={mode === 'summary'} onClick={() => setMode('summary')}>요약</button>
               </span>
               <button type="button" className="acorn-shelf-close" onClick={onClose} aria-label="닫기">
                 ✕
@@ -304,7 +309,9 @@ function AcornShelf({ title, owned, incoming, onClose }: {
             </>
           )}
         </div>
-        {list ? (
+        {mode === 'summary' ? (
+          !empty && <AcornSummaryView side={side} />
+        ) : list ? (
           <ul className="acorn-list">
             {owned.map(o => {
               const def = acornCard(o.id);
@@ -373,6 +380,30 @@ function AcornShelf({ title, owned, incoming, onClose }: {
         )}
         {empty && <p className="acorn-shelf-empty">아직 도토리 카드가 없어요</p>}
       </div>
+    </div>
+  );
+}
+
+/** [요약] — 늘 적용되는 효과(합산) · 아직 남은 효과. 상한에 걸린 줄은 그 사실을 함께 적는다 */
+function AcornSummaryView({ side }: { side?: AcornSide }) {
+  const { always, left } = acornSummary(side);
+  const rows = (lines: ReturnType<typeof acornSummary>['always']) =>
+    lines.map(l => (
+      <li key={l.text} className="acorn-summary-row">
+        {l.text}
+        {l.capped !== undefined && <span className="acorn-summary-cap">상한 {l.capped}%</span>}
+      </li>
+    ));
+  return (
+    <div className="acorn-summary">
+      <section>
+        <h3 className="acorn-summary-title">늘 적용되는 효과</h3>
+        {always.length ? <ul className="acorn-summary-list">{rows(always)}</ul> : <p className="acorn-summary-none">없음</p>}
+      </section>
+      <section>
+        <h3 className="acorn-summary-title">남은 효과</h3>
+        {left.length ? <ul className="acorn-summary-list">{rows(left)}</ul> : <p className="acorn-summary-none">없음</p>}
+      </section>
     </div>
   );
 }

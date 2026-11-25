@@ -354,6 +354,32 @@
 .acorn-list-tier { font-size: 11px; opacity: 0.7; }
 .acorn-list-lines { flex-basis: 100%; color: #fde68a; line-height: 1.35; }
 .acorn-shelf-empty { margin: 8px 0 0; font-size: 13px; opacity: 0.7; text-align: center; }
+/* [요약] 보기(2026-11-25) — 목록 보기와 같은 폭 · 높이 상한. 같은 효과끼리 합산한 한 줄씩(AcornSummaryView) */
+.acorn-summary {
+  width: min(80vw, 640px);
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px;
+}
+.acorn-summary-title { margin: 0 0 4px; font-size: 12px; font-weight: 800; color: #f0c88a; letter-spacing: 0.02em; }
+.acorn-summary-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.acorn-summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border-left: 4px solid #c98652;
+  color: #fde68a;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.acorn-summary-cap { margin-left: auto; flex: none; padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff7e6; font-size: 11px; font-weight: 700; }
+.acorn-summary-none { margin: 0; font-size: 12px; opacity: 0.6; }
 
 /* ── 효과 표시 배지 — 검은 도토리(실루엣) 안에 카드의 아이콘. 둘레 빛은 그 카드의 단계 색 ── */
 .acorn-badges { display: flex; flex-wrap: wrap; gap: 0.25em; align-items: center; }

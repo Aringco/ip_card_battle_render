@@ -102,7 +102,9 @@
 }
 .m-target-title { font-size: 16px; font-weight: 900; }
 .m-target-sub { font-size: 11.5px; font-weight: 700; color: #7d6a55; }
-.m-target-rows { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 2px; touch-action: pan-y; }
+/* 안여백 6px = 고른 줄의 바깥 테(3px) + 여유 — 스크롤 상자는 넘친 그림자를 잘라 낸다. ⚠️ 고른 줄을 키우지(scale) 말 것:
+   커진 줄은 상자 밖으로 나가 스크롤바를 만든다(2026-11-25 — CLAUDE.md "고른 것 표시" 규칙) */
+.m-target-rows { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 6px; touch-action: pan-y; }
 .m-target-row {
   width: 100%;
   min-height: 44px;
@@ -120,12 +122,14 @@
   border-color: var(--opp-color);
   background: #fff;
   box-shadow: 0 0 0 3px var(--opp-color), 0 0 14px color-mix(in srgb, var(--opp-color) 70%, transparent);
-  transform: scale(1.02);
 }
 .m-target-lethal { flex: none; padding: 1px 7px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; }
 .m-target-hp { margin-left: auto; flex: none; display: flex; align-items: center; gap: 6px; width: 40%; font-weight: 900; color: #9f1239; }
 .m-target-hp .m-opp-hpbar { flex: 1; height: 7px; }
 .m-target-row .m-opp-dots { font-size: 9px; }
+/* 상대 정보(TargetInfo)는 줄의 둘째 줄 — 줄을 감싸 내린다(07-individual.css의 .target-info) */
+.m-target-row { flex-wrap: wrap; row-gap: 5px; }
+.m-target-row .target-info { font-size: 12px; }
 .m-target-cancel { align-self: flex-end; min-height: 40px; padding: 0 14px; font-size: 13px; font-weight: 800; color: #7d6a55; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -136,11 +140,6 @@
 /* ── 모바일 — 기술 카드 두께 1px(2026-10-31 요청, PC는 2px 그대로) · 개인전 감정표현 버튼 ──
    두께는 SkillChoiceBar의 HOLO_EDGE_PX(2px)로 잡힌 옆면 그림자 길이에 곱하는 배율(--edge-k)로 줄인다. */
 .m-layout { --edge-k: 0.5; }
-/* 개인전 — 감정표현 버튼을 내 동물 열 위에 둔다(PC는 정보창 오른쪽 위에 겹쳐 앉는다). 그만큼 아이콘을 줄인다 */
-.m-layout[data-individual] { --m-icon: clamp(38px, calc((var(--m-view-h) - 64px) / 4), 62px); }
-.m-layout[data-individual] .m-rail-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.m-layout[data-individual] .m-rail-left .emote-button { position: static; flex: none; width: 34px; height: 34px; }
-.m-layout[data-individual] .m-rail-left .m-rail-list { flex: 1; min-height: 0; width: 100%; height: auto; }
 
 /* 지속 효과의 빛이 막대 안쪽(빈 칸)으로 비치지 않게 — 트랙을 불투명하게. 빛은 막대 둘레로만 보인다 */
 .m-hp-track { background: #2b1d0f; }

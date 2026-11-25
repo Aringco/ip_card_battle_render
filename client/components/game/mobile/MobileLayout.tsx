@@ -8,6 +8,7 @@ import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
 import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { canUseSkill, levelOf, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
+import { PLAY_ASSETS } from '@/lib/playAssets';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SweepBanner } from '@/components/effects/SweepBanner';
 import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
@@ -113,7 +114,7 @@ export function MobileLayout({
   const viewState = withDisplayedTeams(gameState, animState.displayedTeamPatch, animState.displayedStatus);
   const hpState = withDisplayedHp(viewState, animState.displayedHp);
 
-  // 감정표현 — 카드 강화 판만(2026-11-25). 버튼은 아래 띠 왼쪽 끝(설정 톱니와 마주 보는 빈 자리), 고르기 창은 그 위로 판 폭만큼 연다.
+  // 감정표현 — 카드 강화 판만(2026-11-25). 버튼은 내 동물 열 아래 칸(.m-corner — 도토리 카드 버튼의 오른쪽), 고르기 창은 그 위로 판 폭만큼 연다.
   // 풍선은 연출 표정과 같은 줄에 세운다(id는 음수 — 연출 쪽 순번과 겹치지 않게).
   const canEmote = !!gameState.enhance && !!onEmote && myTeam !== null && gameState.phase === 'playing';
   const bubbleItems = useMemo<PlayerEmoticon[]>(() => {
@@ -340,8 +341,21 @@ export function MobileLayout({
         <MobileHpBar team="A" side="left" gameState={hpState} animState={animState} mine={myTeam === 'A'} />
         {gameState.enhance && <MobileDotHub gameState={hpState} left="A" right="B" />}
         <MobileHpBar team="B" side="right" gameState={hpState} animState={animState} mine={myTeam === 'B'} />
-        {canEmote && <EmotePicker onSend={onEmote!} cellSelector=".m-view" opens="above" className="emote-fab" />}
       </footer>
+      {/* 내 동물 열 아래 칸 — [내 도토리 카드] (호랑이 레벨의 세로줄) [감정표현](2026-11-25 요청). 오른쪽 열 아래 칸은 설정 톱니 자리(CSS) */}
+      <div className="m-corner" data-single={gameState.enhance?.acorn ? undefined : ''}>
+        {gameState.enhance?.acorn && (
+          <button type="button" className="m-acorn-button m-corner-slot-l" aria-label="내 도토리 카드 보기" title="내 도토리 카드" onClick={() => openAcornShelf('A')}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PLAY_ASSETS.iconAcorn} alt="" draggable={false} />
+          </button>
+        )}
+        {canEmote && (
+          <span className="m-corner-slot-r">
+            <EmotePicker onSend={onEmote!} cellSelector=".m-view" opens="above" />
+          </span>
+        )}
+      </div>
 
       {/* 연출 층 — PC와 같은 것을 띄운다(진행 문구 · 축제 시작 안내는 오른쪽 위 MobileNotice가 대신한다) */}
       <EffectLayer leafParticleCount={animState.leafParticleCount} floatingTexts={animState.floatingTexts} />

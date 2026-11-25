@@ -11,6 +11,7 @@ const TEXT: Record<TargetSkill, { aria: string; title: string; sub: string }> = 
   mermaid: { aria: '디자인어로 노릴 상대 고르기', title: '누구의 배율을 깎을까요?', sub: '🧜‍♀️ 디자인어가 상대의 배율을 나눠요(Lv.Max는 효과까지)' },
 };
 import { sideColor, sideName } from '@/lib/individual';
+import { TargetInfo } from './TargetInfo';
 
 /** 마감 시각까지 남은 초(올림) — 멈춰 있으면 그대로 둔다. */
 function useSecondsLeft(deadline: number, paused: boolean): number {
@@ -114,6 +115,8 @@ export function TargetPicker({
             <span className="target-picker-hp tabular-nums">
               {animal === 'mermaid' ? `배율 ×${gameState.teams[side].pendingMultiplier}` : `체력 ${gameState.teams[side].hp}`}
             </span>
+            {/* 동물 넷의 레벨 · 경험치 · 배율 · 쿨타임과 걸린 상태(2026-11-25 요청) */}
+            <TargetInfo gameState={gameState} side={side} />
           </button>
         ))}
       </div>

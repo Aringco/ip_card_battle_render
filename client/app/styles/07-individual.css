@@ -486,7 +486,8 @@
   display: grid;
   /* 한 칸은 닉네임(최대 12자)·체력이 한 줄에 들어갈 폭이어야 한다 — 12rem으로 두었더니 "체력 5"가 세로로
      접히거나 닉네임이 두 글자만 남았다. 넷이 한 줄이라 전체 폭 상한도 그만큼 넓다. */
-  grid-template-columns: repeat(var(--tp-cols, 4), minmax(15rem, 18rem));
+  /* 18~22rem — 아래 상대 정보(TargetInfo, 동물 2×2)가 "Lv.2 16/20"까지 잘리지 않는 폭(2026-11-25, 그 전 15~18rem) */
+  grid-template-columns: repeat(var(--tp-cols, 4), minmax(18rem, 22rem));
   justify-content: center;
   gap: clamp(10px, 1.4vw, 18px);
   width: 100%;
@@ -513,6 +514,51 @@
   filter: brightness(1.05);
 }
 .target-picker-card:active { transform: translateY(1px); box-shadow: 0 3px 0 #2115055c, 0 6px 14px #00000066; }
+
+/* ── 대상 고르기의 상대 정보(TargetInfo — PC 칸 · 모바일 줄 공용, 2026-11-25) ──────────────────────────
+   카드 · 줄의 한 줄(번호 · 색 · 이름 · 체력) 아래에 한 줄을 통째로 쓴다(flex-basis 100%). 크기는 em — 담는 쪽 글자 크기를 따른다.
+   동물 넷은 같은 폭 네 칸: 얼굴(스티커 ×N · +N) | Lv · 경험치(쿨타임이면 "쿨 N") | 막대. 걸린 상태는 그 아래 작은 알약. */
+.target-picker-card { flex-wrap: wrap; }
+/* PC 칸은 좁다 — 동물 넷을 2×2로(모바일 줄은 넓어 한 줄 넷) */
+.target-picker-card .target-info-animals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.target-info { flex-basis: 100%; min-width: 0; display: flex; flex-direction: column; gap: 0.3em; font-size: 0.78em; text-align: left; }
+.target-info-animals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.35em; }
+.target-info-animal {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.3em;
+  align-items: center;
+  min-width: 0;
+  padding: 0.2em 0.3em;
+  border-radius: 0.5em;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(90, 58, 26, 0.18);
+}
+.target-info-animal[data-cooling] { opacity: 0.6; }
+.target-info-face { grid-row: 1 / 3; position: relative; width: 2.1em; height: 2.1em; }
+.target-info-face img { width: 100%; height: 100%; object-fit: contain; }
+.target-info-face img[data-lv0] { filter: grayscale(1) opacity(0.5); }
+.target-info-sticker {
+  position: absolute;
+  right: -0.45em;
+  top: -0.35em;
+  padding: 0 0.3em;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.78em;
+  font-weight: 900;
+  line-height: 1.35;
+}
+.target-info-sticker.is-over { top: auto; bottom: -0.35em; background: #b45309; }
+.target-info-text { display: flex; align-items: baseline; gap: 0.3em; min-width: 0; white-space: nowrap; overflow: hidden; color: #3b2a1a; }
+.target-info-text b { font-weight: 900; }
+.target-info-text span { font-size: 0.88em; color: #7d6a55; overflow: hidden; text-overflow: ellipsis; }
+.target-info-bar { height: 0.32em; border-radius: 999px; background: rgba(90, 58, 26, 0.18); overflow: hidden; }
+.target-info-bar > span { display: block; height: 100%; border-radius: inherit; background: #22c55e; }
+.target-info-chips { display: flex; flex-wrap: wrap; gap: 0.3em; }
+.target-info-chip { padding: 0.05em 0.55em; border-radius: 999px; background: #5a3a1a; color: #fde68a; font-size: 0.9em; font-weight: 800; }
 .target-picker-index {
   flex: none;
   display: grid;

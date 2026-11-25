@@ -7,6 +7,7 @@ import { withDisplayedExp } from '@/lib/skills';
 import { finishLabel, isFinished, sideColor, sideName } from '@/lib/individual';
 import type { TargetSkill } from '../TargetPicker';
 import { animalStatus } from './animalStatus';
+import { TargetInfo } from '../TargetInfo';
 
 /**
  * 누름 처리 — click이 아니라 **손가락을 뗀 순간**(움직이지 않았을 때)에 반응한다. 브라우저(Chrome)는 스와이프 직후 1초쯤 안의 누름을
@@ -150,7 +151,7 @@ const PICK_TEXT: Record<TargetSkill, { title: string; sub: string }> = {
 
 /**
  * 개인전 모바일 — 공격 카드(특허랑이 · 강화 방 Lv.6+ 디자인어)의 대상 고르기. 화면을 어둡게 덮고 상대를 한 줄씩(닉네임 · 지금 체력 ·
- * 출혈/지속 회복) 늘어놓는다. 한 번 누르면 고르고(포커스), 고른 줄을 한 번 더 누르면 그 상대로 확정한다. 고른 채 오른쪽 → 왼쪽으로 밀면
+ * 출혈/지속 회복, 그 아래 동물 넷의 레벨 · 경험치 · 배율 · 쿨타임과 걸린 상태 — TargetInfo) 늘어놓는다. 한 번 누르면 고르고(포커스), 고른 줄을 한 번 더 누르면 그 상대로 확정한다. 고른 채 오른쪽 → 왼쪽으로 밀면
  * 그 상대의 카드 상세 창이 이 위에 열린다(MobileIndividualLayout). 이 기술로 끝낼 수 있는 상대에는 "마무리"가 붙는다.
  * ⚠️ 턴 타이머는 멈추지 않는다(PC의 TargetPicker와 같다) — 위 띠의 타이머가 그대로 보인다.
  */
@@ -203,6 +204,8 @@ export function MobileTargetPicker({
                     </span>
                     <span className="tabular-nums">♥ {hp}</span>
                   </span>
+                  {/* 동물 넷의 레벨 · 경험치 · 배율 · 쿨타임과 걸린 상태(2026-11-25 요청 — 고를 때 정보가 너무 없었다) */}
+                  <TargetInfo gameState={gameState} side={side} />
                 </button>
               </li>
             );

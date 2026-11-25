@@ -641,6 +641,70 @@ export function acornCardLines(id: string): string[] {
   return acornEffectsOf(id).map(acornEffectText);
 }
 
+/** 요약에서 엔진이 상한을 두는 능력치 — 실제로 적용되는 값은 상한까지다(위 계산 함수 · engine/acorn.ts와 같은 상한) */
+const SUMMARY_CAP: Partial<Record<AcornStatKey, number>> = {
+  dmg: ACORN_CAPS.dmg,
+  bleed: ACORN_CAPS.bleed,
+  regen: ACORN_CAPS.regen,
+  skill: ACORN_CAPS.skill,
+  exp: ACORN_CAPS.exp,
+  guard: ACORN_CAPS.guard,
+  bleedGuard: ACORN_CAPS.bleedGuard,
+  evade: ACORN_CAPS.evade,
+  healCut: ACORN_CAPS.healCut,
+};
+/** 확률 · 양이 짝인 능력치 — 한 줄로 묶어 쓴다(확률은 합, 양은 큰 쪽 — acornStatsOf) */
+const SUMMARY_PAIRED = new Set<AcornStatKey>(['procPct', 'procAmt', 'reflectPct', 'reflectAmt', 'expProcPct', 'expProcAmt']);
+
+export interface AcornSummaryLine {
+  text: string;
+  /** 합이 상한을 넘어 상한까지만 적용된다 */
+  capped?: number;
+}
+
+/**
+ * 도토리 카드 [요약] 보기(2026-11-25) — 가진 카드의 효과를 **같은 효과끼리 합산**해 지금 유효한 것만 보인다.
+ * always: 영구 능력치(acornStatsOf 합 — 상한이 있는 것은 상한까지), left: 아직 남은 1회 · 충전 · 턴마다 효과(AcornSide의 남은 값).
+ * 고르는 순간 한 번 쓰고 끝난 효과(즉시 회복 · 보호막 · 경험치 · 쿨타임 · 정화)는 넣지 않는다 — 이미 판에 들었다.
+ */
+export function acornSummary(side: AcornSide | undefined): { always: AcornSummaryLine[]; left: AcornSummaryLine[] } {
+  const always: AcornSummaryLine[] = [];
+  const left: AcornSummaryLine[] = [];
+  if (!side) return { always, left };
+  const s = acornStatsOf(side);
+  const num = (v: number) => Math.round(v * 10) / 10;
+  for (const key of Object.keys(ZERO_STATS) as AcornStatKey[]) {
+    const v = s[key];
+    if (!v || SUMMARY_PAIRED.has(key)) continue;
+    const cap = SUMMARY_CAP[key];
+    const over = cap !== undefined && v > cap;
+    always.push({ text: STAT_TEXT[key](num(over ? cap : v)), ...(over ? { capped: cap } : {}) });
+  }
+  const pair = (pct: number, e: AcornEffect) => {
+    if (pct <= 0) return;
+    const over = pct > ACORN_CAPS.proc;
+    always.push({ text: acornEffectText(e), ...(over ? { capped: ACORN_CAPS.proc } : {}) });
+  };
+  pair(s.procPct, { k: 'proc', pct: num(Math.min(ACORN_CAPS.proc, s.procPct)), amt: num(s.procAmt) });
+  pair(s.reflectPct, { k: 'reflect', pct: num(Math.min(ACORN_CAPS.proc, s.reflectPct)), amt: num(s.reflectAmt) });
+  pair(s.expProcPct, { k: 'expProc', pct: num(Math.min(ACORN_CAPS.proc, s.expProcPct)), amount: num(s.expProcAmt) });
+
+  if (side.boost > 0) left.push({ text: acornEffectText({ k: 'boost', pct: num(side.boost), ignoreDiv: side.boostIgnoreDiv }) });
+  if (side.ward > 0) left.push({ text: acornEffectText({ k: 'ward', pct: num(side.ward) }) });
+  if (side.bleedBlock > 0) left.push({ text: acornEffectText({ k: 'bleedBlock', n: side.bleedBlock }) });
+  // 같은 장수끼리 남은 횟수를 합친다(+2장 1번 · +2장 3번 → +2장 4번)
+  const draws = new Map<number, number>();
+  for (const c of side.drawCharges ?? []) if (c.left > 0) draws.set(c.n, (draws.get(c.n) ?? 0) + c.left);
+  for (const [n, times] of draws) left.push({ text: acornEffectText({ k: 'draws', n, times }) });
+  if (side.survive > 0) left.push({ text: acornEffectText({ k: 'survive', pct: num(side.survive) }) });
+  if (side.lowHeal > 0) left.push({ text: acornEffectText({ k: 'lowHeal', pct: num(side.lowHeal) }) });
+  for (const p of side.periodic ?? []) {
+    if (p.left <= 0) continue;
+    left.push({ text: `${p.every}턴마다 ${p.kind === 'exp' ? `무작위 카드 경험치 +${p.amount}` : '부정 효과 하나 제거'} (${p.left}회 남음)` });
+  }
+  return { always, left };
+}
+
 /** 카드의 이름과 계열 · 단계 표시 */
 export const ACORN_FAMILY_NAME: Record<AcornFamily, string> = {
   sheep: '실용신양', rabbit: '상표토끼', mermaid: '디자인어', tiger: '특허랑이', diamond: '다이아 도토리',

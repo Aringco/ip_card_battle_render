@@ -401,9 +401,9 @@ body:has(.enh-top) .pause-fab {
 
 /* ── 카드 강화 판의 감정표현 버튼(2026-11-25 요청 — EmotePicker의 className="emote-fab") ─────────────────
    PC: 화면 **왼쪽 아래** 구석 — 오른쪽 아래의 설정 톱니(.settings-fab, 44px · z 99)와 마주 본다. 고르기 창은 버튼 위로 연다(opens="above").
-   모바일: 아래 띠(.m-bottom)의 왼쪽 빈칸 — 띠의 양 끝 38px는 원래 톱니 자리와 좌우 대칭으로 비워 둔 곳이다.
+   모바일은 이 클래스를 쓰지 않는다 — 내 동물 열 아래 칸(.m-corner, 11-mobile.css)에 도토리 카드 버튼과 나란히 선다.
    ⚠️ 기본 .emote-button(08-holo-cards.css)은 개인전 정보창 오른쪽 위에 absolute로 앉는다 — top · right를 걷어야 한다.
-   ⚠️ 모바일은 hover의 transform(scale)과 겹치지 않게 세로 가운데를 transform이 아니라 top 계산으로 맞춘다. */
+*/
 .emote-fab {
   position: fixed;
   top: auto;
@@ -414,16 +414,6 @@ body:has(.enh-top) .pause-fab {
   width: 44px;
   height: 44px;
   padding: 5px;
-}
-.m-layout .emote-fab {
-  position: absolute;
-  left: 4px;
-  bottom: auto;
-  top: calc(50% - 15px);
-  z-index: 2;
-  width: 30px;
-  height: 30px;
-  padding: 3px;
 }
 
 /* ── 개인전 강화 3명+ — 1:1과 같은 판(.enh-frame)을 그대로 쓴다(IndividualLayout, 2026-11-25 요청) ─────────────

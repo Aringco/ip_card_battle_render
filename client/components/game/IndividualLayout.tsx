@@ -314,7 +314,8 @@ export function IndividualLayout({
             {!enhPc ? (
               <OpponentList gameState={hpViewState} animState={animState} sides={opponents} />
             ) : rightSide ? (
-              <SelfPanel side={rightSide} mySide={mySide} gameState={viewState} animState={animState} opponent />
+              // key — 오른쪽 사람이 바뀌면 새로 그린다(아래 체력 구슬과 같은 이유 — 직전 사람과의 레벨 차이를 레벨업으로 읽지 않게)
+              <SelfPanel key={rightSide} side={rightSide} mySide={mySide} gameState={viewState} animState={animState} opponent />
             ) : null}
           </div>
 
@@ -333,7 +334,9 @@ export function IndividualLayout({
           {/* 강화 방 — 오른쪽 상대의 체력(1:1의 오른쪽 구슬 자리) */}
           {enhPc && rightSide && (
             <div className="play-cell play-cell-hp-b">
+              {/* key — 오른쪽 사람이 바뀌면 새 구슬로 그린다. 같은 구슬을 이어 쓰면 직전 사람과의 체력 차이만큼 액체가 0.6초에 걸쳐 오르내렸다 */}
               <TeamTotalPanel
+                key={rightSide}
                 team={rightSide}
                 gameState={hpViewState}
                 myTeam={focusSide}

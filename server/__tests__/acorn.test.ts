@@ -1,8 +1,11 @@
 import type { ClientGameState, GameState, ServerMessage } from 'shared';
 import {
+  ACORN_CAPS,
   ACORN_CARDS,
   ACORN_TIER_ODDS,
+  acornCard,
   acornExpBonus,
+  acornSummary,
   ENHANCE_SETTINGS,
   THRESHOLDS,
   drawAcornOptions,
@@ -329,5 +332,31 @@ describe('방 — 도토리 카드 고르기', () => {
     expect(s.enhance!.acorn!.offer).toBeNull();
     const picked = ws.sent.flatMap(m => (m.type === 'actionResult' ? m.events : [])).filter(e => e.type === 'acornPicked');
     expect(picked.find(e => e.type === 'acornPicked' && e.team === 'A')).toMatchObject({ auto: true });
+  });
+});
+
+describe('요약 보기(acornSummary)', () => {
+  // 'skill'(내 기술 효과 %) 영구 능력치만 가진 카드 — 같은 효과끼리 더해 한 줄이 된다
+  const skillCards = ACORN_CARDS.filter(c => c.fx.length === 1 && c.fx[0].k === 'stat' && c.fx[0].stat === 'skill');
+  const skillOf = (id: string) => (acornCard(id)!.fx[0] as { v: number }).v;
+
+  it('같은 효과는 합산해 한 줄로, 상한을 넘으면 상한까지와 그 사실을 보인다', () => {
+    expect(skillCards.length).toBeGreaterThanOrEqual(2);
+    const [a, b] = skillCards;
+    const side = { ...emptyAcornSide(), owned: [{ id: a.id, tier: 1 as const, turn: 1 }, { id: b.id, tier: 1 as const, turn: 2 }] };
+    const sum = skillOf(a.id) + skillOf(b.id);
+    const line = acornSummary(side).always.find(l => l.text.startsWith('내 기술 효과'))!;
+    expect(line.text).toContain(`+${Math.min(sum, ACORN_CAPS.skill)}%`);
+    expect(line.capped).toBe(sum > ACORN_CAPS.skill ? ACORN_CAPS.skill : undefined);
+    expect(acornSummary(side).always.filter(l => l.text.startsWith('내 기술 효과'))).toHaveLength(1);
+  });
+
+  it('남은 효과는 상태의 남은 값으로 — 다 쓴 것은 빠진다', () => {
+    const side = { ...emptyAcornSide(), bleedBlock: 2, drawCharges: [{ n: 2, left: 1 }, { n: 2, left: 3 }, { n: 5, left: 0 }], survive: 0 };
+    const left = acornSummary(side).left.map(l => l.text);
+    expect(left).toContain('출혈 피해 2번 무효');
+    expect(left).toContain('다음 장소 4번 동안 카드 +2장');
+    expect(left.some(t => t.includes('+5장'))).toBe(false);
+    expect(left.some(t => t.includes('0이 될 때'))).toBe(false);
   });
 });

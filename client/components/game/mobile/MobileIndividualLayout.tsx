@@ -9,6 +9,7 @@ import type { ReceivedEmote } from '@/hooks/useWebSocket';
 import { canUseSkill, finishingMove, levelOf, withDisplayedExp, withDisplayedHp, withDisplayedTeams } from '@/lib/skills';
 import { isFinished, opponentOrder, sideColor, sideName, withDisplayedFinish } from '@/lib/individual';
 import { useGameHotkeys } from '@/lib/useGameHotkeys';
+import { PLAY_ASSETS } from '@/lib/playAssets';
 import { EffectLayer } from '@/components/effects/EffectLayer';
 import { SweepBanner } from '@/components/effects/SweepBanner';
 import { FestivalStartBanner } from '@/components/effects/FestivalStartBanner';
@@ -347,8 +348,6 @@ export function MobileIndividualLayout({
       {error && <div className="m-error">{error}</div>}
 
       <aside className="m-rail m-rail-left">
-        {/* 감정표현 — 내 동물 열 위. 고르기 창은 판(.m-view) 폭으로 그 위에 겹친다(EmotePicker의 cellSelector) */}
-        {mySide !== null && gameState.phase === 'playing' && <EmotePicker onSend={onEmote} cellSelector=".m-view" />}
         <AnimalRail team={leftSide} side="left" color={leftColor} gameState={viewState} animState={animState} open={openIcon} onToggle={setOpenIcon} />
       </aside>
 
@@ -433,8 +432,9 @@ export function MobileIndividualLayout({
       </div>
 
       <aside className="m-rail m-rail-right">
+        {/* key — 오른쪽 사람이 바뀌면 새로 그린다. 같은 칸을 이어 쓰면 직전 사람과의 레벨 차이를 "레벨업"으로 읽었다 */}
         {rightSide && (
-          <AnimalRail team={rightSide} side="right" color={rightColor} gameState={viewState} animState={animState} open={openIcon} onToggle={setOpenIcon} />
+          <AnimalRail key={rightSide} team={rightSide} side="right" color={rightColor} gameState={viewState} animState={animState} open={openIcon} onToggle={setOpenIcon} />
         )}
       </aside>
 
@@ -442,8 +442,25 @@ export function MobileIndividualLayout({
         {/* 내 체력 막대는 언제나 초록(2026-10-31 요청) — 사람 색은 관전 시점(왼쪽이 남)일 때만 */}
         <MobileHpBar team={leftSide} side="left" gameState={hpState} animState={animState} mine={!observer} color={mySide === null ? leftColor : undefined} />
         {gameState.enhance && rightSide && <MobileDotHub gameState={hpState} left={leftSide} right={rightSide} />}
-        {rightSide && <MobileHpBar team={rightSide} side="right" gameState={hpState} animState={animState} mine={false} color={rightColor} />}
+        {/* key — 오른쪽 사람이 바뀌면 새 막대로 그린다(2026-11-25). 같은 막대를 이어 쓰면 직전 사람과의 체력 차이를
+            체력 변화로 읽어 흰 막대 · ±N 연출과 폭 전환이 돌았다 — 사람이 바뀐 것은 아무 연출 없이 곧바로 보인다 */}
+        {rightSide && <MobileHpBar key={rightSide} team={rightSide} side="right" gameState={hpState} animState={animState} mine={false} color={rightColor} />}
       </footer>
+      {/* 내 동물 열 아래 칸 — [내 도토리 카드] (호랑이 레벨의 세로줄) [감정표현](2026-11-25 요청 — 그 전에는 감정표현이 동물 열 위).
+          고르기 창은 버튼 위로 판(.m-view) 폭만큼 연다. 오른쪽 열 아래 칸은 설정 톱니 자리(CSS) */}
+      <div className="m-corner" data-single={gameState.enhance?.acorn ? undefined : ''}>
+        {gameState.enhance?.acorn && (
+          <button type="button" className="m-acorn-button m-corner-slot-l" aria-label="내 도토리 카드 보기" title="내 도토리 카드" onClick={() => openAcornShelf(leftSide)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PLAY_ASSETS.iconAcorn} alt="" draggable={false} />
+          </button>
+        )}
+        {mySide !== null && gameState.phase === 'playing' && (
+          <span className="m-corner-slot-r">
+            <EmotePicker onSend={onEmote} cellSelector=".m-view" opens="above" />
+          </span>
+        )}
+      </div>
 
       <EffectLayer leafParticleCount={animState.leafParticleCount} floatingTexts={animState.floatingTexts} leftSide={mySide ?? undefined} />
       <SweepBanner info={animState.sweepBanner} />
