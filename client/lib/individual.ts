@@ -7,6 +7,23 @@ import { playerColorHex } from 'shared';
 //    (client/lib/teamColors.ts — "우리 연두 / 상대 붉은", 관전은 민트·핑크)와 섞지 말 것. 개인전 화면에서
 //    팀 색 함수를 부르면 모두 같은 색으로 보인다(주의 8).
 
+/**
+ * 한 사람의 색을 관전 시점 색 변수(--spec-*)로 풀어 놓는다 — 그 변수를 읽는 칠하기(체력 구슬 .hp-orb-spectator 등)를
+ * **그 사람이 고른 색**으로 쓰게 한다(2026-11-25 요청: PC 개인전 3명+ 상대 체력 구슬을 그 사람 색으로).
+ * 팀 팔레트(teamColors.ts)의 값과 같은 결 — 진한 쪽은 검정을, 옅은 쪽은 흰색을 섞어 만든다.
+ */
+export function playerColorVars(hex: string): React.CSSProperties {
+  return {
+    '--spec-base': hex,
+    '--spec-strong': `color-mix(in srgb, ${hex} 78%, black)`,
+    '--spec-deep': `color-mix(in srgb, ${hex} 45%, black)`,
+    '--spec-soft': `color-mix(in srgb, ${hex} 22%, white)`,
+    '--spec-soft-edge': `color-mix(in srgb, ${hex} 38%, white)`,
+    '--spec-border': hex,
+    '--spec-glow': `color-mix(in srgb, ${hex} 65%, transparent)`,
+  } as React.CSSProperties;
+}
+
 /** 그 사람의 색(16진). 색이 없으면(옛 상태) 중립 회색. */
 export function sideColor(state: ClientGameState, side: SideId): string {
   return playerColorHex(state.teams[side]?.color);

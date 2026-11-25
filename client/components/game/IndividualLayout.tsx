@@ -21,6 +21,7 @@ import { FinisherLayer } from '@/components/effects/FinisherLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { IndividualHeader } from './IndividualHeader';
 import { EnhanceHeader } from './EnhanceHeader';
+import { BoardFrame } from './BoardFrame';
 import { MobileDotHub } from './mobile/MobileHpBar';
 import { AcornBadges } from './acorn/AcornBadges';
 import { IndividualPrompt } from './IndividualPrompt';
@@ -224,11 +225,11 @@ export function IndividualLayout({
   // 강화 방은 개인전 1:1(팀전 화면 GameLayout의 카드 강화 판)과 **같은 판**으로 그린다(2026-11-25 요청).
   // 칸 이름도 그쪽과 같다(play-cell-exp-a · board · exp-b · hp-a · hp-b · play-cards · enh-mid) — 판 CSS(17-enhance-pc.css)를 그대로 받는다.
   // 오른쪽(상대 칸 · 상대 체력 · 가운데 줄 오른쪽 · 위 띠의 상대 이름)은 한 사람이다 — 위 rightSide(지금 차례인 상대)가 바뀌면 함께 바뀐다.
-  // 체력만 이 화면의 디자인(줄 노트 구슬)을 쓴다 — 1:1의 유리관 모양은 .ind-enh에서 뺀다.
+  // 체력 구슬은 줄 노트 구슬이다(2026-11-26부터 1:1도 같다).
   const enhPc = !!gameState.enhance;
   const cls = enhPc
-    ? { frame: 'play-frame-css enh-frame ind-enh', me: 'play-cell play-cell-exp-a', board: 'play-cell play-cell-board', opp: 'play-cell play-cell-exp-b', hp: 'play-cell play-cell-hp-a', cards: 'play-cards' }
-    : { frame: 'play-frame-css', me: 'ind-cell ind-cell-me', board: 'ind-cell ind-cell-board', opp: 'ind-cell ind-cell-opp', hp: 'ind-cell ind-cell-hp', cards: 'ind-cards' };
+    ? { frame: 'play-frame-css enh-frame ind-enh has-board-frame', me: 'play-cell play-cell-exp-a', board: 'play-cell play-cell-board', opp: 'play-cell play-cell-exp-b', hp: 'play-cell play-cell-hp-a', cards: 'play-cards' }
+    : { frame: 'play-frame-css has-board-frame', me: 'ind-cell ind-cell-me', board: 'ind-cell ind-cell-board', opp: 'ind-cell ind-cell-opp', hp: 'ind-cell ind-cell-hp', cards: 'ind-cards' };
 
   return (
     <div
@@ -272,6 +273,8 @@ export function IndividualLayout({
         {/* 프레임은 그림이 아니라 CSS다 — 갈색 나무와 크림 베이지(`.play-frame-css`, globals.css).
             칸의 자리는 CSS grid가 정한다. */}
         <div className={cls.frame}>
+          {/* 판 액자(SVG). 강화 판은 1:1과 같은 테 두께(판 폭 0.013), 일반 개인전 판은 판이 1.1배 넓어 그만큼 줄인다(0.012 — 안여백 0.0185 안에 든다) */}
+          <BoardFrame rimRatio={enhPc ? 0.013 : 0.012} />
           <div className={cls.me}>
             <SelfPanel side={focusSide} mySide={mySide} gameState={viewState} animState={animState} />
             {/* 강화 방은 1:1과 같이 화면 왼쪽 아래(.emote-fab — 아래) */}
@@ -338,6 +341,8 @@ export function IndividualLayout({
               <TeamTotalPanel
                 key={rightSide}
                 team={rightSide}
+                // 그 사람이 고른 색으로(2026-11-25 요청) — 체력 막대 · 목록의 세로 막대와 같은 색
+                color={sideColor(gameState, rightSide)}
                 gameState={hpViewState}
                 myTeam={focusSide}
                 pulse={animState.hpPulse.get(rightSide) ?? null}

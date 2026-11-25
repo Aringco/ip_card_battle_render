@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { ClientGameState, SideId } from 'shared';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { spectatorTeamVars } from '@/lib/teamColors';
+import { playerColorVars } from '@/lib/individual';
 import { hpForecastOf, hpForecastText } from '@/lib/hpForecast';
 import { AcornBadges, ShieldGauge } from './acorn/AcornBadges';
 
@@ -41,6 +42,7 @@ export function TeamTotalPanel({
   pulse,
   dotPulse = null,
   acorns = true,
+  color,
 }: {
   team: SideId;
   gameState: ClientGameState;
@@ -52,12 +54,17 @@ export function TeamTotalPanel({
   dotPulse?: { id: number; kind: 'bleed' | 'regen' } | null;
   // 도토리 배지를 구슬에 붙인다. PC 카드 강화 판(팀전 화면)은 가운데 줄에 따로 둔다 — 둘 다 그리면 얻기 연출의 착지 자리가 겹친다
   acorns?: boolean;
+  /** 개인전 상대의 색(16진) — 주면 "상대 붉은색" 대신 그 사람이 고른 색으로 칠한다(PC 개인전 강화 3명+의 오른쪽 구슬, 2026-11-25).
+   *  내 구슬(myTeam === team)에는 쓰지 않는다 — 내 체력은 언제나 초록이다(모바일 막대와 같다). */
+  color?: string;
 }) {
   const hp = gameState.teams[team].hp;
   // 구슬이 가득 차는 점수 — 승리선(targetScore × 2).
   const winHp = gameState.settings.targetScore * 2;
   const spectating = myTeam === null;
-  const toneClass = spectating ? 'hp-orb-spectator' : myTeam === team ? 'hp-orb-mine' : 'hp-orb-enemy';
+  // 사람 색 — 관전 시점과 같은 칠하기(.hp-orb-spectator — --spec-* 변수)에 그 사람 색을 넣는다
+  const personal = color !== undefined && myTeam !== team;
+  const toneClass = spectating || personal ? 'hp-orb-spectator' : myTeam === team ? 'hp-orb-mine' : 'hp-orb-enemy';
   const fillPct = Math.max(0, Math.min(100, (hp / winHp) * 100));
   // 카드 강화의 지속 효과 — gameState는 화면상 값(withDisplayedTeams)이라 연출 순간에 나타나고 줄어든다
   const enh = gameState.enhance;
@@ -115,7 +122,7 @@ export function TeamTotalPanel({
     <div
       className={`hp-orb w-full shrink-0 h-full ${toneClass} ${bleeding ? 'hp-orb-bleeding' : ''} ${healing ? 'hp-orb-healing' : ''}`}
       data-hp-bar={team}
-      style={spectating ? spectatorTeamVars(team) : undefined}
+      style={personal ? playerColorVars(color!) : spectating ? spectatorTeamVars(team) : undefined}
       onPointerEnter={enh ? e => { if (e.pointerType !== 'touch') setHovered(true); } : undefined}
       onPointerLeave={enh ? () => setHovered(false) : undefined}
     >

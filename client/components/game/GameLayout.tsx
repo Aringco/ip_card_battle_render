@@ -31,6 +31,7 @@ import { TeamTotalPanel } from './TeamTotalPanel';
 import { ActionPrompt } from './ActionPrompt';
 import { DemoCaption } from './DemoCaption';
 import { DemoSceneMenu } from './DemoSceneMenu';
+import { BoardFrame } from './BoardFrame';
 import { EmotePicker } from './EmotePicker';
 
 // screenShakeLevel(임의의 정수) → 진동 강도 스케일. 숫자가 클수록 세게 흔들린다 —
@@ -231,7 +232,9 @@ export function GameLayout({
       <main className="flex-1 min-h-0 relative flex items-center">
         {/* 카드 강화 판은 그림 액자 대신 CSS 판(.play-frame-css.enh-frame — 위: 내 정보 · 카드 필드 · 상대 정보,
             가운데: 도토리 카드 · 상태 이상 · 타이머, 아래: 체력 구슬 · 기술 카드 · 체력 구슬). 일반 판은 그대로다. */}
-        <div className={enhPc ? 'play-frame-css enh-frame' : 'play-frame'}>
+        <div className={enhPc ? 'play-frame-css enh-frame has-board-frame' : 'play-frame'}>
+          {/* 판 액자 — 부푼 변 · 원기둥 테 · 음영(SVG, reference/web-game-ui-notes). 테 두께는 CSS --enh-rim(판 폭 0.013)과 같다 */}
+          {enhPc && <BoardFrame rimRatio={0.013} />}
           {/* ── 윗줄 왼쪽 · 오른쪽 — 팀별 동물 경험치 현황(요청 1) */}
           <div className="play-cell play-cell-exp-a">
             <TeamPanel team="A" myTeam={myTeam} gameState={viewState} animState={animState} />
