@@ -22,3 +22,6 @@ deploy/deploy.env
 deploy/test.env
 deploy/.state/
 deploy/deploy.log
+
+# 작업용 참고 자료(UI 노트 · 예시 이미지 등) — 로컬에만 둔다, 저장소에 올리지 않는다(2026-11-26 요청)
+reference/
