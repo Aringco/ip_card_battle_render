@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Animal, ClientGameState, Place, SideId } from 'shared';
 import { ANIMALS, emoteById, needsTarget } from 'shared';
 import type { AnimationState, PlayerEmoticon } from '@/hooks/useAnimationQueue';
@@ -20,6 +20,9 @@ import { RankedBanner } from '@/components/effects/RankedBanner';
 import { FinisherLayer } from '@/components/effects/FinisherLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { IndividualHeader } from './IndividualHeader';
+import { EnhanceHeader } from './EnhanceHeader';
+import { MobileDotHub } from './mobile/MobileHpBar';
+import { AcornBadges } from './acorn/AcornBadges';
 import { IndividualPrompt } from './IndividualPrompt';
 import { SelfPanel } from './SelfPanel';
 import { OpponentList } from './OpponentList';
@@ -34,6 +37,9 @@ import { TeamTotalPanel } from './TeamTotalPanel';
 
 
 // 화면 흔들림 레벨 → 진폭(GameLayout.shakeScale과 같은 식).
+/** 내가 노린 상대를 오른쪽에 세워 두는 시간 — 모바일 개인전(MobileIndividualLayout)과 같다 */
+const ATTACK_SHOW_MS = 4500;
+
 function shakeScale(level: number): number {
   return Math.min(0.6 + (level - 1) * 0.35, 3.2);
 }
@@ -123,6 +129,30 @@ export function IndividualLayout({
   const boardTurnGlow = isMyPlayerTurn && !choiceStageVisible;
   const myTeamChoosing = !observer && choiceStageVisible && gameState.pendingChoice === mySide;
 
+  // ─ 강화 방 PC의 오른쪽 상대(2026-11-25 요청 — 1:1과 같은 판을 쓰고 오른쪽 정보만 차례에 따라 바뀐다).
+  //   규칙은 모바일 개인전(MobileIndividualLayout)과 같다: 지금 차례인 상대, 내 차례에는 직전 상대 그대로,
+  //   내가 다른 상대를 노리면 그 상대를 잠깐(ATTACK_SHOW_MS) 세워 깎이는 체력 · 붙는 상태를 보여 준다.
+  const enhOpponents = opponentOrder(gameState, mySide, mySide);
+  const lastOpp = useRef<SideId | null>(null);
+  if (activeSide !== focusSide && enhOpponents.includes(activeSide)) lastOpp.current = activeSide;
+  const baseRight: SideId | null =
+    lastOpp.current && enhOpponents.includes(lastOpp.current)
+      ? lastOpp.current
+      : (enhOpponents.find(s => !isFinished(gameState, s)) ?? enhOpponents[0] ?? null);
+  const [attackShow, setAttackShow] = useState<SideId | null>(null);
+  const attackTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(attackTimer.current), []);
+  const rightSide: SideId | null = attackShow ?? baseRight;
+  const showAttacked = useCallback(
+    (target: SideId) => {
+      if (!gameState.enhance || target === baseRight) return;
+      setAttackShow(target);
+      window.clearTimeout(attackTimer.current);
+      attackTimer.current = window.setTimeout(() => setAttackShow(null), ATTACK_SHOW_MS);
+    },
+    [baseRight, gameState.enhance],
+  );
+
   // ─ 상대 선택 — 특허랑이, 그리고 강화 방의 Lv.6+ 디자인어(shared의 needsTarget) ─
   const [picking, setPicking] = useState<TargetSkill | null>(null);
   const targets = useMemo(
@@ -143,6 +173,7 @@ export function IndividualLayout({
       if ((animal === 'tiger' || animal === 'mermaid') && needsTarget(gameState, animal, level)) {
         // 1:1 판(시작 인원 2명)은 상대가 하나뿐이라 고를 것이 없다 — 화면을 띄우지 않고 그 사람을 바로 지목한다.
         if (gameState.turnOrder.length === 2 && targets.length === 1) {
+          showAttacked(targets[0]);
           onChooseSkill(animal, targets[0]);
           return;
         }
@@ -151,14 +182,17 @@ export function IndividualLayout({
       }
       onChooseSkill(animal);
     },
-    [targets, gameState, mySide, skillPreviewGameState, onChooseSkill],
+    [targets, gameState, mySide, skillPreviewGameState, onChooseSkill, showAttacked],
   );
   const handlePick = useCallback(
     (target: SideId) => {
-      if (picking) onChooseSkill(picking, target);
+      if (picking) {
+        showAttacked(target);
+        onChooseSkill(picking, target);
+      }
       setPicking(null);
     },
-    [picking, onChooseSkill],
+    [picking, onChooseSkill, showAttacked],
   );
 
   // 고를 수 있는 기술이 하나도 없으면 방의 noActionTimeSec 뒤에 "아무것도 하지 않음"이 자동으로 눌린 것처럼
@@ -187,6 +221,15 @@ export function IndividualLayout({
   // 감정표현은 판에 앉은 사람만(순위가 정해져 빠진 사람도 — 아직 판을 보고 있다). 처음부터 관전자는 못 쓴다.
   const canEmote = mySide !== null && gameState.phase === 'playing';
 
+  // 강화 방은 개인전 1:1(팀전 화면 GameLayout의 카드 강화 판)과 **같은 판**으로 그린다(2026-11-25 요청).
+  // 칸 이름도 그쪽과 같다(play-cell-exp-a · board · exp-b · hp-a · hp-b · play-cards · enh-mid) — 판 CSS(17-enhance-pc.css)를 그대로 받는다.
+  // 오른쪽(상대 칸 · 상대 체력 · 가운데 줄 오른쪽 · 위 띠의 상대 이름)은 한 사람이다 — 위 rightSide(지금 차례인 상대)가 바뀌면 함께 바뀐다.
+  // 체력만 이 화면의 디자인(줄 노트 구슬)을 쓴다 — 1:1의 유리관 모양은 .ind-enh에서 뺀다.
+  const enhPc = !!gameState.enhance;
+  const cls = enhPc
+    ? { frame: 'play-frame-css enh-frame ind-enh', me: 'play-cell play-cell-exp-a', board: 'play-cell play-cell-board', opp: 'play-cell play-cell-exp-b', hp: 'play-cell play-cell-hp-a', cards: 'play-cards' }
+    : { frame: 'play-frame-css', me: 'ind-cell ind-cell-me', board: 'ind-cell ind-cell-board', opp: 'ind-cell ind-cell-opp', hp: 'ind-cell ind-cell-hp', cards: 'ind-cards' };
+
   return (
     <div
       className={`h-[var(--app-h,100dvh)] play-bg flex flex-col relative overflow-hidden ${isShaking ? 'shake-combo' : ''}`}
@@ -199,12 +242,25 @@ export function IndividualLayout({
       <LeafDecoration position="bl" />
       <LeafDecoration position="br" />
 
-      <IndividualHeader
-        gameState={gameState}
-        mySide={mySide}
-        displayedActiveTeam={activeSide}
-        isSettling={animState.isSettling}
-      />
+      {enhPc ? (
+        <EnhanceHeader
+          gameState={gameState}
+          myTeam={mySide}
+          displayedActiveTeam={activeSide}
+          displayedActivePlayerIndex={0}
+          isSettling={animState.isSettling}
+          left={focusSide}
+          right={rightSide}
+          nameOf={side => sideName(gameState, side)}
+        />
+      ) : (
+        <IndividualHeader
+          gameState={gameState}
+          mySide={mySide}
+          displayedActiveTeam={activeSide}
+          isSettling={animState.isSettling}
+        />
+      )}
 
       {error && (
         <div className="absolute top-0 left-1/2 -translate-x-1/2 z-[60] bg-red-100 border border-red-200 rounded-b-xl text-red-700 text-sm text-center py-1.5 px-4">
@@ -215,13 +271,14 @@ export function IndividualLayout({
       <main className="flex-1 min-h-0 relative flex items-center">
         {/* 프레임은 그림이 아니라 CSS다 — 갈색 나무와 크림 베이지(`.play-frame-css`, globals.css).
             칸의 자리는 CSS grid가 정한다. */}
-        <div className="play-frame-css">
-          <div className="ind-cell ind-cell-me">
+        <div className={cls.frame}>
+          <div className={cls.me}>
             <SelfPanel side={focusSide} mySide={mySide} gameState={viewState} animState={animState} />
-            {canEmote && <EmotePicker onSend={onEmote} />}
+            {/* 강화 방은 1:1과 같이 화면 왼쪽 아래(.emote-fab — 아래) */}
+            {canEmote && !enhPc && <EmotePicker onSend={onEmote} />}
           </div>
 
-          <div className="ind-cell ind-cell-board">
+          <div className={cls.board}>
             <div
               className="ind-board-glow"
               data-on={glowOn || undefined}
@@ -253,21 +310,41 @@ export function IndividualLayout({
             </div>
           </div>
 
-          <div className="ind-cell ind-cell-opp">
-            <OpponentList gameState={hpViewState} animState={animState} sides={opponents} />
+          <div className={cls.opp}>
+            {!enhPc ? (
+              <OpponentList gameState={hpViewState} animState={animState} sides={opponents} />
+            ) : rightSide ? (
+              <SelfPanel side={rightSide} mySide={mySide} gameState={viewState} animState={animState} opponent />
+            ) : null}
           </div>
 
-          <div className="ind-cell ind-cell-hp">
+          <div className={cls.hp}>
             <TeamTotalPanel
               team={focusSide}
               gameState={hpViewState}
               myTeam={mySide ?? focusSide}
               pulse={animState.hpPulse.get(focusSide) ?? null}
               dotPulse={animState.dotPulse.get(focusSide) ?? null}
+              // 강화 방은 도토리 카드를 가운데 줄에 따로 둔다(1:1과 같다)
+              acorns={!enhPc}
             />
           </div>
 
-          <div className="ind-cards">
+          {/* 강화 방 — 오른쪽 상대의 체력(1:1의 오른쪽 구슬 자리) */}
+          {enhPc && rightSide && (
+            <div className="play-cell play-cell-hp-b">
+              <TeamTotalPanel
+                team={rightSide}
+                gameState={hpViewState}
+                myTeam={focusSide}
+                pulse={animState.hpPulse.get(rightSide) ?? null}
+                dotPulse={animState.dotPulse.get(rightSide) ?? null}
+                acorns={false}
+              />
+            </div>
+          )}
+
+          <div className={cls.cards}>
             <SkillChoiceBar
               gameState={skillPreviewGameState}
               team={skillPreviewTeam}
@@ -280,6 +357,15 @@ export function IndividualLayout({
               onPass={onPassSkill}
             />
           </div>
+
+          {/* 강화 방의 가운데 줄 — 내 도토리 카드 | 내 지속 효과 | (타이머 — 아래 .play-prompt-strip이 같은 칸에 얹힌다) | 상대 지속 효과 | 상대 도토리 카드 */}
+          {enhPc && rightSide && (
+            <div className="enh-mid">
+              <div className="enh-acorn-bar" data-side="left"><AcornBadges gameState={hpViewState} side={focusSide} /></div>
+              <div className="enh-acorn-bar" data-side="right"><AcornBadges gameState={hpViewState} side={rightSide} /></div>
+              <div className="enh-dots"><MobileDotHub gameState={hpViewState} left={focusSide} right={rightSide} /></div>
+            </div>
+          )}
 
           <div className="play-prompt-strip">
             <IndividualPrompt
@@ -306,6 +392,7 @@ export function IndividualLayout({
       <SheepComboLayer combos={animState.sheepCombos} />
       <MainComboBanner combo={animState.mainCombo} />
       <PlayerEmoticonLayer items={bubbleItems} placement="left" />
+      {canEmote && enhPc && <EmotePicker onSend={onEmote} opens="above" panelWidth={360} className="emote-fab" />}
       <SheepProgressBar
         progress={animState.sheepProgress}
         label={animState.sheepProgress ? sideName(gameState, animState.sheepProgress.team) : undefined}

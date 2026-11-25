@@ -18,9 +18,12 @@ export function SelfPanel({
   mySide,
   gameState,
   animState,
+  opponent = false,
 }: {
   /** 이 패널이 보여주는 편 — 보통 mySide, 관전자는 지금 차례인 편 */
   side: SideId;
+  /** 강화 방 PC의 오른쪽 상대 칸(1:1과 같은 판 — 지금 차례인 상대)으로 쓸 때 — "보는 중" 표시를 달지 않는다 */
+  opponent?: boolean;
   mySide: SideId | null;
   gameState: ClientGameState;
   animState: AnimationState;
@@ -68,7 +71,7 @@ export function SelfPanel({
             <span className="inline-flex items-center gap-1 bg-white/80 text-amber-600 text-2xs font-bold px-2 py-0.5 rounded-full shadow-sm border border-amber-200">
               <span aria-hidden>⭐</span> 나
             </span>
-          ) : (
+          ) : opponent ? null : (
             <span className="inline-flex items-center gap-1 bg-white/80 text-jungle-600 text-2xs font-bold px-2 py-0.5 rounded-full shadow-sm border border-jungle-200">
               <span aria-hidden>👀</span> 보는 중
             </span>
