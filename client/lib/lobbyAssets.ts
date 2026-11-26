@@ -145,6 +145,17 @@ export const LOBBY_ASSETS = {
   /** 닉네임·팀 이름을 다시 뽑는 주사위 버튼. 나무틀까지 그려져 있어 CSS로 상자를 두르지 않는다. */
   btnDice: '/ui/btn_dice.webp',
 
+  /**
+   * 강화전 겉모양(lib/skin.ts)의 자리 버튼 · 주사위 — 틀은 CSS가 그리고 그 위에 얹는 **바탕이 투명한 그림**만.
+   * 팀 1(양 · 인어) · 팀 2(토끼 · 호랑이) · 관전자(로봇) · 무작위(주사위 — 반짝이까지 그림에 있다).
+   */
+  skinSheep: '/ui/skin_sheep.webp',
+  skinMermaid: '/ui/skin_mermaid.webp',
+  skinRabbit: '/ui/skin_rabbit.webp',
+  skinTiger: '/ui/skin_tiger.webp',
+  skinRobot: '/ui/skin_robot.webp',
+  skinDice: '/ui/skin_dice.webp',
+
   /** 놀이터 재생 버튼. 대기실 시작 버튼에 쓰다가 가로 팻말 `barStart`에 자리를 내주어
       **지금은 어디서도 쓰이지 않는다**(되돌릴 수 있게 파일과 경로는 남겨 둔다). */
   iconCreate: '/ui/icon_create.webp',  // 방 만들기 — 통나무집+. 방 만들기 폼의 제출 버튼 그 자체

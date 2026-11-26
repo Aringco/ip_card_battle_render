@@ -19,6 +19,7 @@ import { startPreload } from '@/lib/preload';
 import { MobileLayout } from '@/components/game/mobile/MobileLayout';
 import { MobileIndividualLayout } from '@/components/game/mobile/MobileIndividualLayout';
 import { useMobileLayout } from '@/lib/mobileLayout';
+import { useEnhanceSkin } from '@/lib/skin';
 
 const STORAGE_TEAM = 'cardBattle_team';
 const GAME_BGM_VOLUME = 0.5; // 게임 효과음이 함께 들려야 하므로 BGM은 절반 볼륨으로
@@ -55,6 +56,8 @@ export default function GamePage() {
   const animState = useAnimationQueue(viewEvents, viewState);
   // 가로로 눕힌 폰 — 혼자 놀기(아래 soloMobile)만 모바일 배치로 그린다(시범)
   const mobileScreen = useMobileLayout();
+  // 카드 강화 판은 강화전 겉모양(일시정지 버튼 · 메뉴 버튼을 CSS로 — lib/skin.ts)
+  useEnhanceSkin(!!gameState?.enhance);
 
   // 보통은 로비에서 이미 끝나 있지만, 새로고침·재접속으로 이 페이지에 바로
   // 들어온 경우를 대비해 여기서도 프리로드를 시작한다(이미 시작했으면 무시됨).

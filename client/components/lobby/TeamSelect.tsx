@@ -4,6 +4,7 @@ import type { Seat } from 'shared';
 import { SEATS } from 'shared';
 import { SEAT_IMAGE, seatLabel } from '@/lib/seatInfo';
 import { Field } from './Field';
+import { SeatFace } from './SeatFace';
 
 /**
  * 자리 선택 — 팀 1 / 팀 2 / 관전자.
@@ -36,7 +37,7 @@ export function TeamSelect({ team, onChange }: { team: Seat; onChange: (t: Seat)
             title={seatLabel(t)}
             className="pick-image-button"
           >
-            <img src={SEAT_IMAGE[t]} alt="" draggable={false} />
+            <SeatFace kind={t === 'A' || t === 'B' ? t : 'spectator'} img={SEAT_IMAGE[t]} />
           </button>
         ))}
       </div>

@@ -8,6 +8,7 @@ import { UiIcon } from '@/components/ui/UiIcon';
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
 import { PHONE_LANDSCAPE_QUERY } from '@/lib/mobileLayout';
 import { ModeToggle } from './ModeToggle';
+import { SeatFace } from './SeatFace';
 
 // 선 플레이어(먼저 시작하는 팀) — 숫자가 아니라 3지선다라 아래 RULE_FIELDS와 따로 그린다.
 // 자리 선택과 같은 그림 버튼을 쓴다(팀 1·팀 2는 아예 같은 그림). 글씨가 그림 안에
@@ -255,7 +256,7 @@ export function GameRulesFields({
                   title={label}
                   className="pick-image-button"
                 >
-                  <img src={img} alt="" draggable={false} />
+                  <SeatFace kind={value} img={img} />
                 </button>
               ))}
             </div>
@@ -454,7 +455,7 @@ export function GameRulesInputs({
               title={label}
               className="pick-image-button"
             >
-              <img src={img} alt="" draggable={false} />
+              <SeatFace kind={value} img={img} />
             </button>
           ))}
         </div>

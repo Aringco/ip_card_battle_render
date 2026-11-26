@@ -1,0 +1,330 @@
+/* ══ 강화전 겉모양 — 버튼 · 입력칸 · 자리 버튼을 CSS로(2026-11-27, 견본 "CSS B") ══════════════════
+   `<html data-skin="enhance">`일 때만 걸린다(lib/skin.ts — 강화전을 고른 로비 · 강화 방 대기실 · 카드 강화 판).
+
+   모양: 짙은 바깥 선 → 나무 테(위 밝고 아래 어두운) → 짙은 선 → 주황 판 → 판 가장자리에서 조금 들인 밝은 선 →
+   그 선부터 안쪽으로 번지는 네 변 그림자(음각). 위 · 아래 변은 곧고 왼쪽 · 오른쪽 변은 바깥으로 둥글다.
+   옆 변의 홈은 테 위에 칠한 짙은 V(그림)라 모양을 자르지 않는다 — clip-path가 그림자를 잘라 내지 않게.
+
+   ── 크기가 바뀌어도 모양 · 비율이 그대로인 이유(2026-11-27 요청) ─────────────────────────────────
+   ① **옆 변의 곡선은 버튼 높이에 비례한다.** 모서리 반지름을 일부러 아주 크게(가로 320px / 세로 1000px) 준다 —
+      반지름이 변보다 길면 브라우저가 **모든 반지름을 같은 비율로** 줄이므로(CSS 규칙), 결과는 언제나
+      세로 = 높이의 1/2, 가로 = 높이의 0.16이다. 높이가 몇이든 옆 변은 같은 모양의 반 타원이고, 폭이 늘면 곧은
+      위 · 아래 변만 길어진다(9분할과 같은 원리). ⚠️ 이 둘을 px · %로 따로 적으면(예전 `14px / 44%`) 키가 큰
+      버튼에서 곡선이 길쭉해지고 낮은 버튼에서 눌린다 — 비율을 바꿀 때도 두 숫자의 **비**만 바꾼다.
+   ② **테 · 바깥 선 · 홈 · 밝은 선 · 그림자는 모두 em**(그 버튼의 글자 크기)이다 — 글씨 크기 설정 · 폼 확대를
+      따라 함께 커진다. 고정 px이면 큰 버튼에서 테가 가늘고 작은 버튼에서 두꺼워졌다.
+   ③ **바깥 상자 크기는 원래 그림 버튼과 똑같다.** 원래 테두리 폭(그림의 border-image — px)에서 새 테(em)를 뺀 만큼을
+      안여백에 더해 합을 맞췄다(로비 폼은 position: absolute라 몇 px만 늘어도 넘친다 — measureLobby.mjs로 확인).
+   ④ 자리 버튼(.skin-seat)은 비율(300 : 191)이 고정이라 %와 cqw(버튼 폭)로만 그린다 — 크기만 바뀌고 모양은 같다.
+   ⚠️ 선택 표시는 크기를 바꾸지 않는 링(outline)이다 — 스크롤 상자 안에서 스크롤바를 만들지 않는다. */
+
+:root[data-skin="enhance"] {
+  --sk-line: #451700;
+  --sk-inline: #5a2709;
+  /* ① 옆 변 곡선 — 두 수의 비(0.32)가 모양을 정한다(가로 = 높이 × 0.16) */
+  --sk-radius: 320px / 1000px;
+  --sk-wood: linear-gradient(180deg, #c47c42, #af6832 55%, #7c3f17);
+  /* 테 윗면 빛 · 아랫면 그늘 — em이라 테 두께를 따라간다(사용하는 요소의 글자 크기로 풀린다) */
+  --sk-rim-hi: linear-gradient(180deg, rgba(255, 226, 180, 0.55) 0 0.12em, rgba(255, 226, 180, 0) 0.18em);
+  --sk-rim-lo: linear-gradient(0deg, rgba(30, 12, 2, 0.5) 0 0.12em, rgba(30, 12, 2, 0) 0.18em);
+  --sk-face: linear-gradient(180deg, #fac577, #f6b466 55%, #f2a254);
+  --sk-cream: #f3e2ca;
+  --sk-notch-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 10'%3E%3Cpath d='M0 0L5 5L0 10Z' fill='%23451700'/%3E%3C/svg%3E");
+  --sk-notch-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 10'%3E%3Cpath d='M6 0L1 5L6 10Z' fill='%23451700'/%3E%3C/svg%3E");
+}
+
+/* ── 글자 버튼 — 나무 팻말(.plank-button) · 나무틀 버튼(.wood-button) ───────────────── */
+:root[data-skin="enhance"] :is(.plank-button, .wood-button) {
+  --rim: 0.36em;
+  position: relative;
+  isolation: isolate;
+  border: var(--rim) solid transparent;
+  border-image: none;
+  border-radius: var(--sk-radius);
+  /* 원래 테두리 12px 28px → 테(--rim): 그 차이를 안여백에 더한다(바깥 크기 그대로) */
+  padding: calc(0.35rem + 12px - var(--rim)) calc(0.25rem + 28px - var(--rim));
+  background:
+    var(--sk-notch-l) left 0 top 26% / 0.3em 0.48em no-repeat border-box,
+    var(--sk-notch-l) left 0 top 74% / 0.3em 0.48em no-repeat border-box,
+    var(--sk-notch-r) right 0 top 26% / 0.3em 0.48em no-repeat border-box,
+    var(--sk-notch-r) right 0 top 74% / 0.3em 0.48em no-repeat border-box,
+    var(--sk-face) padding-box,
+    var(--sk-rim-hi) border-box,
+    var(--sk-rim-lo) border-box,
+    var(--sk-wood) border-box;
+  box-shadow:
+    0 0 0 0.09em var(--sk-line),
+    0 0.22em 0 0.09em var(--sk-line),
+    0 0.36em 0.45em rgba(0, 0, 0, 0.3),
+    inset 0 0 0 0.065em var(--sk-inline);
+  color: #4a280e;
+  text-shadow: 0 0.06em 0 rgba(255, 236, 196, 0.7);
+  filter: none;
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.08s ease;
+}
+/* 밝은 선 + 그 선부터 번지는 음각 그림자 — 글자 아래(z-index −1, isolation 안). 반지름도 같은 비(①) */
+:root[data-skin="enhance"] :is(.plank-button, .wood-button)::after {
+  content: '';
+  position: absolute;
+  inset: 0.09em;
+  z-index: -1;
+  border: 0.08em solid rgba(255, 248, 200, 0.85);
+  border-radius: var(--sk-radius);
+  box-shadow:
+    inset 0 0 0.5em 0.06em rgba(150, 62, 12, 0.45),
+    inset 0 0 0.14em 0.03em rgba(95, 38, 6, 0.35);
+  pointer-events: none;
+}
+:root[data-skin="enhance"] :is(.plank-button, .wood-button):hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+:root[data-skin="enhance"] :is(.plank-button, .wood-button):active:not(:disabled) {
+  transform: translateY(0.16em);
+  box-shadow:
+    0 0 0 0.09em var(--sk-line),
+    0 0.06em 0 0.09em var(--sk-line),
+    0 0.12em 0.25em rgba(0, 0, 0, 0.3),
+    inset 0 0 0 0.065em var(--sk-inline);
+}
+:root[data-skin="enhance"] :is(.plank-button, .wood-button):disabled {
+  filter: grayscale(0.85) opacity(0.55);
+}
+:root[data-skin="enhance"] :is(.plank-button, .wood-button):focus-visible {
+  outline: 0.16em solid #4ade80;
+  outline-offset: 0.18em;
+}
+/* 원래 안여백 · 테두리가 다른 변형들 — 각자의 (테두리 + 안여백) 합을 그대로 둔다 */
+:root[data-skin="enhance"] .wood-button {
+  --rim: 0.26em;
+  padding: calc(0.5rem - var(--rim)) calc(0.4rem + 13px - var(--rim));
+}
+:root[data-skin="enhance"] .wood-button-sm {
+  --rim: 0.2em;
+  padding: calc(0.3rem - var(--rim)) calc(0.25rem + 9px - var(--rim));
+}
+:root[data-skin="enhance"] .wood-button-lg { padding-inline: calc(0.4rem + 19.5px - var(--rim)); }
+:root[data-skin="enhance"] .wood-button-sm::after { inset: 0.06em; border-width: 0.06em; }
+:root[data-skin="enhance"] .plank-button.pause-btn { padding: calc(0.5rem + 12px - var(--rim)) calc(0.75rem + 28px - var(--rim)); }
+/* ⚠️ 게임의 [일시정지]는 화면에 고정된 버튼이다 — 위의 position: relative가 그것을 덮으면 버튼이 문서 흐름으로 떨어져 사라진다 */
+:root[data-skin="enhance"] .plank-button.pause-fab { position: fixed; }
+
+/* ── 입력칸 · 선택 상자(.input-base) — 크림색 판. 의사요소가 없는 요소라 겹은 전부 그림자로 ──
+   안쪽 그림자 순서(먼저 적은 것이 위): 짙은 선 → 판 색 띠(밝은 선을 안으로 들이는 틈) → 밝은 선 → 번지는 음각.
+   대화 입력창(.input-plain)은 나무틀에서 빼 둔다 — 채팅은 줄이 쌓이는 자리라 틀을 두르면 시끄럽다. */
+:root[data-skin="enhance"] .input-base:not(.input-plain) {
+  --rim: 0.25em;
+  border: var(--rim) solid transparent;
+  border-image: none;
+  border-radius: var(--sk-radius);
+  /* 원래 테두리 0 13px → 테(--rim): 세로는 안여백에서 빼고, 가로는 차이를 더한다 */
+  padding: calc(0.55rem - var(--rim)) calc(0.15rem + 13px - var(--rim));
+  background:
+    var(--sk-notch-l) left 0 top 30% / 0.25em 0.42em no-repeat border-box,
+    var(--sk-notch-l) left 0 top 70% / 0.25em 0.42em no-repeat border-box,
+    var(--sk-notch-r) right 0 top 30% / 0.25em 0.42em no-repeat border-box,
+    var(--sk-notch-r) right 0 top 70% / 0.25em 0.42em no-repeat border-box,
+    linear-gradient(var(--sk-cream), var(--sk-cream)) padding-box,
+    var(--sk-rim-hi) border-box,
+    var(--sk-rim-lo) border-box,
+    var(--sk-wood) border-box;
+  box-shadow:
+    0 0 0 0.09em var(--sk-line),
+    0 0.12em 0.2em rgba(0, 0, 0, 0.25),
+    inset 0 0 0 0.065em #5a2c10,
+    inset 0 0 0 0.15em var(--sk-cream),
+    inset 0 0 0 0.22em rgba(251, 244, 230, 0.95),
+    inset 0 0 0.5em 0.12em rgba(140, 84, 38, 0.35);
+  color: #4a2a10;
+}
+:root[data-skin="enhance"] .input-base:not(.input-plain):focus {
+  border-radius: var(--sk-radius);
+  outline: 0.13em solid #4ade80;
+  outline-offset: 0.13em;
+}
+:root[data-skin="enhance"] .input-base.input-compact:not(.input-plain) {
+  --rim: 0.2em;
+  padding: calc(0.2rem - var(--rim)) calc(0.4rem + 13px - var(--rim));
+}
+
+/* ── 주사위(무작위 이름) — 나무틀 그림 대신 같은 CSS 틀 + 주사위 그림만 ── */
+:root[data-skin="enhance"] .dice-button {
+  border: 0.22em solid transparent;
+  border-radius: var(--sk-radius);
+  background:
+    url('/ui/skin_dice.webp') center / auto 74% no-repeat padding-box,
+    var(--sk-face) padding-box,
+    var(--sk-rim-hi) border-box,
+    var(--sk-rim-lo) border-box,
+    var(--sk-wood) border-box;
+  box-shadow:
+    0 0 0 0.09em var(--sk-line),
+    0 0.19em 0 0.09em var(--sk-line),
+    0 0.25em 0.3em rgba(0, 0, 0, 0.28),
+    inset 0 0 0 0.065em var(--sk-inline),
+    inset 0 0 0.4em 0.06em rgba(150, 62, 12, 0.4);
+  filter: none;
+}
+:root[data-skin="enhance"] .dice-button img { display: none; }
+:root[data-skin="enhance"] .dice-button:active { transform: translateY(0.12em); }
+
+/* ── 두 갈래 토글(.mode-toggle) — 고른 쪽은 주황 판, 안 고른 쪽은 크림 ── */
+:root[data-skin="enhance"] .mode-toggle-button {
+  border-color: #7c3f17;
+  border-radius: var(--sk-radius);
+  background: var(--sk-cream);
+  color: #5a3417;
+  box-shadow: 0 0 0 0.07em var(--sk-line), inset 0 0 0.3em 0.07em rgba(140, 84, 38, 0.3);
+}
+:root[data-skin="enhance"] .mode-toggle-button[aria-pressed='true'] {
+  background: var(--sk-face);
+  color: #4a280e;
+  border-color: #af6832;
+  box-shadow: 0 0 0 0.07em var(--sk-line), inset 0 0 0 0.07em rgba(255, 246, 200, 0.8), inset 0 0 0.35em 0.07em rgba(150, 62, 12, 0.4);
+}
+
+/* ── 자리 · 선 플레이어 버튼(.pick-image-button) — 그림 대신 CSS 판 + 캐릭터(SeatFace) ─────────────
+   네 종류(팀 1 · 팀 2 · 관전자 · 무작위)가 **같은 비율 300 : 191**이다 — 한 줄에 같은 폭으로 놓이면 크기가 같다
+   (예전 그림은 팀 그림만 303 · 305px이라 높이가 조금씩 달랐다). 비율이 고정이라 반지름은 %, 두께 · 글씨 · 홈은
+   cqw(버튼 폭)로 적는다 — 버튼이 커지든 작아지든 그림처럼 통째로 확대 · 축소된다(④). */
+.skin-seat { display: none; }
+:root[data-skin="enhance"] .pick-image-button {
+  position: relative;
+  aspect-ratio: 300 / 191;
+  line-height: normal;
+  border-radius: 9% / 44%;
+  /* 고르는 순간 커졌다 튕기던 움직임은 끈다 — 고른 표시는 링이다(크기가 바뀌면 스크롤바가 생길 수 있다) */
+  transform: none;
+  animation: none;
+}
+:root[data-skin="enhance"] .pick-image-button .seat-img { display: none; }
+:root[data-skin="enhance"] .skin-seat {
+  display: block;
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  border-radius: 9% / 44%;
+}
+/* 바깥 선 · 나무 테 · 홈 · 아래 턱 — 이 층만 cqw를 쓰려고 .skin-seat(컨테이너) 안의 한 겹으로 둔다 */
+:root[data-skin="enhance"] .skin-seat-frame {
+  position: absolute;
+  inset: 0;
+  border: 1.3cqw solid var(--sk-line);
+  border-radius: 9% / 44%;
+  background:
+    var(--sk-notch-l) left 0 top 27% / 3cqw 5cqw no-repeat border-box,
+    var(--sk-notch-l) left 0 top 73% / 3cqw 5cqw no-repeat border-box,
+    var(--sk-notch-r) right 0 top 27% / 3cqw 5cqw no-repeat border-box,
+    var(--sk-notch-r) right 0 top 73% / 3cqw 5cqw no-repeat border-box,
+    linear-gradient(180deg, rgba(255, 226, 180, 0.55) 0 1.1cqw, rgba(255, 226, 180, 0) 1.7cqw) padding-box,
+    linear-gradient(0deg, rgba(30, 12, 2, 0.5) 0 1.1cqw, rgba(30, 12, 2, 0) 1.7cqw) padding-box,
+    var(--sk-wood) padding-box;
+  box-shadow: 0 2cqw 0 0 var(--sk-line), 0 3.2cqw 3.6cqw rgba(0, 0, 0, 0.28);
+}
+:root[data-skin="enhance"] .skin-seat-face {
+  position: absolute;
+  inset: 7% 5.5%;
+  border-radius: 7% / 42%;
+  background: var(--sk-face);
+  box-shadow: 0 0 0 0.5cqw var(--sk-inline);
+}
+/* 밝은 선 · 음각 그림자 — 캐릭터 위에 */
+:root[data-skin="enhance"] .skin-seat-face::after {
+  content: '';
+  position: absolute;
+  inset: 0.9cqw;
+  z-index: 1;
+  border: 0.7cqw solid rgba(255, 248, 200, 0.85);
+  border-radius: 6% / 42%;
+  box-shadow:
+    inset 0 0 3.5cqw 0.5cqw rgba(150, 62, 12, 0.45),
+    inset 0 0 1cqw 0.2cqw rgba(95, 38, 6, 0.35);
+  pointer-events: none;
+}
+/* 캐릭터는 밝은 선 안쪽에 가둔다 — 크게 키운 만큼(아래 · 바깥쪽) 잘린다 */
+:root[data-skin="enhance"] .skin-seat-clip {
+  position: absolute;
+  inset: 1.6cqw;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: 5.5% / 42%;
+}
+:root[data-skin="enhance"] .pick-image-button .skin-ch {
+  position: absolute;
+  top: 6%;
+  width: auto;
+  height: 112%;
+  max-width: none;
+  display: block;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0.4cqw 0.3cqw rgba(80, 35, 5, 0.35));
+}
+:root[data-skin="enhance"] .pick-image-button .skin-ch.l { left: 15%; }
+:root[data-skin="enhance"] .pick-image-button .skin-ch.r { left: 85%; }
+/* 양 · 토끼는 좌우를 뒤집어 몸이 가운데 글씨를 보게 */
+:root[data-skin="enhance"] .pick-image-button .skin-ch.flip { transform: translateX(-50%) scaleX(-1); }
+:root[data-skin="enhance"] .skin-seat-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6cqw;
+  font-size: 11cqw;
+  font-weight: 900;
+  line-height: 1;
+  color: #4a280e;
+  text-shadow: 0 0.5cqw 0 rgba(255, 236, 196, 0.7);
+  white-space: nowrap;
+}
+/* 관전자 — 쇠 틀 · 회색 판 · 네 귀퉁이 볼트, 로봇은 왼쪽을 크게, 글씨 묶음은 로봇 손끝 옆 */
+:root[data-skin="enhance"] .skin-seat[data-kind='spectator'] {
+  --sk-line: #2b2e31;
+  --sk-inline: #45494c;
+}
+:root[data-skin="enhance"] .skin-seat[data-kind='spectator'] .skin-seat-frame {
+  --bolt: radial-gradient(circle at 35% 35%, #f4f5f6 0 18%, #b4b7ba 34%, #5d6164 52%, #3a3d40 56%, transparent 60%);
+  background:
+    var(--sk-notch-l) left 0 top 27% / 3cqw 5cqw no-repeat border-box,
+    var(--sk-notch-l) left 0 top 73% / 3cqw 5cqw no-repeat border-box,
+    var(--sk-notch-r) right 0 top 27% / 3cqw 5cqw no-repeat border-box,
+    var(--sk-notch-r) right 0 top 73% / 3cqw 5cqw no-repeat border-box,
+    var(--bolt) left 4% top 7% / 3.6cqw 3.6cqw no-repeat padding-box,
+    var(--bolt) right 4% top 7% / 3.6cqw 3.6cqw no-repeat padding-box,
+    var(--bolt) left 4% bottom 7% / 3.6cqw 3.6cqw no-repeat padding-box,
+    var(--bolt) right 4% bottom 7% / 3.6cqw 3.6cqw no-repeat padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0 1.1cqw, rgba(255, 255, 255, 0) 1.7cqw) padding-box,
+    linear-gradient(0deg, rgba(20, 22, 24, 0.55) 0 1.1cqw, rgba(20, 22, 24, 0) 1.7cqw) padding-box,
+    linear-gradient(180deg, #e4e6e8, #bdbfc2 50%, #7b7f83) padding-box;
+}
+:root[data-skin="enhance"] .skin-seat[data-kind='spectator'] .skin-seat-face {
+  background: linear-gradient(180deg, #d8d8d9, #cbcbcc 55%, #b7b7b8);
+}
+:root[data-skin="enhance"] .skin-seat[data-kind='spectator'] .skin-seat-face::after {
+  border-color: rgba(250, 250, 250, 0.9);
+  box-shadow:
+    inset 0 0 3.5cqw 0.5cqw rgba(70, 74, 78, 0.4),
+    inset 0 0 1cqw 0.2cqw rgba(40, 43, 46, 0.3);
+}
+:root[data-skin="enhance"] .skin-seat[data-kind='spectator'] .skin-seat-label {
+  left: 66%;
+  color: #2b2e31;
+  text-shadow: 0 0.5cqw 0 rgba(255, 255, 255, 0.7);
+}
+:root[data-skin="enhance"] .pick-image-button .skin-ch.robot { left: 22%; top: 3%; height: 118%; }
+:root[data-skin="enhance"] .skin-seat-eye { width: 9cqw; height: 6cqw; }
+/* 무작위 — 주사위(반짝이까지 그림에 있다)는 잘리지 않게 판 안에 다 담는다 */
+:root[data-skin="enhance"] .skin-seat[data-kind='random'] .skin-seat-label { left: 64%; }
+:root[data-skin="enhance"] .pick-image-button .skin-ch.dice { left: 27%; top: 12%; height: 76%; }
+/* 안 고른 자리 — 원래처럼 흐리게 누르되, 판의 나무 · 주황이 보일 만큼만 */
+:root[data-skin="enhance"] .pick-image-button:not(.pick-image-button-action):not([aria-pressed='true']) { filter: grayscale(0.5) brightness(0.97) opacity(0.82); }
+/* 고른 자리 — 판 모양을 따라가는 초록 링(크기는 그대로) */
+:root[data-skin="enhance"] .pick-image-button[aria-pressed='true'] .skin-seat {
+  outline: 2.5px solid #4ade80;
+  outline-offset: 2px;
+}
+:root[data-skin="enhance"] .pick-image-button:active { transform: translateY(2px); }
+:root[data-skin="enhance"] .pick-image-button:focus-visible { outline: none; }
+:root[data-skin="enhance"] .pick-image-button:focus-visible .skin-seat { outline: 2.5px solid #4ade80; outline-offset: 2px; }

@@ -25,6 +25,7 @@ import { GameRulesInputs, RuleSummary } from './GameRulesFields';
 import { ChatPanel } from './ChatPanel';
 import { UiIcon } from '@/components/ui/UiIcon';
 import { PlankButton } from '@/components/ui/PlankButton';
+import { SeatFace } from './SeatFace';
 import { ColorPicker } from './ColorPicker';
 
 /** 초대 링크 — 로비 첫 화면(`/`)을 방 코드가 채워진 "방 참가하기" 상태로 열어준다. */
@@ -751,7 +752,7 @@ function PlayerRow({
                 aria-label={`${SEAT_META[seat].label}(으)로 옮기기`}
                 className="pick-image-button pick-image-button-sm pick-image-button-action"
               >
-                <img src={SEAT_IMAGE[seat]} alt="" draggable={false} />
+                <SeatFace kind={seat === 'A' || seat === 'B' ? seat : 'spectator'} img={SEAT_IMAGE[seat]} />
               </button>
             ))}
           {canManage && (

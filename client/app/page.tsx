@@ -9,6 +9,7 @@ import { playBgm } from '@/lib/bgm';
 import { HowToPlayModal } from '@/components/ui/HowToPlayModal';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { LOBBY_ASSETS, TABLE_IS_STANDIN } from '@/lib/lobbyAssets';
+import { useEnhanceSkin } from '@/lib/skin';
 import { LobbyHero } from '@/components/lobby/LobbyHero';
 import { LobbyStage, backOf, type Stage } from '@/components/lobby/LobbyStage';
 import type { IndividualKind } from '@/components/lobby/IndividualRoomForm';
@@ -141,6 +142,8 @@ export default function LobbyPage() {
   }, [individualKind]);
 
   const inWaitingRoom = ws.roomId !== null;
+  // 강화전 겉모양(CSS로 그린 버튼 · 입력칸 · 자리 버튼 — lib/skin.ts) — 강화전을 고른 뒤의 로비 · 강화 방의 대기실
+  useEnhanceSkin(inWaitingRoom ? ws.lobbyEnhance : individualKind === 'enhance' && stage !== 'kind');
 
   useEffect(() => {
     if (stage === 'kind' || inWaitingRoom) return;
