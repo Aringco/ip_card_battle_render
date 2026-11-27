@@ -22,7 +22,7 @@ const SFX_PREFIXES = ['sheep', 'mermaid', 'tiger', 'rabbit', 'card', 'bomb', 'th
 // (모드 선택 패널 배경은 이미지가 아니라 CSS 그라디언트라 받을 것이 없다.)
 // emoticon은 묶음별 하위 폴더다(listDir가 한 단계만 훑으므로 하나씩 적는다) — default는 연출 표정, spticon·hands는
 // 개인전 감정표현(shared/emotes.ts). 감정표현 그림은 작은 webp라 미리 받아 둬도 부담이 없다.
-const IMAGE_DIRS = ['places', 'skills', 'skills/v1', 'skills/v2', 'skills/vmax', 'emoticon/default', 'emoticon/spticon', 'emoticon/hands', 'howto', 'lobby', 'ui', 'play'];
+const IMAGE_DIRS = ['places', 'skills', 'skills/v1', 'skills/v2', 'skills/vmax', 'emoticon/default', 'emoticon/spticon', 'emoticon/hands', 'howto', 'lobby', 'ui', 'ui/skin', 'play'];
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg']);
 
 function listDir(dir) {
