@@ -218,8 +218,8 @@
   transform: translateX(-50%);
   filter: drop-shadow(0 0.4cqw 0.3cqw rgba(80, 35, 5, 0.35));
 }
-:root[data-skin="enhance"] .pick-image-button .skin-ch.l { left: 15%; }
-:root[data-skin="enhance"] .pick-image-button .skin-ch.r { left: 85%; }
+:root[data-skin="enhance"] .pick-image-button .skin-ch.l { left: 13%; }
+:root[data-skin="enhance"] .pick-image-button .skin-ch.r { left: 87%; }
 /* 양 · 토끼는 좌우를 뒤집어 몸이 가운데 글씨를 보게 */
 :root[data-skin="enhance"] .pick-image-button .skin-ch.flip { transform: translateX(-50%) scaleX(-1); }
 :root[data-skin="enhance"] .skin-seat-label {
@@ -232,7 +232,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.6cqw;
-  font-size: 11cqw;
+  font-size: 13.2cqw;  /* 2026-11-27 요청으로 1.2배(11 → 13.2) */
   font-weight: 900;
   line-height: 1;
   color: #4a280e;
@@ -250,15 +250,15 @@
   background-image: url('/ui/skin/seat_metal_over.svg');
 }
 :root[data-skin="enhance"] .skin-seat[data-kind='spectator'] .skin-seat-label {
-  left: 66%;
+  left: 67%;
   color: #2b2e31;
   text-shadow: 0 0.5cqw 0 rgba(255, 255, 255, 0.7);
 }
 :root[data-skin="enhance"] .pick-image-button .skin-ch.robot { left: 22%; top: 3%; height: 118%; }
 :root[data-skin="enhance"] .skin-seat-eye { width: 9cqw; height: 6cqw; }
 /* 무작위 — 주사위(반짝이까지 그림에 있다)는 잘리지 않게 판 안에 다 담는다 */
-:root[data-skin="enhance"] .skin-seat[data-kind='random'] .skin-seat-label { left: 64%; }
-:root[data-skin="enhance"] .pick-image-button .skin-ch.dice { left: 27%; top: 12%; height: 76%; }
+:root[data-skin="enhance"] .skin-seat[data-kind='random'] .skin-seat-label { left: 68%; }
+:root[data-skin="enhance"] .pick-image-button .skin-ch.dice { left: 24%; top: 12%; height: 76%; }
 /* 안 고른 자리 — 원래처럼 흐리게 누르되, 판의 나무 · 주황이 보일 만큼만 */
 :root[data-skin="enhance"] .pick-image-button:not(.pick-image-button-action):not([aria-pressed='true']) { filter: grayscale(0.5) brightness(0.97) opacity(0.82); }
 /* 고른 자리 — 판 모양을 따라가는 초록 링(크기는 그대로) */
