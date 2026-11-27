@@ -179,7 +179,7 @@ npm run build
 ### 모바일 배치 — 혼자 놀기 · 개인전 · 가로 폰 (`client/components/game/mobile/`)
 
 가로로 눕힌 폰(가로 화면 + 높이 ≤ 500px — `lib/mobileLayout.ts`의 `useMobileLayout`)에서 **혼자 놀기(일반 · 강화)만** PC의 `GameLayout` 대신 `MobileLayout`으로 그린다(2026-10-31, 시범). 판별은 방 화면이 한다 — `pauseUnlimited`(혼자 놀기) && 팀전 && 시연 · 이벤트 아님. 데스크톱에서 보려면 주소에 `?ui=mobile`(끄기 `?ui=pc`, 탭 단위로 기억). 세로 화면은 여전히 회전 안내다.
-**개인전도 이 배치를 쓴다**(2026-10-31): 1:1은 팀전 화면으로 그리므로(`lib/duel.ts`) `MobileLayout`, 3명 이상은 `MobileIndividualLayout`이다. 개인전은 왼쪽 나 · 오른쪽 **지금 차례인 상대**(내 차례에는 직전 상대, 내가 다른 상대를 노리면 그 상대를 4.5초 — `ATTACK_SHOW_MS`)이고, 열 · 이름 · 체력 막대가 그 사람이 고른 색이다. 오른쪽 → 왼쪽 스와이프는 **상대 목록**(`OpponentListSheet` — 고른 채 한 번 더 밀면 그 사람의 카드 상세), 공격 카드는 **대상 고르기 창**(`MobileTargetPicker` — 한 번 눌러 고르고 한 번 더 눌러 확정, 고른 채 밀면 상세). 판단(차례 · 순위가 정해진 사람 잠금 · 자동 턴 마치기)은 PC `IndividualLayout`과 같은 기준이다.
+**개인전도 이 배치를 쓴다**(2026-10-31): 1:1은 팀전 화면으로 그리므로(`lib/duel.ts`) `MobileLayout`, 3명 이상은 `MobileIndividualLayout`이다. 개인전은 왼쪽 나 · 오른쪽 **지금 차례인 상대**(내 차례에는 직전 상대, 내가 다른 상대를 노리면 그 상대를 4.5초 — `ATTACK_SHOW_MS`)이고, 열 · 이름 · 체력 막대가 그 사람이 고른 색이다. 오른쪽 → 왼쪽 스와이프는 **상대 목록**(`OpponentListSheet` — 줄을 누르면 곧바로 그 사람의 카드 상세, 상세에서 한 번 더 밀면 도토리 카드 — 2026-11-27, 예전에는 고른 뒤 한 번 더 밀었다), 공격 카드는 **대상 고르기 창**(`MobileTargetPicker` — 한 번 눌러 고르고 한 번 더 눌러 확정, 고른 채 밀면 상세). 판단(차례 · 순위가 정해진 사람 잠금 · 자동 턴 마치기)은 PC `IndividualLayout`과 같은 기준이다.
 - 층: 판(`.m-board`)은 제 층(z 1)에 연출을 가두고, 카드 띠를 **스와이프로** 열면 가운데가 90, 카드 상세 · 상대 목록(`.m-sheets`)은 언제나 92(대상 고르기 91보다 위)다 — 스와이프로 연 창은 늘 맨 위.
 - ⚠️ 스와이프 직후의 누름은 Chrome이 click을 만들지 않는다(밀던 화면을 멈추는 손짓으로 본다 — 실측 약 1초). 목록 줄 · 대상 줄은 그래서 click이 아니라 **손가락을 뗀 순간**에 반응한다(`IndividualPanels`의 `tapProps`). 손짓 뒤 click 삼키기도 깃발이 아니라 0.4초 마감이다(`useSwipeGestures`).
 

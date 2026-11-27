@@ -253,10 +253,10 @@ export function MobileIndividualLayout({
       } else if (dir === 'down') {
         if (panel === 'cards') setPanel(null);
       } else if (dir === 'left') {
-        // 오른쪽 → 왼쪽: 내 상세는 닫고, 대상 고르기 중이면 고른 상대의 상세, 목록에서 고른 상대가 있으면 그 상세, 아무것도 없으면 목록
+        // 오른쪽 → 왼쪽: 내 상세는 닫고, 대상 고르기 중이면 고른 상대의 상세, 아무것도 없으면 목록
+        // (목록의 상대는 누르면 곧바로 상세가 열린다 — 2026-11-27, 예전에는 고른 뒤 한 번 더 밀어야 했다)
         if (panel === 'mine') setPanel(null);
         else if (picking && pickFocus && panel === null) openDetail(pickFocus);
-        else if (panel === 'oppList' && listFocus) openDetail(listFocus);
         // 상대 상세에서 한 번 더 밀면 그 사람의 도토리 카드(카드 강화)
         else if (panel === 'oppDetail' && detailSide && gameState.enhance?.acorn) openAcornShelf(detailSide);
         else if (panel === null && !picking) setPanel('oppList');
@@ -417,7 +417,11 @@ export function MobileIndividualLayout({
           animState={animState}
           sides={opponents}
           selected={listFocus}
-          onSelect={setListFocus}
+          onSelect={side => {
+            // 누르면 곧바로 그 사람의 카드 상세 — 상세에서 돌아오면(→ 밀기 · 바깥 누르기) 방금 본 줄이 고른 채로 남는다
+            setListFocus(side);
+            openDetail(side);
+          }}
         />
         {detailSide && (
           <StatusSheet

@@ -67,8 +67,9 @@ function DotBadges({ gameState, side }: { gameState: ClientGameState; side: Side
 
 /**
  * 개인전 모바일 — 상대 목록 창(오른쪽 → 왼쪽 스와이프로 연다). 상대마다 한 줄: 색 · 닉네임 · 체력 · 지속 효과, 그 아래 동물 넷의 레벨과
- * 경험치 막대. 최대 7명이라 세로로 스크롤한다. 줄을 누르면 고르고(테두리가 그 사람 색으로 빛난다), 고른 채 한 번 더 오른쪽 → 왼쪽으로
- * 밀면 그 사람의 카드 상세 창이 열린다(MobileIndividualLayout). 경험치는 화면상 값(카드가 도착한 뒤에 오른다)이다.
+ * 경험치 막대. 최대 7명이라 세로로 스크롤한다. 줄을 누르면 **곧바로** 그 사람의 카드 상세 창이 열린다(MobileIndividualLayout —
+ * 2026-11-27, 예전에는 고른 뒤 한 번 더 밀어야 했다). 상세에서 돌아오면 방금 본 줄이 그 사람 색 테두리로 남는다.
+ * 경험치는 화면상 값(카드가 도착한 뒤에 오른다)이다.
  */
 export function OpponentListSheet({
   open,
@@ -92,7 +93,7 @@ export function OpponentListSheet({
         <span className="m-sheet-hint">밀어서 닫기 →</span>
         <span className="m-opp-list-title">상대 {sides.length}명</span>
       </p>
-      <p className="m-opp-list-tip">{selected ? '한 번 더 ← 밀면 카드 상세' : '상대를 눌러 고르세요'}</p>
+      <p className="m-opp-list-tip">상대를 누르면 카드 상세</p>
       <ul className="m-opp-rows">
         {sides.map(side => {
           const state = withDisplayedExp(gameState, side, animState.displayedExp[side] ?? gameState.teams[side].exp);
