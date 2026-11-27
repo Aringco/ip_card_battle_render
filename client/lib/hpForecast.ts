@@ -4,7 +4,7 @@
 //    이번 차례에 스스로 건 몫(fresh)은 들지 않는다, 회복은 회복 효율 감소(healCut)를 거친다. 한쪽을 고치면 함께 고칠 것.
 //    도토리 카드의 출혈 무효 · 받는 출혈 감소 · 보호막도 같은 순서로 든다(engine/acorn.ts의 acornBleed). 쓰러짐 방지 · 위기 회복은 예상에 넣지 않는다.
 import type { ClientGameState, SideId } from 'shared';
-import { acornBleedTaken, enhanceHealAfterCut, enhanceHealCutOf } from 'shared';
+import { acornBleedTaken, capHeal, enhanceHealAfterCut, enhanceHealCutOf, losesAtZero } from 'shared';
 
 export interface HpForecast {
   /** 지금 체력(화면상 값) */
@@ -36,8 +36,9 @@ export function hpForecastOf(gameState: ClientGameState, side: SideId): HpForeca
     cur -= bleedAmt;
   }
   const regen = enh.regen?.[side];
-  if (cur > 0 && regen && regen.turns - (regen.fresh ?? 0) > 0) {
-    regenAmt = enhanceHealAfterCut(regen.amount, enhanceHealCutOf(gameState, side));
+  // 출혈로 0이 되면 회복은 들지 않는다 — 다만 번영전은 0에서도 지지 않아 회복이 든다(서버와 같다). 섬멸전은 목표 체력까지만(capHeal)
+  if ((cur > 0 || !losesAtZero(gameState)) && regen && regen.turns - (regen.fresh ?? 0) > 0) {
+    regenAmt = capHeal(gameState, cur, enhanceHealAfterCut(regen.amount, enhanceHealCutOf(gameState, side)));
     cur += regenAmt;
   }
   return { hp, bleed: bleedAmt, regen: regenAmt, shield, delta: cur - hp, after: cur };

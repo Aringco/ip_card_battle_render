@@ -263,7 +263,11 @@ export function GameEndScreen({
           ))}
         </div>
         <p className="text-center text-xs font-bold text-board-muted mb-5">
-          체력은 {gameState.settings.targetScore}에서 시작해 행동으로만 오르내리고, 목표 점수({gameState.settings.targetScore * 2})에 닿으면 이깁니다.
+          {gameState.settings.winMode === 'annihilate'
+            ? `섬멸전 — 체력은 가득(${gameState.settings.targetScore * 2})에서 시작해 그 이상 오르지 않고, 상대 체력을 0으로 만들면 이깁니다.`
+            : gameState.settings.winMode === 'recovery'
+              ? `번영전 — 체력은 0에서 시작해 행동으로만 오르내리고, 목표 점수(${gameState.settings.targetScore * 2})에 닿으면 이깁니다.`
+              : `체력은 ${gameState.settings.targetScore}에서 시작해 행동으로만 오르내리고, 목표 점수(${gameState.settings.targetScore * 2})에 닿으면 이깁니다.`}
         </p>
 
         <p className="text-sm font-bold text-board-ink mb-2.5">동물별 경험치</p>

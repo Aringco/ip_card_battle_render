@@ -12,6 +12,8 @@ import {
   maxTurnOf,
   nextActiveSide,
   opponentsOf,
+  capHeal,
+  startHpOf,
 } from 'shared';
 import type { GameEvent, GameSettings, GameState, PlayerColorId, SettingsLimits, SideId, Team, TeamState } from 'shared';
 import { dealOpeningSharedCards, initStacks } from './places';
@@ -246,7 +248,8 @@ function tickEnhanceStatus(state: GameState, side: SideId): GameEvent[] {
   const regen = enh.regen[side];
   if (regen && regen.turns - (regen.fresh ?? 0) > 0) {
     const cut = enhanceHealCutOf(state, side);
-    const amount = enhanceHealAfterCut(regen.amount, cut);
+    // 섬멸전은 목표 체력까지만(capHeal) — 이벤트의 양도 실제로 오른 만큼
+    const amount = capHeal(state, team.hp, enhanceHealAfterCut(regen.amount, cut));
     team.hp += amount;
     regen.turns -= 1;
     if (regen.turns === 0) regen.amount = 0;
@@ -306,7 +309,8 @@ export function initGame(
   const startingTeamReason: 'setting' | 'random' =
     resolvedSettings.firstTeam === 'random' ? 'random' : 'setting';
 
-  const makeTeam = (members: string[]) => makeTeamState(members, resolvedSettings.targetScore);
+  // 시작 체력 — 섬멸전은 가득(목표 체력), 번영전은 0, 기본은 targetScore(startHpOf, 2026-11-28 요청)
+  const makeTeam = (members: string[]) => makeTeamState(members, startHpOf(resolvedSettings));
 
   // 선 플레이어의 불합리를 없애기 위한 시작 공유 카드 — 서로 다른 동물 두 장이 중앙에
   // 깔린 채로 게임이 시작된다(engine/places.ts의 dealOpeningSharedCards 참고).
@@ -367,7 +371,7 @@ export function initIndividualGame(
 
   const teams: Record<SideId, TeamState> = {};
   for (const p of players) {
-    teams[p.side] = { ...makeTeamState([p.nickname], resolvedSettings.targetScore), color: p.color };
+    teams[p.side] = { ...makeTeamState([p.nickname], startHpOf(resolvedSettings)), color: p.color };
   }
 
   const stacks = initStacks();

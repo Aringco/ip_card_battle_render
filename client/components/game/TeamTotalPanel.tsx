@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ClientGameState, SideId } from 'shared';
+import { startHpOf } from 'shared';
 import { LeafDecoration } from '@/components/ui/LeafDecoration';
 import { spectatorTeamVars } from '@/lib/teamColors';
 import { playerColorVars } from '@/lib/individual';
@@ -115,7 +116,7 @@ export function TeamTotalPanel({
 
   // 눈금선 — 지금 몇 칸째인지 한눈에 보이도록 반투명한 선을 긋는다(간격은 segmentStepOf).
   const segmentStep = segmentStepOf(winHp);
-  const startPct = (gameState.settings.targetScore / winHp) * 100;
+  const startPct = (startHpOf(gameState.settings) / winHp) * 100;
   const segmentLines = Array.from({ length: Math.ceil(winHp / segmentStep) - 1 }, (_, i) => (((i + 1) * segmentStep) / winHp) * 100);
 
   const orb = (

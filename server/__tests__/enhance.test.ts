@@ -32,6 +32,7 @@ import { settleStacks } from '../engine/drawCard';
 import { checkKnockout, initEnhanceGame, initGame, initIndividualGame } from '../engine/turnManager';
 import { processPass, processPlayerAction, processSkillChoice, processTimeout } from '../engine/gameEngine';
 import { applySkillChoice, eligibleAnimals, levelOf } from '../engine/skills';
+import { addShield } from '../engine/acorn';
 import { Room } from '../room';
 import { settleGraceMs } from '../settleTiming';
 
@@ -1118,13 +1119,40 @@ describe('후공 보상 (secondComp)', () => {
 });
 
 describe('승리 방식 — 섬멸전 · 번영전(2026-11-17)', () => {
-  it('섬멸전: 상표토끼로 승리선에 닿아도 끝나지 않고, 특허랑이로 체력 0이면 끝난다', () => {
+  it('시작 체력 — 섬멸전은 가득(목표 체력 = 승리선), 번영전은 0, 기본은 그 절반(2026-11-28)', () => {
+    expect(newGame({ targetScore: 200, winMode: 'annihilate' }).teams.A.hp).toBe(400);
+    expect(newGame({ targetScore: 200, winMode: 'recovery' }).teams.B.hp).toBe(0);
+    expect(newGame({ targetScore: 200 }).teams.A.hp).toBe(200);
+    const players = ['p1', 'p2', 'p3'].map((side, i) => ({ side, nickname: side, color: PLAYER_COLORS[i].id }));
+    const ind = initIndividualGame(players, rng0, { ...ENHANCE_SETTINGS, targetScore: 200, winMode: 'annihilate', festivalTurn: 999 }, true);
+    expect(Object.values(ind.teams).map(t => t.hp)).toEqual([400, 400, 400]);
+  });
+
+  it('섬멸전 — 회복은 목표 체력까지만 오르고, 이벤트도 실제로 오른 양만 싣는다 · 보호막도 같은 상한(2026-11-28)', () => {
+    const s = newGame({ targetScore: 200, winMode: 'annihilate' });
+    setLevel(s, 'A', 'rabbit', 11);
+    s.teams.A.hp = 390;
+    toChoice(s);
+    const { events } = processSkillChoice(s, 'rabbit');
+    expect(s.teams.A.hp).toBe(400);
+    expect(events.find(e => e.type === 'skillApplied')).toMatchObject({ myHpDelta: 10 });
+    expect(s.enhance!.shield?.A ?? 0).toBeLessThanOrEqual(400);
+    const before = s.enhance!.shield?.A ?? 0;
+    expect(addShield(s, 'A', 100000)).toBe(400 - before);
+    expect(s.enhance!.shield!.A).toBe(400);
+    // 기본 판은 상한 없음
+    const n = newGame({ targetScore: 200 });
+    addShield(n, 'A', 100000);
+    expect(n.enhance!.shield!.A).toBe(100000);
+  });
+
+  it('섬멸전: 상표토끼로 승리선에 닿아도 끝나지 않고(체력은 목표 체력에서 멈춘다), 특허랑이로 체력 0이면 끝난다', () => {
     const s = newGame({ targetScore: 200, winMode: 'annihilate' });
     setLevel(s, 'A', 'rabbit', 11);
     s.teams.A.hp = 399;
     toChoice(s);
     processSkillChoice(s, 'rabbit');
-    expect(s.teams.A.hp).toBeGreaterThan(400);
+    expect(s.teams.A.hp).toBe(400);
     expect(s.phase).toBe('playing');
 
     const t = newGame({ targetScore: 200, winMode: 'annihilate' });

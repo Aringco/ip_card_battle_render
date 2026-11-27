@@ -167,6 +167,11 @@
 @media (prefers-reduced-motion: reduce) {
   .mode-toggle-button { transition: none; }
 }
+/* 고정 토글(ModeToggle still — 규칙의 후공 보상 · 승리 방식, 2026-11-28 요청) — 가리켜도 바탕이 바뀌지 않고 눌러도 내려가지 않는다.
+   고른 쪽이 바뀌는 색 전환도 곧바로(전환 없음) */
+.mode-toggle[data-still] .mode-toggle-button { transition: none; }
+.mode-toggle[data-still] .mode-toggle-button:hover:not([aria-pressed='true']) { background: #f6ead0; }
+.mode-toggle[data-still] .mode-toggle-button:active { transform: none; }
 
 /* ── 개인전 색 고르기 사각형 (대기실 ColorPicker) ─────────────────────────────
    12칸이 한 줄에 다 들어가지 않으면 줄바꿈한다. 내 색은 굵은 갈색 테두리 + ✓,

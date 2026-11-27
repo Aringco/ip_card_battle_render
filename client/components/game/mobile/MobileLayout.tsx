@@ -25,6 +25,7 @@ import { ActionPrompt } from '../ActionPrompt';
 import { EmotePicker } from '../EmotePicker';
 import { AnimalRail } from './AnimalRail';
 import { MobileDotHub, MobileHpBar } from './MobileHpBar';
+import { MyAcornButton, OppAcornButton } from './AcornCornerButtons';
 import { MobilePhase, PHASE_HERO_MS } from './MobilePhase';
 import type { MobilePhaseKind } from './MobilePhase';
 import { MobileNotice } from './MobileNotice';
@@ -344,18 +345,21 @@ export function MobileLayout({
       </footer>
       {/* 내 동물 열 아래 칸 — [내 도토리 카드] (호랑이 레벨의 세로줄) [감정표현](2026-11-25 요청). 오른쪽 열 아래 칸은 설정 톱니 자리(CSS) */}
       <div className="m-corner" data-single={gameState.enhance?.acorn ? undefined : ''}>
-        {gameState.enhance?.acorn && (
-          <button type="button" className="m-acorn-button m-corner-slot-l" aria-label="내 도토리 카드 보기" title="내 도토리 카드" onClick={() => openAcornShelf('A')}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={PLAY_ASSETS.iconAcorn} alt="" draggable={false} />
-          </button>
-        )}
+        {gameState.enhance?.acorn && <MyAcornButton gameState={gameState} side="A" className="m-corner-slot-l" />}
         {canEmote && (
           <span className="m-corner-slot-r">
             <EmotePicker onSend={onEmote!} cellSelector=".m-view" opens="above" />
           </span>
         )}
       </div>
+      {/* 상대 동물 열 아래 칸 — [상대 도토리 카드] (세로줄) [설정 톱니 — 전역 fixed, CSS가 이 칸 오른쪽 자리에 맞춘다](2026-11-28 요청) */}
+      {gameState.enhance?.acorn && (
+        <div className="m-corner m-corner-r">
+          <span className="m-corner-slot-l">
+            <OppAcornButton gameState={gameState} opponents={['B']} nameOf={s => gameState.teamNames?.[s] ?? gameState.teams[s]?.members[0] ?? '상대'} />
+          </span>
+        </div>
+      )}
 
       {/* 연출 층 — PC와 같은 것을 띄운다(진행 문구 · 축제 시작 안내는 오른쪽 위 MobileNotice가 대신한다) */}
       <EffectLayer leafParticleCount={animState.leafParticleCount} floatingTexts={animState.floatingTexts} />

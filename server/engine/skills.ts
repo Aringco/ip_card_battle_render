@@ -42,6 +42,7 @@ import {
   acornSkillFactor,
   acornSideOf,
   acornStatsOf,
+  capHeal,
 } from 'shared';
 import type { AcornRescue, Animal, GameEvent, GameState, SideId } from 'shared';
 import { acornHit, acornProcExtra, addShield, consumeAcornBoost } from './acorn';
@@ -148,7 +149,8 @@ export function applySkillChoice(
     me.pendingMultiplier = 1;
   }
 
-  // ④ 체력 반영 — 하한 0으로 클램프. 상한은 없다(승리 판정은 별도로 처리).
+  // ④ 체력 반영 — 하한 0으로 클램프. 상한은 섬멸전만 목표 체력(capHeal — 기본 · 번영전은 없다, 승리 판정은 별도로 처리).
+  myHpDelta = capHeal(state, me.hp, myHpDelta);
   if (foe) foe.hp = Math.max(0, foe.hp + oppHpDelta);
   me.hp = me.hp + myHpDelta;
 
@@ -411,6 +413,8 @@ function applyEnhanceEffect(
   }
 
   if (foe && !hpApplied) foe.hp = Math.max(0, foe.hp + oppHpDelta);
+  // 섬멸전은 목표 체력까지만 찬다 — 이벤트의 myHpDelta도 실제로 오른 양으로(화면의 체력 가림이 그 양을 뺀다)
+  myHpDelta = capHeal(state, me.hp, myHpDelta);
   me.hp += myHpDelta;
   me.skillStats[animal].totalHpGained += myHpDelta;
   if (animal !== 'mermaid') consumeAcornBoost(state, team);

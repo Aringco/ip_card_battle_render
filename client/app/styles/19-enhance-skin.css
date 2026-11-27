@@ -155,6 +155,8 @@
   color: #4a280e;
   border-color: transparent;
 }
+/* 고정 토글(still) — 강화전 겉모양에서도 가리킬 때 덮는 빛(--sk-glow)을 끈다 */
+:root[data-skin="enhance"] .mode-toggle[data-still] .mode-toggle-button:hover:not([aria-pressed='true']) { background: var(--sk-chip-off); }
 
 /* ── 자리 · 선 플레이어 버튼(.pick-image-button) — 그림 대신 SVG 판 + 캐릭터(SeatFace) ─────────────
    네 종류(팀 1 · 팀 2 · 관전자 · 무작위)가 **같은 비율 300 : 191**이다 — 한 줄에 같은 폭으로 놓이면 크기가 같다.
@@ -269,3 +271,72 @@
 :root[data-skin="enhance"] .pick-image-button:active { transform: translateY(2px); }
 :root[data-skin="enhance"] .pick-image-button:focus-visible { outline: none; }
 :root[data-skin="enhance"] .pick-image-button:focus-visible .skin-seat { outline: 2.5px solid #4ade80; outline-offset: 2px; }
+
+/* ── 선택 상자(<select class="input-base">) — 펼친 목록까지 나무 틀(2026-11-28 요청 — 견본 CSS B의 드롭다운) ──
+   닫힌 상자는 위 입력칸 규칙(크림 판 · 나무 테)을 그대로 쓰고, 펼친 목록은 customizable select(appearance: base-select, Chrome · Edge 135+)로
+   같은 나무 틀을 입힌다: 크림 목록 · 고른 항목은 무작위 버튼의 주황 판 + ✓ · 가리키면 옅은 주황.
+   목록은 상자의 **바깥 틀 왼쪽**에 맞추고 테두리에 닿게 붙인다(위로 열릴 때도 — position-try-fallbacks).
+   지원하지 않는 브라우저는 닫힌 상자만 같은 모양이고 목록은 브라우저 기본이다. */
+@supports (appearance: base-select) {
+  :root[data-skin="enhance"] select.input-base:not(.input-plain),
+  :root[data-skin="enhance"] select.input-base:not(.input-plain)::picker(select) { appearance: base-select; }
+  :root[data-skin="enhance"] select.input-base:not(.input-plain) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    /* 꺾쇠 자리 — 레이아웃의 !px-2(Tailwind)보다 구체적이어야 이긴다 */
+    padding-right: calc(0.6em + 13px - var(--rim)) !important;
+    font-weight: 900;
+    color: #4a2a10;
+    cursor: pointer;
+  }
+  /* 꺾쇠 — 펼치면 위로 돈다 */
+  :root[data-skin="enhance"] select.input-base:not(.input-plain)::picker-icon {
+    content: '';
+    width: 0.45em;
+    height: 0.45em;
+    margin-left: auto;
+    border-right: 0.16em solid #7c3f17;
+    border-bottom: 0.16em solid #7c3f17;
+    border-radius: 0 0 0.08em 0;
+    transform: translateY(-25%) rotate(45deg);
+    transition: transform 0.15s;
+  }
+  :root[data-skin="enhance"] select.input-base:not(.input-plain):open::picker-icon { transform: translateY(20%) rotate(225deg); }
+  :root[data-skin="enhance"] select.input-base:not(.input-plain)::picker(select) {
+    font: inherit;
+    font-weight: 900;
+    line-height: 1.2;
+    color: #4a2a10;
+    /* 바깥 틀 왼쪽에 맞추고 테두리에 닿게 — 아래가 모자라면 위로(그때도 붙는다) */
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-block;
+    margin: 0;
+    min-width: anchor-size(width);
+    padding: 0.3em;
+    border: 0.3em solid transparent;
+    border-radius: 0.6em;
+    background:
+      linear-gradient(180deg, #f6e8d2, #f0dcc0) padding-box,
+      linear-gradient(180deg, #c0814c, #b06d3b 55%, #7f431e) border-box;
+    box-shadow: 0 0 0 0.1em #451700, inset 0 0 0.35em rgba(140, 84, 38, 0.3), 0 0.4em 0.8em rgba(0, 0, 0, 0.3);
+  }
+  :root[data-skin="enhance"] select.input-base:not(.input-plain) option {
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.4em 0.6em;
+    border-radius: 0.35em;
+    outline: none;
+    background: transparent;
+    color: #4a2a10;
+  }
+  :root[data-skin="enhance"] select.input-base:not(.input-plain) option:hover,
+  :root[data-skin="enhance"] select.input-base:not(.input-plain) option:focus-visible { background: rgba(246, 180, 102, 0.55); }
+  /* 고른 항목 — 크기는 그대로(스크롤바 규칙), 무작위 버튼의 주황 판 + 안쪽 밝은 선 */
+  :root[data-skin="enhance"] select.input-base:not(.input-plain) option:checked {
+    background: linear-gradient(180deg, #fac577, #f2a254);
+    box-shadow: inset 0 0 0 0.07em rgba(255, 246, 200, 0.85), inset 0 0 0.35em 0.02em rgba(150, 62, 12, 0.4);
+  }
+  :root[data-skin="enhance"] select.input-base:not(.input-plain) option::checkmark { content: '✓'; color: #7c3f17; width: 0.7em; }
+}

@@ -15,6 +15,8 @@ import {
   opponentsOf,
   rollAcornTier,
   skillLevelFor,
+  capHeal,
+  hpCapOf,
 } from 'shared';
 import type { AcornGains, AcornRescue, Animal, GameEvent, GameState, SideId } from 'shared';
 import type { RNG } from './places';
@@ -177,7 +179,8 @@ function applyAcornNow(state: GameState, side: SideId, id: string, tier: 1 | 2 |
         break;
       }
       case 'heal': {
-        const heal = enhanceHealAfterCut(acornHpPct(state, e.pct), enhanceHealCutOf(state, side));
+        // 섬멸전은 목표 체력까지만(capHeal)
+        const heal = capHeal(state, me.hp, enhanceHealAfterCut(acornHpPct(state, e.pct), enhanceHealCutOf(state, side)));
         me.hp += heal;
         gains.heal = (gains.heal ?? 0) + heal;
         break;
@@ -263,13 +266,13 @@ function cleanseOne(state: GameState, side: SideId, by: number, rng: RNG, only?:
   return '회복 효율 감소';
 }
 
-/** 보호막 더하기 — 상한 없음(2026-11-17 요청 — 그 전 시작 체력의 20%). 실제로 더한 양 */
+/** 보호막 더하기 — 기본 · 번영전은 상한 없음(2026-11-17 요청 — 그 전 시작 체력의 20%), 섬멸전은 체력과 같은 상한(hpCapOf — 2026-11-28 요청). 실제로 더한 양 */
 export function addShield(state: GameState, side: SideId, amount: number): number {
   const enh = state.enhance;
   if (!enh || amount <= 0) return 0;
   enh.shield ??= {};
   const before = enh.shield[side] ?? 0;
-  enh.shield[side] = before + amount;
+  enh.shield[side] = Math.max(before, Math.min(hpCapOf(state), before + amount));
   return enh.shield[side] - before;
 }
 
@@ -279,13 +282,13 @@ function rescueAfterDamage(state: GameState, side: SideId): AcornRescue[] {
   const team = state.teams[side];
   if (!a) return [];
   if (team.hp <= 0 && a.survive > 0) {
-    const amount = 1 + acornHpPct(state, a.survive);
+    const amount = Math.min(1 + acornHpPct(state, a.survive), hpCapOf(state));
     team.hp = amount;
     a.survive = 0;
     return [{ side, kind: 'survive', amount }];
   }
   if (team.hp > 0 && team.hp <= acornHpPct(state, 30) && a.lowHeal > 0) {
-    const amount = acornHpPct(state, a.lowHeal);
+    const amount = capHeal(state, team.hp, acornHpPct(state, a.lowHeal));
     team.hp += amount;
     a.lowHeal = 0;
     return [{ side, kind: 'lowHeal', amount }];

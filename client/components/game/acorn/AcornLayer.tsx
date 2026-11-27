@@ -29,10 +29,11 @@ const RISE_SPARKS = Array.from({ length: 12 }, (_, i) => ({
 // 마지막으로 얻기 연출을 한 카드(마운트와 무관하게 — 모듈에 둔다)
 let lastGet: { id: string; at: number } = { id: '', at: 0 };
 
-/** 카드 보기 창을 여는 신호 — 배지 · 모바일 스와이프가 보낸다(detail: 편 id) */
+/** 카드 보기 창을 여는 신호 — 배지 · 모바일 스와이프 · PC 도토리 카드 더미의 [카드] · [목록] · [요약]이 보낸다(detail: 편 id + 처음 보기 방식) */
 export const ACORN_SHELF_EVENT = 'acorn:shelf';
-export function openAcornShelf(side: SideId): void {
-  window.dispatchEvent(new CustomEvent<SideId>(ACORN_SHELF_EVENT, { detail: side }));
+export type AcornShelfMode = 'cards' | 'list' | 'summary';
+export function openAcornShelf(side: SideId, mode: AcornShelfMode = 'cards'): void {
+  window.dispatchEvent(new CustomEvent<{ side: SideId; mode: AcornShelfMode }>(ACORN_SHELF_EVENT, { detail: { side, mode } }));
 }
 
 interface Props {
@@ -64,7 +65,7 @@ export function AcornLayer({ state, me, events, turnDeadline, settling, paused, 
   // 리롤을 보냈지만 서버 답이 아직인 칸 — 두 번 누르지 않게 그 사이에도 잠근다
   const [rerolling, setRerolling] = useState<number[]>([]);
   const [getting, setGetting] = useState<{ id: string; tier: AcornTier; key: number } | null>(null);
-  const [viewing, setViewing] = useState<SideId | null>(null);
+  const [viewing, setViewing] = useState<{ side: SideId; mode: AcornShelfMode; key: number } | null>(null);
   const seenEvents = useRef<ClientGameEvent[] | null>(null);
 
   // 새 축제마다 고른 표시를 지운다
@@ -132,10 +133,14 @@ export function AcornLayer({ state, me, events, turnDeadline, settling, paused, 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getting?.key, me]);
-  useEffect(() => () => document.querySelectorAll('.acorn-badge[data-pending]').forEach(b => b.removeAttribute('data-pending')), []);
+  // 숨김 풀기 — 배지든 PC 도토리 카드 더미의 맨 위 카드든(둘 다 data-acorn-id)
+  useEffect(() => () => document.querySelectorAll('[data-acorn-id][data-pending]').forEach(b => b.removeAttribute('data-pending')), []);
 
   useEffect(() => {
-    const open = (e: Event) => setViewing((e as CustomEvent<SideId>).detail);
+    const open = (e: Event) => {
+      const d = (e as CustomEvent<{ side: SideId; mode: AcornShelfMode }>).detail;
+      setViewing(v => ({ side: d.side, mode: d.mode, key: (v?.key ?? 0) + 1 }));
+    };
     window.addEventListener(ACORN_SHELF_EVENT, open);
     return () => window.removeEventListener(ACORN_SHELF_EVENT, open);
   }, []);
@@ -229,9 +234,10 @@ export function AcornLayer({ state, me, events, turnDeadline, settling, paused, 
       </div>
     );
   } else if (viewing !== null) {
-    const owned = acorn.sides[viewing]?.owned ?? [];
-    const name = state.teamNames?.[viewing] ?? state.teams[viewing]?.members[0] ?? '';
-    layer = <AcornShelf title={`${name}의 도토리 카드`} owned={owned} side={acorn.sides[viewing]} onClose={() => setViewing(null)} />;
+    const owned = acorn.sides[viewing.side]?.owned ?? [];
+    const name = state.teamNames?.[viewing.side] ?? state.teams[viewing.side]?.members[0] ?? '';
+    // key — 다른 보기 방식 단추로 다시 열면 그 방식으로 새로 연다
+    layer = <AcornShelf key={viewing.key} title={`${name}의 도토리 카드`} owned={owned} side={acorn.sides[viewing.side]} initialMode={viewing.mode} onClose={() => setViewing(null)} />;
   }
   const flyEl = fly && (
     <span
@@ -277,15 +283,16 @@ function PickTimer({ deadline }: { deadline: number | null }) {
  * onClose가 있으면 보기 창(닫기 버튼 · 바깥 누르기로 닫힌다)이고 [카드] · [목록] · [요약] 보기를 고를 수 있다.
  * [요약](2026-11-25)은 같은 효과끼리 합산해 지금 유효한 효과만 보인다(shared의 acornSummary — 상한이 있는 것은 상한까지).
  */
-function AcornShelf({ title, owned, side, incoming, onClose }: {
+function AcornShelf({ title, owned, side, incoming, initialMode = 'cards', onClose }: {
   title: string;
   owned: AcornOwned[];
   /** 보기 창의 그 편 도토리 상태 — [요약]의 남은 효과(충전 · 턴마다)를 읽는다 */
   side?: AcornSide;
   incoming?: { id: string; tier: AcornTier };
+  initialMode?: AcornShelfMode;
   onClose?: () => void;
 }) {
-  const [mode, setMode] = useState<'cards' | 'list' | 'summary'>('cards');
+  const [mode, setMode] = useState<AcornShelfMode>(initialMode);
   const list = mode === 'list';
   const cards = incoming ? owned.filter(o => o.id !== incoming.id) : owned;
   // 빈 자리는 만들지 않는다 — 얻은 카드만 가운데부터(CSS .acorn-shelf-row)

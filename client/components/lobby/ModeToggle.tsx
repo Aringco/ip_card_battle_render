@@ -16,15 +16,18 @@ export function ModeToggle<T extends string>({
   value,
   onChange,
   label,
+  still = false,
 }: {
   options: ReadonlyArray<{ value: T; label: string }>;
   value: T;
   onChange: (v: T) => void;
   /** 묶음의 이름(화면 읽기 프로그램용) */
   label: string;
+  /** 가리켜도 · 눌러도 움직이지 않는 고정 버튼(2026-11-28 요청 — 규칙의 후공 보상 · 승리 방식). 고른 쪽 색만 바뀐다 */
+  still?: boolean;
 }) {
   return (
-    <div className="mode-toggle" role="group" aria-label={label}>
+    <div className="mode-toggle" role="group" aria-label={label} data-still={still ? '' : undefined}>
       {options.map(o => (
         <button
           key={o.value}

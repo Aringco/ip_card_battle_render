@@ -1,7 +1,9 @@
 'use client';
 
 import { LOBBY_ASSETS } from '@/lib/lobbyAssets';
+import Link from 'next/link';
 import { IconButton } from '@/components/ui/UiIcon';
+import { PLAY_ASSETS } from '@/lib/playAssets';
 
 /** 게임 방법 버튼의 한 변(px). 아이콘 원본 256px의 0.2배. */
 const HOW_TO_ICON_PX = 51;
@@ -36,6 +38,13 @@ export function LobbyHero({ onHowTo }: { onHowTo: () => void }) {
         onClick={onHowTo}
         className="absolute bottom-0 right-0 z-20"
       />
+
+      {/* 도토리 증강 카드(갤러리 북 · 상점 · 팩 열기 — app/cards/). 게임 방법 버튼과 마주 보는 왼쪽 아래 —
+          absolute라 로비 배치를 밀지 않는다 */}
+      <Link href="/cards" className="lobby-cards-link absolute bottom-0 left-0 z-20">
+        <img src={PLAY_ASSETS.iconAcorn} alt="" aria-hidden draggable={false} />
+        <span>도토리 카드</span>
+      </Link>
     </div>
   );
 }

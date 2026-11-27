@@ -27,6 +27,7 @@ import { IndividualPrompt } from '../IndividualPrompt';
 import type { TargetSkill } from '../TargetPicker';
 import { AnimalRail } from './AnimalRail';
 import { MobileDotHub, MobileHpBar } from './MobileHpBar';
+import { MyAcornButton, OppAcornButton } from './AcornCornerButtons';
 import { MobilePhase, PHASE_HERO_MS } from './MobilePhase';
 import type { MobilePhaseKind } from './MobilePhase';
 import { MobileNotice } from './MobileNotice';
@@ -453,18 +454,26 @@ export function MobileIndividualLayout({
       {/* 내 동물 열 아래 칸 — [내 도토리 카드] (호랑이 레벨의 세로줄) [감정표현](2026-11-25 요청 — 그 전에는 감정표현이 동물 열 위).
           고르기 창은 버튼 위로 판(.m-view) 폭만큼 연다. 오른쪽 열 아래 칸은 설정 톱니 자리(CSS) */}
       <div className="m-corner" data-single={gameState.enhance?.acorn ? undefined : ''}>
-        {gameState.enhance?.acorn && (
-          <button type="button" className="m-acorn-button m-corner-slot-l" aria-label="내 도토리 카드 보기" title="내 도토리 카드" onClick={() => openAcornShelf(leftSide)}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={PLAY_ASSETS.iconAcorn} alt="" draggable={false} />
-          </button>
-        )}
+        {gameState.enhance?.acorn && <MyAcornButton gameState={gameState} side={leftSide} className="m-corner-slot-l" />}
         {mySide !== null && gameState.phase === 'playing' && (
           <span className="m-corner-slot-r">
             <EmotePicker onSend={onEmote} cellSelector=".m-view" opens="above" />
           </span>
         )}
       </div>
+      {/* 상대 동물 열 아래 칸 — [상대 도토리 카드](누르면 상대를 고르고 → 그 사람의 카드) [설정 톱니](2026-11-28 요청) */}
+      {gameState.enhance?.acorn && (
+        <div className="m-corner m-corner-r">
+          <span className="m-corner-slot-l">
+            <OppAcornButton
+              gameState={gameState}
+              opponents={opponentOrder(gameState, leftSide, leftSide)}
+              nameOf={s => sideName(gameState, s)}
+              colorOf={s => sideColor(gameState, s)}
+            />
+          </span>
+        </div>
+      )}
 
       <EffectLayer leafParticleCount={animState.leafParticleCount} floatingTexts={animState.floatingTexts} leftSide={mySide ?? undefined} />
       <SweepBanner info={animState.sweepBanner} />

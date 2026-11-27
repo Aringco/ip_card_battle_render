@@ -12,7 +12,9 @@
 /* 크기 값은 body에 둔다 — 설정 톱니(.settings-fab)는 .m-layout 밖(body의 자식)이라 여기 값을 읽어 동물 열에 줄을 맞춘다(2026-11-25) */
 body:has(.m-layout) {
   --m-gutter: max(8px, env(safe-area-inset-left), env(safe-area-inset-right));
-  --m-top-h: 34px;
+  /* 위 띠 — 가운데가 게이지(26px) + 문구 한 줄로 두 줄이다(2026-11-28). 양옆은 위쪽 --m-top-row 줄에만 선다 */
+  --m-top-h: 52px;
+  --m-top-row: 34px;
   --m-bottom-h: 30px;
   --m-view-h: calc(var(--app-h, 100dvh) - var(--m-top-h) - var(--m-bottom-h) - 16px);
   /* 동물 아이콘 지름 — 판 높이를 넷으로 나눈 것에서 간격을 뺀다 */
@@ -60,7 +62,7 @@ body:has(.m-layout) {
   align-items: center;
   column-gap: 8px;
 }
-.m-top-side { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.m-top-side { display: flex; align-items: center; gap: 6px; min-width: 0; align-self: start; height: var(--m-top-row); }
 .m-top-right { flex-direction: row-reverse; }
 .m-top-center { position: relative; width: clamp(210px, 34vw, 320px); height: 100%; }
 .m-pause-slot { flex: none; width: var(--m-slot); height: 26px; }
@@ -91,22 +93,66 @@ body:has(.m-layout) {
   pointer-events: none;
 }
 
-/* 타이머 창 — PC의 ActionPrompt를 그대로 쓰고 크기만 띠에 맞춘다(창 안의 모든 치수가 --timer-h의 배수다) */
+/* 타이머 창 — PC의 ActionPrompt를 그대로 쓰되 **두 줄로 나눈다**(2026-11-28 요청): 위는 시간 게이지(모래시계 · 막대 · 남은 초)의 캡슐,
+   아래는 문구의 작은 알약. 창 자신은 투명한 2행 grid이고, 캡슐은 1행 전체에 깔리는 ::before가 그린다(컴포넌트는 그대로 —
+   PC와 개인전 IndividualPrompt가 같은 마크업을 쓴다). 창 안의 치수는 여전히 --timer-h의 배수다.
+   ⚠️ 문구 행 때문에 위 띠가 높아졌다(--m-top-h 52px) — 양옆(단계 칩 · 닉네임 · [일시정지] 자리)은 예전 34px 줄에 그대로 둔다
+   (.m-top-side) — [일시정지]가 화면 위쪽에 고정(fixed)이라 양옆까지 가운데로 내리면 버튼만 위에 떠 어긋난다. */
 .m-layout .play-timer-window {
-  --timer-h: 28px;
+  --timer-h: 26px;
   top: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: var(--timer-h) auto;
+  align-items: center;
+  column-gap: calc(var(--timer-h) * 0.18);
+  row-gap: 3px;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
-  padding-inline: 12px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  filter: none;
+  isolation: isolate;
 }
-.m-layout .play-timer-bar { min-width: 48px; }
+/* 1행 — 게이지 캡슐(예전 창의 크림색 · 검은 테두리 · 광택을 그대로 옮긴 것). 타이머가 없는 때(상대 차례)는 캡슐을 그리지 않는다 */
+.m-layout .play-timer-window::before {
+  content: '';
+  grid-row: 1;
+  grid-column: 1 / -1;
+  align-self: stretch;
+  z-index: -1;
+  border: calc(var(--timer-h) * 0.05) solid #211505;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff6df 0%, #fbe9c2 55%, #f2d9a6 100%);
+  box-shadow: inset 0 calc(var(--timer-h) * 0.03) 0 rgba(255, 255, 255, 0.75), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.m-layout .play-timer-window:not(:has(.play-timer-bar))::before { display: none; }
+.m-layout .play-timer-icon { grid-row: 1; grid-column: 1; margin-left: calc(var(--timer-h) * 0.45); }
+.m-layout .play-timer-bar { grid-row: 1; grid-column: 2; min-width: 48px; }
+.m-layout .play-timer-sec { grid-row: 1; grid-column: 3; margin-right: calc(var(--timer-h) * 0.5); }
 .m-layout .play-timer-note { display: none; }
+/* 2행 — 문구. 게이지 아래 가운데의 작은 알약(관전 · 급할 때 바뀌는 글자색이 그대로 읽히게 크림 바탕) */
 .m-layout .play-timer-text {
-  font-size: calc(11px * var(--font-scale) / 1.12);
+  grid-row: 2;
+  grid-column: 1 / -1;
+  justify-self: center;
+  max-width: 100%;
   min-width: 0;
+  padding: 1px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(33, 21, 5, 0.55);
+  background: rgba(255, 246, 223, 0.94);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  font-size: calc(11px * var(--font-scale) / 1.12);
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.m-layout .play-timer-text > span { overflow: hidden; text-overflow: ellipsis; }
 
 /* 단계 칩 — 늘 왼쪽 위에 떠 있다. 크게 뜨는 판(.m-phase-hero)이 날아와 앉는 동안에는 감춰 둔다 */
 .m-phase-chip {
@@ -813,3 +859,61 @@ body:has(.m-layout) { overscroll-behavior: none; }
   0%, 70% { opacity: 1; }
   100%    { opacity: 0; }
 }
+
+/* ── 도토리 카드 버튼 — 아래 줄 양 끝(2026-11-28 요청) ──
+   오른쪽 동물 열 아래 칸 = [상대 도토리 카드] (세로줄) [설정 톱니]. 왼쪽 칸 [내 도토리 카드] [감정표현]과 좌우 대칭이다. */
+.m-corner-r { grid-area: cornerr; }
+/* 상대를 고르는 목록이 떠 있는 동안 판(.m-view) · 아래 띠보다 위로 */
+.m-corner-r:has(.m-opp-acorn-list) { z-index: 95; }
+/* 설정 톱니(전역 fixed)는 이 판에서 열 가운데가 아니라 그 오른쪽 자리로 — 상대 도토리 버튼과 열 가운데를 사이에 둔다(4px 틈).
+   보이는 지름 31.68px = 44px × 0.72. ⚠️ zoom이 위치 값에도 곱해지므로 0.72로 나눠 적는다 */
+body:has(.m-corner-r) .settings-fab { right: calc((var(--m-gutter) + var(--m-rail-w) / 2 - 2px - 31.68px) / 0.72); }
+body:has(.m-corner-r) .settings-hint-popup { right: calc(var(--m-gutter) + var(--m-rail-w) / 2 - 1.15rem - 7px - 17.84px); }
+/* 얻기 연출의 빛이 날아 들어가는 자리 — 내 도토리 버튼 안의 보이지 않는 점(MyAcornButton). 빛이 닿으면 버튼이 한 번 튀며 빛난다 */
+.m-acorn-button { position: relative; }
+.m-acorn-target { position: absolute; inset: 18%; pointer-events: none; }
+.m-acorn-button:has([data-equip]) { animation: mAcornEquip 0.7s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes mAcornEquip {
+  0% { transform: scale(1.4); box-shadow: 0 0 0 3px rgba(255, 236, 160, 0.9), 0 0 18px 6px rgba(255, 214, 102, 0.85); }
+  100% { transform: scale(1); box-shadow: 0 2px 6px rgba(58, 34, 15, 0.35); }
+}
+.m-acorn-button-opp { border-color: #7f1d1d; }
+.m-opp-acorn { position: relative; line-height: 0; }
+/* 상대 고르기 목록 — 버튼 위로, 화면 오른쪽 끝을 넘지 않게 오른쪽에 맞춘다. 고른 줄 강조는 크기를 바꾸지 않는다(스크롤바 규칙) */
+.m-opp-acorn-list {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: -40px;
+  width: min(220px, 70vw);
+  max-height: calc(var(--m-view-h) - 8px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 2px solid #a8692f;
+  background: rgba(40, 22, 8, 0.96);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  line-height: 1.3;
+  animation: acornFadeIn 0.15s ease-out both;
+}
+.m-opp-acorn-title { padding: 2px 6px 4px; font-size: 11px; font-weight: 800; color: rgba(253, 230, 138, 0.8); }
+.m-opp-acorn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fdf4e3;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+.m-opp-acorn-row:active,
+.m-opp-acorn-row:focus-visible { border-color: #fde68a; outline: none; }
+.m-opp-acorn-dot { flex: none; width: 10px; height: 10px; border-radius: 999px; background: #f43f5e; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
+.m-opp-acorn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-opp-acorn-count { flex: none; font-size: 12px; color: #fde68a; }

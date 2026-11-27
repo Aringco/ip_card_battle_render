@@ -62,3 +62,24 @@ export function winsByReach(state: { settings: { winMode?: string } }): boolean 
 export function losesAtZero(state: { settings: { winMode?: string } }): boolean {
   return state.settings.winMode !== 'recovery';
 }
+
+/**
+ * 체력 상한(2026-11-28 요청) — **섬멸전만** 방에서 정한 목표 체력(화면의 "목표 점수" = 승리선 targetScore × 2)까지만 찬다.
+ * 보호막 상한도 같은 값이다. 그 밖의 방식은 상한이 없다(기본은 승리선에 닿으면 끝나고, 번영전은 그것이 목표다).
+ * ⚠️ 회복 · 보호막을 더하는 엔진의 모든 자리가 이 값을 거친다(capHeal · addShield) — 이벤트의 양이 실제로 오른 양과 같아야
+ *    화면의 체력 가림(pendingHpCredit)이 어긋나지 않는다.
+ */
+export function hpCapOf(state: { settings: { winMode?: string; targetScore: number } }): number {
+  return state.settings.winMode === 'annihilate' ? state.settings.targetScore * 2 : Infinity;
+}
+/** 시작 체력 — 섬멸전은 가득 찬 채로(상한), 번영전은 0에서, 기본은 targetScore(승리선의 절반) */
+export function startHpOf(settings: { winMode?: string; targetScore: number }): number {
+  if (settings.winMode === 'annihilate') return settings.targetScore * 2;
+  if (settings.winMode === 'recovery') return 0;
+  return settings.targetScore;
+}
+/** 회복량을 상한까지만 — 실제로 오를 양(음수 · 0은 그대로). hp는 지금 체력 */
+export function capHeal(state: { settings: { winMode?: string; targetScore: number } }, hp: number, amount: number): number {
+  if (amount <= 0) return amount;
+  return Math.max(0, Math.min(amount, hpCapOf(state) - hp));
+}

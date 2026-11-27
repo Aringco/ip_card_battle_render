@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import type { ClientGameState, SideId } from 'shared';
+import { startHpOf } from 'shared';
 import type { AnimationState } from '@/hooks/useAnimationQueue';
 import { hpForecastOf, hpForecastText } from '@/lib/hpForecast';
-import { AcornBadges, ShieldGauge } from '../acorn/AcornBadges';
+import { ShieldGauge } from '../acorn/AcornBadges';
 
 /**
  * 모바일 배치의 체력 막대 — 화면 아래에서 가운데(지속 효과 아이콘 묶음 MobileDotHub)를 사이에 두고 왼쪽(나)·오른쪽(상대)으로
@@ -43,7 +44,8 @@ export function MobileHpBar({
   const hp = gameState.teams[team].hp;
   const winHp = gameState.settings.targetScore * 2;
   const fillPct = Math.max(0, Math.min(100, (hp / winHp) * 100));
-  const startPct = Math.max(0, Math.min(100, (gameState.settings.targetScore / winHp) * 100));
+  // 시작 체력 눈금 — 섬멸전(가득) · 번영전(0)은 양 끝이라 그리지 않는다(아래 조건)
+  const startPct = Math.max(0, Math.min(100, (startHpOf(gameState.settings) / winHp) * 100));
   const pulse = animState.hpPulse.get(team) ?? null;
   const dot = animState.dotPulse.get(team) ?? null;
 
@@ -154,9 +156,10 @@ export function MobileHpBar({
           {hpForecastText(forecast)}
         </span>
       )}
-      {/* 도토리 카드 — 막대 위 얇은 보호막 게이지(안쪽 끝에서 바깥으로) · 바깥 끝 위의 검은 도토리 배지 */}
+      {/* 보호막 — 막대에 겹치는 은빛 띠(안쪽 끝에서 바깥으로) */}
       {enh?.acorn && <ShieldGauge gameState={gameState} side={team} dir={side === 'left' ? 'h-left' : 'h-right'} />}
-      {enh?.acorn && <AcornBadges gameState={gameState} side={team} className="m-hp-acorns" />}
+      {/* 도토리 카드 배지는 막대 위에 그리지 않는다(2026-11-28 요청) — 모바일은 아래 줄 양 끝의 도토리 버튼, PC는 도토리 카드 더미가 보인다.
+          얻기 연출의 빛도 그 버튼 · 더미로 날아간다(여기 다시 그리면 빛이 막대로 날아간다) */}
       {hasExtra && (
         <span className="m-hp-extra">
           {divisor > 1 && (

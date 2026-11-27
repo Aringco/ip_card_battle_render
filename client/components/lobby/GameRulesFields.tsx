@@ -101,11 +101,11 @@ const WIN_MODE_OPTIONS = [
   { value: 'annihilate', label: '섬멸전' },
   { value: 'recovery', label: '번영전' },
 ] as const satisfies ReadonlyArray<{ value: GameSettings['winMode']; label: string }>;
-const WIN_MODE_TITLE = '승리 방식 — 섬멸전: 상대 체력 0으로만 이긴다 · 번영전: 목표 점수 도달로만 이긴다';
+const WIN_MODE_TITLE = '승리 방식 — 섬멸전: 체력 가득(목표 점수 = 최대 체력 · 보호막)에서 시작해 상대 체력 0으로만 이긴다 · 번영전: 체력 0에서 시작해 목표 점수 도달로만 이긴다';
 const WIN_MODE_SUMMARY: Record<GameSettings['winMode'], string | null> = {
   normal: null,
-  annihilate: '⚔️ 섬멸전 — 상대 체력을 0으로 만들어야만 승리',
-  recovery: '🌱 번영전 — 목표 점수에 닿아야만 승리(체력 0이어도 계속)',
+  annihilate: '⚔️ 섬멸전 — 체력 가득에서 시작 · 상대 체력 0으로만 승리',
+  recovery: '🌱 번영전 — 체력 0에서 시작 · 목표 점수 도달로만 승리',
 };
 
 // 혼자 놀기에서 감추는 두 항목 — 서버도 같은 이유로 제한을 걸지 않는다(Room.vsComputer).
@@ -284,14 +284,14 @@ export function GameRulesFields({
               {renderRow(EXP_GAIN_FIELD)}
               <div className="flex items-center justify-between gap-1 text-xs" title={COMP_TITLE}>
                 <label className="text-gray-500 truncate min-w-0">후공 보상</label>
-                <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} />
+                <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} still />
               </div>
             </>
           )}
           {(showSkillGrowth || mode === 'individual') && (
               <div className="flex items-center justify-between gap-1 text-xs" title={WIN_MODE_TITLE}>
                 <label className="text-gray-500 truncate min-w-0">승리 방식</label>
-                <ModeToggle options={WIN_MODE_OPTIONS} value={settings.winMode} onChange={v => onChange({ ...settings, winMode: v })} label={WIN_MODE_TITLE} />
+                <ModeToggle options={WIN_MODE_OPTIONS} value={settings.winMode} onChange={v => onChange({ ...settings, winMode: v })} label={WIN_MODE_TITLE} still />
               </div>
           )}
           </div>
@@ -481,7 +481,7 @@ export function GameRulesInputs({
             <div className="flex items-center gap-2 text-lg">
               <label className="text-board-muted whitespace-nowrap">{COMP_TITLE}</label>
               <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
-              <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} />
+              <ModeToggle options={COMP_OPTIONS} value={settings.secondComp} onChange={v => onChange({ ...settings, secondComp: v })} label={COMP_TITLE} still />
             </div>
           </>
         )}
@@ -489,7 +489,7 @@ export function GameRulesInputs({
             <div className="flex items-center gap-2 text-lg">
               <label className="text-board-muted whitespace-nowrap">승리 방식</label>
               <span className="flex-1 min-w-4 border-b-2 border-dotted border-board-line" />
-              <ModeToggle options={WIN_MODE_OPTIONS} value={settings.winMode} onChange={v => onChange({ ...settings, winMode: v })} label={WIN_MODE_TITLE} />
+              <ModeToggle options={WIN_MODE_OPTIONS} value={settings.winMode} onChange={v => onChange({ ...settings, winMode: v })} label={WIN_MODE_TITLE} still />
             </div>
         )}
       </div>

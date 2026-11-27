@@ -22,8 +22,8 @@ import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { IndividualHeader } from './IndividualHeader';
 import { EnhanceHeader } from './EnhanceHeader';
 import { BoardFrame } from './BoardFrame';
-import { MobileDotHub } from './mobile/MobileHpBar';
-import { AcornBadges } from './acorn/AcornBadges';
+import { MobileDotHub, MobileHpBar } from './mobile/MobileHpBar';
+import { AcornDeck } from './acorn/AcornDeck';
 import { IndividualPrompt } from './IndividualPrompt';
 import { SelfPanel } from './SelfPanel';
 import { OpponentList } from './OpponentList';
@@ -323,32 +323,25 @@ export function IndividualLayout({
           </div>
 
           <div className={cls.hp}>
-            <TeamTotalPanel
-              team={focusSide}
-              gameState={hpViewState}
-              myTeam={mySide ?? focusSide}
-              pulse={animState.hpPulse.get(focusSide) ?? null}
-              dotPulse={animState.dotPulse.get(focusSide) ?? null}
-              // 강화 방은 도토리 카드를 가운데 줄에 따로 둔다(1:1과 같다)
-              acorns={!enhPc}
-            />
+            {/* 강화 방은 이 자리가 도토리 카드 더미(1:1과 같다 — 2026-11-28 요청, 체력은 가운데 줄의 막대로) */}
+            {enhPc ? (
+              <AcornDeck gameState={hpViewState} side={focusSide} label={mySide !== null ? '나' : sideName(gameState, focusSide)} />
+            ) : (
+              <TeamTotalPanel
+                team={focusSide}
+                gameState={hpViewState}
+                myTeam={mySide ?? focusSide}
+                pulse={animState.hpPulse.get(focusSide) ?? null}
+                dotPulse={animState.dotPulse.get(focusSide) ?? null}
+                acorns
+              />
+            )}
           </div>
 
-          {/* 강화 방 — 오른쪽 상대의 체력(1:1의 오른쪽 구슬 자리) */}
+          {/* 강화 방 — 오른쪽 상대의 도토리 카드 더미(1:1의 오른쪽 자리). key — 오른쪽 사람이 바뀌면 새 더미로(직전 사람과의 장수 차이를 "+1"로 읽지 않게) */}
           {enhPc && rightSide && (
             <div className="play-cell play-cell-hp-b">
-              {/* key — 오른쪽 사람이 바뀌면 새 구슬로 그린다. 같은 구슬을 이어 쓰면 직전 사람과의 체력 차이만큼 액체가 0.6초에 걸쳐 오르내렸다 */}
-              <TeamTotalPanel
-                key={rightSide}
-                team={rightSide}
-                // 그 사람이 고른 색으로(2026-11-25 요청) — 체력 막대 · 목록의 세로 막대와 같은 색
-                color={sideColor(gameState, rightSide)}
-                gameState={hpViewState}
-                myTeam={focusSide}
-                pulse={animState.hpPulse.get(rightSide) ?? null}
-                dotPulse={animState.dotPulse.get(rightSide) ?? null}
-                acorns={false}
-              />
+              <AcornDeck key={rightSide} gameState={hpViewState} side={rightSide} label={sideName(gameState, rightSide)} />
             </div>
           )}
 
@@ -369,8 +362,14 @@ export function IndividualLayout({
           {/* 강화 방의 가운데 줄 — 내 도토리 카드 | 내 지속 효과 | (타이머 — 아래 .play-prompt-strip이 같은 칸에 얹힌다) | 상대 지속 효과 | 상대 도토리 카드 */}
           {enhPc && rightSide && (
             <div className="enh-mid">
-              <div className="enh-acorn-bar" data-side="left"><AcornBadges gameState={hpViewState} side={focusSide} /></div>
-              <div className="enh-acorn-bar" data-side="right"><AcornBadges gameState={hpViewState} side={rightSide} /></div>
+              {/* 체력 — 모바일과 같은 막대(2026-11-28 요청). 내 막대는 초록, 상대는 그 사람이 고른 색(관전 시점이면 왼쪽도 그 사람 색) */}
+              <div className="enh-hp" data-side="left">
+                <MobileHpBar team={focusSide} side="left" gameState={hpViewState} animState={animState} mine={!observer} color={mySide === null ? sideColor(gameState, focusSide) : undefined} />
+              </div>
+              <div className="enh-hp" data-side="right">
+                {/* key — 오른쪽 사람이 바뀌면 새 막대로(직전 사람과의 체력 차이를 깎임 · 오름으로 그리지 않게) */}
+                <MobileHpBar key={rightSide} team={rightSide} side="right" gameState={hpViewState} animState={animState} mine={false} color={sideColor(gameState, rightSide)} />
+              </div>
               <div className="enh-dots"><MobileDotHub gameState={hpViewState} left={focusSide} right={rightSide} /></div>
             </div>
           )}

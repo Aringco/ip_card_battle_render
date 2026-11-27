@@ -41,6 +41,7 @@ import {
   skillLevelFor,
   losesAtZero,
   winsByReach,
+  capHeal,
 } from 'shared';
 import type { Animal, ClientGameState, EnhanceStatus, SideId } from 'shared';
 
@@ -268,7 +269,8 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
     const foes = opponentsOf(gameState, team);
     const soleFoe = foes.length === 1 ? foes[0] : undefined;
     if (animal === 'sheep') extraDraws = value;
-    else if (animal === 'rabbit') myHpDelta = enhanceHealAfterCut(value, healCut);
+    // 섬멸전은 목표 체력까지만 오른다(서버 capHeal과 같다)
+    else if (animal === 'rabbit') myHpDelta = capHeal(gameState, gameState.teams[team]?.hp ?? 0, enhanceHealAfterCut(value, healCut));
     else if (animal === 'tiger') {
       // 상대가 하나뿐이면 그 상대가 가진 만큼으로 자른다. 여럿이면 대상이 정해지기 전이라 "최대"로 보인다.
       oppHpIsMax = soleFoe === undefined;
@@ -310,7 +312,7 @@ export function previewSkill(gameState: ClientGameState, team: SideId, animal: A
   if (animal === 'sheep') {
     extraDraws = level * mult;
   } else if (animal === 'rabbit') {
-    myHpDelta = level * mult;
+    myHpDelta = capHeal(gameState, gameState.teams[team]?.hp ?? 0, level * mult);
   } else if (animal === 'tiger') {
     const amount = level * tigerMult;
     // 개인전은 대상이 정해지기 전이라 자를 상대가 없다 — 자르지 않은 값을 "최대 n"으로 보여준다.

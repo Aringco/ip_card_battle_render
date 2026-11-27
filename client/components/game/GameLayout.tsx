@@ -20,8 +20,8 @@ import { TigerClawLayer } from '@/components/effects/TigerClawLayer';
 import { SettingsHintPopup } from '@/components/ui/SettingsHintPopup';
 import { GameHeader } from './GameHeader';
 import { EnhanceHeader } from './EnhanceHeader';
-import { MobileDotHub } from './mobile/MobileHpBar';
-import { AcornBadges } from './acorn/AcornBadges';
+import { MobileDotHub, MobileHpBar } from './mobile/MobileHpBar';
+import { AcornDeck } from './acorn/AcornDeck';
 import { TeamPanel } from './TeamPanel';
 import { GameBoard } from './GameBoard';
 import { SheepProgressBar } from './SheepProgressBar';
@@ -273,8 +273,13 @@ export function GameLayout({
 
           {/* ── 아랫줄 양 끝 — 각 팀 체력(요청 3). 카드 강화 판은 기술 카드 띠의 좌 · 우(도토리는 가운데 줄 .enh-mid) */}
           <div className="play-cell play-cell-hp-a">
-            {/* 체력은 화면상 값으로 — 카드 강화의 짝 효과는 그 연출 순간에야 구슬이 움직인다(useAnimationQueue의 displayedHp) */}
-            <TeamTotalPanel team="A" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} dotPulse={animState.dotPulse.get('A') ?? null} acorns={!enhPc} />
+            {/* 카드 강화 판은 이 자리가 도토리 카드 더미(2026-11-28 요청 — 체력은 가운데 줄의 막대로 옮겼다) */}
+            {enhPc ? (
+              <AcornDeck gameState={hpState} side="A" label={myTeam === 'A' ? '나' : myTeam === 'B' ? '상대' : (gameState.teamNames?.A ?? '팀 1')} />
+            ) : (
+              // 체력은 화면상 값으로 — 카드 강화의 짝 효과는 그 연출 순간에야 구슬이 움직인다(useAnimationQueue의 displayedHp)
+              <TeamTotalPanel team="A" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('A') ?? null} dotPulse={animState.dotPulse.get('A') ?? null} acorns />
+            )}
           </div>
 
           {/* ── 아랫줄 가운데 다섯 칸 — 기술 카드 4장 + 턴 마치기(요청 4) */}
@@ -294,13 +299,18 @@ export function GameLayout({
           </div>
 
           <div className="play-cell play-cell-hp-b">
-            <TeamTotalPanel team="B" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} dotPulse={animState.dotPulse.get('B') ?? null} acorns={!enhPc} />
+            {enhPc ? (
+              <AcornDeck gameState={hpState} side="B" label={myTeam === 'B' ? '나' : myTeam === 'A' ? '상대' : (gameState.teamNames?.B ?? '팀 2')} />
+            ) : (
+              <TeamTotalPanel team="B" gameState={withDisplayedHp(viewState, animState.displayedHp)} myTeam={myTeam} pulse={animState.hpPulse.get('B') ?? null} dotPulse={animState.dotPulse.get('B') ?? null} acorns />
+            )}
           </div>
-          {/* 카드 강화 판의 가운데 줄 — 내 도토리 카드 | 상태 이상 | (타이머) | 상태 이상 | 상대 도토리 카드(2026-11-08 요청) */}
+          {/* 카드 강화 판의 가운데 줄 — 내 체력 | 상태 이상 | (타이머) | 상태 이상 | 상대 체력(2026-11-28 요청 — 모바일과 같은 체력 막대.
+              그 전에는 이 양 끝이 도토리 카드 배지 줄이었고, 체력은 아래 구슬이었다) */}
           {enhPc && (
             <div className="enh-mid">
-              <div className="enh-acorn-bar" data-side="left"><AcornBadges gameState={hpState} side="A" /></div>
-              <div className="enh-acorn-bar" data-side="right"><AcornBadges gameState={hpState} side="B" /></div>
+              <div className="enh-hp" data-side="left"><MobileHpBar team="A" side="left" gameState={hpState} animState={animState} mine={myTeam === 'A'} /></div>
+              <div className="enh-hp" data-side="right"><MobileHpBar team="B" side="right" gameState={hpState} animState={animState} mine={myTeam === 'B'} /></div>
               <div className="enh-dots"><MobileDotHub gameState={hpState} left="A" right="B" /></div>
             </div>
           )}
